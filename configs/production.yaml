@@ -1,0 +1,10 @@
+# Atlas — Production Configuration
+# Overrides default.yaml for production runs.
+
+logging:
+  level: WARNING
+  format: json
+
+ingestion:
+  max_retries: 5
+  retry_backoff_seconds: 5

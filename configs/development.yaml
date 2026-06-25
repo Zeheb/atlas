@@ -1,0 +1,9 @@
+# Atlas — Development Configuration
+# Overrides default.yaml for local development.
+
+logging:
+  level: DEBUG
+  format: text              # human-readable in dev
+
+ingestion:
+  max_retries: 1            # fail fast during development

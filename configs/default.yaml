@@ -1,0 +1,27 @@
+# Atlas — Default Configuration
+# These values apply to all environments unless overridden.
+
+app:
+  name: atlas
+  version: "0.1.0"
+
+logging:
+  level: INFO
+  format: json
+
+storage:
+  objects_dir: data/objects
+  cache_dir: data/cache
+  exports_dir: data/exports
+
+ingestion:
+  max_retries: 3
+  retry_backoff_seconds: 2
+  dedup_enabled: true
+
+processing:
+  pdf:
+    max_pages: null          # null = no limit
+    ocr_fallback: true       # run OCR if text extraction yields nothing
+  tables:
+    output_format: json      # json | parquet
