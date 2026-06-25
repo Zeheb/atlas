@@ -1,7 +1,56 @@
 [project]
 name = "atlas"
 version = "0.1.0"
-description = "Add your description here"
+description = "A long-term investment research platform"
 readme = "README.md"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "click>=8.1",
+    "requests>=2.32",
+    "tzdata>=2024",
+]
+
+[project.scripts]
+atlas = "atlas.cli:cli"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "ruff>=0.8",
+    "black>=24.10",
+    "mypy>=1.13",
+    "pre-commit>=4.0",
+    "types-requests>=2.32",
+]
+
+# ---------------------------------------------------------------------------
+# Tool configuration
+# ---------------------------------------------------------------------------
+
+[tool.ruff]
+line-length = 88
+target-version = "py314"
+
+[tool.ruff.lint]
+# E4/E7/E9: pycodestyle errors safe to use alongside black
+# F: pyflakes
+# I: isort
+# BLE: blind exception catching (BLE001 bans bare `except Exception`)
+select = ["E4", "E7", "E9", "F", "I", "BLE"]
+
+[tool.black]
+line-length = 88
+target-version = ["py314"]
+
+[tool.mypy]
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "--cov=atlas --cov-report=term-missing --cov-fail-under=80"

@@ -1,0 +1,38 @@
+{
+  "schema_version": "1",
+  "items": [
+    {
+      "evidence_id": "6e49b04e-0256-4d93-b50e-a91ee2773bf2",
+      "source": "BSE",
+      "kind": "annual_report",
+      "title": "Integrated Annual Report 2025-26",
+      "source_date": "2026-05-15T18:20:38+00:00",
+      "document_url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/ad42e748-d73c-4c79-8c52-bcf1b1399bc1.pdf",
+      "local_path": "annual_reports/6e49b04e-0256-4d93-b50e-a91ee2773bf2.pdf",
+      "file_size_bytes": 17427580,
+      "acquired_at": "2026-06-25T11:16:27.724899+00:00"
+    },
+    {
+      "evidence_id": "5f265e1c-6312-4556-b208-749bfa2caf8f",
+      "source": "BSE",
+      "kind": "annual_report",
+      "title": "Integrated Annual Report 2024-25",
+      "source_date": "2025-05-27T18:04:35+00:00",
+      "document_url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/bb9f9e0a-e4ce-4a4e-997e-0b5de8c2bec0.pdf",
+      "local_path": "annual_reports/5f265e1c-6312-4556-b208-749bfa2caf8f.pdf",
+      "file_size_bytes": 25970741,
+      "acquired_at": "2026-06-25T11:16:27.724948+00:00"
+    },
+    {
+      "evidence_id": "a8be8b1d-ebc8-4ab7-8081-668fadaf6ecb",
+      "source": "BSE",
+      "kind": "annual_report",
+      "title": "Annual General Meeting Notice, Integrated Annual Report 2023-24.",
+      "source_date": "2024-05-08T19:10:13+00:00",
+      "document_url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/d57e49b6-fd89-4fa8-b591-4f590100db1e.pdf",
+      "local_path": "annual_reports/a8be8b1d-ebc8-4ab7-8081-668fadaf6ecb.pdf",
+      "file_size_bytes": 10182737,
+      "acquired_at": "2026-06-25T11:16:27.724969+00:00"
+    }
+  ]
+}
