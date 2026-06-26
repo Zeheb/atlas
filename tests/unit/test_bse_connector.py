@@ -128,6 +128,16 @@ class TestDiscover:
         paths = [call[0][0] for call in http.get_json.call_args_list]
         assert "AnnSubCategoryGetData/w" in paths
 
+    def test_calls_corporate_gov_report_endpoint(self) -> None:
+        http = MagicMock()
+        http.get_json.side_effect = [
+            make_ar_response(),
+            *_many_empty(),
+        ]
+        BSEConnector(http=http).discover(_make_company(scrip_code=SCRIP_CODE))
+        paths = [call[0][0] for call in http.get_json.call_args_list]
+        assert "CorporateGovReport/w" in paths
+
     def test_returns_combined_annual_reports_and_announcements(self) -> None:
         http = MagicMock()
         http.get_json.side_effect = [
@@ -538,3 +548,82 @@ class TestFetchBytes:
         result = BSEConnector(http=http).fetch_bytes("https://example.com/file.pdf")
         http.get_bytes.assert_called_once_with("https://example.com/file.pdf")
         assert result == b"PDF content"
+
+
+# ---------------------------------------------------------------------------
+# _get_corporate_governance_reports (internal — tested directly)
+# ---------------------------------------------------------------------------
+
+
+def _make_cg_response(fin_year: str = "2025-2026", qtr: str = "Q1") -> list:
+    return [
+        {
+            "finYear": fin_year,
+            "lstCorporateGovReport": [
+                {"filePath": f"/downloads1/cg_{qtr}.pdf", "Qtr": qtr}
+            ],
+        }
+    ]
+
+
+class TestGetCorporateGovernanceReports:
+    def test_calls_corporate_gov_report_endpoint(self) -> None:
+        http = MagicMock()
+        http.get_json.return_value = []
+        BSEConnector(http=http)._get_corporate_governance_reports(COMPANY_ID, SCRIP_CODE)
+        path = http.get_json.call_args[0][0]
+        assert path == "CorporateGovReport/w"
+
+    def test_passes_scripcode_parameter(self) -> None:
+        http = MagicMock()
+        http.get_json.return_value = []
+        BSEConnector(http=http)._get_corporate_governance_reports(COMPANY_ID, SCRIP_CODE)
+        params = http.get_json.call_args[0][1]
+        assert params["scripcode"] == SCRIP_CODE
+
+    def test_single_call_no_pagination(self) -> None:
+        http = MagicMock()
+        http.get_json.return_value = []
+        BSEConnector(http=http)._get_corporate_governance_reports(COMPANY_ID, SCRIP_CODE)
+        assert http.get_json.call_count == 1
+
+    def test_returns_evidence_list(self) -> None:
+        http = MagicMock()
+        http.get_json.return_value = _make_cg_response()
+        result = BSEConnector(http=http)._get_corporate_governance_reports(
+            COMPANY_ID, SCRIP_CODE
+        )
+        assert isinstance(result, list)
+        assert isinstance(result[0], Evidence)
+
+    def test_kind_is_corporate_governance_report(self) -> None:
+        http = MagicMock()
+        http.get_json.return_value = _make_cg_response()
+        result = BSEConnector(http=http)._get_corporate_governance_reports(
+            COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].kind == EvidenceKind.CORPORATE_GOVERNANCE_REPORT
+
+    def test_source_is_bse(self) -> None:
+        http = MagicMock()
+        http.get_json.return_value = _make_cg_response()
+        result = BSEConnector(http=http)._get_corporate_governance_reports(
+            COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].source == EvidenceSource.BSE
+
+    def test_company_id_propagated(self) -> None:
+        http = MagicMock()
+        http.get_json.return_value = _make_cg_response()
+        result = BSEConnector(http=http)._get_corporate_governance_reports(
+            COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].company_id == COMPANY_ID
+
+    def test_empty_response_returns_empty_list(self) -> None:
+        http = MagicMock()
+        http.get_json.return_value = []
+        result = BSEConnector(http=http)._get_corporate_governance_reports(
+            COMPANY_ID, SCRIP_CODE
+        )
+        assert result == []

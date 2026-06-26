@@ -90,6 +90,12 @@ class RepositoryCatalog:
     def known_ids(self) -> frozenset[str]:
         return frozenset(self._entries.keys())
 
+    def all_entries(self) -> list["CatalogEntry"]:
+        return list(self._entries.values())
+
+    def get_entry(self, evidence_id: str) -> "CatalogEntry | None":
+        return self._entries.get(evidence_id)
+
     def add(self, entry: CatalogEntry) -> None:
         self._entries[entry.evidence_id] = entry
 

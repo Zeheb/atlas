@@ -25,6 +25,8 @@ class EvidenceKind(enum.Enum):
     # Other document types
     CREDIT_RATING_REPORT = "credit_rating_report"
     REGULATORY_FILING = "regulatory_filing"
+    SHAREHOLDING_PATTERN = "shareholding_pattern"
+    CORPORATE_GOVERNANCE_REPORT = "corporate_governance_report"
     RESEARCH_REPORT = "research_report"
     NEWS = "news"
     DISCUSSION = "discussion"

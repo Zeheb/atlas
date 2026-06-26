@@ -1,3 +1,4 @@
+import calendar
 import logging
 import re
 from collections import Counter
@@ -53,6 +54,7 @@ class BSEParser:
         "Postal Ballot": EvidenceKind.AGM_NOTICE,
         # Board
         "Outcome of Board Meeting": EvidenceKind.BOARD_OUTCOME,
+        "Outcome without intimation": EvidenceKind.BOARD_OUTCOME,
         # Dividends
         "Dividend": EvidenceKind.DIVIDEND,
         # Buybacks
@@ -65,14 +67,25 @@ class BSEParser:
         "Amalgamation / Merger / Demerger": EvidenceKind.ACQUISITION,
         # Credit Ratings
         "Credit Rating": EvidenceKind.CREDIT_RATING_REPORT,
+        # Regulatory filings (SAST disclosures, secretarial compliance)
+        "Disclosures under Reg. 29(2) of SEBI (SAST) Regulations, 2011": EvidenceKind.REGULATORY_FILING,
+        "Disclosures under Reg. 31(1) and 31(2) of SEBI (SAST) Regulations, 2011": EvidenceKind.REGULATORY_FILING,
+        "Reg.24(A)-Annual Secretarial Compliance": EvidenceKind.REGULATORY_FILING,
         # News / Press
         "Press Release / Media Release": EvidenceKind.NEWS,
         "Press Release / Media Release (Revised)": EvidenceKind.NEWS,
     }
 
+    _MONTH_MAP: dict[str, int] = {
+        "January": 1, "February": 2, "March": 3, "April": 4,
+        "May": 5, "June": 6, "July": 7, "August": 8,
+        "September": 9, "October": 10, "November": 11, "December": 12,
+    }
+
     _ATTACH_LIVE = "https://www.bseindia.com/xml-data/corpfiling/AttachLive/{}"
     _ATTACH_HIS = "https://www.bseindia.com/xml-data/corpfiling/AttachHis/{}"
     _ANNUAL_REPORT_CDN = "https://www.bseindia.com/AnnualReports/{scrip_code}/{fname}"
+    _CG_REPORT_BASE = "https://www.bseindia.com"
 
     # ------------------------------------------------------------------ #
     # Public interface                                                      #
@@ -120,6 +133,92 @@ class BSEParser:
                     file_size_bytes=None,
                 )
             )
+        return result
+
+    def parse_shareholding_index(
+        self, raw: Any, company_id: str, scrip_code: int
+    ) -> list[Evidence]:
+        """Parse a SHPQNewFormat/w response into Evidence instances.
+
+        Rows with an empty XbrlFile are pre-XBRL-era filings (2004–2015) with
+        no structured data available and are silently skipped.
+
+        Revised filings have a fractional qtrid (e.g. 120.01 vs 120.0) and
+        replace the original row in the BSE index. The evidence_id encodes
+        the full qtrid so originals and revisions are distinct catalogue entries.
+
+        The download URL https://www.bseindia.com/XBRLFILES/SHPXBRLDataXML/{XbrlFile}
+        is valid for both new and revised filings.
+        """
+        table = raw.get("Table", []) if isinstance(raw, dict) else []
+        result: list[Evidence] = []
+        for rec in table:
+            xbrl_file = (rec.get("XbrlFile") or "").strip()
+            if not xbrl_file:
+                continue
+            qtrid = rec.get("qtrid")
+            if qtrid is None:
+                continue
+            qtr_label = str(rec.get("qtr") or "")
+            filing_dt = str(rec.get("filing_date_time") or "")
+            revised_dt = str(rec.get("revised_date_time") or "")
+            dt_str = revised_dt if revised_dt else filing_dt
+            qtrid_str = str(int(qtrid)) if qtrid == int(qtrid) else str(qtrid).replace(".", "_")
+            result.append(
+                Evidence(
+                    evidence_id=f"bse-shp-{scrip_code}-{qtrid_str}",
+                    company_id=company_id,
+                    source=EvidenceSource.BSE,
+                    kind=EvidenceKind.SHAREHOLDING_PATTERN,
+                    title=f"Shareholding Pattern {qtr_label}",
+                    source_date=self._parse_shp_date(dt_str, qtr_label),
+                    document_url=(
+                        f"https://www.bseindia.com/XBRLFILES/SHPXBRLDataXML/{xbrl_file}"
+                    ),
+                    file_size_bytes=None,
+                    file_extension="xml",
+                )
+            )
+        return result
+
+    def parse_corporate_governance_index(
+        self, raw: Any, company_id: str, scrip_code: int
+    ) -> list[Evidence]:
+        """Parse a CorporateGovReport/w response into Evidence instances.
+
+        Each year-group contains up to 4 quarterly reports (Q1–Q4). Rows with
+        filePath equal to "-", empty string, or None are placeholder entries
+        and are silently skipped. ZIP files are preserved with file_extension="zip".
+        """
+        from pathlib import PurePosixPath
+
+        result: list[Evidence] = []
+        if not isinstance(raw, list):
+            return result
+        for year_group in raw:
+            fin_year = str(year_group.get("finYear") or "")
+            for report in year_group.get("lstCorporateGovReport") or []:
+                file_path = (report.get("filePath") or "").strip()
+                if not file_path or file_path == "-":
+                    continue
+                qtr = str(report.get("Qtr") or "").strip()
+                if not qtr or qtr == "-":
+                    continue
+                suffix = PurePosixPath(file_path).suffix.lstrip(".").lower() or "pdf"
+                fin_year_key = fin_year.replace("-", "_")
+                result.append(
+                    Evidence(
+                        evidence_id=f"bse-cg-{scrip_code}-{fin_year_key}-{qtr}",
+                        company_id=company_id,
+                        source=EvidenceSource.BSE,
+                        kind=EvidenceKind.CORPORATE_GOVERNANCE_REPORT,
+                        title=f"Corporate Governance Report {fin_year} {qtr}",
+                        source_date=self._cg_report_date(fin_year, qtr),
+                        document_url=f"{self._CG_REPORT_BASE}{file_path}",
+                        file_size_bytes=None,
+                        file_extension=suffix,
+                    )
+                )
         return result
 
     def total_pages(self, raw: dict[str, Any]) -> int:
@@ -224,6 +323,50 @@ class BSEParser:
             return naive.replace(tzinfo=self._BSE_TZ).astimezone(timezone.utc)
         except ValueError:
             return datetime.now(timezone.utc)
+
+    def _parse_shp_date(self, dt_str: str, qtr_label: str) -> datetime:
+        """Parse a shareholding pattern date; fall back to the quarter end date."""
+        if dt_str:
+            try:
+                clean = dt_str.split(".")[0] if "." in dt_str else dt_str
+                naive = datetime.fromisoformat(clean)
+                return naive.replace(tzinfo=self._BSE_TZ).astimezone(timezone.utc)
+            except (ValueError, TypeError):
+                pass
+        # Fall back: last day of the quarter month, e.g. "March 2026" → 2026-03-31
+        parts = qtr_label.strip().split()
+        if len(parts) == 2:
+            month = self._MONTH_MAP.get(parts[0])
+            try:
+                year = int(parts[1])
+                if month:
+                    last_day = calendar.monthrange(year, month)[1]
+                    return datetime(year, month, last_day, tzinfo=timezone.utc)
+            except (ValueError, TypeError):
+                pass
+        return datetime.now(timezone.utc)
+
+    def _cg_report_date(self, fin_year: str, qtr: str) -> datetime:
+        """Derive quarter-end date from finYear ("2025-2026") and Qtr ("Q1"–"Q4").
+
+        Indian FY runs April–March: Q1=June 30, Q2=Sep 30, Q3=Dec 31, Q4=Mar 31.
+        """
+        try:
+            parts = fin_year.split("-")
+            start_year = int(parts[0].strip())
+            end_year = int(parts[1].strip())
+        except (ValueError, IndexError):
+            return datetime.now(timezone.utc)
+        quarter_ends = {
+            "Q1": (start_year, 6, 30),
+            "Q2": (start_year, 9, 30),
+            "Q3": (start_year, 12, 31),
+            "Q4": (end_year, 3, 31),
+        }
+        if qtr not in quarter_ends:
+            return datetime.now(timezone.utc)
+        y, m, d = quarter_ends[qtr]
+        return datetime(y, m, d, tzinfo=timezone.utc)
 
     def _parse_ar_date(self, dt_str: str, year_str: str) -> datetime:
         """Parse an AnnualReport/w date field; fall back to April 1 of the filing year."""

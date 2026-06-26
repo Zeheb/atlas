@@ -10,6 +10,7 @@ dependencies = [
     "click>=8.1",
     "requests>=2.32",
     "tzdata>=2024",
+    "pymupdf>=1.24",
 ]
 
 [project.scripts]
@@ -54,3 +55,6 @@ warn_unused_configs = true
 testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "--cov=atlas --cov-report=term-missing --cov-fail-under=80"
+markers = [
+    "integration: requires real acquired data on disk (deselect with '-m \"not integration\"')",
+]

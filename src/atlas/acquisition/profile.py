@@ -15,6 +15,9 @@ class AcquisitionProfile(Protocol):
     @property
     def name(self) -> str: ...
 
+    @property
+    def kinds(self) -> frozenset[EvidenceKind]: ...
+
     def select(self, evidence: Sequence[Evidence]) -> list[Evidence]: ...
 
 
@@ -29,6 +32,10 @@ class KindFilterProfile:
     def name(self) -> str:
         return self._name
 
+    @property
+    def kinds(self) -> frozenset[EvidenceKind]:
+        return self._kinds
+
     def select(self, evidence: Sequence[Evidence]) -> list[Evidence]:
         return [e for e in evidence if e.kind in self._kinds]
 
@@ -41,6 +48,32 @@ DEFAULT_PROFILE = KindFilterProfile(
             EvidenceKind.FINANCIAL_RESULTS,
             EvidenceKind.EARNINGS_TRANSCRIPT,
             EvidenceKind.INVESTOR_PRESENTATION,
+        }
+    ),
+)
+
+COMPREHENSIVE_PROFILE = KindFilterProfile(
+    name="comprehensive",
+    kinds=frozenset(
+        {
+            # Primary research (superset of DEFAULT_PROFILE)
+            EvidenceKind.ANNUAL_REPORT,
+            EvidenceKind.FINANCIAL_RESULTS,
+            EvidenceKind.EARNINGS_TRANSCRIPT,
+            EvidenceKind.INVESTOR_PRESENTATION,
+            # Governance
+            EvidenceKind.BOARD_OUTCOME,
+            EvidenceKind.BRSR,
+            EvidenceKind.AGM_NOTICE,
+            # Corporate actions
+            EvidenceKind.DIVIDEND,
+            EvidenceKind.BUYBACK,
+            EvidenceKind.ACQUISITION,
+            # Regulatory
+            EvidenceKind.CREDIT_RATING_REPORT,
+            EvidenceKind.REGULATORY_FILING,
+            EvidenceKind.SHAREHOLDING_PATTERN,
+            EvidenceKind.CORPORATE_GOVERNANCE_REPORT,
         }
     ),
 )

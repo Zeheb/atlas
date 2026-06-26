@@ -2,7 +2,12 @@ import click
 
 from atlas.acquisition.acquisitions import save_acquisition_run
 from atlas.acquisition.connectors.bse import BSEConnector
-from atlas.acquisition.profile import DEFAULT_PROFILE
+from atlas.acquisition.profile import COMPREHENSIVE_PROFILE, DEFAULT_PROFILE
+
+_PROFILES = {
+    DEFAULT_PROFILE.name: DEFAULT_PROFILE,
+    COMPREHENSIVE_PROFILE.name: COMPREHENSIVE_PROFILE,
+}
 from atlas.acquisition.scaffold import RepositoryAlreadyExistsError, build_repository
 from atlas.acquisition.workflow import run_acquisition
 from atlas.app import Atlas
@@ -33,7 +38,15 @@ def build(ticker: str) -> None:
 
 @cli.command()
 @click.argument("ticker")
-def acquire(ticker: str) -> None:
+@click.option(
+    "--profile",
+    "profile_name",
+    default="default",
+    show_default=True,
+    type=click.Choice(list(_PROFILES)),
+    help="Acquisition profile to use.",
+)
+def acquire(ticker: str, profile_name: str) -> None:
     """Acquire all available evidence for TICKER."""
     ticker = ticker.upper()
     atlas = Atlas.from_environment()
@@ -45,10 +58,11 @@ def acquire(ticker: str) -> None:
         )
         raise SystemExit(1)
 
+    profile = _PROFILES[profile_name]
     click.echo(f"Atlas — Acquiring {ticker}\n")
 
     with BSEConnector.from_settings(atlas.settings) as connector:
-        report = run_acquisition(repo_root, connector, DEFAULT_PROFILE, on_progress=click.echo)
+        report = run_acquisition(repo_root, connector, profile, on_progress=click.echo)
 
     run = save_acquisition_run(report, repo_root)
 

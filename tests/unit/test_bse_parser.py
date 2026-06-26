@@ -239,6 +239,36 @@ class TestEvidenceKindMapping:
         result = parser.parse_filings(make_response(record), COMPANY_ID)
         assert result[0].kind == EvidenceKind.NEWS
 
+    def test_outcome_without_intimation_maps_to_board_outcome(self) -> None:
+        parser = BSEParser()
+        record = {**FILING_RECORD, "SUBCATNAME": "Outcome without intimation"}
+        result = parser.parse_filings(make_response(record), COMPANY_ID)
+        assert result[0].kind == EvidenceKind.BOARD_OUTCOME
+
+    def test_sast_reg29_maps_to_regulatory_filing(self) -> None:
+        parser = BSEParser()
+        record = {
+            **FILING_RECORD,
+            "SUBCATNAME": "Disclosures under Reg. 29(2) of SEBI (SAST) Regulations, 2011",
+        }
+        result = parser.parse_filings(make_response(record), COMPANY_ID)
+        assert result[0].kind == EvidenceKind.REGULATORY_FILING
+
+    def test_sast_reg31_maps_to_regulatory_filing(self) -> None:
+        parser = BSEParser()
+        record = {
+            **FILING_RECORD,
+            "SUBCATNAME": "Disclosures under Reg. 31(1) and 31(2) of SEBI (SAST) Regulations, 2011",
+        }
+        result = parser.parse_filings(make_response(record), COMPANY_ID)
+        assert result[0].kind == EvidenceKind.REGULATORY_FILING
+
+    def test_secretarial_compliance_maps_to_regulatory_filing(self) -> None:
+        parser = BSEParser()
+        record = {**FILING_RECORD, "SUBCATNAME": "Reg.24(A)-Annual Secretarial Compliance"}
+        result = parser.parse_filings(make_response(record), COMPANY_ID)
+        assert result[0].kind == EvidenceKind.REGULATORY_FILING
+
     def test_unknown_subcatname_maps_to_other_kind(self) -> None:
         parser = BSEParser()
         result = parser.parse_filings(
@@ -654,3 +684,444 @@ class TestParseScripCode:
         parser = BSEParser()
         with pytest.raises(ValueError, match="Cannot resolve BSE scrip code"):
             parser.parse_scrip_code({"Table": []}, "TCS")
+
+
+# ---------------------------------------------------------------------------
+# parse_shareholding_index
+# ---------------------------------------------------------------------------
+
+SCRIP_CODE = 532540
+
+SHP_ROW_NEW: dict = {
+    "yr": "2025 - 2026",
+    "qtrid": 129.0,
+    "qtr": "March 2026",
+    "status": "New",
+    "filing_date_time": "2026-04-21T15:51:39.97",
+    "revised_date_time": None,
+    "XbrlFile": "532540_2142026155135_SHP.xml",
+    "revised_reson": "",
+    "xbrlurl": "/XBRLFILES/SHPXBRLDataXML/532540_2142026155135_SP.html",
+    "seourl": "/stock-share-price/tata-consultancy-services-ltd/tcs/532540/",
+    "navigateurl": "",
+    "navigateurldebt": "",
+}
+
+SHP_ROW_REVISED: dict = {
+    "yr": "2023 - 2024",
+    "qtrid": 120.01,
+    "qtr": "December 2023",
+    "status": "Revised",
+    "filing_date_time": None,
+    "revised_date_time": "2024-02-07T20:10:30.123",
+    "XbrlFile": "532540_72202420748_SHP.xml",
+    "revised_reson": "Category correction.",
+    "xbrlurl": "/XBRL1/532540_72202420748_SHP.xml",
+    "seourl": "",
+    "navigateurl": "",
+    "navigateurldebt": "",
+}
+
+SHP_ROW_NO_XBRL: dict = {
+    "yr": "2015 - 2016",
+    "qtrid": 86.0,
+    "qtr": "June 2015",
+    "status": None,
+    "filing_date_time": None,
+    "revised_date_time": None,
+    "XbrlFile": "",
+    "revised_reson": None,
+    "xbrlurl": "/XBRL1/",
+    "seourl": "",
+    "navigateurl": "",
+    "navigateurldebt": "",
+}
+
+
+def make_shp_response(*rows: dict) -> dict:
+    return {"Table": list(rows)}
+
+
+# ---------------------------------------------------------------------------
+# CorporateGovReport/w fixtures
+# ---------------------------------------------------------------------------
+
+CG_YEAR_PDF: dict = {
+    "finYear": "2025-2026",
+    "lstCorporateGovReport": [
+        {
+            "filePath": "/downloads1/936a055c-0029-4c07-aa4e-a8fe75b08495.pdf",
+            "Qtr": "Q1",
+        },
+    ],
+}
+
+CG_YEAR_ZIP: dict = {
+    "finYear": "2024-2025",
+    "lstCorporateGovReport": [
+        {
+            "filePath": "/downloads1/3531f3ed-8e16-45d4-8848-20158ec99eb1.zip",
+            "Qtr": "Q3",
+        },
+    ],
+}
+
+CG_YEAR_PLACEHOLDER: dict = {
+    "finYear": "2016-2017",
+    "lstCorporateGovReport": [
+        {"filePath": "-", "Qtr": "-"},
+    ],
+}
+
+
+def make_cg_response(*year_groups: dict) -> list:
+    return list(year_groups)
+
+
+class TestParseShareholdingIndex:
+    def test_returns_one_evidence_per_xbrl_row(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_shareholding_index(
+            make_shp_response(SHP_ROW_NEW), COMPANY_ID, SCRIP_CODE
+        )
+        assert len(result) == 1
+
+    def test_skips_rows_with_empty_xbrl_file(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_shareholding_index(
+            make_shp_response(SHP_ROW_NO_XBRL), COMPANY_ID, SCRIP_CODE
+        )
+        assert result == []
+
+    def test_skips_empty_xbrl_keeps_valid(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_shareholding_index(
+            make_shp_response(SHP_ROW_NO_XBRL, SHP_ROW_NEW), COMPANY_ID, SCRIP_CODE
+        )
+        assert len(result) == 1
+
+    def test_empty_table_returns_empty(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_shareholding_index({"Table": []}, COMPANY_ID, SCRIP_CODE)
+        assert result == []
+
+    def test_non_dict_raw_returns_empty(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_shareholding_index([], COMPANY_ID, SCRIP_CODE)
+        assert result == []
+
+    def test_kind_is_shareholding_pattern(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_shareholding_index(
+            make_shp_response(SHP_ROW_NEW), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].kind == EvidenceKind.SHAREHOLDING_PATTERN
+
+    def test_source_is_bse(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_shareholding_index(
+            make_shp_response(SHP_ROW_NEW), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].source == EvidenceSource.BSE
+
+    def test_file_extension_is_xml(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_shareholding_index(
+            make_shp_response(SHP_ROW_NEW), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].file_extension == "xml"
+
+    def test_evidence_id_uses_integer_qtrid_for_new_filing(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_shareholding_index(
+            make_shp_response(SHP_ROW_NEW), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].evidence_id == f"bse-shp-{SCRIP_CODE}-129"
+
+    def test_evidence_id_encodes_fractional_qtrid_for_revised_filing(self) -> None:
+        # qtrid 120.01 → "120_01" to avoid dots in the ID
+        parser = BSEParser()
+        result = parser.parse_shareholding_index(
+            make_shp_response(SHP_ROW_REVISED), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].evidence_id == f"bse-shp-{SCRIP_CODE}-120_01"
+
+    def test_document_url_uses_xbrlfiles_path(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_shareholding_index(
+            make_shp_response(SHP_ROW_NEW), COMPANY_ID, SCRIP_CODE
+        )
+        expected = (
+            "https://www.bseindia.com/XBRLFILES/SHPXBRLDataXML/"
+            "532540_2142026155135_SHP.xml"
+        )
+        assert result[0].document_url == expected
+
+    def test_revised_filing_document_url_uses_same_xbrlfiles_path(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_shareholding_index(
+            make_shp_response(SHP_ROW_REVISED), COMPANY_ID, SCRIP_CODE
+        )
+        expected = (
+            "https://www.bseindia.com/XBRLFILES/SHPXBRLDataXML/"
+            "532540_72202420748_SHP.xml"
+        )
+        assert result[0].document_url == expected
+
+    def test_title_includes_quarter_label(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_shareholding_index(
+            make_shp_response(SHP_ROW_NEW), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].title == "Shareholding Pattern March 2026"
+
+    def test_source_date_parsed_from_filing_datetime(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_shareholding_index(
+            make_shp_response(SHP_ROW_NEW), COMPANY_ID, SCRIP_CODE
+        )
+        # 2026-04-21T15:51:39 IST = 2026-04-21T10:21:39 UTC
+        assert result[0].source_date == datetime(2026, 4, 21, 10, 21, 39, tzinfo=timezone.utc)
+
+    def test_revised_filing_uses_revised_date(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_shareholding_index(
+            make_shp_response(SHP_ROW_REVISED), COMPANY_ID, SCRIP_CODE
+        )
+        # 2024-02-07T20:10:30 IST = 2024-02-07T14:40:30 UTC
+        assert result[0].source_date == datetime(2024, 2, 7, 14, 40, 30, tzinfo=timezone.utc)
+
+    def test_source_date_falls_back_to_quarter_end_when_no_datetime(self) -> None:
+        row = {**SHP_ROW_NEW, "filing_date_time": None, "revised_date_time": None}
+        parser = BSEParser()
+        result = parser.parse_shareholding_index(
+            make_shp_response(row), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].source_date == datetime(2026, 3, 31, tzinfo=timezone.utc)
+
+    def test_company_id_propagated(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_shareholding_index(
+            make_shp_response(SHP_ROW_NEW), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].company_id == COMPANY_ID
+
+    def test_file_size_bytes_is_none(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_shareholding_index(
+            make_shp_response(SHP_ROW_NEW), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].file_size_bytes is None
+
+
+# ---------------------------------------------------------------------------
+# parse_corporate_governance_index
+# ---------------------------------------------------------------------------
+
+
+class TestParseCorporateGovernanceIndex:
+    def test_returns_one_evidence_per_valid_report(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(CG_YEAR_PDF), COMPANY_ID, SCRIP_CODE
+        )
+        assert len(result) == 1
+
+    def test_skips_placeholder_file_path(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(CG_YEAR_PLACEHOLDER), COMPANY_ID, SCRIP_CODE
+        )
+        assert result == []
+
+    def test_skips_null_file_path(self) -> None:
+        row = {
+            "finYear": "2020-2021",
+            "lstCorporateGovReport": [{"filePath": None, "Qtr": "Q1"}],
+        }
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(row), COMPANY_ID, SCRIP_CODE
+        )
+        assert result == []
+
+    def test_skips_empty_file_path(self) -> None:
+        row = {
+            "finYear": "2020-2021",
+            "lstCorporateGovReport": [{"filePath": "", "Qtr": "Q1"}],
+        }
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(row), COMPANY_ID, SCRIP_CODE
+        )
+        assert result == []
+
+    def test_skips_placeholder_keeps_valid(self) -> None:
+        year_with_mixed = {
+            "finYear": "2016-2017",
+            "lstCorporateGovReport": [
+                {"filePath": "-", "Qtr": "-"},
+                {"filePath": "/downloads1/valid.pdf", "Qtr": "Q1"},
+            ],
+        }
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(year_with_mixed), COMPANY_ID, SCRIP_CODE
+        )
+        assert len(result) == 1
+
+    def test_non_dict_raw_returns_empty(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index({}, COMPANY_ID, SCRIP_CODE)
+        assert result == []
+
+    def test_empty_list_returns_empty(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index([], COMPANY_ID, SCRIP_CODE)
+        assert result == []
+
+    def test_kind_is_corporate_governance_report(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(CG_YEAR_PDF), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].kind == EvidenceKind.CORPORATE_GOVERNANCE_REPORT
+
+    def test_source_is_bse(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(CG_YEAR_PDF), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].source == EvidenceSource.BSE
+
+    def test_file_extension_pdf(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(CG_YEAR_PDF), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].file_extension == "pdf"
+
+    def test_file_extension_zip(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(CG_YEAR_ZIP), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].file_extension == "zip"
+
+    def test_evidence_id_format(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(CG_YEAR_PDF), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].evidence_id == f"bse-cg-{SCRIP_CODE}-2025_2026-Q1"
+
+    def test_evidence_id_stability_across_calls(self) -> None:
+        parser = BSEParser()
+        r1 = parser.parse_corporate_governance_index(
+            make_cg_response(CG_YEAR_PDF), COMPANY_ID, SCRIP_CODE
+        )
+        r2 = parser.parse_corporate_governance_index(
+            make_cg_response(CG_YEAR_PDF), COMPANY_ID, SCRIP_CODE
+        )
+        assert r1[0].evidence_id == r2[0].evidence_id
+
+    def test_document_url_prefixes_bse_base(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(CG_YEAR_PDF), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].document_url == (
+            "https://www.bseindia.com"
+            "/downloads1/936a055c-0029-4c07-aa4e-a8fe75b08495.pdf"
+        )
+
+    def test_title_includes_fin_year_and_quarter(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(CG_YEAR_PDF), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].title == "Corporate Governance Report 2025-2026 Q1"
+
+    def test_source_date_q1(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(CG_YEAR_PDF), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].source_date == datetime(2025, 6, 30, tzinfo=timezone.utc)
+
+    def test_source_date_q2(self) -> None:
+        year_q2 = {
+            "finYear": "2025-2026",
+            "lstCorporateGovReport": [{"filePath": "/downloads1/abc.pdf", "Qtr": "Q2"}],
+        }
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(year_q2), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].source_date == datetime(2025, 9, 30, tzinfo=timezone.utc)
+
+    def test_source_date_q3(self) -> None:
+        # CG_YEAR_ZIP: finYear=2024-2025, Qtr=Q3 → Dec 31, 2024
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(CG_YEAR_ZIP), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].source_date == datetime(2024, 12, 31, tzinfo=timezone.utc)
+
+    def test_source_date_q4(self) -> None:
+        year_q4 = {
+            "finYear": "2025-2026",
+            "lstCorporateGovReport": [{"filePath": "/downloads1/abc.pdf", "Qtr": "Q4"}],
+        }
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(year_q4), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].source_date == datetime(2026, 3, 31, tzinfo=timezone.utc)
+
+    def test_company_id_propagated(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(CG_YEAR_PDF), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].company_id == COMPANY_ID
+
+    def test_file_size_bytes_is_none(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(CG_YEAR_PDF), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].file_size_bytes is None
+
+    def test_multiple_quarters_in_one_year(self) -> None:
+        year_multi = {
+            "finYear": "2025-2026",
+            "lstCorporateGovReport": [
+                {"filePath": "/downloads1/q1.pdf", "Qtr": "Q1"},
+                {"filePath": "/downloads1/q2.pdf", "Qtr": "Q2"},
+                {"filePath": "/downloads1/q3.pdf", "Qtr": "Q3"},
+                {"filePath": "/downloads1/q4.pdf", "Qtr": "Q4"},
+            ],
+        }
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(year_multi), COMPANY_ID, SCRIP_CODE
+        )
+        assert len(result) == 4
+
+    def test_multiple_year_groups(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(CG_YEAR_PDF, CG_YEAR_ZIP), COMPANY_ID, SCRIP_CODE
+        )
+        assert len(result) == 2
+
+    def test_incremental_evidence_ids_are_stable(self) -> None:
+        parser = BSEParser()
+        first = parser.parse_corporate_governance_index(
+            make_cg_response(CG_YEAR_PDF), COMPANY_ID, SCRIP_CODE
+        )
+        second = parser.parse_corporate_governance_index(
+            make_cg_response(CG_YEAR_PDF), COMPANY_ID, SCRIP_CODE
+        )
+        assert {e.evidence_id for e in first} == {e.evidence_id for e in second}

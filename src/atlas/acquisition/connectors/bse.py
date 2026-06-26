@@ -41,7 +41,9 @@ class BSEConnector:
         scrip_code = self._get_scrip_code(company)
         annual_reports = self._get_annual_reports(company.id, scrip_code)
         announcements = self._get_announcements(company.id, scrip_code)
-        evidence = [*annual_reports, *announcements]
+        shareholding = self._get_shareholding_patterns(company.id, scrip_code)
+        cg_reports = self._get_corporate_governance_reports(company.id, scrip_code)
+        evidence = [*annual_reports, *announcements, *shareholding, *cg_reports]
         warnings = [
             DiscoveryWarning(
                 source=EvidenceSource.BSE,
@@ -128,6 +130,28 @@ class BSEConnector:
             window_end = window_start
 
         return all_evidence
+
+    def _get_shareholding_patterns(
+        self, company_id: str, scrip_code: int
+    ) -> list[Evidence]:
+        """Return all XBRL shareholding pattern filings from SHPQNewFormat/w.
+
+        Rows with an empty XbrlFile (pre-XBRL era, 2004–2015) are dropped by
+        the parser. A single call returns the full history (~44 quarters for
+        established companies).
+        """
+        raw = self._http.get_json("SHPQNewFormat/w", {"Scripcode": scrip_code})
+        return self._parser.parse_shareholding_index(raw, company_id, scrip_code)
+
+    def _get_corporate_governance_reports(
+        self, company_id: str, scrip_code: int
+    ) -> list[Evidence]:
+        """Return all quarterly corporate governance reports from CorporateGovReport/w.
+
+        Single call returns up to 10 financial years × 4 quarters. No pagination.
+        """
+        raw = self._http.get_json("CorporateGovReport/w", {"scripcode": scrip_code})
+        return self._parser.parse_corporate_governance_index(raw, company_id, scrip_code)
 
     def _resolve_scrip_code(self, ticker: str) -> int:
         """Resolve a ticker symbol to its BSE scrip code via live lookup."""

@@ -17,6 +17,8 @@ _KIND_TO_SUBDIR: dict[EvidenceKind, str] = {
     EvidenceKind.BUYBACK: "corporate_actions",
     EvidenceKind.ACQUISITION: "corporate_actions",
     EvidenceKind.REGULATORY_FILING: "regulatory_filings",
+    EvidenceKind.SHAREHOLDING_PATTERN: "shareholding_patterns",
+    EvidenceKind.CORPORATE_GOVERNANCE_REPORT: "corporate_governance_reports",
     EvidenceKind.NEWS: "press_releases",
 }
 

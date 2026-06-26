@@ -49,6 +49,11 @@ class TestDownloadEvidenceSuccess:
         download_evidence(ev, tmp_path, lambda _: b"PDF")
         assert (tmp_path / "financial_results" / "ev-001.pdf").exists()
 
+    def test_corporate_governance_report_maps_to_subdir(self, tmp_path: Path) -> None:
+        ev = _make_evidence(kind=EvidenceKind.CORPORATE_GOVERNANCE_REPORT)
+        download_evidence(ev, tmp_path, lambda _: b"PDF")
+        assert (tmp_path / "corporate_governance_reports" / "ev-001.pdf").exists()
+
 
 class TestDownloadEvidenceNoUrl:
     def test_returns_error_result_when_no_url(self, tmp_path: Path) -> None:
@@ -123,6 +128,13 @@ class TestKindToSubdir:
         ev = _make_evidence(kind=EvidenceKind.AGM_NOTICE)
         result = download_evidence(ev, tmp_path, lambda _: b"PDF")
         assert result.local_path == "agm_notices/ev-001.pdf"
+
+    def test_shareholding_pattern_uses_shareholding_patterns_subdir(
+        self, tmp_path: Path
+    ) -> None:
+        ev = _make_evidence(kind=EvidenceKind.SHAREHOLDING_PATTERN)
+        result = download_evidence(ev, tmp_path, lambda _: b"<xml/>")
+        assert result.local_path == "shareholding_patterns/ev-001.pdf"
 
     def test_unknown_kind_uses_other_subdir(self, tmp_path: Path) -> None:
         ev = _make_evidence(kind=EvidenceKind.OTHER)
