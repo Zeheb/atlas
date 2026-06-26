@@ -1,61 +1,40 @@
 import json
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable
 
+from atlas.acquisition.acquisitions import (
+    AcquisitionRecord,
+    DownloadFailure,
+    save_acquisition_record,
+)
 from atlas.acquisition.catalog import CatalogEntry, RepositoryCatalog
-from atlas.acquisition.connectors.connector import Company, Connector, DiscoveryWarning
+from atlas.acquisition.connectors.connector import Company, Connector
 from atlas.acquisition.downloader import DownloadResult, download_evidence
-from atlas.acquisition.profile import AcquisitionProfile, kinds_for_profile
-
-
-@dataclass
-class AcquisitionReport:
-    ticker: str
-    company_id: str
-    profile: AcquisitionProfile
-    started_at: datetime
-    completed_at: datetime
-    discovered: int  # total evidence returned by the connector
-    profile_selected: int  # evidence matching the acquisition profile
-    already_acquired: int  # already present in the catalog (of profile_selected)
-    results: list[DownloadResult] = field(default_factory=list)
-    warnings: list[DiscoveryWarning] = field(default_factory=list)
-
-    @property
-    def succeeded(self) -> int:
-        return sum(1 for r in self.results if r.succeeded)
-
-    @property
-    def failed(self) -> int:
-        return sum(1 for r in self.results if not r.succeeded)
-
-    @property
-    def duration_seconds(self) -> float:
-        return (self.completed_at - self.started_at).total_seconds()
+from atlas.acquisition.policy import DEFAULT_POLICY, AcquisitionPolicy
 
 
 def run_acquisition(
     repo_root: Path,
     connector: Connector,
-    profile: AcquisitionProfile = AcquisitionProfile.DEFAULT,
+    policy: AcquisitionPolicy = DEFAULT_POLICY,
     on_progress: Callable[[str], None] | None = None,
-) -> AcquisitionReport:
+) -> AcquisitionRecord:
     """Execute the acquisition workflow for a company repository.
 
-    Steps: load company → discover → filter by profile → compare →
-           download → update catalog → report.
+    Steps: load company → discover → policy filter → compare →
+           download → update catalog → save record → return.
 
     The connector owns all source-specific orchestration (identity resolution,
-    endpoint selection, pagination). The workflow owns policy (profile filtering)
-    and persistence (catalog, company identity cache).
+    endpoint selection, pagination). The workflow owns policy (selection) and
+    persistence (catalog, acquisition record).
     """
 
     def _noop(_: str) -> None:
         pass
 
     _emit = on_progress if on_progress is not None else _noop
+    run_id = AcquisitionRecord.new_run_id()
     started_at = datetime.now(timezone.utc)
 
     # Load company identity from repository
@@ -81,13 +60,12 @@ def run_acquisition(
     company_data["exchange_identities"] = company.exchange_identities
     company_json.write_text(json.dumps(company_data, indent=2), encoding="utf-8")
 
-    # Step 2 — Apply acquisition profile (workflow policy)
-    allowed_kinds = kinds_for_profile(profile)
-    evidence_list = [e for e in all_evidence if e.kind in allowed_kinds]
-    skipped = len(all_evidence) - len(evidence_list)
+    # Step 2 — Apply acquisition policy
+    evidence_list = policy.select(all_evidence)
+    skipped_by_policy = len(all_evidence) - len(evidence_list)
     _emit(
-        f"  Profile '{profile.value}': {len(evidence_list)} selected"
-        + (f", {skipped} skipped" if skipped else "")
+        f"  Policy '{policy.name}': {len(evidence_list)} selected"
+        + (f", {skipped_by_policy} outside policy" if skipped_by_policy else "")
     )
 
     # Step 3 — Compare against catalog
@@ -115,15 +93,29 @@ def run_acquisition(
             catalog.add(CatalogEntry.from_evidence(result.evidence, result.local_path))
     catalog.save()
 
-    return AcquisitionReport(
+    # Step 6 — Build and save acquisition record
+    record = AcquisitionRecord(
+        run_id=run_id,
         ticker=company.ticker,
         company_id=company.id,
-        profile=profile,
+        policy_name=policy.name,
         started_at=started_at,
         completed_at=datetime.now(timezone.utc),
         discovered=len(all_evidence),
-        profile_selected=len(evidence_list),
+        selected=len(evidence_list),
         already_acquired=already_acquired,
-        results=results,
-        warnings=discovery.warnings,
+        downloaded=sum(1 for r in results if r.succeeded),
+        failures=[
+            DownloadFailure(
+                evidence_id=r.evidence.evidence_id,
+                title=r.evidence.title,
+                error=r.error or "",
+            )
+            for r in results
+            if not r.succeeded
+        ],
+        warnings=list(discovery.warnings),
     )
+    record.record_path = save_acquisition_record(record, repo_root)
+
+    return record

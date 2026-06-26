@@ -103,7 +103,7 @@ class TestParseFilingFields:
         )[0]
 
     def test_evidence_id(self) -> None:
-        assert self.evidence.evidence_id == "6fb57b5e-a05f-4e05-b2da-6e2b5bfe32ae"
+        assert self.evidence.evidence_id == "bse-news-6fb57b5e-a05f-4e05-b2da-6e2b5bfe32ae"
 
     def test_source_is_bse_enum(self) -> None:
         assert self.evidence.source == EvidenceSource.BSE

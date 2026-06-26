@@ -3,10 +3,12 @@ from datetime import datetime, timezone
 from importlib.metadata import version
 from pathlib import Path
 
-from atlas.acquisition.models import Catalog, CompanyRecord
+from atlas.acquisition.catalog import RepositoryCatalog
+from atlas.acquisition.models import CompanyRecord
 from atlas.app import Atlas
 
 _SUBDIRECTORIES: tuple[str, ...] = (
+    "acquisitions",
     "annual_reports",
     "financial_results",
     "earnings_transcripts",
@@ -49,8 +51,6 @@ def build_repository(atlas: Atlas, ticker: str) -> Path:
     )
     company_file.write_text(json.dumps(record.to_dict(), indent=2), encoding="utf-8")
 
-    (root / "catalog.json").write_text(
-        json.dumps(Catalog().to_dict(), indent=2), encoding="utf-8"
-    )
+    RepositoryCatalog(root).save()
 
     return root

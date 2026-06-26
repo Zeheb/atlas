@@ -24,17 +24,3 @@ class CompanyRecord:
             "created_at": self.created_at.isoformat(),
             "atlas_version": self.atlas_version,
         }
-
-
-@dataclass
-class Catalog:
-    """Minimal catalog record written to catalog.json.
-
-    The schema is intentionally sparse. Future tasks will extend it
-    once the indexing requirements are understood.
-    """
-
-    schema_version: str = "1"
-
-    def to_dict(self) -> dict[str, str]:
-        return {"schema_version": self.schema_version}

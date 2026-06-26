@@ -16,7 +16,7 @@ def _make_catalog_json(root: Path, items: list[dict] | None = None) -> None:
     (root / "catalog.json").write_text(json.dumps(data), encoding="utf-8")
 
 
-def _make_evidence(evidence_id: str = "ev-001") -> Evidence:
+def _make_evidence(evidence_id: str = "bse-news-ev-001") -> Evidence:
     return Evidence(
         evidence_id=evidence_id,
         company_id="cmp_abc",
@@ -30,13 +30,13 @@ def _make_evidence(evidence_id: str = "ev-001") -> Evidence:
 
 
 _SAMPLE_ITEM: dict = {
-    "evidence_id": "ev-001",
+    "evidence_id": "bse-news-ev-001",
     "source": "BSE",
     "kind": "annual_report",
     "title": "Report",
     "source_date": "2024-01-01T00:00:00+00:00",
     "document_url": None,
-    "local_path": "annual_reports/ev-001.pdf",
+    "local_path": "annual_reports/bse-news-ev-001.pdf",
     "file_size_bytes": 1000,
     "acquired_at": "2026-01-01T00:00:00+00:00",
 }
@@ -58,7 +58,11 @@ class TestRepositoryCatalogLoad:
     def test_loads_existing_item(self, tmp_path: Path) -> None:
         _make_catalog_json(tmp_path, [_SAMPLE_ITEM])
         catalog = RepositoryCatalog(tmp_path)
-        assert "ev-001" in catalog.known_ids()
+        assert "bse-news-ev-001" in catalog.known_ids()
+
+    def test_missing_catalog_file_loads_empty(self, tmp_path: Path) -> None:
+        catalog = RepositoryCatalog(tmp_path)
+        assert catalog.known_ids() == frozenset()
 
 
 class TestRepositoryCatalogAdd:
@@ -66,17 +70,17 @@ class TestRepositoryCatalogAdd:
         _make_catalog_json(tmp_path)
         catalog = RepositoryCatalog(tmp_path)
         entry = CatalogEntry.from_evidence(
-            _make_evidence("ev-001"), "annual_reports/ev-001.pdf"
+            _make_evidence("bse-news-ev-001"), "annual_reports/bse-news-ev-001.pdf"
         )
         catalog.add(entry)
-        assert "ev-001" in catalog.known_ids()
+        assert "bse-news-ev-001" in catalog.known_ids()
 
     def test_add_overwrites_duplicate_id(self, tmp_path: Path) -> None:
         _make_catalog_json(tmp_path)
         catalog = RepositoryCatalog(tmp_path)
-        ev = _make_evidence("ev-001")
-        catalog.add(CatalogEntry.from_evidence(ev, "annual_reports/ev-001.pdf"))
-        catalog.add(CatalogEntry.from_evidence(ev, "annual_reports/ev-001-v2.pdf"))
+        ev = _make_evidence("bse-news-ev-001")
+        catalog.add(CatalogEntry.from_evidence(ev, "annual_reports/bse-news-ev-001.pdf"))
+        catalog.add(CatalogEntry.from_evidence(ev, "annual_reports/bse-news-ev-001-v2.pdf"))
         assert len(catalog.known_ids()) == 1
 
 
@@ -86,12 +90,12 @@ class TestRepositoryCatalogSave:
         catalog = RepositoryCatalog(tmp_path)
         catalog.add(
             CatalogEntry.from_evidence(
-                _make_evidence("ev-001"), "annual_reports/ev-001.pdf"
+                _make_evidence("bse-news-ev-001"), "annual_reports/bse-news-ev-001.pdf"
             )
         )
         catalog.save()
         reloaded = RepositoryCatalog(tmp_path)
-        assert "ev-001" in reloaded.known_ids()
+        assert "bse-news-ev-001" in reloaded.known_ids()
 
     def test_save_preserves_schema_version(self, tmp_path: Path) -> None:
         _make_catalog_json(tmp_path)
@@ -104,13 +108,13 @@ class TestRepositoryCatalogSave:
         catalog = RepositoryCatalog(tmp_path)
         catalog.add(
             CatalogEntry.from_evidence(
-                _make_evidence("ev-001"), "annual_reports/ev-001.pdf"
+                _make_evidence("bse-news-ev-001"), "annual_reports/bse-news-ev-001.pdf"
             )
         )
         catalog.save()
         data = json.loads((tmp_path / "catalog.json").read_text(encoding="utf-8"))
         assert len(data["items"]) == 1
-        assert data["items"][0]["evidence_id"] == "ev-001"
+        assert data["items"][0]["evidence_id"] == "bse-news-ev-001"
 
 
 class TestAtomicSave:
@@ -121,7 +125,7 @@ class TestAtomicSave:
         catalog = RepositoryCatalog(tmp_path)
         catalog.add(
             CatalogEntry.from_evidence(
-                _make_evidence("ev-new"), "annual_reports/ev-new.pdf"
+                _make_evidence("bse-news-ev-new"), "annual_reports/bse-news-ev-new.pdf"
             )
         )
 
@@ -137,15 +141,15 @@ class TestAtomicSave:
                 catalog.save()
 
         reloaded = RepositoryCatalog(tmp_path)
-        assert "ev-001" in reloaded.known_ids()
-        assert "ev-new" not in reloaded.known_ids()
+        assert "bse-news-ev-001" in reloaded.known_ids()
+        assert "bse-news-ev-new" not in reloaded.known_ids()
 
     def test_failed_rename_leaves_catalog_unchanged(self, tmp_path: Path) -> None:
         _make_catalog_json(tmp_path, [_SAMPLE_ITEM])
         catalog = RepositoryCatalog(tmp_path)
         catalog.add(
             CatalogEntry.from_evidence(
-                _make_evidence("ev-new"), "annual_reports/ev-new.pdf"
+                _make_evidence("bse-news-ev-new"), "annual_reports/bse-news-ev-new.pdf"
             )
         )
 
@@ -157,8 +161,8 @@ class TestAtomicSave:
                 catalog.save()
 
         reloaded = RepositoryCatalog(tmp_path)
-        assert "ev-001" in reloaded.known_ids()
-        assert "ev-new" not in reloaded.known_ids()
+        assert "bse-news-ev-001" in reloaded.known_ids()
+        assert "bse-news-ev-new" not in reloaded.known_ids()
 
     def test_no_temp_file_remains_after_successful_save(self, tmp_path: Path) -> None:
         _make_catalog_json(tmp_path)
@@ -170,7 +174,7 @@ class TestAtomicSave:
         stale = {"schema_version": "1", "items": [_SAMPLE_ITEM]}
         (tmp_path / "catalog.tmp").write_text(json.dumps(stale), encoding="utf-8")
         catalog = RepositoryCatalog(tmp_path)
-        assert "ev-001" not in catalog.known_ids()
+        assert "bse-news-ev-001" not in catalog.known_ids()
 
     def test_stale_temp_file_does_not_prevent_save(self, tmp_path: Path) -> None:
         _make_catalog_json(tmp_path)
@@ -178,12 +182,12 @@ class TestAtomicSave:
         catalog = RepositoryCatalog(tmp_path)
         catalog.add(
             CatalogEntry.from_evidence(
-                _make_evidence("ev-001"), "annual_reports/ev-001.pdf"
+                _make_evidence("bse-news-ev-001"), "annual_reports/bse-news-ev-001.pdf"
             )
         )
         catalog.save()
         reloaded = RepositoryCatalog(tmp_path)
-        assert "ev-001" in reloaded.known_ids()
+        assert "bse-news-ev-001" in reloaded.known_ids()
 
 
 class TestCatalogEntryFromEvidence:
@@ -210,3 +214,95 @@ class TestCatalogEntryFromEvidence:
             _make_evidence(), "annual_reports/ev-001.pdf"
         )
         assert entry.acquired_at != ""
+
+
+# ---------------------------------------------------------------------------
+# NEWSID migration
+# ---------------------------------------------------------------------------
+
+_BSE_ITEM_BARE_UUID: dict = {
+    **_SAMPLE_ITEM,
+    "evidence_id": "6fb57b5e-a05f-4e05-b2da-6e2b5bfe32ae",
+    "source": "BSE",
+}
+
+_BSE_ITEM_BARE_INT: dict = {
+    **_SAMPLE_ITEM,
+    "evidence_id": "12345678",
+    "source": "BSE",
+}
+
+_BSE_ITEM_ALREADY_PREFIXED: dict = {
+    **_SAMPLE_ITEM,
+    "evidence_id": "bse-news-6fb57b5e-a05f-4e05-b2da-6e2b5bfe32ae",
+    "source": "BSE",
+}
+
+_BSE_AR_ITEM: dict = {
+    **_SAMPLE_ITEM,
+    "evidence_id": "bse-ar-532540-report.pdf",
+    "source": "BSE",
+}
+
+_NON_BSE_ITEM: dict = {
+    **_SAMPLE_ITEM,
+    "evidence_id": "some-nse-id",
+    "source": "NSE",
+}
+
+
+class TestNewsidMigration:
+    def test_bare_uuid_bse_entry_migrated_to_prefixed_form(
+        self, tmp_path: Path
+    ) -> None:
+        _make_catalog_json(tmp_path, [_BSE_ITEM_BARE_UUID])
+        catalog = RepositoryCatalog(tmp_path)
+        assert "bse-news-6fb57b5e-a05f-4e05-b2da-6e2b5bfe32ae" in catalog.known_ids()
+        assert "6fb57b5e-a05f-4e05-b2da-6e2b5bfe32ae" not in catalog.known_ids()
+
+    def test_bare_integer_bse_entry_migrated_to_prefixed_form(
+        self, tmp_path: Path
+    ) -> None:
+        _make_catalog_json(tmp_path, [_BSE_ITEM_BARE_INT])
+        catalog = RepositoryCatalog(tmp_path)
+        assert "bse-news-12345678" in catalog.known_ids()
+        assert "12345678" not in catalog.known_ids()
+
+    def test_already_prefixed_entry_not_double_prefixed(
+        self, tmp_path: Path
+    ) -> None:
+        _make_catalog_json(tmp_path, [_BSE_ITEM_ALREADY_PREFIXED])
+        catalog = RepositoryCatalog(tmp_path)
+        assert (
+            "bse-news-6fb57b5e-a05f-4e05-b2da-6e2b5bfe32ae" in catalog.known_ids()
+        )
+        assert (
+            "bse-news-bse-news-6fb57b5e-a05f-4e05-b2da-6e2b5bfe32ae"
+            not in catalog.known_ids()
+        )
+
+    def test_bse_ar_entry_not_migrated(self, tmp_path: Path) -> None:
+        _make_catalog_json(tmp_path, [_BSE_AR_ITEM])
+        catalog = RepositoryCatalog(tmp_path)
+        assert "bse-ar-532540-report.pdf" in catalog.known_ids()
+
+    def test_non_bse_entry_not_migrated(self, tmp_path: Path) -> None:
+        _make_catalog_json(tmp_path, [_NON_BSE_ITEM])
+        catalog = RepositoryCatalog(tmp_path)
+        assert "some-nse-id" in catalog.known_ids()
+
+    def test_migration_persisted_to_disk_immediately(self, tmp_path: Path) -> None:
+        _make_catalog_json(tmp_path, [_BSE_ITEM_BARE_UUID])
+        RepositoryCatalog(tmp_path)  # triggers migration and save
+        reloaded = json.loads((tmp_path / "catalog.json").read_text(encoding="utf-8"))
+        ids = [item["evidence_id"] for item in reloaded.get("items", [])]
+        assert "bse-news-6fb57b5e-a05f-4e05-b2da-6e2b5bfe32ae" in ids
+        assert "6fb57b5e-a05f-4e05-b2da-6e2b5bfe32ae" not in ids
+
+    def test_migration_is_idempotent(self, tmp_path: Path) -> None:
+        _make_catalog_json(tmp_path, [_BSE_ITEM_BARE_UUID])
+        RepositoryCatalog(tmp_path)  # first load — migrates
+        RepositoryCatalog(tmp_path)  # second load — no-op
+        reloaded = json.loads((tmp_path / "catalog.json").read_text(encoding="utf-8"))
+        ids = [item["evidence_id"] for item in reloaded.get("items", [])]
+        assert ids.count("bse-news-6fb57b5e-a05f-4e05-b2da-6e2b5bfe32ae") == 1

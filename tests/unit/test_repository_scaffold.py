@@ -15,6 +15,7 @@ class TestRepositoryCreation:
         build_repository(atlas, "TCS")
         root = atlas.settings.repository_base_path / "TCS"
         for name in [
+            "acquisitions",
             "annual_reports",
             "financial_results",
             "earnings_transcripts",
@@ -88,6 +89,13 @@ class TestCatalogJson:
             (atlas.settings.repository_base_path / "TCS" / "catalog.json").read_text()
         )
         assert isinstance(data["schema_version"], str)
+
+    def test_catalog_has_empty_items_array(self, atlas: Atlas) -> None:
+        build_repository(atlas, "TCS")
+        data = json.loads(
+            (atlas.settings.repository_base_path / "TCS" / "catalog.json").read_text()
+        )
+        assert data["items"] == []
 
 
 class TestIdempotency:

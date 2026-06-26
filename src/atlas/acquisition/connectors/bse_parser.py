@@ -177,9 +177,12 @@ class BSEParser:
     def _parse_record(self, record: dict[str, Any], company_id: str) -> Evidence | None:
         if not record.get("PDFFLAG"):
             return None
+        newsid = record.get("NEWSID")
+        if not newsid:
+            return None
         filename = str(record.get("ATTACHMENTNAME") or "")
         return Evidence(
-            evidence_id=str(record.get("NEWSID") or ""),
+            evidence_id=f"bse-news-{newsid}",
             company_id=company_id,
             source=EvidenceSource.BSE,
             kind=self._to_kind(str(record.get("SUBCATNAME") or "")),
@@ -235,9 +238,9 @@ class BSEParser:
                 else:
                     naive = datetime.fromisoformat(clean)
                 return naive.replace(tzinfo=timezone.utc)
-            except ValueError, TypeError, IndexError:
+            except (ValueError, TypeError, IndexError):
                 pass
         try:
             return datetime(int(year_str), 4, 1, tzinfo=timezone.utc)
-        except ValueError, TypeError:
+        except (ValueError, TypeError):
             return datetime.now(timezone.utc)

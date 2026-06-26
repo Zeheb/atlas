@@ -1,5 +1,5 @@
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -72,10 +72,20 @@ class RepositoryCatalog:
         self._load()
 
     def _load(self) -> None:
+        if not self._path.exists():
+            return
         data = json.loads(self._path.read_text(encoding="utf-8"))
+        migrated = False
         for item in data.get("items", []):
             entry = CatalogEntry.from_dict(item)
+            # Migrate pre-prefix BSE entries: bare NEWSID (integer or UUID) stored
+            # before evidence IDs were namespaced with "bse-news-".
+            if entry.source == "BSE" and not entry.evidence_id.startswith("bse-"):
+                entry = replace(entry, evidence_id=f"bse-news-{entry.evidence_id}")
+                migrated = True
             self._entries[entry.evidence_id] = entry
+        if migrated:
+            self.save()
 
     def known_ids(self) -> frozenset[str]:
         return frozenset(self._entries.keys())
