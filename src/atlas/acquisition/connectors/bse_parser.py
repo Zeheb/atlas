@@ -36,6 +36,7 @@ class BSEParser:
         "Annual Report - Revised": EvidenceKind.ANNUAL_REPORT,
         # Financial Results
         "Financial Results": EvidenceKind.FINANCIAL_RESULTS,
+        "Financial Results - Revised": EvidenceKind.FINANCIAL_RESULTS,
         # Investor Presentations
         "Analyst / Investor Meet": EvidenceKind.INVESTOR_PRESENTATION,
         "Investor Presentation": EvidenceKind.INVESTOR_PRESENTATION,

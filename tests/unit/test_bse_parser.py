@@ -168,6 +168,12 @@ class TestEvidenceKindMapping:
         result = parser.parse_filings(make_response(record), COMPANY_ID)
         assert result[0].kind == EvidenceKind.FINANCIAL_RESULTS
 
+    def test_financial_results_revised_maps_to_financial_results_kind(self) -> None:
+        parser = BSEParser()
+        record = {**FILING_RECORD, "SUBCATNAME": "Financial Results - Revised"}
+        result = parser.parse_filings(make_response(record), COMPANY_ID)
+        assert result[0].kind == EvidenceKind.FINANCIAL_RESULTS
+
     def test_analyst_investor_meet_maps_to_investor_presentation(self) -> None:
         parser = BSEParser()
         record = {**FILING_RECORD, "SUBCATNAME": "Analyst / Investor Meet"}
