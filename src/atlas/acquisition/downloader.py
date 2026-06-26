@@ -59,7 +59,7 @@ def download_evidence(
         )
 
     subdir = _subdir_for(evidence.kind)
-    filename = f"{evidence.evidence_id}.pdf"
+    filename = f"{evidence.evidence_id}.{evidence.file_extension}"
     relative_path = f"{subdir}/{filename}"
     destination = repo_root / subdir / filename
 

@@ -48,3 +48,4 @@ class Evidence:
     source_date: datetime
     document_url: str | None
     file_size_bytes: int | None
+    file_extension: str = "pdf"

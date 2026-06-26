@@ -128,3 +128,40 @@ class TestKindToSubdir:
         ev = _make_evidence(kind=EvidenceKind.OTHER)
         result = download_evidence(ev, tmp_path, lambda _: b"PDF")
         assert result.local_path == "other/ev-001.pdf"
+
+
+class TestFileExtension:
+    def test_default_extension_is_pdf(self, tmp_path: Path) -> None:
+        result = download_evidence(_make_evidence(), tmp_path, lambda _: b"data")
+        assert result.local_path == "annual_reports/ev-001.pdf"
+
+    def test_xml_extension_produces_xml_file(self, tmp_path: Path) -> None:
+        ev = Evidence(
+            evidence_id="ev-002",
+            company_id="cmp_abc",
+            source=EvidenceSource.BSE,
+            kind=EvidenceKind.REGULATORY_FILING,
+            title="Filing",
+            source_date=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            document_url="https://example.com/filing.xml",
+            file_size_bytes=None,
+            file_extension="xml",
+        )
+        result = download_evidence(ev, tmp_path, lambda _: b"<xml/>")
+        assert result.local_path == "regulatory_filings/ev-002.xml"
+        assert (tmp_path / "regulatory_filings" / "ev-002.xml").exists()
+
+    def test_json_extension_produces_json_file(self, tmp_path: Path) -> None:
+        ev = Evidence(
+            evidence_id="ev-003",
+            company_id="cmp_abc",
+            source=EvidenceSource.BSE,
+            kind=EvidenceKind.REGULATORY_FILING,
+            title="Data",
+            source_date=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            document_url="https://example.com/data.json",
+            file_size_bytes=None,
+            file_extension="json",
+        )
+        result = download_evidence(ev, tmp_path, lambda _: b"{}")
+        assert result.local_path == "regulatory_filings/ev-003.json"
