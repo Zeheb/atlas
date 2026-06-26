@@ -39,6 +39,15 @@ data/exports/
 # (Reconsider if the object store grows too large for git)
 
 # =============================================================================
+# Repositories — downloaded evidence files (PDFs etc.)
+# Metadata (company.json, catalog.json) is tracked; binaries are not.
+# =============================================================================
+repositories/**/*.pdf
+repositories/**/*.xlsx
+repositories/**/*.xls
+repositories/**/*.zip
+
+# =============================================================================
 # Secrets and environment
 # =============================================================================
 .env

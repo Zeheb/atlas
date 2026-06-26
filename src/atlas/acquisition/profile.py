@@ -4,11 +4,11 @@ from atlas.acquisition.evidence import Evidence, EvidenceKind
 
 
 @runtime_checkable
-class AcquisitionPolicy(Protocol):
+class AcquisitionProfile(Protocol):
     """Selects which discovered evidence an acquisition run should download.
 
     Implementations own the selection logic; the workflow owns scheduling
-    and persistence. New policies (date-range filters, size caps, compound
+    and persistence. New profiles (date-range filters, size caps, compound
     rules) can be introduced without touching the workflow.
     """
 
@@ -18,7 +18,7 @@ class AcquisitionPolicy(Protocol):
     def select(self, evidence: Sequence[Evidence]) -> list[Evidence]: ...
 
 
-class KindFilterPolicy:
+class KindFilterProfile:
     """Selects evidence whose kind is in a fixed allowed set."""
 
     def __init__(self, name: str, kinds: frozenset[EvidenceKind]) -> None:
@@ -33,7 +33,7 @@ class KindFilterPolicy:
         return [e for e in evidence if e.kind in self._kinds]
 
 
-DEFAULT_POLICY = KindFilterPolicy(
+DEFAULT_PROFILE = KindFilterProfile(
     name="default",
     kinds=frozenset(
         {

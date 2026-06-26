@@ -1,7 +1,8 @@
 import click
 
+from atlas.acquisition.acquisitions import save_acquisition_run
 from atlas.acquisition.connectors.bse import BSEConnector
-from atlas.acquisition.policy import DEFAULT_POLICY
+from atlas.acquisition.profile import DEFAULT_PROFILE
 from atlas.acquisition.scaffold import RepositoryAlreadyExistsError, build_repository
 from atlas.acquisition.workflow import run_acquisition
 from atlas.app import Atlas
@@ -47,23 +48,24 @@ def acquire(ticker: str) -> None:
     click.echo(f"Atlas — Acquiring {ticker}\n")
 
     with BSEConnector.from_settings(atlas.settings) as connector:
-        record = run_acquisition(repo_root, connector, DEFAULT_POLICY, on_progress=click.echo)
+        report = run_acquisition(repo_root, connector, DEFAULT_PROFILE, on_progress=click.echo)
+
+    run = save_acquisition_run(report, repo_root)
 
     click.echo("\nSummary")
-    click.echo(f"  Discovered:      {record.discovered}")
-    if record.selected != record.discovered:
-        click.echo(f"  Selected:        {record.selected}  (policy: {record.policy_name})")
-    click.echo(f"  Already present: {record.already_acquired}")
-    click.echo(f"  New:             {record.new}")
-    click.echo(f"  Downloaded:      {record.downloaded}")
-    click.echo(f"  Failed:          {record.failed}")
-    click.echo(f"  Duration:        {record.duration_seconds:.1f}s")
-    if record.record_path:
-        click.echo(f"  Record:          {record.record_path.name}")
+    click.echo(f"  Discovered:      {report.discovered}")
+    if report.selected != report.discovered:
+        click.echo(f"  Selected:        {report.selected}  (profile: {report.profile})")
+    click.echo(f"  Already present: {report.already_acquired}")
+    click.echo(f"  New:             {report.new}")
+    click.echo(f"  Downloaded:      {report.downloaded}")
+    click.echo(f"  Failed:          {report.failed}")
+    click.echo(f"  Duration:        {report.duration_seconds:.1f}s")
+    click.echo(f"  Record:          {run.record_path.name}")
 
-    if record.warnings:
+    if report.warnings:
         click.echo("\nWarnings:")
-        for w in record.warnings:
+        for w in report.warnings:
             if w.code == "UNMAPPED_SUBCATEGORY":
                 count = w.metadata.get("count", "?")
                 subcat = w.metadata.get("subcategory", "unknown")
@@ -74,7 +76,8 @@ def acquire(ticker: str) -> None:
             else:
                 click.echo(f"  [{w.source.value}] {w.message}: {w.metadata}")
 
-    if record.failures:
+    if report.failed:
         click.echo("\nFailed:")
-        for f in record.failures:
-            click.echo(f"  {f.title}: {f.error}")
+        for r in report.results:
+            if not r.succeeded:
+                click.echo(f"  {r.evidence.title}: {r.error}")

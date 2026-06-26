@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import MagicMock
 
+from atlas.acquisition.acquisitions import AcquisitionReport, save_acquisition_run
 from atlas.acquisition.connectors.connector import (
     Company,
     DiscoveryResult,
@@ -103,7 +104,7 @@ class TestCompanyPassthrough:
 
 
 # ---------------------------------------------------------------------------
-# Acquisition scope and policy filtering
+# Acquisition scope and profile filtering
 # ---------------------------------------------------------------------------
 
 
@@ -113,8 +114,8 @@ class TestAcquisitionScope:
     ) -> None:
         evidence = [_make_evidence("bse-news-001"), _make_evidence("bse-news-002")]
         root = _make_repo(tmp_path)
-        record = run_acquisition(root, _mock_connector(evidence=evidence))
-        assert record.downloaded == 2
+        report = run_acquisition(root, _mock_connector(evidence=evidence))
+        assert report.downloaded == 2
 
     def test_already_cataloged_evidence_not_downloaded(self, tmp_path: Path) -> None:
         root = _make_repo(tmp_path)
@@ -140,52 +141,52 @@ class TestAcquisitionScope:
             encoding="utf-8",
         )
         evidence = [_make_evidence("bse-news-001"), _make_evidence("bse-news-002")]
-        record = run_acquisition(root, _mock_connector(evidence=evidence))
-        assert record.downloaded == 1
-        assert record.already_acquired == 1
+        report = run_acquisition(root, _mock_connector(evidence=evidence))
+        assert report.downloaded == 1
+        assert report.already_acquired == 1
 
-    def test_empty_discovery_produces_empty_record(self, tmp_path: Path) -> None:
+    def test_empty_discovery_produces_empty_report(self, tmp_path: Path) -> None:
         root = _make_repo(tmp_path)
-        record = run_acquisition(root, _mock_connector())
-        assert record.discovered == 0
-        assert record.selected == 0
-        assert record.downloaded == 0
+        report = run_acquisition(root, _mock_connector())
+        assert report.discovered == 0
+        assert report.selected == 0
+        assert report.downloaded == 0
 
 
 # ---------------------------------------------------------------------------
-# Acquisition policy — filtering is the workflow's responsibility
+# Acquisition profile — filtering is the workflow's responsibility
 # ---------------------------------------------------------------------------
 
 
-class TestAcquisitionPolicy:
-    def test_default_policy_filters_out_excluded_kinds(self, tmp_path: Path) -> None:
+class TestAcquisitionProfileFiltering:
+    def test_default_profile_filters_out_excluded_kinds(self, tmp_path: Path) -> None:
         allowed = _make_evidence("bse-news-001", kind=EvidenceKind.ANNUAL_REPORT)
         excluded = _make_evidence("bse-news-002", kind=EvidenceKind.NEWS)
         root = _make_repo(tmp_path)
-        record = run_acquisition(root, _mock_connector(evidence=[allowed, excluded]))
-        assert record.discovered == 2  # connector returned both
-        assert record.selected == 1   # only ANNUAL_REPORT matches DEFAULT
-        assert record.downloaded == 1  # only the matching item downloaded
+        report = run_acquisition(root, _mock_connector(evidence=[allowed, excluded]))
+        assert report.discovered == 2
+        assert report.selected == 1
+        assert report.downloaded == 1
 
-    def test_default_policy_includes_financial_results(self, tmp_path: Path) -> None:
+    def test_default_profile_includes_financial_results(self, tmp_path: Path) -> None:
         ev = _make_evidence("bse-news-001", kind=EvidenceKind.FINANCIAL_RESULTS)
         root = _make_repo(tmp_path)
-        record = run_acquisition(root, _mock_connector(evidence=[ev]))
-        assert record.selected == 1
+        report = run_acquisition(root, _mock_connector(evidence=[ev]))
+        assert report.selected == 1
 
-    def test_default_policy_includes_earnings_transcript(self, tmp_path: Path) -> None:
+    def test_default_profile_includes_earnings_transcript(self, tmp_path: Path) -> None:
         ev = _make_evidence("bse-news-001", kind=EvidenceKind.EARNINGS_TRANSCRIPT)
         root = _make_repo(tmp_path)
-        record = run_acquisition(root, _mock_connector(evidence=[ev]))
-        assert record.selected == 1
+        report = run_acquisition(root, _mock_connector(evidence=[ev]))
+        assert report.selected == 1
 
-    def test_default_policy_includes_investor_presentation(
+    def test_default_profile_includes_investor_presentation(
         self, tmp_path: Path
     ) -> None:
         ev = _make_evidence("bse-news-001", kind=EvidenceKind.INVESTOR_PRESENTATION)
         root = _make_repo(tmp_path)
-        record = run_acquisition(root, _mock_connector(evidence=[ev]))
-        assert record.selected == 1
+        report = run_acquisition(root, _mock_connector(evidence=[ev]))
+        assert report.selected == 1
 
     def test_connector_returns_non_default_kinds_unfiltered(
         self, tmp_path: Path
@@ -201,14 +202,14 @@ class TestAcquisitionPolicy:
             for i, k in enumerate(excluded_kinds)
         ]
         root = _make_repo(tmp_path)
-        record = run_acquisition(root, _mock_connector(evidence=evidence))
-        assert record.discovered == len(excluded_kinds)
-        assert record.selected == 0
+        report = run_acquisition(root, _mock_connector(evidence=evidence))
+        assert report.discovered == len(excluded_kinds)
+        assert report.selected == 0
 
-    def test_record_carries_policy_name(self, tmp_path: Path) -> None:
+    def test_report_carries_profile_name(self, tmp_path: Path) -> None:
         root = _make_repo(tmp_path)
-        record = run_acquisition(root, _mock_connector())
-        assert record.policy_name == "default"
+        report = run_acquisition(root, _mock_connector())
+        assert report.profile == "default"
 
     def test_annual_reports_and_announcements_combined_before_filter(
         self, tmp_path: Path
@@ -216,12 +217,12 @@ class TestAcquisitionPolicy:
         evidence = [
             _make_evidence("bse-news-001", kind=EvidenceKind.ANNUAL_REPORT),
             _make_evidence("bse-news-002", kind=EvidenceKind.FINANCIAL_RESULTS),
-            _make_evidence("bse-news-003", kind=EvidenceKind.NEWS),  # filtered out
+            _make_evidence("bse-news-003", kind=EvidenceKind.NEWS),
         ]
         root = _make_repo(tmp_path)
-        record = run_acquisition(root, _mock_connector(evidence=evidence))
-        assert record.discovered == 3
-        assert record.selected == 2
+        report = run_acquisition(root, _mock_connector(evidence=evidence))
+        assert report.discovered == 3
+        assert report.selected == 2
 
 
 # ---------------------------------------------------------------------------
@@ -247,47 +248,47 @@ class TestCatalogUpdates:
 
 
 # ---------------------------------------------------------------------------
-# Acquisition record
+# AcquisitionReport
 # ---------------------------------------------------------------------------
 
 
-class TestAcquisitionRecord:
-    def test_record_ticker(self, tmp_path: Path) -> None:
+class TestAcquisitionReport:
+    def test_report_ticker(self, tmp_path: Path) -> None:
         root = _make_repo(tmp_path)
-        record = run_acquisition(root, _mock_connector())
-        assert record.ticker == "TCS"
+        report = run_acquisition(root, _mock_connector())
+        assert report.ticker == "TCS"
 
-    def test_record_company_id(self, tmp_path: Path) -> None:
+    def test_report_company_id(self, tmp_path: Path) -> None:
         root = _make_repo(tmp_path)
-        record = run_acquisition(root, _mock_connector())
-        assert record.company_id == "cmp_test123"
+        report = run_acquisition(root, _mock_connector())
+        assert report.company_id == "cmp_test123"
 
-    def test_record_discovered_count(self, tmp_path: Path) -> None:
+    def test_report_discovered_count(self, tmp_path: Path) -> None:
         evidence = [
             _make_evidence("bse-news-001", kind=EvidenceKind.ANNUAL_REPORT),
             _make_evidence("bse-news-002", kind=EvidenceKind.NEWS),
         ]
         root = _make_repo(tmp_path)
-        record = run_acquisition(root, _mock_connector(evidence=evidence))
-        assert record.discovered == 2
+        report = run_acquisition(root, _mock_connector(evidence=evidence))
+        assert report.discovered == 2
 
-    def test_record_selected_count(self, tmp_path: Path) -> None:
+    def test_report_selected_count(self, tmp_path: Path) -> None:
         evidence = [
             _make_evidence("bse-news-001", kind=EvidenceKind.ANNUAL_REPORT),
             _make_evidence("bse-news-002", kind=EvidenceKind.NEWS),
         ]
         root = _make_repo(tmp_path)
-        record = run_acquisition(root, _mock_connector(evidence=evidence))
-        assert record.selected == 1
+        report = run_acquisition(root, _mock_connector(evidence=evidence))
+        assert report.selected == 1
 
-    def test_record_downloaded_and_failed_counts(self, tmp_path: Path) -> None:
+    def test_report_downloaded_and_failed_counts(self, tmp_path: Path) -> None:
         evidence = [_make_evidence("bse-news-001"), _make_evidence("bse-news-002")]
         root = _make_repo(tmp_path)
-        record = run_acquisition(root, _mock_connector(evidence=evidence))
-        assert record.downloaded == 2
-        assert record.failed == 0
+        report = run_acquisition(root, _mock_connector(evidence=evidence))
+        assert report.downloaded == 2
+        assert report.failed == 0
 
-    def test_record_new_is_selected_minus_already_acquired(
+    def test_report_new_is_selected_minus_already_acquired(
         self, tmp_path: Path
     ) -> None:
         root = _make_repo(tmp_path)
@@ -313,63 +314,33 @@ class TestAcquisitionRecord:
             encoding="utf-8",
         )
         evidence = [_make_evidence("bse-news-001"), _make_evidence("bse-news-002")]
-        record = run_acquisition(root, _mock_connector(evidence=evidence))
-        assert record.already_acquired == 1
-        assert record.new == 1
-        assert record.downloaded == 1
+        report = run_acquisition(root, _mock_connector(evidence=evidence))
+        assert report.already_acquired == 1
+        assert report.new == 1
+        assert report.downloaded == 1
 
-    def test_record_duration_is_nonnegative(self, tmp_path: Path) -> None:
+    def test_report_duration_is_nonnegative(self, tmp_path: Path) -> None:
         root = _make_repo(tmp_path)
-        record = run_acquisition(root, _mock_connector())
-        assert record.duration_seconds >= 0
+        report = run_acquisition(root, _mock_connector())
+        assert report.duration_seconds >= 0
 
-    def test_record_saved_to_acquisitions_directory(self, tmp_path: Path) -> None:
-        root = _make_repo(tmp_path)
-        run_acquisition(root, _mock_connector())
-        acq_dir = root / "acquisitions"
-        assert acq_dir.is_dir()
-        records = list(acq_dir.glob("*.json"))
-        assert len(records) == 1
-
-    def test_record_path_set_on_returned_record(self, tmp_path: Path) -> None:
-        root = _make_repo(tmp_path)
-        record = run_acquisition(root, _mock_connector())
-        assert record.record_path is not None
-        assert record.record_path.exists()
-
-    def test_record_file_contains_correct_counts(self, tmp_path: Path) -> None:
-        evidence = [_make_evidence("bse-news-001"), _make_evidence("bse-news-002")]
-        root = _make_repo(tmp_path)
-        run_acquisition(root, _mock_connector(evidence=evidence))
-        record_file = next((root / "acquisitions").glob("*.json"))
-        data = json.loads(record_file.read_text(encoding="utf-8"))
-        assert data["counts"]["discovered"] == 2
-        assert data["counts"]["selected"] == 2
-        assert data["counts"]["downloaded"] == 2
-        assert data["counts"]["failed"] == 0
-
-    def test_record_file_contains_policy_name(self, tmp_path: Path) -> None:
-        root = _make_repo(tmp_path)
-        run_acquisition(root, _mock_connector())
-        record_file = next((root / "acquisitions").glob("*.json"))
-        data = json.loads(record_file.read_text(encoding="utf-8"))
-        assert data["policy"] == "default"
-
-    def test_each_run_produces_a_separate_record_file(self, tmp_path: Path) -> None:
-        root = _make_repo(tmp_path)
-        run_acquisition(root, _mock_connector())
-        run_acquisition(root, _mock_connector())
-        records = list((root / "acquisitions").glob("*.json"))
-        assert len(records) == 2
-
-    def test_failed_download_appears_in_record_failures(self, tmp_path: Path) -> None:
+    def test_report_results_accessible_for_failure_details(
+        self, tmp_path: Path
+    ) -> None:
         root = _make_repo(tmp_path)
         connector = _mock_connector(evidence=[_make_evidence("bse-news-001")])
         connector.fetch_bytes.side_effect = OSError("network error")
-        record = run_acquisition(root, connector)
-        assert record.failed == 1
-        assert record.failures[0].evidence_id == "bse-news-001"
-        assert "network error" in record.failures[0].error
+        report = run_acquisition(root, connector)
+        assert report.failed == 1
+        failed = [r for r in report.results if not r.succeeded]
+        assert len(failed) == 1
+        assert failed[0].evidence.evidence_id == "bse-news-001"
+        assert "network error" in (failed[0].error or "")
+
+    def test_report_is_acquisition_report_instance(self, tmp_path: Path) -> None:
+        root = _make_repo(tmp_path)
+        report = run_acquisition(root, _mock_connector())
+        assert isinstance(report, AcquisitionReport)
 
     def test_progress_callback_receives_messages(self, tmp_path: Path) -> None:
         root = _make_repo(tmp_path)
@@ -410,12 +381,93 @@ class TestIdempotency:
 
 
 # ---------------------------------------------------------------------------
+# Acquisition run persistence (save_acquisition_run)
+# ---------------------------------------------------------------------------
+
+
+class TestAcquisitionRunPersistence:
+    def test_run_file_written_to_acquisitions_directory(
+        self, tmp_path: Path
+    ) -> None:
+        root = _make_repo(tmp_path)
+        report = run_acquisition(root, _mock_connector())
+        save_acquisition_run(report, root)
+        assert (root / "acquisitions").is_dir()
+        assert len(list((root / "acquisitions").glob("*.json"))) == 1
+
+    def test_run_file_contains_correct_counts(self, tmp_path: Path) -> None:
+        evidence = [_make_evidence("bse-news-001"), _make_evidence("bse-news-002")]
+        root = _make_repo(tmp_path)
+        report = run_acquisition(root, _mock_connector(evidence=evidence))
+        save_acquisition_run(report, root)
+        run_file = next((root / "acquisitions").glob("*.json"))
+        data = json.loads(run_file.read_text(encoding="utf-8"))
+        assert data["counts"]["discovered"] == 2
+        assert data["counts"]["selected"] == 2
+        assert data["counts"]["downloaded"] == 2
+        assert data["counts"]["failed"] == 0
+
+    def test_run_file_contains_profile_name(self, tmp_path: Path) -> None:
+        root = _make_repo(tmp_path)
+        report = run_acquisition(root, _mock_connector())
+        save_acquisition_run(report, root)
+        run_file = next((root / "acquisitions").glob("*.json"))
+        data = json.loads(run_file.read_text(encoding="utf-8"))
+        assert data["profile"] == "default"
+
+    def test_each_call_produces_a_separate_run_file(self, tmp_path: Path) -> None:
+        root = _make_repo(tmp_path)
+        report = run_acquisition(root, _mock_connector())
+        save_acquisition_run(report, root)
+        save_acquisition_run(report, root)
+        files = list((root / "acquisitions").glob("*.json"))
+        assert len(files) == 2
+
+    def test_run_record_path_is_set(self, tmp_path: Path) -> None:
+        root = _make_repo(tmp_path)
+        report = run_acquisition(root, _mock_connector())
+        acq_run = save_acquisition_run(report, root)
+        assert acq_run.record_path.exists()
+
+    def test_run_file_contains_failures(self, tmp_path: Path) -> None:
+        root = _make_repo(tmp_path)
+        connector = _mock_connector(evidence=[_make_evidence("bse-news-001")])
+        connector.fetch_bytes.side_effect = OSError("disk full")
+        report = run_acquisition(root, connector)
+        save_acquisition_run(report, root)
+        run_file = next((root / "acquisitions").glob("*.json"))
+        data = json.loads(run_file.read_text(encoding="utf-8"))
+        assert len(data["failures"]) == 1
+        assert data["failures"][0]["evidence_id"] == "bse-news-001"
+        assert "disk full" in data["failures"][0]["error"]
+
+    def test_run_file_contains_warnings(self, tmp_path: Path) -> None:
+        root = _make_repo(tmp_path)
+        warning = DiscoveryWarning(
+            source=EvidenceSource.BSE,
+            code="UNMAPPED_SUBCATEGORY",
+            message="Unmapped BSE subcategory",
+            metadata={"subcategory": "Company Update", "count": 2},
+        )
+        connector = _mock_connector()
+        connector.discover.return_value = DiscoveryResult(
+            evidence=[], warnings=[warning]
+        )
+        report = run_acquisition(root, connector)
+        save_acquisition_run(report, root)
+        run_file = next((root / "acquisitions").glob("*.json"))
+        data = json.loads(run_file.read_text(encoding="utf-8"))
+        assert len(data["warnings"]) == 1
+        assert data["warnings"][0]["code"] == "UNMAPPED_SUBCATEGORY"
+
+
+# ---------------------------------------------------------------------------
 # Discovery warnings propagation
 # ---------------------------------------------------------------------------
 
 
 class TestAcquisitionWarnings:
-    def test_warnings_from_discover_appear_in_record(self, tmp_path: Path) -> None:
+    def test_warnings_from_discover_appear_in_report(self, tmp_path: Path) -> None:
         root = _make_repo(tmp_path)
         warning = DiscoveryWarning(
             source=EvidenceSource.BSE,
@@ -427,15 +479,15 @@ class TestAcquisitionWarnings:
         connector.discover.return_value = DiscoveryResult(
             evidence=[], warnings=[warning]
         )
-        record = run_acquisition(root, connector)
-        assert len(record.warnings) == 1
-        assert record.warnings[0].code == "UNMAPPED_SUBCATEGORY"
-        assert record.warnings[0].metadata["subcategory"] == "Company Update"
+        report = run_acquisition(root, connector)
+        assert len(report.warnings) == 1
+        assert report.warnings[0].code == "UNMAPPED_SUBCATEGORY"
+        assert report.warnings[0].metadata["subcategory"] == "Company Update"
 
     def test_no_warnings_when_discovery_clean(self, tmp_path: Path) -> None:
         root = _make_repo(tmp_path)
-        record = run_acquisition(root, _mock_connector())
-        assert record.warnings == []
+        report = run_acquisition(root, _mock_connector())
+        assert report.warnings == []
 
     def test_warnings_emitted_via_progress_callback(self, tmp_path: Path) -> None:
         root = _make_repo(tmp_path)
@@ -452,21 +504,3 @@ class TestAcquisitionWarnings:
         messages: list[str] = []
         run_acquisition(root, connector, on_progress=messages.append)
         assert any("Company Update" in m for m in messages)
-
-    def test_warnings_serialized_in_record_file(self, tmp_path: Path) -> None:
-        root = _make_repo(tmp_path)
-        warning = DiscoveryWarning(
-            source=EvidenceSource.BSE,
-            code="UNMAPPED_SUBCATEGORY",
-            message="Unmapped BSE subcategory",
-            metadata={"subcategory": "Company Update", "count": 2},
-        )
-        connector = _mock_connector()
-        connector.discover.return_value = DiscoveryResult(
-            evidence=[], warnings=[warning]
-        )
-        run_acquisition(root, connector)
-        record_file = next((root / "acquisitions").glob("*.json"))
-        data = json.loads(record_file.read_text(encoding="utf-8"))
-        assert len(data["warnings"]) == 1
-        assert data["warnings"][0]["code"] == "UNMAPPED_SUBCATEGORY"
