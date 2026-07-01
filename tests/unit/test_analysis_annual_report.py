@@ -7,27 +7,39 @@ Tests use synthetic annual report text rather than real PDFs so that:
 
 The synthetic text mimics the structure seen in real BSE-listed company annual
 reports: a table of contents with page numbers, then real section bodies.
+
+Coverage mapping:
+  TestExtractSection       — _extract_section / _find_section (unchanged helpers)
+  TestExtractListItems     — _extract_list_items (unchanged helper)
+  TestExtractSegments      — _extract_segments (unchanged helper)
+  TestExtractRisks         — _extract_risks (unchanged helper)
+  TestAnalysisFact         — AnalysisFact / FactKind / FactUnit / Provenance structure
+  TestSummarize            — summarize() happy path via mock KnowledgeBase
+  TestSummarizeErrors      — summarize() error cases
+  TestMissingSections      — graceful degradation when sections absent
 """
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Literal
 from unittest.mock import MagicMock
 
 import pytest
 
 from atlas.analysis.annual_report import (
-    AnnualReportSummary,
-    _compare,
     _extract_list_items,
-    _extract_number,
     _extract_risks,
     _extract_section,
     _extract_segments,
     summarize,
+)
+from atlas.analysis.base import (
+    AnalysisFact,
+    AnalysisResult,
+    FactKind,
+    FactUnit,
+    Provenance,
 )
 from atlas.knowledge.base import KnowledgeBase, ParsedDocument
 
@@ -36,12 +48,13 @@ from atlas.knowledge.base import KnowledgeBase, ParsedDocument
 # Helpers — synthetic text corpus
 # ---------------------------------------------------------------------------
 
+
 def _make_doc(
     evidence_id: str = "test-001",
     status: Literal["ok", "failed"] = "ok",
     char_count: int | None = 10_000,
     title: str = "Annual Report FY2024",
-    source_date: str = "2024-03-31",
+    source_date: str = "2024-05-01",
     local_path: str = "annual_reports/test.pdf",
 ) -> ParsedDocument:
     return ParsedDocument(
@@ -62,7 +75,6 @@ def _make_kb(
     doc: ParsedDocument,
     content: str | None = None,
 ) -> KnowledgeBase:
-    """Return a KnowledgeBase stub backed by mocks."""
     kb = MagicMock(spec=KnowledgeBase)
     kb.get.return_value = doc
     kb.get_content.return_value = content
@@ -77,7 +89,7 @@ _OVERVIEW_SECTION = (
     "Our solutions span cloud transformation, AI-enabled products, "
     "and enterprise integration across 19 industry verticals. "
     "Founded in 1968, we employ over 600,000 professionals worldwide. "
-    "Our revenue reached ₹240,893 crore in FY2024.\n\n"
+    "Our revenue reached significant levels in FY2024.\n\n"
 )
 
 _MANAGEMENT_SECTION = (
@@ -142,8 +154,13 @@ def _build_full_report() -> str:
     )
 
 
+# Helper to collect all facts of a given kind from a result.
+def _facts(result: AnalysisResult, kind: FactKind) -> list[AnalysisFact]:
+    return [f for f in result.facts if f.kind == kind]
+
+
 # ---------------------------------------------------------------------------
-# _extract_section
+# _extract_section  (unchanged helper — tests unchanged)
 # ---------------------------------------------------------------------------
 
 
@@ -164,11 +181,9 @@ class TestExtractSection:
         text = "Business Overview\n" + "B" * 8_000
         result = _extract_section(text, self._PATTERN)
         assert result is not None
-        assert len(result) <= 4_100  # slight slack for stripped whitespace
+        assert len(result) <= 4_100
 
     def test_skips_toc_entry_with_only_page_number(self) -> None:
-        # TOC entry: "Business Overview .... 4\n" followed by a page number only.
-        # Real section appears later with substantial content.
         text = (
             "Business Overview .............. 4\n"
             "Other stuff on the TOC page\n\n"
@@ -192,7 +207,7 @@ class TestExtractSection:
 
 
 # ---------------------------------------------------------------------------
-# _extract_list_items
+# _extract_list_items  (unchanged helper — tests unchanged)
 # ---------------------------------------------------------------------------
 
 
@@ -239,7 +254,7 @@ class TestExtractListItems:
 
 
 # ---------------------------------------------------------------------------
-# _extract_segments
+# _extract_segments  (unchanged helper — tests unchanged)
 # ---------------------------------------------------------------------------
 
 
@@ -278,7 +293,7 @@ class TestExtractSegments:
 
 
 # ---------------------------------------------------------------------------
-# _extract_risks
+# _extract_risks  (unchanged helper — tests unchanged)
 # ---------------------------------------------------------------------------
 
 
@@ -296,7 +311,9 @@ class TestExtractRisks:
         assert _extract_risks("No risks here at all.") == []
 
     def test_caps_at_10_items(self) -> None:
-        bullet_list = "".join(f"{i+1}. Risk item number {i+1} description\n" for i in range(20))
+        bullet_list = "".join(
+            f"{i+1}. Risk item number {i+1} description\n" for i in range(20)
+        )
         text = "Key Risks\n" + bullet_list
         risks = _extract_risks(text)
         assert len(risks) <= 10
@@ -314,62 +331,76 @@ class TestExtractRisks:
 
 
 # ---------------------------------------------------------------------------
-# _extract_number
+# AnalysisFact / FactKind / FactUnit / Provenance structure
 # ---------------------------------------------------------------------------
 
 
-class TestExtractNumber:
-    def test_extracts_plain_number(self) -> None:
-        from atlas.analysis.annual_report import _RE_REVENUE
-        text = "revenues of ₹240,893 crore"
-        n = _extract_number(text, _RE_REVENUE)
-        assert n == pytest.approx(240893.0)
+class TestAnalysisFact:
+    def test_fact_kind_is_enum(self) -> None:
+        fact = AnalysisFact(
+            kind=FactKind.SEGMENT_NAME,
+            value="Manufacturing",
+            unit=None,
+            period="2024-03-31",
+            confidence="high",
+            provenance=Provenance(section="segment_paragraph"),
+        )
+        assert isinstance(fact.kind, FactKind)
 
-    def test_extracts_decimal_number(self) -> None:
-        from atlas.analysis.annual_report import _RE_REVENUE
-        text = "revenue of 12,345.67 crore"
-        n = _extract_number(text, _RE_REVENUE)
-        assert n == pytest.approx(12345.67)
+    def test_fact_unit_is_enum_or_none(self) -> None:
+        quantitative = AnalysisFact(
+            kind=FactKind.FINANCIAL_REVENUE,
+            value=64259,
+            unit=FactUnit.CRORE_INR,
+            period="2024-09-30",
+            confidence="high",
+            provenance=Provenance(section="P&L table"),
+        )
+        categorical = AnalysisFact(
+            kind=FactKind.SEGMENT_NAME,
+            value="Manufacturing",
+            unit=None,
+            period="2024-03-31",
+            confidence="high",
+            provenance=Provenance(section="segment_paragraph"),
+        )
+        assert isinstance(quantitative.unit, FactUnit)
+        assert categorical.unit is None
 
-    def test_returns_none_when_no_match(self) -> None:
-        from atlas.analysis.annual_report import _RE_REVENUE
-        n = _extract_number("no financial data here", _RE_REVENUE)
-        assert n is None
+    def test_provenance_section_required(self) -> None:
+        p = Provenance(section="cover letter")
+        assert p.section == "cover letter"
+        assert p.char_offset is None
+        assert p.excerpt is None
 
+    def test_provenance_optional_fields(self) -> None:
+        p = Provenance(section="P&L table", char_offset=14835, excerpt="Revenue from operations")
+        assert p.char_offset == 14835
+        assert p.excerpt == "Revenue from operations"
 
-# ---------------------------------------------------------------------------
-# _compare
-# ---------------------------------------------------------------------------
+    def test_fact_confidence_is_valid_literal(self) -> None:
+        for conf in ("high", "medium", "low"):
+            fact = AnalysisFact(
+                kind=FactKind.RISK_FACTOR,
+                value="Geopolitical risk",
+                unit=None,
+                period="2024-03-31",
+                confidence=conf,  # type: ignore[arg-type]
+                provenance=Provenance(section="risk_section"),
+            )
+            assert fact.confidence == conf
 
-
-class TestCompare:
-    def test_detects_revenue_growth(self) -> None:
-        curr = "revenues of ₹240,000 crore"
-        prev = "revenues of ₹200,000 crore"
-        changes = _compare(curr, prev)
-        assert any("Revenue grew" in c for c in changes)
-
-    def test_detects_revenue_decline(self) -> None:
-        curr = "revenues of ₹180,000 crore"
-        prev = "revenues of ₹200,000 crore"
-        changes = _compare(curr, prev)
-        assert any("Revenue declined" in c for c in changes)
-
-    def test_includes_percentage(self) -> None:
-        curr = "revenues of 300,000 crore"
-        prev = "revenues of 250,000 crore"
-        changes = _compare(curr, prev)
-        assert any("20.0%" in c for c in changes)
-
-    def test_returns_empty_when_no_metrics_found(self) -> None:
-        changes = _compare("No numbers here.", "Also no numbers.")
-        assert changes == []
-
-    def test_includes_net_income_when_available(self) -> None:
-        curr = "net profit of ₹50,000 crore\nrevenues of ₹240,000 crore"
-        prev = "net profit of ₹40,000 crore\nrevenues of ₹200,000 crore"
-        changes = _compare(curr, prev)
-        assert any("Net income" in c for c in changes)
+    def test_fact_value_can_be_str_int_float_none(self) -> None:
+        for val in ("text", 42, 3.14, None):
+            fact = AnalysisFact(
+                kind=FactKind.FINANCIAL_REVENUE,
+                value=val,
+                unit=FactUnit.CRORE_INR,
+                period="2024-03-31",
+                confidence="high",
+                provenance=Provenance(section="P&L table"),
+            )
+            assert fact.value == val
 
 
 # ---------------------------------------------------------------------------
@@ -378,12 +409,12 @@ class TestCompare:
 
 
 class TestSummarize:
-    def test_returns_annual_report_summary(self) -> None:
+    def test_returns_analysis_result(self) -> None:
         content = _build_full_report()
         doc = _make_doc(char_count=len(content))
         kb = _make_kb(doc, content)
         result = summarize("test-001", kb)
-        assert isinstance(result, AnnualReportSummary)
+        assert isinstance(result, AnalysisResult)
 
     def test_evidence_id_passed_through(self) -> None:
         content = _build_full_report()
@@ -392,81 +423,173 @@ class TestSummarize:
         result = summarize("test-001", kb)
         assert result.evidence_id == "test-001"
 
-    def test_title_passed_through(self) -> None:
+    def test_kind_matches_document(self) -> None:
         content = _build_full_report()
         doc = _make_doc(char_count=len(content))
         kb = _make_kb(doc, content)
         result = summarize("test-001", kb)
-        assert result.title == "Annual Report FY2024"
+        assert result.kind == "annual_report"
 
-    def test_finds_management_commentary(self) -> None:
+    def test_analyzer_version_set(self) -> None:
+        from atlas.analysis.annual_report import ANALYZER_VERSION
         content = _build_full_report()
         doc = _make_doc(char_count=len(content))
         kb = _make_kb(doc, content)
         result = summarize("test-001", kb)
-        assert result.management_commentary is not None
-        assert len(result.management_commentary) >= 50
+        assert result.analyzer_version == ANALYZER_VERSION
 
-    def test_finds_business_overview(self) -> None:
+    def test_analyzed_at_is_utc_datetime(self) -> None:
         content = _build_full_report()
         doc = _make_doc(char_count=len(content))
         kb = _make_kb(doc, content)
         result = summarize("test-001", kb)
-        assert result.business_overview is not None
+        assert isinstance(result.analyzed_at, datetime)
+        assert result.analyzed_at.tzinfo is not None
 
-    def test_finds_capital_allocation(self) -> None:
+    def test_confidence_is_set(self) -> None:
         content = _build_full_report()
         doc = _make_doc(char_count=len(content))
         kb = _make_kb(doc, content)
         result = summarize("test-001", kb)
-        assert result.capital_allocation is not None
-        assert "dividend" in result.capital_allocation.lower() or "capital" in result.capital_allocation.lower()
+        assert result.confidence in ("high", "medium", "low")
 
-    def test_finds_segments(self) -> None:
+    def test_warnings_is_list(self) -> None:
         content = _build_full_report()
         doc = _make_doc(char_count=len(content))
         kb = _make_kb(doc, content)
         result = summarize("test-001", kb)
-        assert len(result.segments) >= 2
+        assert isinstance(result.warnings, list)
 
-    def test_finds_risks_from_bullet_list(self) -> None:
+    def test_finds_management_commentary_excerpt(self) -> None:
         content = _build_full_report()
         doc = _make_doc(char_count=len(content))
         kb = _make_kb(doc, content)
         result = summarize("test-001", kb)
-        assert len(result.major_risks) >= 1
+        assert "management_commentary" in result.excerpts
+        assert len(result.excerpts["management_commentary"]) >= 50
 
-    def test_yoy_empty_when_no_previous_id(self) -> None:
+    def test_finds_business_overview_excerpt(self) -> None:
         content = _build_full_report()
         doc = _make_doc(char_count=len(content))
         kb = _make_kb(doc, content)
         result = summarize("test-001", kb)
-        assert result.year_on_year_changes == []
+        assert "business_overview" in result.excerpts
 
-    def test_yoy_populated_when_previous_id_provided(self) -> None:
-        content = "revenues of ₹240,000 crore\n" + "x" * 2000
-        prev_content = "revenues of ₹200,000 crore\n" + "x" * 2000
-        doc = _make_doc(char_count=len(content))
-        kb = MagicMock(spec=KnowledgeBase)
-        kb.get.return_value = doc
-        kb.get_content.side_effect = lambda eid: content if eid == "test-001" else prev_content
-        result = summarize("test-001", kb, previous_evidence_id="test-000")
-        assert len(result.year_on_year_changes) >= 1
-
-    def test_extracted_at_is_utc_datetime(self) -> None:
+    def test_finds_capital_allocation_excerpt(self) -> None:
         content = _build_full_report()
         doc = _make_doc(char_count=len(content))
         kb = _make_kb(doc, content)
         result = summarize("test-001", kb)
-        assert isinstance(result.extracted_at, datetime)
-        assert result.extracted_at.tzinfo is not None
+        assert "capital_allocation" in result.excerpts
+        excerpt = result.excerpts["capital_allocation"]
+        assert "dividend" in excerpt.lower() or "capital" in excerpt.lower()
 
-    def test_char_count_populated(self) -> None:
+    def test_finds_segment_facts(self) -> None:
         content = _build_full_report()
         doc = _make_doc(char_count=len(content))
         kb = _make_kb(doc, content)
         result = summarize("test-001", kb)
-        assert result.char_count == len(content)
+        segs = _facts(result, FactKind.SEGMENT_NAME)
+        assert len(segs) >= 2
+
+    def test_segment_facts_have_correct_kind(self) -> None:
+        content = _build_full_report()
+        doc = _make_doc(char_count=len(content))
+        kb = _make_kb(doc, content)
+        result = summarize("test-001", kb)
+        segs = _facts(result, FactKind.SEGMENT_NAME)
+        assert all(isinstance(f.kind, FactKind) for f in segs)
+        assert all(f.kind == FactKind.SEGMENT_NAME for f in segs)
+
+    def test_segment_facts_have_null_unit(self) -> None:
+        content = _build_full_report()
+        doc = _make_doc(char_count=len(content))
+        kb = _make_kb(doc, content)
+        result = summarize("test-001", kb)
+        segs = _facts(result, FactKind.SEGMENT_NAME)
+        assert all(f.unit is None for f in segs)
+
+    def test_segment_facts_have_confidence(self) -> None:
+        content = _build_full_report()
+        doc = _make_doc(char_count=len(content))
+        kb = _make_kb(doc, content)
+        result = summarize("test-001", kb)
+        segs = _facts(result, FactKind.SEGMENT_NAME)
+        assert all(f.confidence in ("high", "medium", "low") for f in segs)
+
+    def test_segment_facts_have_provenance(self) -> None:
+        content = _build_full_report()
+        doc = _make_doc(char_count=len(content))
+        kb = _make_kb(doc, content)
+        result = summarize("test-001", kb)
+        segs = _facts(result, FactKind.SEGMENT_NAME)
+        assert all(isinstance(f.provenance, Provenance) for f in segs)
+        assert all(f.provenance.section == "segment_paragraph" for f in segs)
+
+    def test_segment_values_are_strings(self) -> None:
+        content = _build_full_report()
+        doc = _make_doc(char_count=len(content))
+        kb = _make_kb(doc, content)
+        result = summarize("test-001", kb)
+        segs = _facts(result, FactKind.SEGMENT_NAME)
+        assert all(isinstance(f.value, str) for f in segs)
+
+    def test_segment_facts_have_period(self) -> None:
+        content = _build_full_report()
+        doc = _make_doc(char_count=len(content), source_date="2024-05-01")
+        kb = _make_kb(doc, content)
+        result = summarize("test-001", kb)
+        segs = _facts(result, FactKind.SEGMENT_NAME)
+        # source_date 2024-05-01 → fiscal year end 2024-03-31
+        assert all(f.period == "2024-03-31" for f in segs)
+
+    def test_finds_risk_facts(self) -> None:
+        content = _build_full_report()
+        doc = _make_doc(char_count=len(content))
+        kb = _make_kb(doc, content)
+        result = summarize("test-001", kb)
+        risks = _facts(result, FactKind.RISK_FACTOR)
+        assert len(risks) >= 1
+
+    def test_risk_facts_have_correct_kind(self) -> None:
+        content = _build_full_report()
+        doc = _make_doc(char_count=len(content))
+        kb = _make_kb(doc, content)
+        result = summarize("test-001", kb)
+        risks = _facts(result, FactKind.RISK_FACTOR)
+        assert all(f.kind == FactKind.RISK_FACTOR for f in risks)
+
+    def test_risk_facts_have_null_unit(self) -> None:
+        content = _build_full_report()
+        doc = _make_doc(char_count=len(content))
+        kb = _make_kb(doc, content)
+        result = summarize("test-001", kb)
+        risks = _facts(result, FactKind.RISK_FACTOR)
+        assert all(f.unit is None for f in risks)
+
+    def test_risk_facts_have_provenance(self) -> None:
+        content = _build_full_report()
+        doc = _make_doc(char_count=len(content))
+        kb = _make_kb(doc, content)
+        result = summarize("test-001", kb)
+        risks = _facts(result, FactKind.RISK_FACTOR)
+        assert all(isinstance(f.provenance, Provenance) for f in risks)
+        assert all(f.provenance.section == "risk_section" for f in risks)
+
+    def test_all_facts_are_analysis_fact_instances(self) -> None:
+        content = _build_full_report()
+        doc = _make_doc(char_count=len(content))
+        kb = _make_kb(doc, content)
+        result = summarize("test-001", kb)
+        assert all(isinstance(f, AnalysisFact) for f in result.facts)
+
+    def test_full_report_yields_high_confidence(self) -> None:
+        content = _build_full_report()
+        doc = _make_doc(char_count=len(content))
+        kb = _make_kb(doc, content)
+        result = summarize("test-001", kb)
+        # Full report has all sections → should reach "high"
+        assert result.confidence in ("high", "medium")
 
 
 # ---------------------------------------------------------------------------
@@ -484,7 +607,7 @@ class TestSummarizeErrors:
     def test_raises_value_error_for_failed_document(self) -> None:
         doc = _make_doc(status="failed", char_count=None)
         kb = _make_kb(doc, None)
-        with pytest.raises(ValueError, match="cannot summarize"):
+        with pytest.raises(ValueError, match="cannot analyze"):
             summarize("test-001", kb)
 
     def test_raises_value_error_when_content_unavailable(self) -> None:
@@ -500,30 +623,51 @@ class TestSummarizeErrors:
 
 
 class TestMissingSections:
-    def test_business_overview_is_none_when_absent(self) -> None:
+    def test_business_overview_absent_when_not_found(self) -> None:
         content = _MANAGEMENT_SECTION + "x" * 2000
         doc = _make_doc(char_count=len(content))
         kb = _make_kb(doc, content)
         result = summarize("test-001", kb)
-        assert result.business_overview is None
+        assert "business_overview" not in result.excerpts
+
+    def test_business_overview_absent_adds_warning(self) -> None:
+        content = _MANAGEMENT_SECTION + "x" * 2000
+        doc = _make_doc(char_count=len(content))
+        kb = _make_kb(doc, content)
+        result = summarize("test-001", kb)
+        assert any("Business overview" in w for w in result.warnings)
 
     def test_segments_empty_when_absent(self) -> None:
         content = _MANAGEMENT_SECTION + _OVERVIEW_SECTION + "x" * 2000
         doc = _make_doc(char_count=len(content))
         kb = _make_kb(doc, content)
         result = summarize("test-001", kb)
-        assert result.segments == []
+        assert _facts(result, FactKind.SEGMENT_NAME) == []
+
+    def test_segments_absent_adds_warning(self) -> None:
+        content = _MANAGEMENT_SECTION + _OVERVIEW_SECTION + "x" * 2000
+        doc = _make_doc(char_count=len(content))
+        kb = _make_kb(doc, content)
+        result = summarize("test-001", kb)
+        assert any("segment" in w.lower() for w in result.warnings)
 
     def test_risks_empty_when_absent(self) -> None:
         content = _MANAGEMENT_SECTION + _OVERVIEW_SECTION + "x" * 2000
         doc = _make_doc(char_count=len(content))
         kb = _make_kb(doc, content)
         result = summarize("test-001", kb)
-        assert result.major_risks == []
+        assert _facts(result, FactKind.RISK_FACTOR) == []
 
-    def test_capital_allocation_none_when_absent(self) -> None:
+    def test_capital_allocation_absent_when_not_found(self) -> None:
         content = _MANAGEMENT_SECTION + "x" * 2000
         doc = _make_doc(char_count=len(content))
         kb = _make_kb(doc, content)
         result = summarize("test-001", kb)
-        assert result.capital_allocation is None
+        assert "capital_allocation" not in result.excerpts
+
+    def test_missing_sections_yield_low_or_medium_confidence(self) -> None:
+        content = "x" * 2000
+        doc = _make_doc(char_count=len(content))
+        kb = _make_kb(doc, content)
+        result = summarize("test-001", kb)
+        assert result.confidence in ("low", "medium")

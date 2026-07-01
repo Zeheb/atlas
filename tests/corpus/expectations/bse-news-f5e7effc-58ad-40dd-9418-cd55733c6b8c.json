@@ -1,0 +1,15 @@
+{
+  "evidence_id": "bse-news-f5e7effc-58ad-40dd-9418-cd55733c6b8c",
+  "document_kind": "credit_rating_report",
+  "analyzer": "credit_rating",
+  "min_confidence": "high",
+  "max_warnings": 0,
+  "description": "TCS ESG rating — NSE Sustainability Dec 2025, reaffirmed score 73, category Leader",
+  "expected_facts": [
+    {"kind": "credit_agency",     "value": "NSE Sustainability", "period": "2025-12-12"},
+    {"kind": "credit_instrument", "value": "ESG",                "period": "2025-12-12"},
+    {"kind": "credit_rating",     "value": "73",                 "period": "2025-12-12"},
+    {"kind": "credit_outlook",    "value": "leader",             "period": "2025-12-12"},
+    {"kind": "credit_action",     "value": "reaffirmed",         "period": "2025-12-12"}
+  ]
+}

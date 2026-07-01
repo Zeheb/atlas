@@ -1,0 +1,23 @@
+{
+  "evidence_id": "bse-news-e4ffa3fc-e4f0-4da0-89fe-75d2f7b7b956",
+  "document_kind": "financial_results",
+  "analyzer": "financial_results",
+  "min_confidence": "high",
+  "max_warnings": 1,
+  "description": "TCS annual FY2026 consolidated — revenue 2,67,021 Cr; PAT 50,009 Cr; PBT 65,487 Cr; EPS 135.70; final dividend 31; cash 6,417; equity 1,07,240; CFO 52,094; capex 3,670",
+  "expected_facts": [
+    {"kind": "report_period_end",           "value": "2026-03-31",   "period": "2026-03-31"},
+    {"kind": "report_period_type",          "value": "annual",       "period": "2026-03-31"},
+    {"kind": "financial_revenue",           "value": 267021.0,       "period": "2026-03-31", "unit": "crore_inr"},
+    {"kind": "financial_profit_before_tax", "value": 65487.0,        "period": "2026-03-31", "unit": "crore_inr"},
+    {"kind": "financial_pat",               "value": 49454.0,        "period": "2026-03-31", "unit": "crore_inr"},
+    {"kind": "financial_eps_basic",         "value": 135.70,         "period": "2026-03-31", "unit": "rupees"},
+    {"kind": "capital_dividend_per_share",  "value": 31.0,           "period": "2026-03-31", "unit": "rupees_per_share"},
+    {"kind": "capital_dividend_type",       "value": "final",        "period": "2026-03-31"},
+    {"kind": "audit_opinion",               "value": "unmodified"},
+    {"kind": "financial_cash_and_equivalents", "value": 6417.0,      "period": "2026-03-31", "unit": "crore_inr"},
+    {"kind": "financial_total_equity",         "value": 107240.0,    "period": "2026-03-31", "unit": "crore_inr"},
+    {"kind": "financial_operating_cash_flow",  "value": 52094.0,     "period": "2026-03-31", "unit": "crore_inr"},
+    {"kind": "financial_capex",                "value": 3670.0,      "period": "2026-03-31", "unit": "crore_inr"}
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "evidence_id": "bse-news-142ec3b0-9c40-44d4-a91a-90209663497a",
+  "document_kind": "agm_notice",
+  "analyzer": "agm_notice",
+  "min_confidence": "high",
+  "max_warnings": 0,
+  "description": "TCS 30th AGM 2025-06-19 — 10 ordinary resolutions all passed; vote percentages via col-split layout; Res4 uses Layout A-robust (garbled col7 header)",
+  "expected_facts": [
+    {"kind": "governance_resolution_title",   "period": "2025-06-19"},
+    {"kind": "governance_resolution_type",    "value": "ordinary", "period": "2025-06-19"},
+    {"kind": "governance_resolution_outcome", "value": "passed",   "period": "2025-06-19"},
+    {"kind": "governance_vote_pct_for",     "period": "2025-06-19", "value": 99.8298, "unit": "percent"},
+    {"kind": "governance_vote_pct_against", "period": "2025-06-19", "value": 0.1702,  "unit": "percent"},
+    {"kind": "governance_vote_pct_for",     "period": "2025-06-19", "value": 99.3305, "unit": "percent"},
+    {"kind": "governance_vote_pct_against", "period": "2025-06-19", "value": 0.6695,  "unit": "percent"},
+    {"kind": "governance_vote_pct_for",     "period": "2025-06-19", "value": 99.6558, "unit": "percent"},
+    {"kind": "governance_vote_pct_against", "period": "2025-06-19", "value": 0.3442,  "unit": "percent"}
+  ]
+}

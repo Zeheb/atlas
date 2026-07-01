@@ -1,0 +1,25 @@
+{
+  "evidence_id": "bse-news-ffe33416-6ca6-4c63-ae04-f914bb97c4cc",
+  "document_kind": "brsr",
+  "analyzer": "brsr",
+  "min_confidence": "high",
+  "max_warnings": 0,
+  "description": "TCS BRSR FY2026 — 15 ESG facts; Scope 1+2 market-based; energy 1.88 TJ; renewable 79%; waste 8,808 MT recovered 76.4%; headcount 617,437; SBTi 90%/2030 and 35%/2034",
+  "expected_facts": [
+    {"kind": "esg_ghg_scope1",                     "period": "2026-03-31", "value": 22631.0,         "unit": "tco2e"},
+    {"kind": "esg_ghg_scope2",                     "period": "2026-03-31", "value": 53971.0,         "unit": "tco2e"},
+    {"kind": "esg_ghg_scope3",                     "period": "2026-03-31", "value": 573872.0,        "unit": "tco2e"},
+    {"kind": "esg_energy_total_mj",                "period": "2026-03-31", "value": 1884760270.0,    "unit": "megajoule"},
+    {"kind": "esg_energy_renewable_pct",           "period": "2026-03-31", "unit": "percent"},
+    {"kind": "esg_water_consumed_kl",              "period": "2026-03-31", "value": 2832920.0,       "unit": "kilolitre"},
+    {"kind": "esg_waste_generated_mt",             "period": "2026-03-31", "unit": "metric_tonne"},
+    {"kind": "esg_waste_recovery_pct",             "period": "2026-03-31", "value": 76.4,            "unit": "percent"},
+    {"kind": "esg_workforce_headcount",            "period": "2026-03-31", "value": 617437,          "unit": "count"},
+    {"kind": "esg_workforce_female_pct",           "period": "2026-03-31", "value": 35.3,            "unit": "percent"},
+    {"kind": "esg_workforce_female_wage_pct",      "period": "2026-03-31", "value": 24.9,            "unit": "percent"},
+    {"kind": "esg_workforce_attrition_pct",        "period": "2026-03-31", "value": 13.7,            "unit": "percent"},
+    {"kind": "esg_safety_ltifr",                   "period": "2026-03-31", "value": 0.028},
+    {"kind": "esg_climate_sbti_scope12_reduction_pct", "period": "2030-03-31", "value": 90.0,       "unit": "percent"},
+    {"kind": "esg_climate_sbti_scope3_reduction_pct",  "period": "2034-03-31", "value": 35.0,       "unit": "percent"}
+  ]
+}

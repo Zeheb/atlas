@@ -1,0 +1,25 @@
+{
+  "evidence_id": "bse-news-2e389663-765c-46b8-975a-7d07faf5c25e",
+  "document_kind": "brsr",
+  "analyzer": "brsr",
+  "min_confidence": "high",
+  "max_warnings": 0,
+  "description": "TCS BRSR FY2025 — 15 ESG facts; female wage % has asterisk footnote marker in source; waste 9,983 MT recovered 56%; headcount 636,833",
+  "expected_facts": [
+    {"kind": "esg_ghg_scope1",                     "period": "2025-03-31", "value": 20494.8,         "unit": "tco2e"},
+    {"kind": "esg_ghg_scope2",                     "period": "2025-03-31", "value": 55599.0,         "unit": "tco2e"},
+    {"kind": "esg_ghg_scope3",                     "period": "2025-03-31", "value": 523810.0,        "unit": "tco2e"},
+    {"kind": "esg_energy_total_mj",                "period": "2025-03-31", "value": 1940926732.0,    "unit": "megajoule"},
+    {"kind": "esg_energy_renewable_pct",           "period": "2025-03-31", "unit": "percent"},
+    {"kind": "esg_water_consumed_kl",              "period": "2025-03-31", "value": 2871784.0,       "unit": "kilolitre"},
+    {"kind": "esg_waste_generated_mt",             "period": "2025-03-31", "value": 9983.0,          "unit": "metric_tonne"},
+    {"kind": "esg_waste_recovery_pct",             "period": "2025-03-31", "value": 56.0,            "unit": "percent"},
+    {"kind": "esg_workforce_headcount",            "period": "2025-03-31", "value": 636833,          "unit": "count"},
+    {"kind": "esg_workforce_female_pct",           "period": "2025-03-31", "value": 35.3,            "unit": "percent"},
+    {"kind": "esg_workforce_female_wage_pct",      "period": "2025-03-31", "value": 24.8,            "unit": "percent"},
+    {"kind": "esg_workforce_attrition_pct",        "period": "2025-03-31", "value": 13.3,            "unit": "percent"},
+    {"kind": "esg_safety_ltifr",                   "period": "2025-03-31", "value": 0.025},
+    {"kind": "esg_climate_sbti_scope12_reduction_pct", "period": "2030-03-31", "value": 90.0,       "unit": "percent"},
+    {"kind": "esg_climate_sbti_scope3_reduction_pct",  "period": "2034-03-31", "value": 35.0,       "unit": "percent"}
+  ]
+}

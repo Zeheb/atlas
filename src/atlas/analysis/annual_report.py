@@ -1,70 +1,43 @@
-"""Rule-based structured extraction from parsed annual report text.
+"""Rule-based fact extraction from parsed annual report text.
 
-Sections are detected by keyword patterns. All text fields are verbatim
-excerpts — not paraphrases. If a section header is absent from the
-extracted text the corresponding field is None or empty.
+Extracts durable structured facts and verbatim excerpts from one annual
+report document. Does not compare across documents — cross-document
+reasoning belongs in a future Facts layer.
 
-Year-on-year comparison requires two evidence IDs from the same company;
-the caller selects them using Repository.list_evidence() and passes them here.
-The analysis layer only reads from KnowledgeBase — it never touches the
-acquisition layer or raw files.
+Section detection uses a TOC-skip strategy: a pattern match is only
+accepted if at least _MIN_SECTION_CONTENT chars of substantive text
+follow it, filtering out table-of-contents entries that match the same
+header keyword but are followed only by a page number.
 """
 
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
+from typing import Literal
 
+from atlas.analysis.base import (
+    AnalysisFact,
+    AnalysisResult,
+    FactKind,
+    FactUnit,
+    Provenance,
+    _snip,
+)
+from atlas.analysis.patterns import fiscal_year_end
 from atlas.knowledge.base import KnowledgeBase
 
-# ---------------------------------------------------------------------------
-# Configuration
-# ---------------------------------------------------------------------------
-
-# Characters extracted after a detected section header.
-_SECTION_CHARS = 4_000
-
-# Minimum following content to accept a header match as a real section
-# (not a table-of-contents reference, which has only a page number after it).
-_MIN_SECTION_CONTENT = 200
+ANALYZER_VERSION = "2.0"
 
 # ---------------------------------------------------------------------------
-# Output model
+# Extraction configuration
 # ---------------------------------------------------------------------------
 
-
-@dataclass
-class AnnualReportSummary:
-    """Structured text extractions from one annual report.
-
-    `business_overview`, `management_commentary`, and `capital_allocation`
-    are verbatim excerpts. `segments` and `major_risks` are lists parsed
-    from section text. `year_on_year_changes` lists detected metric shifts
-    vs. `previous_evidence_id`; empty when no previous report is supplied.
-    """
-
-    evidence_id: str
-    title: str
-    source_date: str
-    char_count: int
-
-    business_overview: str | None
-    management_commentary: str | None
-    capital_allocation: str | None
-
-    segments: list[str]
-    major_risks: list[str]
-    year_on_year_changes: list[str]
-
-    extracted_at: datetime = field(
-        default_factory=lambda: datetime.now(timezone.utc)
-    )
-
+_SECTION_CHARS = 4_000      # chars to capture after a section header match
+_MIN_SECTION_CONTENT = 200  # minimum chars to accept a match as a real section
 
 # ---------------------------------------------------------------------------
 # Section header patterns
-# (re.MULTILINE makes ^ / $ match at line boundaries, not just string edges)
 # ---------------------------------------------------------------------------
 
 _RE_BUSINESS_OVERVIEW = re.compile(
@@ -75,10 +48,10 @@ _RE_BUSINESS_OVERVIEW = re.compile(
 _RE_MANAGEMENT = re.compile(
     r"(?:"
     r"^Letter from the\n?Chairman"
-    r"|^Chairman['’]?s?\s+(?:Letter|Message|Statement|Review)"
-    r"|^Directors['’]?\s+Report"
+    r"|^Chairman['']?s?\s+(?:Letter|Message|Statement|Review)"
+    r"|^Directors['']?\s+Report"
     r"|^Management Discussion and Analysis"
-    r"|^CEO['’]?s?\s+(?:Letter|Message)"
+    r"|^CEO['']?s?\s+(?:Letter|Message)"
     r"|Dear Shareholders?[,.]"
     r")",
     re.IGNORECASE | re.MULTILINE,
@@ -108,107 +81,46 @@ _RE_RISKS = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 
-# Used to find the segment growth paragraph (e.g. "Among the Business Segments, X grew Y%...")
 _RE_SEGMENT_PARAGRAPH = re.compile(
     r"(?i)Among the Business Segments?[,\s]+(.*?)(?=\n\n|\. Among|\. The company)",
     re.DOTALL,
 )
 
-# Captures segment name before "grew X%"
 _RE_SEGMENT_ENTRY = re.compile(
     r"([\w,\s&]+?)\s+grew\s+[\d.]+%",
     re.IGNORECASE,
 )
 
 # ---------------------------------------------------------------------------
-# Financial metric patterns for year-on-year comparison
-# ---------------------------------------------------------------------------
-
-_RE_REVENUE = re.compile(
-    r"(?:total\s+)?(?:revenues?\s+of|income\s+from\s+operations)\s*"
-    r"(?:[₹\?]|Rs\.?|INR)?\s*([\d,]+(?:\.\d+)?)\s*(?:crore|cr\.?)",
-    re.IGNORECASE,
-)
-
-_RE_NET_INCOME = re.compile(
-    r"(?:net\s+(?:income|profit)|profit\s+after\s+tax|pat)\s*"
-    r"(?:of|was|stood\s+at)?\s*"
-    r"(?:[₹\?]|Rs\.?|INR)?\s*([\d,]+(?:\.\d+)?)\s*(?:crore|cr\.?)",
-    re.IGNORECASE,
-)
-
-
-# ---------------------------------------------------------------------------
-# Public API
+# Internal extraction helpers
+# (These are the stable extraction core — no output-type dependency.)
 # ---------------------------------------------------------------------------
 
 
-def summarize(
-    evidence_id: str,
-    kb: KnowledgeBase,
-    *,
-    previous_evidence_id: str | None = None,
-) -> AnnualReportSummary:
-    """Extract a structured summary from a parsed annual report.
+def _find_section(
+    text: str, pattern: re.Pattern[str]
+) -> tuple[str, int] | None:
+    """Return (excerpt, match_char_offset) for the first substantial match.
 
-    Raises:
-        KeyError: evidence_id is not recorded in the knowledge base.
-        ValueError: the document failed to parse or yielded no text.
-    """
-    doc = kb.get(evidence_id)
-    if doc is None:
-        raise KeyError(evidence_id)
-    if doc.status != "ok" or not doc.char_count:
-        raise ValueError(
-            f"{evidence_id}: cannot summarize — "
-            f"status={doc.status!r}, char_count={doc.char_count}"
-        )
-
-    content = kb.get_content(evidence_id)
-    if not content:
-        raise ValueError(f"{evidence_id}: content unavailable")
-
-    yoy: list[str] = []
-    if previous_evidence_id is not None:
-        prev_content = kb.get_content(previous_evidence_id)
-        if prev_content:
-            yoy = _compare(content, prev_content)
-
-    return AnnualReportSummary(
-        evidence_id=evidence_id,
-        title=doc.title,
-        source_date=doc.source_date,
-        char_count=doc.char_count,
-        business_overview=_extract_section(content, _RE_BUSINESS_OVERVIEW),
-        management_commentary=_extract_section(content, _RE_MANAGEMENT),
-        capital_allocation=_extract_section(content, _RE_CAPITAL_ALLOCATION),
-        segments=_extract_segments(content),
-        major_risks=_extract_risks(content),
-        year_on_year_changes=yoy,
-    )
-
-
-# ---------------------------------------------------------------------------
-# Extraction helpers
-# ---------------------------------------------------------------------------
-
-
-def _extract_section(text: str, pattern: re.Pattern[str]) -> str | None:
-    """Return text after the first pattern match that has substantial content.
-
-    Skips table-of-contents references (followed only by a page number) by
-    requiring at least _MIN_SECTION_CONTENT chars of following text.
+    Skips TOC entries by requiring at least _MIN_SECTION_CONTENT chars of
+    following text. Returns None if no qualifying match is found.
     """
     for m in pattern.finditer(text):
         start = m.end()
         excerpt = text[start : start + _SECTION_CHARS].strip()
         if len(excerpt) >= _MIN_SECTION_CONTENT:
-            return excerpt
+            return excerpt, m.start()
     return None
 
 
+def _extract_section(text: str, pattern: re.Pattern[str]) -> str | None:
+    """Return section text or None. Backward-compatible wrapper around _find_section."""
+    result = _find_section(text, pattern)
+    return result[0] if result is not None else None
+
+
 def _extract_list_items(text: str) -> list[str]:
-    """Parse bullet-point or numbered items from text."""
+    """Parse bullet-point or numbered items from section text."""
     items: list[str] = []
     for raw_line in text.split("\n"):
         line = raw_line.strip()
@@ -234,11 +146,13 @@ def _extract_segments(text: str) -> list[str]:
         if segments:
             return segments
 
-    # Fall back: look for a section header then parse list items.
-    section = _extract_section(text, re.compile(
-        r"^(?:Business\s+Segments?|Service\s+Lines?|Industry\s+Verticals?|Reportable\s+Segments?)\s*$",
-        re.IGNORECASE | re.MULTILINE,
-    ))
+    section = _extract_section(
+        text,
+        re.compile(
+            r"^(?:Business\s+Segments?|Service\s+Lines?|Industry\s+Verticals?|Reportable\s+Segments?)\s*$",
+            re.IGNORECASE | re.MULTILINE,
+        ),
+    )
     return _extract_list_items(section) if section else []
 
 
@@ -250,7 +164,6 @@ def _extract_risks(text: str) -> list[str]:
     items = _extract_list_items(section)
     if items:
         return items[:10]
-    # If no bullet/numbered list found, look for short title-like lines.
     headings: list[str] = []
     for line in section.split("\n"):
         line = line.strip()
@@ -266,39 +179,130 @@ def _extract_risks(text: str) -> list[str]:
     return headings
 
 
-def _extract_number(text: str, pattern: re.Pattern[str]) -> float | None:
-    """Return the first number matched by pattern, or None."""
-    m = pattern.search(text)
-    if m is None:
-        return None
-    try:
-        return float(m.group(1).replace(",", ""))
-    except ValueError:
-        return None
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
 
 
-def _compare(current: str, previous: str) -> list[str]:
-    """Produce a list of detected metric changes between two report texts."""
-    changes: list[str] = []
+def summarize(
+    evidence_id: str,
+    kb: KnowledgeBase,
+) -> AnalysisResult:
+    """Extract structured facts and verbatim excerpts from a parsed annual report.
 
-    curr_rev = _extract_number(current, _RE_REVENUE)
-    prev_rev = _extract_number(previous, _RE_REVENUE)
-    if curr_rev is not None and prev_rev is not None and prev_rev != 0:
-        pct = (curr_rev - prev_rev) / prev_rev * 100
-        verb = "grew" if pct >= 0 else "declined"
-        changes.append(
-            f"Revenue {verb} {abs(pct):.1f}% YoY "
-            f"(current ₹{curr_rev:,.0f} cr, prior ₹{prev_rev:,.0f} cr)"
+    Returns AnalysisResult. Raises KeyError if evidence_id is not recorded
+    in the knowledge base; raises ValueError if the document failed to parse.
+    """
+    doc = kb.get(evidence_id)
+    if doc is None:
+        raise KeyError(evidence_id)
+    if doc.status != "ok" or not doc.char_count:
+        raise ValueError(
+            f"{evidence_id}: cannot analyze — "
+            f"status={doc.status!r}, char_count={doc.char_count}"
         )
+    content = kb.get_content(evidence_id)
+    if not content:
+        raise ValueError(f"{evidence_id}: content unavailable")
 
-    curr_ni = _extract_number(current, _RE_NET_INCOME)
-    prev_ni = _extract_number(previous, _RE_NET_INCOME)
-    if curr_ni is not None and prev_ni is not None and prev_ni != 0:
-        pct = (curr_ni - prev_ni) / prev_ni * 100
-        verb = "grew" if pct >= 0 else "declined"
-        changes.append(
-            f"Net income {verb} {abs(pct):.1f}% YoY "
-            f"(current ₹{curr_ni:,.0f} cr, prior ₹{prev_ni:,.0f} cr)"
+    period = fiscal_year_end(doc.source_date)
+    facts: list[AnalysisFact] = []
+    excerpts: dict[str, str] = {}
+    warnings: list[str] = []
+
+    # --- Business segments ---
+    seg_match = _RE_SEGMENT_PARAGRAPH.search(content)
+    segment_names = _extract_segments(content)
+    seg_offset = seg_match.start() if seg_match is not None else None
+    seg_snip = _snip(content, seg_offset) if seg_offset is not None else None
+
+    for name in segment_names:
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.SEGMENT_NAME,
+                value=name,
+                unit=None,
+                period=period,
+                confidence="high",
+                provenance=Provenance(
+                    section="segment_paragraph",
+                    char_offset=seg_offset,
+                    excerpt=seg_snip,
+                ),
+            )
         )
+    if not segment_names:
+        warnings.append("No business segments extracted")
 
-    return changes
+    # --- Risk factors ---
+    risk_result = _find_section(content, _RE_RISKS)
+    major_risks = _extract_risks(content)
+
+    if risk_result is not None:
+        _, risk_offset = risk_result
+        risk_snip = _snip(content, risk_offset)
+        risk_conf: Literal["high", "medium", "low"] = "medium"
+    else:
+        risk_offset = None
+        risk_snip = None
+        risk_conf = "low"
+
+    for risk in major_risks:
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.RISK_FACTOR,
+                value=risk,
+                unit=None,
+                period=period,
+                confidence=risk_conf,
+                provenance=Provenance(
+                    section="risk_section",
+                    char_offset=risk_offset,
+                    excerpt=risk_snip,
+                ),
+            )
+        )
+    if not major_risks:
+        warnings.append("No risk factors extracted")
+
+    # --- Verbatim excerpts ---
+    biz_result = _find_section(content, _RE_BUSINESS_OVERVIEW)
+    if biz_result:
+        excerpts["business_overview"] = biz_result[0]
+    else:
+        warnings.append("Business overview section not found")
+
+    mgmt_result = _find_section(content, _RE_MANAGEMENT)
+    if mgmt_result:
+        excerpts["management_commentary"] = mgmt_result[0]
+    else:
+        warnings.append("Management commentary not found")
+
+    cap_result = _find_section(content, _RE_CAPITAL_ALLOCATION)
+    if cap_result:
+        excerpts["capital_allocation"] = cap_result[0]
+    else:
+        warnings.append("Capital allocation section not found")
+
+    # --- Result-level confidence ---
+    key_excerpts = sum(
+        1 for k in ("business_overview", "management_commentary") if k in excerpts
+    )
+    has_segments = len(segment_names) >= 2
+    if key_excerpts == 2 and has_segments:
+        result_confidence: Literal["high", "medium", "low"] = "high"
+    elif key_excerpts >= 1 or has_segments:
+        result_confidence = "medium"
+    else:
+        result_confidence = "low"
+
+    return AnalysisResult(
+        evidence_id=evidence_id,
+        kind=doc.kind,
+        analyzer_version=ANALYZER_VERSION,
+        confidence=result_confidence,
+        source_date=datetime.fromisoformat(doc.source_date),
+        warnings=warnings,
+        facts=facts,
+        excerpts=excerpts,
+    )

@@ -1,0 +1,19 @@
+{
+  "evidence_id": "bse-shp-532540-129",
+  "document_kind": "shareholding_pattern",
+  "analyzer": "shareholding_pattern",
+  "min_confidence": "high",
+  "max_warnings": 0,
+  "description": "TCS Q4 FY26 BSE XBRL shareholding pattern (quarter ended 2026-03-31)",
+  "expected_facts": [
+    {"kind": "ownership_total_shares",        "value": 3618087518, "unit": "count",   "period": "2026-03-31"},
+    {"kind": "ownership_promoter_pct",         "value": 71.77,     "unit": "percent", "period": "2026-03-31"},
+    {"kind": "ownership_public_pct",           "value": 28.23,     "unit": "percent", "period": "2026-03-31"},
+    {"kind": "ownership_fpi_pct",              "value": 9.66,      "unit": "percent", "period": "2026-03-31"},
+    {"kind": "ownership_dii_pct",              "value": 13.41,     "unit": "percent", "period": "2026-03-31"},
+    {"kind": "ownership_mf_pct",               "value": 5.77,      "unit": "percent", "period": "2026-03-31"},
+    {"kind": "ownership_insurance_pct",        "value": 6.69,      "unit": "percent", "period": "2026-03-31"},
+    {"kind": "ownership_nri_pct",              "value": 0.24,      "unit": "percent", "period": "2026-03-31"},
+    {"kind": "ownership_promoter_pledged_pct", "value": 0.0,       "unit": "percent", "period": "2026-03-31"}
+  ]
+}

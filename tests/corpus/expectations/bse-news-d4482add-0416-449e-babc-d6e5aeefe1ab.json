@@ -1,0 +1,30 @@
+{
+  "evidence_id": "bse-news-d4482add-0416-449e-babc-d6e5aeefe1ab",
+  "document_kind": "investor_presentation",
+  "analyzer": "investor_presentation",
+  "min_confidence": "high",
+  "max_warnings": 0,
+  "description": "TCS Analyst Day 2025 — Dec 17 2025 — strategy deck with aspiration, 5 pillars, margin guidance, ROE FY21-25, FCF FY21-25, CSAT H1 FY26",
+  "expected_facts": [
+    {"kind": "strategy_aspiration"},
+    {"kind": "strategy_priority", "value": "tcsAI Internal Transformation"},
+    {"kind": "strategy_priority", "value": "Redefining all Services"},
+    {"kind": "strategy_priority", "value": "Future-ready Talent Model"},
+    {"kind": "strategy_priority", "value": "Making AI Real for clients"},
+    {"kind": "strategy_priority", "value": "AI Ecosystem Play"},
+    {"kind": "strategy_guidance", "value": "26-28%"},
+    {"kind": "segment_name",        "value": "AI Services"},
+    {"kind": "segment_growth_pct",  "unit": "percent"},
+    {"kind": "financial_roe", "period": "2021-03-31", "value": 38.2,  "unit": "percent"},
+    {"kind": "financial_roe", "period": "2022-03-31", "value": 42.6,  "unit": "percent"},
+    {"kind": "financial_roe", "period": "2023-03-31", "value": 45.9,  "unit": "percent"},
+    {"kind": "financial_roe", "period": "2024-03-31", "value": 50.3,  "unit": "percent"},
+    {"kind": "financial_roe", "period": "2025-03-31", "value": 51.2,  "unit": "percent"},
+    {"kind": "financial_fcf", "period": "2021-03-31", "value": 30664, "unit": "crore_inr"},
+    {"kind": "financial_fcf", "period": "2022-03-31", "value": 31424, "unit": "crore_inr"},
+    {"kind": "financial_fcf", "period": "2023-03-31", "value": 45602, "unit": "crore_inr"},
+    {"kind": "financial_fcf", "period": "2024-03-31", "value": 46223, "unit": "crore_inr"},
+    {"kind": "financial_fcf", "period": "2025-03-31", "value": 44962, "unit": "crore_inr"},
+    {"kind": "strategy_csat", "value": 94.18, "period": "2025-09-30", "unit": "percent"}
+  ]
+}

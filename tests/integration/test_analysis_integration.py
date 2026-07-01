@@ -4,7 +4,7 @@ Requires the TCS annual report to be parsed into knowledge.db first.
 Run with: pytest -m integration -v -s
 
 The test also serves as a human-readable demo: run with -s to see the
-structured summary printed to stdout.
+structured result printed to stdout.
 """
 from __future__ import annotations
 
@@ -13,7 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from atlas.analysis.annual_report import AnnualReportSummary, summarize
+from atlas.analysis.annual_report import summarize
+from atlas.analysis.base import AnalysisFact, AnalysisResult, FactKind
 from atlas.knowledge.base import KnowledgeBase
 
 pytestmark = pytest.mark.integration
@@ -64,8 +65,13 @@ def kb(tcs_root: Path) -> Generator[KnowledgeBase, None, None]:
 
 
 @pytest.fixture(scope="module")
-def summary(kb: KnowledgeBase) -> AnnualReportSummary:
+def result(kb: KnowledgeBase) -> AnalysisResult:
     return summarize(_AR_2024_ID, kb)
+
+
+# Convenience: all facts of a given kind.
+def _facts(result: AnalysisResult, kind: FactKind) -> list[AnalysisFact]:
+    return [f for f in result.facts if f.kind == kind]
 
 
 # ---------------------------------------------------------------------------
@@ -74,20 +80,39 @@ def summary(kb: KnowledgeBase) -> AnnualReportSummary:
 
 
 class TestSummarizeContract:
-    def test_returns_annual_report_summary(self, summary: AnnualReportSummary) -> None:
-        assert isinstance(summary, AnnualReportSummary)
+    def test_returns_analysis_result(self, result: AnalysisResult) -> None:
+        assert isinstance(result, AnalysisResult)
 
-    def test_evidence_id_matches(self, summary: AnnualReportSummary) -> None:
-        assert summary.evidence_id == _AR_2024_ID
+    def test_evidence_id_matches(self, result: AnalysisResult) -> None:
+        assert result.evidence_id == _AR_2024_ID
 
-    def test_char_count_substantial(self, summary: AnnualReportSummary) -> None:
-        assert summary.char_count >= 50_000
+    def test_kind_is_annual_report(self, result: AnalysisResult) -> None:
+        assert result.kind == "annual_report"
 
-    def test_title_non_empty(self, summary: AnnualReportSummary) -> None:
-        assert len(summary.title) > 0
+    def test_analyzer_version_present(self, result: AnalysisResult) -> None:
+        from atlas.analysis.annual_report import ANALYZER_VERSION
+        assert result.analyzer_version == ANALYZER_VERSION
 
-    def test_source_date_non_empty(self, summary: AnnualReportSummary) -> None:
-        assert len(summary.source_date) > 0
+    def test_confidence_is_valid(self, result: AnalysisResult) -> None:
+        assert result.confidence in ("high", "medium", "low")
+
+    def test_analyzed_at_is_utc(self, result: AnalysisResult) -> None:
+        assert result.analyzed_at.tzinfo is not None
+
+    def test_char_count_substantial(self, result: AnalysisResult, kb: KnowledgeBase) -> None:
+        doc = kb.get(_AR_2024_ID)
+        assert doc is not None
+        assert doc.char_count >= 50_000
+
+    def test_title_non_empty(self, result: AnalysisResult, kb: KnowledgeBase) -> None:
+        doc = kb.get(_AR_2024_ID)
+        assert doc is not None
+        assert len(doc.title) > 0
+
+    def test_source_date_non_empty(self, result: AnalysisResult, kb: KnowledgeBase) -> None:
+        doc = kb.get(_AR_2024_ID)
+        assert doc is not None
+        assert len(doc.source_date) > 0
 
 
 # ---------------------------------------------------------------------------
@@ -96,111 +121,145 @@ class TestSummarizeContract:
 
 
 class TestSectionExtraction:
-    def test_management_commentary_found(self, summary: AnnualReportSummary) -> None:
-        assert summary.management_commentary is not None, (
+    def test_management_commentary_found(self, result: AnalysisResult) -> None:
+        assert "management_commentary" in result.excerpts, (
             "Expected to find management commentary / chairman letter"
         )
 
-    def test_management_commentary_minimum_length(self, summary: AnnualReportSummary) -> None:
-        if summary.management_commentary is None:
+    def test_management_commentary_minimum_length(self, result: AnalysisResult) -> None:
+        if "management_commentary" not in result.excerpts:
             pytest.skip("management_commentary not found — length check skipped")
-        assert len(summary.management_commentary) >= 200
+        assert len(result.excerpts["management_commentary"]) >= 200
 
-    def test_business_overview_found(self, summary: AnnualReportSummary) -> None:
-        assert summary.business_overview is not None, (
+    def test_business_overview_found(self, result: AnalysisResult) -> None:
+        assert "business_overview" in result.excerpts, (
             "Expected to find business overview section"
         )
 
-    def test_capital_allocation_found(self, summary: AnnualReportSummary) -> None:
-        assert summary.capital_allocation is not None, (
+    def test_capital_allocation_found(self, result: AnalysisResult) -> None:
+        assert "capital_allocation" in result.excerpts, (
             "Expected to find capital allocation / dividend policy"
         )
 
-    def test_segments_non_empty(self, summary: AnnualReportSummary) -> None:
-        assert len(summary.segments) >= 2, (
-            f"Expected at least 2 business segments; got {summary.segments}"
+    def test_segments_non_empty(self, result: AnalysisResult) -> None:
+        segs = _facts(result, FactKind.SEGMENT_NAME)
+        assert len(segs) >= 2, (
+            f"Expected at least 2 business segments; got {[f.value for f in segs]}"
         )
 
-    def test_segments_are_strings(self, summary: AnnualReportSummary) -> None:
-        for s in summary.segments:
-            assert isinstance(s, str) and len(s) > 0
+    def test_segments_are_strings(self, result: AnalysisResult) -> None:
+        for f in _facts(result, FactKind.SEGMENT_NAME):
+            assert isinstance(f.value, str) and len(f.value) > 0
 
-    def test_manufacturing_in_segments(self, summary: AnnualReportSummary) -> None:
-        assert any("Manufacturing" in s for s in summary.segments), (
-            f"Expected 'Manufacturing' in segments; got {summary.segments}"
+    def test_manufacturing_in_segments(self, result: AnalysisResult) -> None:
+        values = [f.value for f in _facts(result, FactKind.SEGMENT_NAME)]
+        assert any("Manufacturing" in str(v) for v in values), (
+            f"Expected 'Manufacturing' in segments; got {values}"
         )
 
-    def test_no_yoy_changes_without_previous_id(self, summary: AnnualReportSummary) -> None:
-        assert summary.year_on_year_changes == []
+    def test_risks_non_empty(self, result: AnalysisResult) -> None:
+        risks = _facts(result, FactKind.RISK_FACTOR)
+        assert len(risks) >= 1, "Expected at least one risk factor"
+
+    def test_warnings_is_list(self, result: AnalysisResult) -> None:
+        assert isinstance(result.warnings, list)
 
 
 # ---------------------------------------------------------------------------
-# Demo: print structured summary for human review
+# Fact structure checks
 # ---------------------------------------------------------------------------
 
 
-class TestSummaryDemo:
-    def test_print_structured_summary(
-        self, summary: AnnualReportSummary, capsys: pytest.CaptureFixture[str]
+class TestFactStructure:
+    def test_segment_facts_have_period(self, result: AnalysisResult) -> None:
+        for f in _facts(result, FactKind.SEGMENT_NAME):
+            assert f.period is not None
+            assert f.period.startswith("20")
+
+    def test_segment_facts_have_null_unit(self, result: AnalysisResult) -> None:
+        for f in _facts(result, FactKind.SEGMENT_NAME):
+            assert f.unit is None
+
+    def test_all_facts_have_confidence(self, result: AnalysisResult) -> None:
+        for f in result.facts:
+            assert f.confidence in ("high", "medium", "low")
+
+    def test_all_facts_have_provenance_section(self, result: AnalysisResult) -> None:
+        for f in result.facts:
+            assert isinstance(f.provenance.section, str)
+            assert len(f.provenance.section) > 0
+
+
+# ---------------------------------------------------------------------------
+# Demo: print structured result for human review
+# ---------------------------------------------------------------------------
+
+
+class TestResultDemo:
+    def test_print_structured_result(
+        self, result: AnalysisResult, kb: KnowledgeBase, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """Print the full structured summary to stdout when run with -s."""
+        """Print the full structured result to stdout when run with -s."""
 
         def _trunc(text: str | None, limit: int = 500) -> str:
             if text is None:
                 return "(not found)"
             return text[:limit].replace("\n", " ") + ("..." if len(text) > limit else "")
 
+        doc = kb.get(_AR_2024_ID)
+        assert doc is not None
+
+        segs = _facts(result, FactKind.SEGMENT_NAME)
+        risks = _facts(result, FactKind.RISK_FACTOR)
+
         print("\n" + "=" * 70)
         print("ANNUAL REPORT ANALYSIS DEMO")
         print("=" * 70)
-        print(f"Evidence ID : {summary.evidence_id}")
-        print(f"Title       : {summary.title}")
-        print(f"Source date : {summary.source_date}")
-        print(f"Char count  : {summary.char_count:,}")
-        print(f"Extracted at: {summary.extracted_at.isoformat()}")
+        print(f"Evidence ID      : {result.evidence_id}")
+        print(f"Title            : {doc.title}")
+        print(f"Source date      : {doc.source_date}")
+        print(f"Char count       : {doc.char_count:,}")
+        print(f"Analyzer version : {result.analyzer_version}")
+        print(f"Confidence       : {result.confidence}")
+        print(f"Analyzed at      : {result.analyzed_at.isoformat()}")
 
         print("\n--- MANAGEMENT COMMENTARY ---")
-        print(_trunc(summary.management_commentary))
+        print(_trunc(result.excerpts.get("management_commentary")))
 
         print("\n--- BUSINESS OVERVIEW ---")
-        print(_trunc(summary.business_overview))
+        print(_trunc(result.excerpts.get("business_overview")))
 
         print("\n--- BUSINESS SEGMENTS ---")
-        if summary.segments:
-            for seg in summary.segments:
-                print(f"  • {seg}")
+        if segs:
+            for f in segs:
+                print(f"  • {f.value}  [confidence={f.confidence}, period={f.period}]")
         else:
             print("  (not found)")
 
         print("\n--- CAPITAL ALLOCATION ---")
-        print(_trunc(summary.capital_allocation))
+        print(_trunc(result.excerpts.get("capital_allocation")))
 
-        print("\n--- MAJOR RISKS ---")
-        if summary.major_risks:
-            for risk in summary.major_risks:
-                print(f"  • {risk}")
+        print("\n--- RISK FACTORS ---")
+        if risks:
+            for f in risks:
+                print(f"  • {f.value}")
         else:
             print("  (not found)")
 
-        print("\n--- YEAR-ON-YEAR CHANGES ---")
-        if summary.year_on_year_changes:
-            for change in summary.year_on_year_changes:
-                print(f"  • {change}")
-        else:
-            print("  (no previous report provided)")
+        if result.warnings:
+            print("\n--- WARNINGS ---")
+            for w in result.warnings:
+                print(f"  ! {w}")
 
         print("=" * 70)
 
-        # Soft assertion: at least one section was found.
-        found = [
-            f for f in [
-                summary.management_commentary,
-                summary.business_overview,
-                summary.capital_allocation,
-            ]
-            if f is not None
-        ]
-        assert len(found) >= 2, (
+        # Soft assertion: at least two key excerpts were found.
+        found = sum(
+            1
+            for k in ("management_commentary", "business_overview", "capital_allocation")
+            if k in result.excerpts
+        )
+        assert found >= 2, (
             "Expected at least 2 of management_commentary / business_overview / "
-            f"capital_allocation to be non-None; got {len(found)}"
+            f"capital_allocation in excerpts; got {found}"
         )

@@ -97,27 +97,83 @@ The aim is to bring together the relevant evidence so that an investor can make 
 
 ## Current Status
 
-Atlas is currently in Stage 1.
+Atlas has completed Stages 1, 2, and the foundation of Stage 3. TCS is the reference company used throughout development.
 
-Completed:
+---
 
-* Project structure
-* Repository creation
-* BSE integration
-* Annual reports
-* Financial results
-* Earnings call transcripts
-* Investor presentations
-* Evidence catalog
-* Download verification
-* Deduplication
-* Acquisition monitoring and warnings
+### Stage 1 — Data Collection: Complete
 
-Next:
+* BSE integration: filing discovery, download, deduplication, verification
+* Evidence catalog with 156 TCS documents across 13 filing types
+* Acquisition pipeline: `AcquisitionPolicy`, per-run records, incremental updates
+* Knowledge base: PDF → text parsing with page and character offsets preserved
 
-* Shareholding patterns
-* NSE acquisition
-* Company investor relations websites
-* Additional public data sources
+Filing types in the TCS catalog:
 
-The later stages will be built on top of the repository created during Stage 1.
+| Filing type | Count |
+|---|---|
+| Investor presentations | 50 |
+| Annual reports | 29 |
+| AGM notices and voting results | 28 |
+| Regulatory filings | 9 |
+| Acquisitions (Reg 30) | 6 |
+| Earnings transcripts | 6 |
+| Dividend notices | 6 |
+| Financial results (Reg 33) | 5 |
+| Buyback filings | 5 |
+| BRSR | 4 |
+| Board outcomes (Reg 30) | 4 |
+| Credit rating reports | 3 |
+| Shareholding pattern (XBRL) | 1 |
+
+---
+
+### Stage 2 — Information Extraction: Complete
+
+A typed fact ontology (`FactKind`) with 98 members and 12 units (`FactUnit`), spanning financial, capital allocation, ESG, governance, ownership, credit, strategy, and segment domains.
+
+Ten analyzers, each implementing `analyze(evidence_id, kb) → AnalysisResult`:
+
+| Analyzer | Document type | FactKinds extracted | Tests |
+|---|---|---|---|
+| `financial_results` | Quarterly / annual Reg 33 | 26 (full P&L, balance sheet, cash flow, segments, EPS, audit) | 177 |
+| `brsr` | Business Responsibility & Sustainability Report | 15 (GHG, energy, water, waste, workforce, safety, SBTi) | 154 |
+| `agm_notice` | AGM voting results (Reg 44) | 5 (resolution title, type, outcome, vote percentages) | 85 |
+| `investor_presentation` | Strategy decks and analyst day slides | 10 (strategy priorities, guidance, CSAT, segment growth, ROE, FCF) | 88 |
+| `credit_rating` | ESG and debt rating rationales | 6 (agency, instrument, amount, rating, outlook, action) | 89 |
+| `board_outcome` | Board meeting Reg 30 filings | 8 (dividends, M&A events, subsidiary investments) | 94 |
+| `acquisition` | Acquisition Reg 30 filings | 5 (target, consideration type, enterprise value, stake, timeline) | 79 |
+| `buyback` | Buyback filings | 5 (amount, price, shares offered/bought, record date) | 70 |
+| `shareholding_pattern` | BSE XBRL quarterly SHP | 11 (promoter, FPI, DII, MF, insurance, retail, HNI, NRI holdings) | 66 |
+| `earnings_transcript` | Earnings call transcripts | 6 (revenue, TCV, operating margin, net margin, period metadata) | 71 |
+
+A `shareholding_trend` module (`analyze_trend`) aggregates multiple SHP results into QoQ and YoY holding deltas and directional signals (69 tests).
+
+A golden corpus of 11 real TCS documents with expected facts validates extraction quality on every test run. Total test suite: 1,675+ tests, 92%+ line coverage.
+
+---
+
+### Stage 3 — Knowledge Repository: Foundation Complete
+
+A `CompanyProfile` assembles `AnalysisResult` objects from multiple filings into a structured, time-ordered knowledge object:
+
+```
+CompanyProfile
+├── FinancialTimeSeries     — quarterly and annual P&L, balance sheet, cash flow snapshots
+├── ESGTimeSeries           — GHG, energy, water, waste, workforce snapshots
+├── CapitalEventLedger      — dividends, buybacks, acquisitions, investments
+├── CreditHistory           — rating entries sorted by date
+├── OwnershipTimeSeries     — promoter, FPI, DII, retail holding snapshots
+└── SegmentTimeSeries       — revenue and EBIT per business segment
+```
+
+A `derived` module computes net debt/cash, EBIT, EBITDA, margins (EBIT, EBITDA, PAT), capex intensity, GAAP FCF, and employee cost percentage from the snapshot facts.
+
+---
+
+### Next
+
+* Wire `investor_presentation` and `agm_notice` results into `CompanyProfile` (Strategy and Governance sub-models)
+* `CompanyStore`: serialize `CompanyProfile` to disk for incremental updates
+* CLI: `atlas profile <company>` — end-to-end pipeline from catalog to profile
+* Fix and register `annual_report` analyzer (currently partial; not in the registry)
