@@ -446,12 +446,20 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
 
     content = kb.get_content(evidence_id) or ""
 
+    # Catalog stores source_date as an ISO string; unit test fixtures may pass
+    # a pre-converted datetime.  Normalise to datetime once here.
+    source_dt = (
+        entry.source_date
+        if isinstance(entry.source_date, datetime)
+        else datetime.fromisoformat(entry.source_date)
+    )
+
     result = AnalysisResult(
         evidence_id=evidence_id,
         kind="agm_notice",
         analyzer_version=ANALYZER_VERSION,
         confidence="low",
-        source_date=entry.source_date,
+        source_date=source_dt,
     )
 
     if not content.strip():
@@ -483,7 +491,7 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     if agm_date is None:
         result.warnings.append("could not extract AGM date from cover letter")
         # Fall back to filing date
-        agm_date = entry.source_date.strftime("%Y-%m-%d")
+        agm_date = source_dt.strftime("%Y-%m-%d")
 
     _extract_voting_results(content, result, agm_date)
 

@@ -43,6 +43,7 @@ def _fact(
     section: str = "consolidated_pl_table",
     char_offset: int | None = None,
     confidence: str = "high",
+    excerpt: str | None = None,
 ) -> AnalysisFact:
     return AnalysisFact(
         kind=kind,
@@ -50,7 +51,7 @@ def _fact(
         unit=unit,
         period=period,
         confidence=confidence,
-        provenance=Provenance(section=section, char_offset=char_offset, excerpt=None),
+        provenance=Provenance(section=section, char_offset=char_offset, excerpt=excerpt),
     )
 
 
@@ -116,6 +117,59 @@ def _shp_result(
     return _result("shareholding_pattern", facts, evidence_id=evidence_id)
 
 
+def _investor_presentation_result(
+    evidence_id: str = "ip-001",
+    source_date: datetime = _DT,
+) -> AnalysisResult:
+    facts = [
+        _fact(FactKind.STRATEGY_PRIORITY, "Cloud and AI platform leadership", section="strategy"),
+        _fact(FactKind.STRATEGY_ASPIRATION, "50 billion dollar company", section="strategy"),
+        _fact(FactKind.STRATEGY_CSAT, 78.5, FactUnit.PERCENT, period="2024-09-30", section="customer"),
+        _fact(FactKind.FINANCIAL_ROE, 52.0, FactUnit.PERCENT, period="2025-03-31",
+              section="financial_highlights"),
+    ]
+    return _result("investor_presentation", facts, evidence_id=evidence_id, source_date=source_date)
+
+
+def _agm_result(
+    evidence_id: str = "agm-001",
+    source_date: datetime = _DT,
+) -> AnalysisResult:
+    facts = [
+        _fact(FactKind.GOVERNANCE_RESOLUTION_TITLE,
+              "Re-appointment of auditor Deloitte",
+              period="2024-08-14", section="resolution_1"),
+        _fact(FactKind.GOVERNANCE_RESOLUTION_TYPE,
+              "ordinary",
+              period="2024-08-14", section="resolution_1"),
+        _fact(FactKind.GOVERNANCE_RESOLUTION_OUTCOME,
+              "passed",
+              period="2024-08-14", section="resolution_1"),
+        _fact(FactKind.GOVERNANCE_VOTE_PCT_FOR,
+              99.12, FactUnit.PERCENT,
+              period="2024-08-14", section="resolution_1"),
+        _fact(FactKind.GOVERNANCE_VOTE_PCT_AGAINST,
+              0.88, FactUnit.PERCENT,
+              period="2024-08-14", section="resolution_1"),
+        _fact(FactKind.GOVERNANCE_RESOLUTION_TITLE,
+              "Approve remuneration of MD & CEO",
+              period="2024-08-14", section="resolution_2"),
+        _fact(FactKind.GOVERNANCE_RESOLUTION_TYPE,
+              "special",
+              period="2024-08-14", section="resolution_2"),
+        _fact(FactKind.GOVERNANCE_RESOLUTION_OUTCOME,
+              "passed",
+              period="2024-08-14", section="resolution_2"),
+        _fact(FactKind.GOVERNANCE_VOTE_PCT_FOR,
+              85.3, FactUnit.PERCENT,
+              period="2024-08-14", section="resolution_2"),
+        _fact(FactKind.GOVERNANCE_VOTE_PCT_AGAINST,
+              14.7, FactUnit.PERCENT,
+              period="2024-08-14", section="resolution_2"),
+    ]
+    return _result("agm_notice", facts, evidence_id=evidence_id, source_date=source_date)
+
+
 # ---------------------------------------------------------------------------
 # build_profile — basic routing
 # ---------------------------------------------------------------------------
@@ -130,8 +184,12 @@ def test_build_profile_empty():
     assert profile.capital_events.dividends == []
     assert profile.capital_events.buybacks == []
     assert profile.capital_events.acquisitions == []
-    assert profile.credit_history.entries == []
+    assert profile.credit_history.debt_ratings == []
+    assert profile.credit_history.esg_ratings == []
     assert profile.segments.entries == []
+    assert profile.strategy.entries == []
+    assert profile.strategy.csat == []
+    assert profile.governance.resolutions == []
 
 
 def test_build_profile_financial_quarterly():
@@ -227,6 +285,7 @@ def test_build_profile_ownership():
     snap = profile.ownership.snapshots[0]
     assert snap.period == "2024-09-30"
     assert snap.facts[FactKind.OWNERSHIP_PROMOTER_PCT] == pytest.approx(71.8)
+    assert snap.sources == ["shp-001"]
 
 
 def test_build_profile_ownership_multiple_periods():
@@ -235,6 +294,12 @@ def test_build_profile_ownership_multiple_periods():
     profile = build_profile("TCS", [q2, q1])
     periods = [s.period for s in profile.ownership.snapshots]
     assert periods == sorted(periods)
+
+
+def test_build_profile_ownership_sources_tracks_evidence_id():
+    profile = build_profile("TCS", [_shp_result(evidence_id="shp-xyz")])
+    snap = profile.ownership.snapshots[0]
+    assert "shp-xyz" in snap.sources
 
 
 # ---------------------------------------------------------------------------
@@ -366,11 +431,11 @@ def test_build_profile_board_outcome_investment():
 
 
 # ---------------------------------------------------------------------------
-# Credit history
+# Credit history — separated debt and ESG
 # ---------------------------------------------------------------------------
 
 
-def test_build_profile_credit_esg():
+def test_build_profile_credit_esg_goes_to_esg_ratings():
     facts = [
         _fact(FactKind.CREDIT_AGENCY, "NSE Sustainability", section="document"),
         _fact(FactKind.CREDIT_INSTRUMENT, "ESG", section="document"),
@@ -379,14 +444,36 @@ def test_build_profile_credit_esg():
         _fact(FactKind.CREDIT_ACTION, "reaffirmed", section="document"),
     ]
     profile = build_profile("TCS", [_result("credit_rating_report", facts)])
-    assert len(profile.credit_history.entries) == 1
-    entry = profile.credit_history.entries[0]
+    assert profile.credit_history.debt_ratings == []
+    assert len(profile.credit_history.esg_ratings) == 1
+    entry = profile.credit_history.esg_ratings[0]
     assert entry.agency == "NSE Sustainability"
     assert entry.instrument == "ESG"
     assert entry.rating == "74"
     assert entry.outlook == "Leader"
     assert entry.action == "reaffirmed"
     assert entry.amount is None
+
+
+def test_build_profile_credit_debt_goes_to_debt_ratings():
+    facts = [
+        _fact(FactKind.CREDIT_AGENCY, "CRISIL", section="document"),
+        _fact(FactKind.CREDIT_INSTRUMENT, "Long-term Bank Facilities",
+              section="Long-term Bank Facilities"),
+        _fact(FactKind.CREDIT_RATING, "AAA",
+              section="Long-term Bank Facilities"),
+        _fact(FactKind.CREDIT_OUTLOOK, "stable",
+              section="Long-term Bank Facilities"),
+        _fact(FactKind.CREDIT_AMOUNT, 5000.0, FactUnit.CRORE_INR,
+              section="Long-term Bank Facilities"),
+    ]
+    profile = build_profile("TCS", [_result("credit_rating_report", facts)])
+    assert profile.credit_history.esg_ratings == []
+    assert len(profile.credit_history.debt_ratings) == 1
+    entry = profile.credit_history.debt_ratings[0]
+    assert entry.instrument == "Long-term Bank Facilities"
+    assert entry.rating == "AAA"
+    assert entry.amount == 5000.0
 
 
 def test_build_profile_credit_debt_multiple_instruments():
@@ -406,10 +493,13 @@ def test_build_profile_credit_debt_multiple_instruments():
               section="Commercial Paper"),
     ]
     profile = build_profile("TCS", [_result("credit_rating_report", facts)])
-    assert len(profile.credit_history.entries) == 2
-    instruments = {e.instrument for e in profile.credit_history.entries}
+    assert len(profile.credit_history.debt_ratings) == 2
+    instruments = {e.instrument for e in profile.credit_history.debt_ratings}
     assert instruments == {"Long-term Bank Facilities", "Commercial Paper"}
-    lt = next(e for e in profile.credit_history.entries if e.instrument == "Long-term Bank Facilities")
+    lt = next(
+        e for e in profile.credit_history.debt_ratings
+        if e.instrument == "Long-term Bank Facilities"
+    )
     assert lt.rating == "AAA"
     assert lt.amount == 5000.0
 
@@ -420,7 +510,8 @@ def test_build_profile_credit_no_instrument_fact_skipped():
         _fact(FactKind.CREDIT_RATING, "AAA", section="some_section"),
     ]
     profile = build_profile("TCS", [_result("credit_rating_report", facts)])
-    assert profile.credit_history.entries == []
+    assert profile.credit_history.debt_ratings == []
+    assert profile.credit_history.esg_ratings == []
 
 
 # ---------------------------------------------------------------------------
@@ -511,16 +602,125 @@ def test_transcript_creates_new_snapshot_when_no_financial_result():
 
 
 # ---------------------------------------------------------------------------
-# Unknown kinds silently skipped
+# Unknown kinds still silently skipped (annual_report)
 # ---------------------------------------------------------------------------
 
 
-def test_unknown_kinds_ignored():
-    facts = [_fact(FactKind.STRATEGY_PRIORITY, "Cloud leadership", section="strategy")]
-    r = _result("investor_presentation", facts)
+def test_annual_report_kind_ignored():
+    facts = [_fact(FactKind.SEGMENT_NAME, "BFSI", section="segment_table", period="2024-03-31")]
+    r = _result("annual_report", facts)
     profile = build_profile("TCS", [r])
     assert profile.financial.snapshots == []
-    assert profile.esg.snapshots == []
+    assert profile.segments.entries == []
+
+
+# ---------------------------------------------------------------------------
+# Strategy — investor_presentation
+# ---------------------------------------------------------------------------
+
+
+def test_investor_presentation_strategy_entries():
+    profile = build_profile("TCS", [_investor_presentation_result()])
+    assert len(profile.strategy.entries) == 2
+    kinds = {e.kind for e in profile.strategy.entries}
+    assert kinds == {"priority", "aspiration"}
+
+
+def test_investor_presentation_strategy_text_preserved():
+    profile = build_profile("TCS", [_investor_presentation_result()])
+    priority = next(e for e in profile.strategy.entries if e.kind == "priority")
+    assert "Cloud" in priority.text
+    assert priority.evidence_id == "ip-001"
+
+
+def test_investor_presentation_csat_entry():
+    profile = build_profile("TCS", [_investor_presentation_result()])
+    assert len(profile.strategy.csat) == 1
+    csat = profile.strategy.csat[0]
+    assert csat.period == "2024-09-30"
+    assert csat.score == pytest.approx(78.5)
+
+
+def test_investor_presentation_financial_roe_supplements_snapshot():
+    # ROE from IP should land in FinancialTimeSeries
+    profile = build_profile("TCS", [_investor_presentation_result()])
+    assert len(profile.financial.snapshots) == 1
+    snap = profile.financial.snapshots[0]
+    assert snap.period == "2025-03-31"
+    assert snap.facts[FactKind.FINANCIAL_ROE] == pytest.approx(52.0)
+    assert snap.period_type == "annual"
+
+
+def test_investor_presentation_does_not_overwrite_financial_result_roe():
+    # financial_result creates a snapshot; IP should not overwrite it
+    fr_facts = [
+        _fact(FactKind.REPORT_PERIOD_TYPE, "annual", section="cover_letter"),
+        _fact(FactKind.FINANCIAL_REVENUE, 240000.0, FactUnit.CRORE_INR,
+              period="2025-03-31", section="consolidated_pl_table"),
+        _fact(FactKind.FINANCIAL_ROE, 55.0, FactUnit.PERCENT,
+              period="2025-03-31", section="consolidated_pl_table"),
+    ]
+    fr = _result("financial_results", fr_facts, evidence_id="fr-ann")
+    ip = _investor_presentation_result()  # has ROE=52.0 for same period
+    profile = build_profile("TCS", [fr, ip])
+    snap = next(s for s in profile.financial.snapshots if s.period == "2025-03-31")
+    assert snap.facts[FactKind.FINANCIAL_ROE] == pytest.approx(55.0)  # fr wins
+
+
+def test_investor_presentation_strategy_entries_sorted_by_date():
+    ip1 = _investor_presentation_result(evidence_id="ip-old", source_date=_DT)
+    ip2_facts = [_fact(FactKind.STRATEGY_GUIDANCE, "30% operating margin", section="guidance")]
+    ip2 = _result("investor_presentation", ip2_facts, evidence_id="ip-new", source_date=_DT2)
+    profile = build_profile("TCS", [ip2, ip1])
+    dates = [e.source_date for e in profile.strategy.entries]
+    assert dates == sorted(dates)
+
+
+# ---------------------------------------------------------------------------
+# Governance — agm_notice
+# ---------------------------------------------------------------------------
+
+
+def test_agm_notice_resolutions_ingested():
+    profile = build_profile("TCS", [_agm_result()])
+    assert len(profile.governance.resolutions) == 2
+
+
+def test_agm_notice_resolution_fields():
+    profile = build_profile("TCS", [_agm_result()])
+    # Resolutions sorted by (period, title)
+    res = next(r for r in profile.governance.resolutions if "auditor" in r.title.lower())
+    assert res.period == "2024-08-14"
+    assert res.resolution_type == "ordinary"
+    assert res.outcome == "passed"
+    assert res.pct_for == pytest.approx(99.12)
+    assert res.pct_against == pytest.approx(0.88)
+    assert res.evidence_id == "agm-001"
+
+
+def test_agm_notice_special_resolution():
+    profile = build_profile("TCS", [_agm_result()])
+    special = next(r for r in profile.governance.resolutions if r.resolution_type == "special")
+    assert special.pct_for == pytest.approx(85.3)
+
+
+def test_agm_notice_resolutions_sorted_by_period_then_title():
+    profile = build_profile("TCS", [_agm_result()])
+    keys = [(r.period or "", r.title) for r in profile.governance.resolutions]
+    assert keys == sorted(keys)
+
+
+def test_agm_notice_pre_meeting_notice_yields_no_resolutions():
+    # Pre-meeting notice has no GOVERNANCE_RESOLUTION_TITLE facts
+    facts = [_fact(FactKind.STRATEGY_PRIORITY, "Some text", section="cover")]
+    r = _result("agm_notice", facts)
+    profile = build_profile("TCS", [r])
+    assert profile.governance.resolutions == []
+
+
+def test_agm_notice_evidence_id_tracked():
+    profile = build_profile("TCS", [_agm_result(evidence_id="agm-xyz")])
+    assert all(r.evidence_id == "agm-xyz" for r in profile.governance.resolutions)
 
 
 # ---------------------------------------------------------------------------
@@ -533,11 +733,15 @@ def test_build_profile_multi_domain():
         _financial_result(period="2024-09-30"),
         _esg_result(period="2024-03-31"),
         _shp_result(period="2024-09-30"),
+        _investor_presentation_result(),
+        _agm_result(),
     ]
     profile = build_profile("TCS", results)
-    assert len(profile.financial.snapshots) == 1
+    assert len(profile.financial.snapshots) >= 1
     assert len(profile.esg.snapshots) == 1
     assert len(profile.ownership.snapshots) == 1
+    assert len(profile.strategy.entries) >= 1
+    assert len(profile.governance.resolutions) == 2
 
 
 # ---------------------------------------------------------------------------

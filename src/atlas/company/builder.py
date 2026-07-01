@@ -7,22 +7,25 @@ Dispatch table
 --------------
 financial_results      → FinancialTimeSeries + DividendEvents + SegmentTimeSeries
 earnings_transcript    → supplements FinancialTimeSeries (TCV, margins)
+investor_presentation  → supplements FinancialTimeSeries (ROE, FCF) + StrategyProfile
 brsr                   → ESGTimeSeries
 shareholding_pattern   → OwnershipTimeSeries
 buyback                → CapitalEventLedger.buybacks
 acquisition            → CapitalEventLedger.acquisitions
 board_outcome          → CapitalEventLedger (dividends | acquisitions | investments)
-credit_rating_report   → CreditHistory
+credit_rating_report   → CreditHistory (debt_ratings or esg_ratings)
+agm_notice             → GovernanceProfile.resolutions
 
-Other kinds (annual_report, investor_presentation, agm_notice) are currently
-ignored — they do not populate structured time-series in V1.
+Other kinds (annual_report) are currently ignored.
 
 Processing order
 ----------------
 financial_results results are processed with regular dict.update() so that a
 revised filing correctly overwrites an earlier one for the same period.
-earnings_transcript results use setdefault() so that authoritative XBRL data
-from financial_results is never overwritten by spoken transcript numbers.
+
+earnings_transcript and investor_presentation results use setdefault() so that
+authoritative XBRL data from financial_results is never overwritten by spoken
+or presentation numbers.
 """
 from __future__ import annotations
 
@@ -31,8 +34,10 @@ from collections.abc import Sequence
 
 from atlas.analysis.base import AnalysisFact, AnalysisResult, FactKind, FactUnit
 from atlas.company.model import (
+    AGMResolution,
     AcquisitionEvent,
     BuybackEvent,
+    CSATEntry,
     CapitalEventLedger,
     CompanyProfile,
     CreditHistory,
@@ -42,11 +47,14 @@ from atlas.company.model import (
     ESGTimeSeries,
     FinancialSnapshot,
     FinancialTimeSeries,
+    GovernanceProfile,
     InvestmentEvent,
     OwnershipSnapshot,
     OwnershipTimeSeries,
     SegmentEntry,
     SegmentTimeSeries,
+    StrategyEntry,
+    StrategyProfile,
 )
 
 # ---------------------------------------------------------------------------
@@ -64,6 +72,12 @@ _ESG_KINDS: frozenset[FactKind] = frozenset(
 _OWNERSHIP_KINDS: frozenset[FactKind] = frozenset(
     k for k in FactKind if k.value.startswith("ownership_")
 )
+
+_STRATEGY_KIND_TO_KEY: dict[FactKind, str] = {
+    FactKind.STRATEGY_PRIORITY: "priority",
+    FactKind.STRATEGY_ASPIRATION: "aspiration",
+    FactKind.STRATEGY_GUIDANCE: "guidance",
+}
 
 
 def _basis_from_section(section: str) -> str | None:
@@ -164,6 +178,59 @@ def _ingest_transcript_result(result: AnalysisResult, profile: CompanyProfile) -
             existing[key] = snap
 
 
+def _ingest_investor_presentation_result(
+    result: AnalysisResult, profile: CompanyProfile
+) -> None:
+    # 1. Textual strategy facts → StrategyProfile.entries
+    for fact in result.facts:
+        key = _STRATEGY_KIND_TO_KEY.get(fact.kind)
+        if key and isinstance(fact.value, str) and fact.value:
+            profile.strategy.entries.append(StrategyEntry(
+                source_date=result.source_date,
+                kind=key,
+                text=fact.value,
+                evidence_id=result.evidence_id,
+            ))
+        elif (
+            fact.kind == FactKind.STRATEGY_CSAT
+            and isinstance(fact.value, (int, float))
+            and fact.period
+        ):
+            profile.strategy.csat.append(CSATEntry(
+                period=fact.period,
+                score=float(fact.value),
+                evidence_id=result.evidence_id,
+            ))
+
+    # 2. Numeric financial facts (ROE, FCF) → FinancialTimeSeries (supplement only)
+    snaps: dict[str, dict[FactKind, float]] = defaultdict(dict)
+    for fact in result.facts:
+        if fact.kind not in _FINANCIAL_SNAPSHOT_KINDS:
+            continue
+        if fact.period is None or not isinstance(fact.value, (int, float)):
+            continue
+        snaps[fact.period][fact.kind] = float(fact.value)
+
+    existing = {(s.period, s.basis): s for s in profile.financial.snapshots}
+    for period, facts in snaps.items():
+        key = (period, "consolidated")
+        if key in existing:
+            for fk, fv in facts.items():
+                existing[key].facts.setdefault(fk, fv)
+            if result.evidence_id not in existing[key].sources:
+                existing[key].sources.append(result.evidence_id)
+        else:
+            snap = FinancialSnapshot(
+                period=period,
+                period_type="annual",   # ROE and FCF are annual management metrics
+                basis="consolidated",
+                facts=facts,
+                sources=[result.evidence_id],
+            )
+            profile.financial.snapshots.append(snap)
+            existing[key] = snap
+
+
 def _ingest_brsr_result(result: AnalysisResult, profile: CompanyProfile) -> None:
     snaps: dict[str, dict[FactKind, float]] = defaultdict(dict)
     for fact in result.facts:
@@ -202,11 +269,13 @@ def _ingest_shp_result(result: AnalysisResult, profile: CompanyProfile) -> None:
     for period, facts in snaps.items():
         if period in existing:
             existing[period].facts.update(facts)
+            if result.evidence_id not in existing[period].sources:
+                existing[period].sources.append(result.evidence_id)
         else:
             snap = OwnershipSnapshot(
                 period=period,
                 facts=facts,
-                evidence_id=result.evidence_id,
+                sources=[result.evidence_id],
             )
             profile.ownership.snapshots.append(snap)
             existing[period] = snap
@@ -255,7 +324,7 @@ def _ingest_credit_rating_result(result: AnalysisResult, profile: CompanyProfile
             else None
         )
 
-        profile.credit_history.entries.append(CreditRatingEntry(
+        entry = CreditRatingEntry(
             source_date=result.source_date,
             agency=agency,
             instrument=inst_name,
@@ -263,6 +332,48 @@ def _ingest_credit_rating_result(result: AnalysisResult, profile: CompanyProfile
             outlook=outlook,
             action=action,
             amount=amount,
+            evidence_id=result.evidence_id,
+        )
+        if is_esg:
+            profile.credit_history.esg_ratings.append(entry)
+        else:
+            profile.credit_history.debt_ratings.append(entry)
+
+
+def _ingest_agm_notice_result(result: AnalysisResult, profile: CompanyProfile) -> None:
+    # Group resolution facts by provenance.section ("resolution_N")
+    by_section: dict[str, dict[FactKind, AnalysisFact]] = defaultdict(dict)
+    for fact in result.facts:
+        sec = fact.provenance.section if fact.provenance else ""
+        if sec.startswith("resolution_"):
+            by_section[sec].setdefault(fact.kind, fact)
+
+    for _sec, facts in sorted(by_section.items()):
+        title_fact = facts.get(FactKind.GOVERNANCE_RESOLUTION_TITLE)
+        if title_fact is None:
+            continue
+
+        res_type_fact = facts.get(FactKind.GOVERNANCE_RESOLUTION_TYPE)
+        outcome_fact = facts.get(FactKind.GOVERNANCE_RESOLUTION_OUTCOME)
+        pct_for_fact = facts.get(FactKind.GOVERNANCE_VOTE_PCT_FOR)
+        pct_against_fact = facts.get(FactKind.GOVERNANCE_VOTE_PCT_AGAINST)
+
+        profile.governance.resolutions.append(AGMResolution(
+            source_date=result.source_date,
+            period=title_fact.period,
+            title=str(title_fact.value),
+            resolution_type=str(res_type_fact.value) if res_type_fact else "",
+            outcome=str(outcome_fact.value) if outcome_fact else None,
+            pct_for=(
+                float(pct_for_fact.value)
+                if pct_for_fact and isinstance(pct_for_fact.value, (int, float))
+                else None
+            ),
+            pct_against=(
+                float(pct_against_fact.value)
+                if pct_against_fact and isinstance(pct_against_fact.value, (int, float))
+                else None
+            ),
             evidence_id=result.evidence_id,
         ))
 
@@ -464,11 +575,15 @@ def _finalize_profile(profile: CompanyProfile) -> None:
     profile.esg.snapshots.sort(key=lambda s: s.period)
     profile.ownership.snapshots.sort(key=lambda s: s.period)
     profile.segments.entries.sort(key=lambda e: (e.period, e.name))
-    profile.credit_history.entries.sort(key=lambda e: e.source_date)
+    profile.credit_history.debt_ratings.sort(key=lambda e: e.source_date)
+    profile.credit_history.esg_ratings.sort(key=lambda e: e.source_date)
     profile.capital_events.dividends.sort(key=lambda e: e.source_date)
     profile.capital_events.buybacks.sort(key=lambda e: e.source_date)
     profile.capital_events.acquisitions.sort(key=lambda e: e.source_date)
     profile.capital_events.investments.sort(key=lambda e: e.source_date)
+    profile.strategy.entries.sort(key=lambda e: e.source_date)
+    profile.strategy.csat.sort(key=lambda e: e.period)
+    profile.governance.resolutions.sort(key=lambda r: (r.period or "", r.title))
 
 
 # ---------------------------------------------------------------------------
@@ -478,12 +593,14 @@ def _finalize_profile(profile: CompanyProfile) -> None:
 _DISPATCH = {
     "financial_results": _ingest_financial_result,
     "earnings_transcript": _ingest_transcript_result,
+    "investor_presentation": _ingest_investor_presentation_result,
     "brsr": _ingest_brsr_result,
     "shareholding_pattern": _ingest_shp_result,
     "credit_rating_report": _ingest_credit_rating_result,
     "buyback": _ingest_buyback_result,
     "acquisition": _ingest_acquisition_facts,
     "board_outcome": _ingest_board_outcome_result,
+    "agm_notice": _ingest_agm_notice_result,
 }
 
 
@@ -500,16 +617,19 @@ def build_profile(
 
     results may be in any order and may mix evidence kinds.  Each result is
     dispatched to the appropriate ingestion function based on result.kind.
-    Financial results are processed before transcripts (sorted by kind priority)
-    so that XBRL data takes precedence over spoken transcript numbers.
 
-    Unknown kinds (annual_report, investor_presentation, agm_notice) are silently
-    skipped — they do not populate structured time-series in V1.
+    Processing order:
+    - financial_results and authoritative structured data are processed first
+      (priority=1) so that XBRL data takes precedence.
+    - earnings_transcript and investor_presentation (priority=2) supplement
+      only — they never overwrite facts already present from XBRL sources.
+
+    Unknown kinds (annual_report) are silently skipped.
     """
     profile = CompanyProfile(company_id=company_id)
 
     # Two-pass: authoritative structured data first, supplementary second
-    priority = {"earnings_transcript": 2}
+    priority = {"earnings_transcript": 2, "investor_presentation": 2}
     ordered = sorted(
         results,
         key=lambda r: (priority.get(r.kind, 1), r.source_date),

@@ -1,6 +1,8 @@
 from atlas.company.model import (
+    AGMResolution,
     AcquisitionEvent,
     BuybackEvent,
+    CSATEntry,
     CapitalEventLedger,
     CompanyProfile,
     CreditHistory,
@@ -10,18 +12,23 @@ from atlas.company.model import (
     ESGTimeSeries,
     FinancialSnapshot,
     FinancialTimeSeries,
+    GovernanceProfile,
     InvestmentEvent,
     OwnershipSnapshot,
     OwnershipTimeSeries,
     SegmentEntry,
     SegmentTimeSeries,
+    StrategyEntry,
+    StrategyProfile,
 )
 from atlas.company.builder import build_profile
 from atlas.company import derived
 
 __all__ = [
+    "AGMResolution",
     "AcquisitionEvent",
     "BuybackEvent",
+    "CSATEntry",
     "CapitalEventLedger",
     "CompanyProfile",
     "CreditHistory",
@@ -31,11 +38,14 @@ __all__ = [
     "ESGTimeSeries",
     "FinancialSnapshot",
     "FinancialTimeSeries",
+    "GovernanceProfile",
     "InvestmentEvent",
     "OwnershipSnapshot",
     "OwnershipTimeSeries",
     "SegmentEntry",
     "SegmentTimeSeries",
+    "StrategyEntry",
+    "StrategyProfile",
     "build_profile",
     "derived",
 ]

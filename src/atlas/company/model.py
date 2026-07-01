@@ -9,7 +9,10 @@ Design rules
 - FinancialSnapshot.facts uses FactKind enum keys (not strings) for type safety.
 - Absence of a key means the data was not extracted — never zero.
 - All numeric values are in their natural FactUnit (CRORE_INR, PERCENT, etc.).
-- Categorical / textual facts (AUDIT_OPINION, RISK_FACTOR) are excluded.
+- Categorical / textual facts (AUDIT_OPINION, RISK_FACTOR) are excluded from
+  FinancialSnapshot.facts; they live in domain-specific containers instead.
+- All snapshot/entry collections are sorted ASC (oldest first) after build_profile().
+- Every container tracks source evidence IDs so facts can be traced to filings.
 """
 from __future__ import annotations
 
@@ -140,7 +143,7 @@ class CapitalEventLedger:
 
 
 # ---------------------------------------------------------------------------
-# Credit history
+# Credit history — debt ratings and ESG scores kept separate
 # ---------------------------------------------------------------------------
 
 
@@ -164,9 +167,18 @@ class CreditRatingEntry:
 
 @dataclass
 class CreditHistory:
-    """All credit and ESG rating entries, sorted ASC by source_date."""
+    """Debt and ESG rating histories kept in separate lists.
 
-    entries: list[CreditRatingEntry] = field(default_factory=list)
+    debt_ratings: traditional credit ratings (CRISIL, ICRA, etc.) sorted ASC.
+    esg_ratings:  ESG/sustainability scores (NSE Sustainability, etc.) sorted ASC.
+
+    These are separated because they use different rating scales and serve
+    different analytical purposes. Mixing them in one list forces every
+    consumer to filter by instrument name.
+    """
+
+    debt_ratings: list[CreditRatingEntry] = field(default_factory=list)
+    esg_ratings: list[CreditRatingEntry] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -180,7 +192,7 @@ class OwnershipSnapshot:
 
     period: str                             # ISO date (quarter end)
     facts: dict[FactKind, float] = field(default_factory=dict)
-    evidence_id: str = ""
+    sources: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -197,12 +209,13 @@ class OwnershipTimeSeries:
 
 @dataclass
 class SegmentEntry:
-    """Revenue and EBIT for one named business segment at one period."""
+    """Revenue, EBIT, and growth for one named business segment at one period."""
 
     period: str
     name: str
     revenue: float | None = None            # CRORE_INR
     ebit: float | None = None               # CRORE_INR
+    growth_pct: float | None = None         # constant-currency YoY growth; PERCENT
     evidence_id: str = ""
 
 
@@ -211,6 +224,81 @@ class SegmentTimeSeries:
     """Ordered collection of SegmentEntries, sorted ASC by (period, name)."""
 
     entries: list[SegmentEntry] = field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Strategy profile
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class StrategyEntry:
+    """One textual strategy item from an investor presentation.
+
+    kind: "priority" | "guidance" | "aspiration"
+    text: the verbatim or cleaned text of the strategy statement.
+    """
+
+    source_date: datetime
+    kind: str
+    text: str
+    evidence_id: str = ""
+
+
+@dataclass
+class CSATEntry:
+    """One CSAT (customer satisfaction) data point from an investor presentation."""
+
+    period: str                             # half-year or fiscal year end ISO date
+    score: float                            # PERCENT
+    evidence_id: str = ""
+
+
+@dataclass
+class StrategyProfile:
+    """Management's stated strategy and customer satisfaction history.
+
+    entries: textual strategy items sorted ASC by source_date.
+    csat:    CSAT scores sorted ASC by period.
+    """
+
+    entries: list[StrategyEntry] = field(default_factory=list)
+    csat: list[CSATEntry] = field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Governance profile
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class AGMResolution:
+    """One AGM resolution with its voting result.
+
+    source_date:     Filing date of the scrutineer's report.
+    period:          AGM date (ISO date), used as the FactKind.period.
+    title:           Resolution agenda text.
+    resolution_type: "ordinary" | "special" | "" if not extracted.
+    outcome:         "passed" | "not_passed" | None if not extracted.
+    pct_for:         % votes in favour on polled shares.
+    pct_against:     % votes against on polled shares.
+    """
+
+    source_date: datetime
+    period: str | None
+    title: str
+    resolution_type: str
+    outcome: str | None = None
+    pct_for: float | None = None
+    pct_against: float | None = None
+    evidence_id: str = ""
+
+
+@dataclass
+class GovernanceProfile:
+    """AGM voting history, sorted ASC by (period, title)."""
+
+    resolutions: list[AGMResolution] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -233,3 +321,5 @@ class CompanyProfile:
     credit_history: CreditHistory = field(default_factory=CreditHistory)
     ownership: OwnershipTimeSeries = field(default_factory=OwnershipTimeSeries)
     segments: SegmentTimeSeries = field(default_factory=SegmentTimeSeries)
+    strategy: StrategyProfile = field(default_factory=StrategyProfile)
+    governance: GovernanceProfile = field(default_factory=GovernanceProfile)

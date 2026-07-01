@@ -133,17 +133,31 @@ def test_ownership_snapshot_exists(tcs_profile: CompanyProfile) -> None:
     assert 70.0 < promoter < 80.0, f"TCS promoter holding out of range: {promoter:.1f}%"
 
 
+def test_ownership_snapshot_uses_sources_list(tcs_profile: CompanyProfile) -> None:
+    if not tcs_profile.ownership.snapshots:
+        pytest.skip("SHP evidence not available")
+    snap = tcs_profile.ownership.snapshots[0]
+    assert isinstance(snap.sources, list)
+    assert len(snap.sources) >= 1
+
+
 # ---------------------------------------------------------------------------
-# Credit history
+# Credit history — debt_ratings and esg_ratings
 # ---------------------------------------------------------------------------
 
 
-def test_credit_history_exists(tcs_profile: CompanyProfile) -> None:
-    if not tcs_profile.credit_history.entries:
-        pytest.skip("Credit rating evidence not available")
-    entry = tcs_profile.credit_history.entries[0]
+def test_credit_esg_rating_in_esg_list(tcs_profile: CompanyProfile) -> None:
+    if not tcs_profile.credit_history.esg_ratings:
+        pytest.skip("ESG credit rating evidence not available")
+    entry = tcs_profile.credit_history.esg_ratings[0]
     assert entry.agency
-    assert entry.instrument
+    assert entry.instrument == "ESG"
+
+
+def test_credit_debt_list_separate_from_esg(tcs_profile: CompanyProfile) -> None:
+    # TCS has no rated debt — debt_ratings should be empty for our test corpus
+    for entry in tcs_profile.credit_history.debt_ratings:
+        assert entry.instrument != "ESG", "Debt ratings list must not contain ESG entries"
 
 
 # ---------------------------------------------------------------------------
@@ -172,7 +186,7 @@ def test_multiple_domains_populated(tcs_profile: CompanyProfile) -> None:
         bool(tcs_profile.financial.snapshots),
         bool(tcs_profile.esg.snapshots),
         bool(tcs_profile.ownership.snapshots),
-        bool(tcs_profile.credit_history.entries),
+        bool(tcs_profile.credit_history.esg_ratings),
         bool(tcs_profile.capital_events.buybacks),
     ])
     assert domains_populated >= 2, "Expected at least 2 domains to be populated"
