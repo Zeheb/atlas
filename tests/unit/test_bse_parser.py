@@ -1125,3 +1125,69 @@ class TestParseCorporateGovernanceIndex:
             make_cg_response(CG_YEAR_PDF), COMPANY_ID, SCRIP_CODE
         )
         assert {e.evidence_id for e in first} == {e.evidence_id for e in second}
+
+
+# ---------------------------------------------------------------------------
+# Regression: transcript reclassification (SBI validation sprint)
+# ---------------------------------------------------------------------------
+
+def _make_announcement_record(headline: str, subcatname: str = "Analyst / Investor Meet") -> dict:
+    """Build a minimal BSE announcement record for kind-classification tests."""
+    return {
+        "NEWSID": "test-newsid-001",
+        "HEADLINE": headline,
+        "SUBCATNAME": subcatname,
+        "DT_TM": "2025-11-04T10:00:00",
+        "PDFFLAG": 1,
+        "ATTACHMENTNAME": "test.pdf",
+        "OLD": 0,
+        "Fld_Attachsize": 100000,
+    }
+
+
+class TestTranscriptReclassification:
+    """Filings with 'Transcript' in the title should be EARNINGS_TRANSCRIPT
+    even when their BSE subcategory is 'Analyst / Investor Meet' (which maps
+    to INVESTOR_PRESENTATION by default).
+
+    Regression: SBI files earnings-call transcripts under the generic
+    'Analyst / Investor Meet' subcategory, causing them to be classified as
+    INVESTOR_PRESENTATION and never analyzed by the earnings_transcript analyzer.
+    """
+
+    def test_transcript_title_reclassified(self) -> None:
+        parser = BSEParser()
+        record = _make_announcement_record(
+            "Transcript of Analyst Meet (Q2FY26) held on 04.11.2025"
+        )
+        evidences = parser.parse_filings({"Table": [record]}, COMPANY_ID)
+        assert len(evidences) == 1
+        assert evidences[0].kind == EvidenceKind.EARNINGS_TRANSCRIPT
+
+    def test_call_transcript_title_reclassified(self) -> None:
+        parser = BSEParser()
+        record = _make_announcement_record("Earnings Call Transcript Q4FY25")
+        evidences = parser.parse_filings({"Table": [record]}, COMPANY_ID)
+        assert evidences[0].kind == EvidenceKind.EARNINGS_TRANSCRIPT
+
+    def test_analyst_meet_without_transcript_stays_presentation(self) -> None:
+        parser = BSEParser()
+        record = _make_announcement_record("Analysts Presentation Q2FY26")
+        evidences = parser.parse_filings({"Table": [record]}, COMPANY_ID)
+        assert evidences[0].kind == EvidenceKind.INVESTOR_PRESENTATION
+
+    def test_outcome_of_analyst_meet_stays_presentation(self) -> None:
+        parser = BSEParser()
+        record = _make_announcement_record("Disclosure regarding outcome of investors meeting")
+        evidences = parser.parse_filings({"Table": [record]}, COMPANY_ID)
+        assert evidences[0].kind == EvidenceKind.INVESTOR_PRESENTATION
+
+    def test_non_presentation_subcategory_not_affected(self) -> None:
+        parser = BSEParser()
+        record = _make_announcement_record(
+            "Transcript of Board Discussion",
+            subcatname="Outcome of Board Meeting",
+        )
+        evidences = parser.parse_filings({"Table": [record]}, COMPANY_ID)
+        # Board outcome subcategory should map to BOARD_OUTCOME, not EARNINGS_TRANSCRIPT
+        assert evidences[0].kind == EvidenceKind.BOARD_OUTCOME

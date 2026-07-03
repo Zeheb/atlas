@@ -199,49 +199,102 @@ def _split_cfo_sections(cfo_text: str) -> tuple[str, str]:
 # Speaker / section extraction helpers
 # ---------------------------------------------------------------------------
 
-_SPEAKER_TAGS = [
-    "Samir Seksaria:",
-    "Aarthi Subramanian:",
-    "Sudeep Kunnumal:",
-    "Milind Lakkad:",
-    "Nehal Shah:",
-    "Moderator:",
-]
+# Regex to detect any speaker tag in a transcript: "Firstname Lastname:" or
+# "Name (Title):" at the start of a line.  Used to bound speaker sections.
+_RE_ANY_SPEAKER = re.compile(r"^[A-Z][A-Za-z .]{2,50}:\s", re.MULTILINE)
+
+# Role phrases used to identify the CFO speaker dynamically.
+_RE_CFO_ROLE = re.compile(
+    r"Chief\s+Financial\s+Officer|CFO",
+    re.IGNORECASE,
+)
+
+# Role phrases used to identify the CEO speaker dynamically.
+_RE_CEO_ROLE = re.compile(
+    r"Chief\s+Executive\s+Officer|CEO|Managing\s+Director|MD\b",
+    re.IGNORECASE,
+)
 
 
-def _next_speaker_offset(text: str, after: int) -> int:
-    candidates = [text.find(tag, after) for tag in _SPEAKER_TAGS]
-    candidates = [c for c in candidates if c > 0]
-    return min(candidates) if candidates else -1
+def _detect_speaker_tag(text: str, role_re: re.Pattern) -> str | None:
+    """Return the speaker tag (e.g. 'Koushik Chatterjee:') for a given role.
 
-
-def _extract_cfo_section(text: str) -> tuple[str, int]:
-    """Return (cfo_text, start_offset) for the CFO's substantive commentary.
-
-    The first occurrence of 'Samir Seksaria:' is the intro greeting.
-    The second is the financial results section.
+    Searches the first 4000 chars (moderator introductions) for the role
+    mention, then scans backwards for the person's name.  Handles:
+    - Full names: "Koushik Chatterjee"
+    - Initial + surname: "K Krithivasan", "T V Narendran"
+    Returns None if the role is not found.
     """
-    tag = "Samir Seksaria:"
+    preamble = text[:4000]
+    m_role = role_re.search(preamble)
+    if not m_role:
+        return None
+    # Scan backwards to find the preceding name on the same or previous line.
+    segment = preamble[: m_role.start()]
+    # Matches "K Krithivasan", "T V Narendran", "Samir Seksaria", etc.
+    # Leading "Mr." / "Ms." / "Dr." are excluded via the non-greedy word boundary.
+    name_m = re.search(
+        r"(?<!\w)"  # not preceded by a word char (excludes partial matches)
+        r"([A-Z][a-z]*(?:\.[A-Z]\.?)*"  # first name or initial(s)
+        r"(?:\s+[A-Z][a-z]*(?:\.[A-Z]\.?)*)+)"  # surname(s)
+        r"\s*[,\-]?\s*$",
+        segment,
+    )
+    if name_m:
+        name = name_m.group(1).strip()
+        # Strip honorifics
+        name = re.sub(r"^(?:Mr|Ms|Dr|Mrs|Prof)\.?\s+", "", name)
+        return name + ":"
+    return None
+
+
+def _all_speaker_offsets(text: str) -> list[int]:
+    """Return sorted list of offsets where any speaker turn begins."""
+    return sorted(m.start() for m in _RE_ANY_SPEAKER.finditer(text))
+
+
+def _extract_speaker_section(text: str, tag: str, next_tag_re: re.Pattern | None = None) -> tuple[str, int]:
+    """Return (section_text, start_offset) for the speaker identified by *tag*.
+
+    Skips the first occurrence (the greeting) and uses the second as the start
+    of substantive commentary.  If *next_tag_re* is provided, ends at the first
+    match of that pattern after start; otherwise uses the next generic speaker
+    turn or a 8000-char cap.
+    """
     first = text.find(tag)
     if first < 0:
         return "", 0
     second = text.find(tag, first + len(tag))
     start = second if second >= 0 else first
-    next_spk = _next_speaker_offset(text, start + len(tag))
-    end = next_spk if next_spk > 0 else start + 8000
+    if next_tag_re:
+        m = next_tag_re.search(text, start + len(tag))
+        end = m.start() if m else start + 8000
+    else:
+        offsets = [o for o in _all_speaker_offsets(text) if o > start + len(tag)]
+        end = offsets[0] if offsets else start + 8000
     return text[start:end], start
 
 
+def _extract_cfo_section(text: str) -> tuple[str, int]:
+    """Return (cfo_text, start_offset) for the CFO's substantive commentary.
+
+    Tries to detect the CFO speaker dynamically from the moderator introduction.
+    Falls back to returning ("", 0) if no CFO turn is found; the caller will
+    then fall back to searching the full transcript.
+    """
+    tag = _detect_speaker_tag(text, _RE_CFO_ROLE)
+    if tag:
+        return _extract_speaker_section(text, tag)
+    return "", 0
+
+
 def _extract_ceo_section(text: str) -> str:
-    tag = "K Krithivasan:"
-    first = text.find(tag)
-    if first < 0:
-        return ""
-    second = text.find(tag, first + len(tag))
-    start = second if second >= 0 else first
-    samir = text.find("Samir Seksaria:", start)
-    end = samir if samir > 0 else start + 6000
-    return text[start:end]
+    """Return CEO's substantive commentary, or "" if not detected."""
+    tag = _detect_speaker_tag(text, _RE_CEO_ROLE)
+    if tag:
+        section, _ = _extract_speaker_section(text, tag)
+        return section
+    return ""
 
 
 # ---------------------------------------------------------------------------
@@ -360,9 +413,16 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     if cfo_text:
         result.excerpts["cfo_commentary"] = cfo_text[:8000].strip()
 
-    # Split CFO text handling both quarterly-first (FY26+) and annual-first
-    # (FY25) orderings.
-    quarterly_cfo, annual_cfo = _split_cfo_sections(cfo_text)
+    # Split CFO text into quarterly and annual sections.
+    # The boundary patterns only work reliably within the CFO commentary;
+    # when no CFO section was found, search the whole transcript unsplit.
+    if cfo_text:
+        quarterly_cfo, annual_cfo = _split_cfo_sections(cfo_text)
+    else:
+        # Fallback: speaker not identified — treat whole transcript as the
+        # quarterly search text. The first revenue/margin match is usually
+        # the most-recently-reported (quarterly) figure.
+        quarterly_cfo, annual_cfo = content, ""
 
     # ------------------------------------------------------------------
     # 3. Revenue
@@ -435,10 +495,11 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
             ))
 
     # ------------------------------------------------------------------
-    # 6. TCV (search CEO + CFO sections)
+    # 6. TCV (search full transcript — stated by CEO, not CFO)
     # ------------------------------------------------------------------
-    tcv_text = (ceo_text or "") + " " + (cfo_text or "")
-    m_tcv = _RE_TCV.search(tcv_text)
+    # TCV is always expressed as a specific dollar figure by management and
+    # never by analysts, so searching the full content is safe.
+    m_tcv = _RE_TCV.search(content)
     if m_tcv:
         tcv_raw = m_tcv.group(1) or m_tcv.group(2)
         result.facts.append(_period_fact(
@@ -446,14 +507,12 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
             period, "quarterly", 0,
             excerpt=m_tcv.group(0),
         ))
-    else:
-        result.warnings.append("TCV not found in transcript")
-
     # ------------------------------------------------------------------
     # 7. Result-level confidence
     # ------------------------------------------------------------------
+    # TCV is IT-sector specific (not universal) so is excluded from the core set.
     extracted = {f.kind for f in result.facts}
-    core = {FactKind.FINANCIAL_REVENUE, FactKind.FINANCIAL_TCV, FactKind.FINANCIAL_OPERATING_MARGIN}
+    core = {FactKind.FINANCIAL_REVENUE, FactKind.FINANCIAL_OPERATING_MARGIN}
     if core.issubset(extracted):
         result.confidence = "high"
     elif FactKind.FINANCIAL_REVENUE in extracted:

@@ -35,12 +35,15 @@ from atlas.analysis.base import (
     Provenance,
     _snip,
 )
-from atlas.analysis.patterns import extract_dividend_facts
+from atlas.analysis.patterns import (
+    extract_dividend_facts,
+    extract_n_values,
+    fix_ocr_numbers,
+    parse_number,
+)
 from atlas.knowledge.base import KnowledgeBase
 
 ANALYZER_VERSION = "1.0"
-
-_MAX_VALUE_SCAN = 800
 
 # ---------------------------------------------------------------------------
 # P&L row definitions
@@ -79,73 +82,41 @@ _PL_ROWS: list[tuple[FactKind, re.Pattern[str]]] = [
      re.compile(r"PROFIT FOR THE (?:PERIOD|YEAR)")),
 ]
 
-_SEGMENT_NAMES = re.compile(
-    r"^("
-    r"Banking, Financial Services and Insurance"
-    r"|Manufacturing"
-    r"|Consumer Business"
-    r"|Communication, Media and Technology"
-    r"|Life Sciences and Healthcare"
-    r"|Others"
-    r")\s*$",
-    re.MULTILINE | re.IGNORECASE,
+# Dynamic segment-name detection: any line in the segment table that looks
+# like a company segment rather than a header, total, or footnote.
+# Matches title-case (or ALLCAPS) lines that contain letters and common
+# punctuation but are not numeric, not "Total …" / "Less" / "Add" / "Less:" etc.
+_SEGMENT_NAME_LINE = re.compile(
+    r"^([A-Z][A-Za-z ,&/()\-]{2,80})\s*$",
+    re.MULTILINE,
 )
 
-# ---------------------------------------------------------------------------
-# Number parsing
-# ---------------------------------------------------------------------------
-
-# Matches: (123) for negatives, - for nil, or Indian-format numbers like 1,26,872
-_RE_NUM_TOKEN = re.compile(
-    r"\([\d,]+(?:\.\d+)?\)"   # (123) = negative
-    r"|(?<!\w)-(?!\w)"        # standalone dash = nil/zero
-    r"|[\d,]+(?:\.\d+)?"      # positive number with optional decimal
+# Lines to exclude from segment-name candidates.
+_SEGMENT_EXCLUDE = re.compile(
+    r"^(?:Total|Less|Add|Unallocable|Eliminat|Reconcil|Corporate|SEGMENT|Revenue|Result|Note|Refer)",
+    re.IGNORECASE,
 )
 
 
-def _parse_number(s: str) -> float | None:
-    s = s.strip()
-    if not s or s == "-":
-        return 0.0
-    if s.startswith("(") and s.endswith(")"):
-        inner = s[1:-1].replace(",", "").replace(" ", "")
-        try:
-            return -float(inner)
-        except ValueError:
-            return None
-    try:
-        return float(s.replace(",", "").replace(" ", ""))
-    except ValueError:
-        return None
+def _is_segment_candidate(name: str) -> bool:
+    """Return True if the line looks like a segment name, not a header/total."""
+    stripped = name.strip()
+    if not stripped:
+        return False
+    if _SEGMENT_EXCLUDE.match(stripped):
+        return False
+    # Reject all-caps lines (they're usually section headers like "SEGMENT REVENUE")
+    if stripped == stripped.upper() and stripped.replace(" ", "").isalpha():
+        return False
+    return True
 
+# ---------------------------------------------------------------------------
+# Number parsing — shared with investor_presentation.py; see patterns.py
+# ---------------------------------------------------------------------------
 
-def _extract_n_values(text: str, after: int, n: int = 6) -> list[float | None]:
-    """Collect up to n numeric values starting at text[after:].
-
-    Stops at the first non-numeric, non-blank line encountered after values
-    have started accumulating (i.e., the next P&L label row).
-    """
-    values: list[float | None] = []
-    segment = text[after: after + _MAX_VALUE_SCAN]
-    collecting = False
-
-    for line in segment.split("\n"):
-        stripped = line.strip()
-        if not stripped:
-            continue
-        tokens = _RE_NUM_TOKEN.findall(line)
-        if tokens:
-            collecting = True
-            for t in tokens:
-                if len(values) >= n:
-                    return values
-                v = _parse_number(t)
-                if v is not None:
-                    values.append(v)
-        elif collecting:
-            # Non-numeric non-blank line after values started = next row label
-            break
-    return values
+_extract_n_values = extract_n_values
+_parse_number = parse_number
+_fix_ocr_numbers = fix_ocr_numbers
 
 
 # ---------------------------------------------------------------------------
@@ -153,7 +124,9 @@ def _extract_n_values(text: str, after: int, n: int = 6) -> list[float | None]:
 # ---------------------------------------------------------------------------
 
 _RE_QUARTER_PERIOD = re.compile(
-    r"quarter(?:\s+and\s+six[- ]month\s+period)?\s+ended\s+(\w+ \d+,\s*\d{4})",
+    # Matches "quarter ended …", "quarter and six-month period ended …",
+    # "quarter and half year ended …", and standalone "half year ended …".
+    r"(?:quarter|half[- ]?year)(?:[^.\n]{0,60}?)ended\s+(\w+ \d+,\s*\d{4})",
     re.IGNORECASE,
 )
 _RE_YEAR_PERIOD = re.compile(
@@ -164,24 +137,47 @@ _DATE_FMT = "%B %d, %Y"
 
 
 def _detect_filing(text: str) -> tuple[str, str | None]:
-    """Return (period_type, period_end_iso) from the cover letter (first 3000 chars)."""
+    """Return (period_type, period_end_iso) from the cover letter (first 3000 chars).
+
+    Handles three filing shapes:
+    - "quarter and half year ended Sep 30" → quarterly
+    - "quarter ended Mar 31" + "financial year ended Mar 31" (same date) → annual
+      (Tata Steel style: Q4 and annual results bundled in one document)
+    - "year ended Mar 31" only (no quarter prefix) → annual (TCS style)
+    """
     cover = text[:3000]
+
+    quarter_date = None
     m = _RE_QUARTER_PERIOD.search(cover)
     if m:
         try:
-            raw = re.sub(r"\s+", " ", m.group(1))
-            d = datetime.strptime(raw, _DATE_FMT).date()
-            return "quarterly", d.isoformat()
+            quarter_date = datetime.strptime(
+                re.sub(r"\s+", " ", m.group(1)), _DATE_FMT
+            ).date()
         except ValueError:
             pass
-    m = _RE_YEAR_PERIOD.search(cover)
-    if m:
+
+    annual_date = None
+    for m in re.finditer(_RE_YEAR_PERIOD, cover):
+        # Skip "half year ended" — "half " immediately precedes "year"
+        pre = cover[max(0, m.start() - 5): m.start()]
+        if pre.lower().endswith("half ") or pre.lower().endswith("half-"):
+            continue
         try:
-            raw = re.sub(r"\s+", " ", m.group(1))
-            d = datetime.strptime(raw, _DATE_FMT).date()
-            return "annual", d.isoformat()
+            annual_date = datetime.strptime(
+                re.sub(r"\s+", " ", m.group(1)), _DATE_FMT
+            ).date()
+            break
         except ValueError:
             pass
+
+    # When both match the SAME date this is a Q4 annual filing (e.g. Tata Steel
+    # May filing that says "quarter ended Mar 31" AND "year ended Mar 31").
+    # Prefer "annual" so that col-3 (full-year) data is extracted.
+    if annual_date and (quarter_date is None or quarter_date == annual_date):
+        return "annual", annual_date.isoformat()
+    if quarter_date:
+        return "quarterly", quarter_date.isoformat()
     return "unknown", None
 
 
@@ -201,29 +197,81 @@ def _primary_col(period_type: str, n_values: int) -> int:
 # P&L region detection
 # ---------------------------------------------------------------------------
 
+_RE_CONSOLIDATED_LABEL = re.compile(
+    r"Consolidated\s+(?:\w+\s+)?(?:Statement|Results|Financial)",
+    re.IGNORECASE,
+)
+_RE_STANDALONE_LABEL = re.compile(
+    r"Standalone\s+(?:\w+\s+)?(?:Statement|Results|Financial)",
+    re.IGNORECASE,
+)
+_LABEL_LOOKBACK = 600  # chars to scan before "Revenue from operations"
+
+
+def _detect_basis(text: str, rev_offset: int) -> str | None:
+    """Return 'consolidated' or 'standalone' by looking for a statement label
+    in the 600 chars before *rev_offset*.  Returns None when ambiguous."""
+    window = text[max(0, rev_offset - _LABEL_LOOKBACK): rev_offset]
+    has_con = bool(_RE_CONSOLIDATED_LABEL.search(window))
+    has_sa = bool(_RE_STANDALONE_LABEL.search(window))
+    if has_con and not has_sa:
+        return "consolidated"
+    if has_sa and not has_con:
+        return "standalone"
+    return None  # Ambiguous; caller falls back to positional heuristic
+
+
 def _find_pl_regions(text: str) -> dict[str, tuple[int, int]]:
     """Locate consolidated and standalone P&L regions by Revenue from operations anchor.
 
     Returns a dict with keys "consolidated" and/or "standalone", each mapping
     to (revenue_offset, region_end_offset).
+
+    Detects basis from section headers in the surrounding text (Tata Steel has
+    standalone BEFORE consolidated; TCS has consolidated BEFORE standalone).
+    When detection is ambiguous, falls back to position order.
     """
     offsets = [m.start() for m in re.finditer(r"Revenue from operations", text)]
-    regions: dict[str, tuple[int, int]] = {}
-
     if not offsets:
-        return regions
+        return {}
 
-    # Consolidated = first occurrence
-    con_start = offsets[0]
-    con_end = offsets[1] if len(offsets) >= 2 else _region_end(text, con_start)
-    regions["consolidated"] = (con_start, con_end)
+    # Collect (basis, start) pairs for the first two P&L occurrences.
+    # Skip occurrences that are too far from their section headers
+    # (segment table entries, ratio disclosures, etc.).
+    pl_offsets: list[tuple[str | None, int]] = []
+    for off in offsets[:6]:  # scan up to 6 occurrences
+        basis = _detect_basis(text, off)
+        pl_offsets.append((basis, off))
+        if len([b for b, _ in pl_offsets if b in ("consolidated", "standalone")]) >= 2:
+            break
 
-    # Standalone = second occurrence (if present)
-    if len(offsets) >= 2:
-        sa_start = offsets[1]
-        sa_end = _region_end(text, sa_start)
+    # Pair up detected regions
+    con_start = sa_start = None
+    for basis, off in pl_offsets:
+        if basis == "consolidated" and con_start is None:
+            con_start = off
+        elif basis == "standalone" and sa_start is None:
+            sa_start = off
+
+    # Fall back to positional order when label detection fails
+    if con_start is None and sa_start is None and len(pl_offsets) >= 1:
+        con_start = pl_offsets[0][1]
+        if len(pl_offsets) >= 2:
+            sa_start = pl_offsets[1][1]
+    elif con_start is None and sa_start is not None and len(pl_offsets) >= 2:
+        # Only standalone detected; use the other occurrence as consolidated
+        for _, off in pl_offsets:
+            if off != sa_start:
+                con_start = off
+                break
+
+    regions: dict[str, tuple[int, int]] = {}
+    if con_start is not None:
+        con_end = sa_start if (sa_start and sa_start > con_start) else _region_end(text, con_start)
+        regions["consolidated"] = (con_start, con_end)
+    if sa_start is not None:
+        sa_end = con_start if (con_start and con_start > sa_start) else _region_end(text, sa_start)
         regions["standalone"] = (sa_start, sa_end)
-
     return regions
 
 
@@ -234,12 +282,21 @@ def _region_end(text: str, from_offset: int) -> int:
 
 
 def _detect_n_cols(text: str, rev_offset: int) -> int:
-    """Count columns by extracting values from the Revenue row."""
-    m = re.compile(r"Revenue from operations").search(text, rev_offset)
-    if m is None:
-        return 6
-    values = _extract_n_values(text, m.end(), n=8)
-    return max(len(values), 1)
+    """Count columns by extracting values from the Revenue row.
+
+    Scans forward from rev_offset trying each 'Revenue from operations'
+    occurrence until one yields substantial values (> 50).  This skips the
+    label sections in old 'labels-then-values' PDFs where only row numbers
+    appear immediately after the row label.
+    """
+    for m in re.compile(r"Revenue from operations").finditer(text, rev_offset):
+        values = _extract_n_values(text, m.end(), n=8)
+        if values and any(abs(v or 0) > 50 for v in values):
+            return max(len(values), 1)
+        if values:
+            # Has values but all small — keep scanning
+            continue
+    return 6
 
 
 # ---------------------------------------------------------------------------
@@ -258,14 +315,26 @@ def _extract_pl_facts(
     facts: list[AnalysisFact] = []
 
     for kind, pat in _PL_ROWS:
-        m = pat.search(region)
-        if m is None:
+        # Old "labels-then-values" PDFs (e.g. Tata Steel FY20) repeat the
+        # row label in a label section (no values follow) and again in a
+        # separate value section.  Try every match in the region; prefer the
+        # first one that yields at least one value > 50 crore.
+        chosen_m = None
+        chosen_values: list[float | None] = []
+        for m in pat.finditer(region):
+            candidate = _extract_n_values(text, rev_offset + m.end(), n=6)
+            if candidate and any(abs(v or 0) > 50 for v in candidate):
+                chosen_m, chosen_values = m, candidate
+                break
+            if chosen_m is None:
+                chosen_m, chosen_values = m, candidate  # keep first as fallback
+
+        if chosen_m is None:
             continue
-        values = _extract_n_values(text, rev_offset + m.end(), n=6)
-        if not values:
+        if not chosen_values:
             continue
-        idx = col_idx if col_idx < len(values) else 0
-        val = values[idx]
+        idx = col_idx if col_idx < len(chosen_values) else 0
+        val = chosen_values[idx]
         if val is None:
             continue
         facts.append(AnalysisFact(
@@ -276,8 +345,8 @@ def _extract_pl_facts(
             confidence="high",
             provenance=Provenance(
                 section=f"{basis}_pl_table",
-                char_offset=rev_offset + m.start(),
-                excerpt=_snip(region, m.start()),
+                char_offset=rev_offset + chosen_m.start(),
+                excerpt=_snip(region, chosen_m.start()),
             ),
         ))
     return facts
@@ -402,6 +471,97 @@ _RE_BS_EQUITY = re.compile(
     re.IGNORECASE,
 )
 _RE_BS_EQUITY_FALLBACK = re.compile(r"^Total equity\b", re.MULTILINE | re.IGNORECASE)
+_RE_BS_EL_TOTAL = re.compile(r"TOTAL\s*-\s*EQUITY AND LIABILITIES", re.IGNORECASE)
+
+
+def _extract_bs_deferred_equity_debt(
+    bs_text: str, period: str, bs_start: int
+) -> list[AnalysisFact]:
+    """Extract equity and debt from the 'deferred' BS layout (Tata Steel style).
+
+    In the deferred layout all E&L labels appear first, then all values are
+    written together after "TOTAL - EQUITY AND LIABILITIES".  The structure
+    follows IndAS Schedule III:
+
+        [0] Equity share capital
+        [1] Other equity
+        [2] Equity attributable to shareholders (= [0]+[1], consolidated only)
+        [3] Non-controlling interests (consolidated only)
+        [4] Sub-total Total equity (= [2]+[3] consolidated, or [0]+[1] standalone)
+        [5] NCL Borrowings   ← first NCL item
+        ... (N more NCL items)
+        [5+N] Sub-total NCL  (≈ sum of NCL items — used to locate current Borrowings)
+        [6+N] CL Borrowings  ← first CL item
+        ...
+
+    Sub-totals are found algebraically (a value that equals the sum of the
+    preceding N items).  This avoids relying on label positions that shift
+    between companies and years.
+    """
+    m = _RE_BS_EL_TOTAL.search(bs_text)
+    if m is None:
+        return []
+
+    vals = _extract_n_values(bs_text, m.end(), n=35)
+    if len(vals) < 3:
+        return []
+
+    # --- Locate equity sub-total index algebraically ---
+    # Primary check: vals[2] ≈ vals[0] + vals[1]  (equity attributable, consolidated)
+    equity_idx: int | None = None
+    if len(vals) >= 3 and abs(vals[2] - (vals[0] + vals[1])) < max(5.0, 0.001 * abs(vals[2])):
+        equity_idx = 2
+        # Consolidated: check for a further sub-total at index 4
+        if len(vals) >= 5 and abs(vals[4] - (vals[2] + vals[3])) < max(5.0, 0.001 * abs(vals[4])):
+            equity_idx = 4
+    else:
+        # Standalone: no equity-attributable row; sub-total at index 2
+        equity_idx = 2
+
+    if equity_idx >= len(vals):
+        return []
+
+    facts: list[AnalysisFact] = [
+        AnalysisFact(
+            kind=FactKind.FINANCIAL_TOTAL_EQUITY,
+            value=vals[equity_idx],
+            unit=FactUnit.CRORE_INR,
+            period=period,
+            confidence="medium",
+            provenance=Provenance(section="balance_sheet", char_offset=bs_start + m.start()),
+        )
+    ]
+
+    # --- NCL Borrowings = first value after equity sub-total ---
+    ncl_borr_idx = equity_idx + 1
+    if ncl_borr_idx >= len(vals) or vals[ncl_borr_idx] <= 0:
+        return facts
+    total_debt = vals[ncl_borr_idx]
+
+    # --- Find NCL sub-total to locate CL Borrowings ---
+    # Try windows of 1–14 NCL items; the sub-total value ≈ sum of window.
+    for ncl_n in range(1, 15):
+        end_idx = ncl_borr_idx + ncl_n
+        if end_idx >= len(vals):
+            break
+        ncl_sum = sum(vals[ncl_borr_idx:end_idx])
+        if abs(vals[end_idx] - ncl_sum) < max(10.0, 0.001 * abs(vals[end_idx])):
+            cl_borr_idx = end_idx + 1
+            if cl_borr_idx < len(vals) and vals[cl_borr_idx] > 0:
+                total_debt += vals[cl_borr_idx]
+            break
+
+    if total_debt > 0:
+        facts.append(AnalysisFact(
+            kind=FactKind.FINANCIAL_TOTAL_DEBT,
+            value=total_debt,
+            unit=FactUnit.CRORE_INR,
+            period=period,
+            confidence="medium",
+            provenance=Provenance(section="balance_sheet"),
+        ))
+
+    return facts
 _RE_BS_BORROWINGS = re.compile(r"^\s*(?:Long.term\s+)?[Bb]orrowings\b", re.MULTILINE)
 
 
@@ -438,11 +598,26 @@ def _extract_balance_sheet_facts(text: str, period: str) -> list[AnalysisFact]:
     # 1. Cash and cash equivalents
     m = _RE_BS_CASH.search(bs_text)
     if m:
-        vals = _extract_n_values(bs_text, m.end(), n=2)
-        if vals:
+        # Two balance-sheet layouts exist:
+        #   "direct" (TCS style): each label row is immediately followed by
+        #     its values → vals[0] is Cash.
+        #   "deferred" (Tata Steel style): all current-asset labels appear
+        #     first, then all values in the same order.  IndAS Schedule III
+        #     always places Cash 4th among current assets (after Inventories,
+        #     Investments, Trade receivables) → vals[3] is Cash.
+        # Detection: if the text immediately after the Cash label starts with a
+        # digit or negative-paren, it is direct format; otherwise deferred.
+        remainder = bs_text[m.end():m.end() + 12].lstrip()
+        is_direct = bool(remainder) and (
+            remainder[0].isdigit()
+            or (remainder[0] == "(" and len(remainder) > 1 and remainder[1].isdigit())
+        )
+        vals = _extract_n_values(bs_text, m.end(), n=6)
+        cash_idx = 0 if is_direct else 3
+        if vals and len(vals) > cash_idx:
             facts.append(AnalysisFact(
                 kind=FactKind.FINANCIAL_CASH_AND_EQUIVALENTS,
-                value=vals[0],
+                value=vals[cash_idx],
                 unit=FactUnit.CRORE_INR,
                 period=period,
                 confidence="high",
@@ -453,43 +628,48 @@ def _extract_balance_sheet_facts(text: str, period: str) -> list[AnalysisFact]:
                 ),
             ))
 
-    # 2. Total equity (parent shareholders only, excluding non-controlling interests)
-    m = _RE_BS_EQUITY.search(bs_text)
-    if m is None:
-        m = _RE_BS_EQUITY_FALLBACK.search(bs_text)
-    if m:
-        vals = _extract_n_values(bs_text, m.end(), n=2)
-        if vals:
+    # 2 & 3. Equity + Debt: two paths depending on layout.
+    if not is_direct:
+        # Deferred layout: extract equity and debt algebraically from the
+        # E&L values block anchored at "TOTAL - EQUITY AND LIABILITIES".
+        facts.extend(_extract_bs_deferred_equity_debt(bs_text, period, bs_start))
+    else:
+        # Direct layout (TCS style): labels are immediately followed by values.
+        m = _RE_BS_EQUITY.search(bs_text)
+        if m is None:
+            m = _RE_BS_EQUITY_FALLBACK.search(bs_text)
+        if m:
+            vals = _extract_n_values(bs_text, m.end(), n=2)
+            if vals:
+                facts.append(AnalysisFact(
+                    kind=FactKind.FINANCIAL_TOTAL_EQUITY,
+                    value=vals[0],
+                    unit=FactUnit.CRORE_INR,
+                    period=period,
+                    confidence="high",
+                    provenance=Provenance(
+                        section="balance_sheet",
+                        char_offset=bs_start + m.start(),
+                        excerpt=_snip(bs_text, m.start()),
+                    ),
+                ))
+
+        total_debt = 0.0
+        found_debt = False
+        for m in _RE_BS_BORROWINGS.finditer(bs_text):
+            vals = _extract_n_values(bs_text, m.end(), n=2)
+            if vals and vals[0] != 0.0:
+                total_debt += vals[0]
+                found_debt = True
+        if found_debt:
             facts.append(AnalysisFact(
-                kind=FactKind.FINANCIAL_TOTAL_EQUITY,
-                value=vals[0],
+                kind=FactKind.FINANCIAL_TOTAL_DEBT,
+                value=total_debt,
                 unit=FactUnit.CRORE_INR,
                 period=period,
                 confidence="high",
-                provenance=Provenance(
-                    section="balance_sheet",
-                    char_offset=bs_start + m.start(),
-                    excerpt=_snip(bs_text, m.start()),
-                ),
+                provenance=Provenance(section="balance_sheet"),
             ))
-
-    # 3. Total debt (borrowings — not emitted if zero / absent)
-    total_debt = 0.0
-    found_debt = False
-    for m in _RE_BS_BORROWINGS.finditer(bs_text):
-        vals = _extract_n_values(bs_text, m.end(), n=2)
-        if vals and vals[0] != 0.0:
-            total_debt += vals[0]
-            found_debt = True
-    if found_debt:
-        facts.append(AnalysisFact(
-            kind=FactKind.FINANCIAL_TOTAL_DEBT,
-            value=total_debt,
-            unit=FactUnit.CRORE_INR,
-            period=period,
-            confidence="high",
-            provenance=Provenance(section="balance_sheet"),
-        ))
 
     return facts
 
@@ -599,9 +779,11 @@ def _extract_segment_facts(
     region = text[seg_start:seg_end]
 
     facts: list[AnalysisFact] = []
-    for name_m in _SEGMENT_NAMES.finditer(region):
+    for name_m in _SEGMENT_NAME_LINE.finditer(region):
         seg_name = name_m.group(1).strip()
-        values = _extract_n_values(text, seg_start + name_m.end(), n=6)
+        if not _is_segment_candidate(seg_name):
+            continue
+        values = _extract_n_values(region, name_m.end(), n=6)
         if not values:
             # All names listed before values — annual layout, cannot align
             return []
@@ -652,9 +834,11 @@ def _extract_segment_ebit_facts(
     region = text[ebit_start:ebit_end]
 
     facts: list[AnalysisFact] = []
-    for name_m in _SEGMENT_NAMES.finditer(region):
+    for name_m in _SEGMENT_NAME_LINE.finditer(region):
         seg_name = name_m.group(1).strip()
-        values = _extract_n_values(text, ebit_start + name_m.end(), n=6)
+        if not _is_segment_candidate(seg_name):
+            continue
+        values = _extract_n_values(region, name_m.end(), n=6)
         if not values:
             return []
         idx = col_idx if col_idx < len(values) else 0
@@ -759,6 +943,104 @@ def _report_meta_facts(period_type: str, period_end: str, text: str) -> list[Ana
 
 
 # ---------------------------------------------------------------------------
+# Banking-format detection and extraction
+# ---------------------------------------------------------------------------
+
+# Banks file under Banking Regulation Act format — no "Revenue from operations".
+# Key identifiers in the P&L: Interest Earned / Net Interest Income, or
+# OCR-corrupted equivalents (e.g. "lnt€resU" from scanned SBI PDFs).
+_RE_BANKING_ANCHOR = re.compile(
+    # Clean text: standard banking P&L labels
+    r"Interest\s+Earned"
+    r"|Net\s+Interest\s+Income"
+    r"|Net\s+Profit\s+for\s+the\s+(?:quarter|year|half)"
+    # OCR-corrupted variants: I→l, e→€, other confusions
+    r"|[Il]nt[€e]re[s$]t\s+[Ee]arned"
+    r"|[Il]nt[€e]re[s$]t\s+[Ii]ncome"
+    r"|[Il]nt[€e]re[s$].{0,4}[Dd]iscount",  # "Interest/discount on advances"
+    re.IGNORECASE,
+)
+
+# Net Profit row label in banking P&L — several phrasings observed across years and OCR engines.
+#
+# Statutory row (Banking Regulation Act layout):
+#   "NET PROFIT/ (LOSS) FROM ORDINARY ACTIVITIES AFTER TAX"   (2025, space in AFTER TAX)
+#   "NET PROFIT! (LOSS) FROM ORDINARY ACTIVITIES AFTERTAX"    (2024, ! not /, no space)
+#
+# Abbreviated cover-letter phrasing (also appears in subsidiary notes — these matches
+# are ignored by _extract_n_values because the surrounding prose lines are not purely
+# numeric, so they produce no facts even when accidentally matched):
+#   "Net Profit for the quarter after tax"
+_RE_BANK_PAT = re.compile(
+    # Abbreviated form
+    r"Net\s+Profit\s+(?:for\s+the\s+(?:period|quarter|year|half|Q\d)|after\s+tax)"
+    # Statutory form: NET PROFIT <any punctuation/space up to 80 chars> ORDINARY ACTIVITIES AFTERTAX
+    r"|NET\s+PROFIT[^\n]{0,80}ORDINARY\s+ACTIVITIES\s+AFTER\s*TAX",
+    re.IGNORECASE,
+)
+
+
+_RE_BANK_ENTITY = re.compile(
+    r"\b(?:Bank|BANK|Banking|BANKING)\b",
+)
+
+
+def _is_banking_filing(text: str) -> bool:
+    """Return True if the document uses the Banking Regulation Act P&L format.
+
+    Two-stage check:
+    1. Direct: "Interest Earned" / "Net Interest Income" present (clean PDFs).
+    2. Cover letter: entity identifies itself as a Bank and no "Revenue from
+       operations" is present (catches OCR-corrupted banking PDFs).
+    """
+    no_rev = not bool(re.search(r"Revenue from operations", text[:15000], re.IGNORECASE))
+    if not no_rev:
+        return False
+
+    # Fast path: readable banking P&L labels present
+    if _RE_BANKING_ANCHOR.search(text[:15000]):
+        return True
+
+    # Fallback: company name in cover letter contains "Bank" or "Banking"
+    # and no manufacturing P&L anchor found — assume Banking Regulation Act format.
+    cover = text[:2000]
+    return bool(_RE_BANK_ENTITY.search(cover))
+
+
+def _extract_banking_facts(
+    text: str, period_end: str, period_type: str
+) -> list[AnalysisFact]:
+    """Extract Net Profit from the OCR-corrupted banking-format P&L.
+
+    Banks (Banking Regulation Act) don't use IndAS Schedule III: they have no
+    "Revenue from operations" row.  We locate the Net Profit figure directly,
+    using the same _extract_n_values column logic, and emit FINANCIAL_PAT.
+    All other line items are left for future banking-specific analyzer work.
+    """
+    facts: list[AnalysisFact] = []
+    m = _RE_BANK_PAT.search(text)
+    if m is None:
+        return facts
+
+    col_idx = _primary_col(period_type, 6)
+    vals = _extract_n_values(text, m.end(), n=8)
+    if vals and len(vals) > col_idx and vals[col_idx] is not None:
+        facts.append(AnalysisFact(
+            kind=FactKind.FINANCIAL_PAT,
+            value=vals[col_idx],
+            unit=FactUnit.CRORE_INR,
+            period=period_end,
+            confidence="medium",
+            provenance=Provenance(
+                section="consolidated_pl_table",
+                char_offset=m.start(),
+                excerpt=_snip(text, m.start()),
+            ),
+        ))
+    return facts
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
@@ -797,6 +1079,25 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     pl_regions = _find_pl_regions(content)
 
     if not pl_regions:
+        # Check if this is a banking-format filing (no "Revenue from operations")
+        if _is_banking_filing(content):
+            warnings.append(
+                "Banking-format filing detected (Banking Regulation Act layout): "
+                "'Revenue from operations' absent; extracting Net Profit only"
+            )
+            bank_facts = _extract_banking_facts(content, period_end, period_type)
+            facts.extend(bank_facts)
+            facts.extend(extract_dividend_facts(content, period_end))
+            return AnalysisResult(
+                evidence_id=evidence_id,
+                kind=doc.kind,
+                analyzer_version=ANALYZER_VERSION,
+                confidence="medium" if bank_facts else "low",
+                source_date=datetime.fromisoformat(doc.source_date),
+                warnings=warnings,
+                facts=facts,
+                excerpts=excerpts,
+            )
         warnings.append("No P&L table found — may be a Regulation 23(9) disclosure")
         return AnalysisResult(
             evidence_id=evidence_id,

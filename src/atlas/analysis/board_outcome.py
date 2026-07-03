@@ -1,39 +1,53 @@
 """Rule-based fact extraction from SEBI Regulation 30 board outcome filings.
 
-Four extractable sub-types are recognised by scanning the document structure:
+Recognised sub-types and extracted facts
+-----------------------------------------
+Results / Dividend
+    Board approved quarterly/annual results and declared or recommended a dividend.
+    Extracts CAPITAL_DIVIDEND_* facts from the cover letter on every filing path.
 
-  Results       — Board approved quarterly/annual financial results and declared
-                  or recommended a dividend. Extracts dividend facts; P&L numbers
-                  live in the attached Reg 33 statement, which the financial_results
-                  analyzer handles on its own evidence_id.
+Acquisition (Type A Annexure)
+    Board approved an external acquisition; Annexure A has the SEBI target-entity
+    table ("Name of the target entity..."). Extracts CAPITAL_ACQ_* facts.
 
-  Acquisition   — Board approved an external acquisition; Annexure A contains the
-                  standard SEBI Reg 30 acquisition table ("Name of the target
-                  entity..."). Extracts the same CAPITAL_ACQ_* facts as the
-                  acquisition analyzer — necessary because BSE sometimes classifies
-                  these disclosures under board_outcome rather than a standalone
-                  acquisition filing.
+Investment
+    Board approved investment into a subsidiary via a Securities Subscription
+    Agreement. Annexure A uses the agreement-party table; extracts
+    CAPITAL_INVEST_TARGET_NAME and CAPITAL_INVEST_AMOUNT.
 
-  Investment    — Board approved investment into a subsidiary by bringing in an
-                  external co-investor (Securities Subscription Agreement or SHA
-                  with a stated aggregate amount). Annexure A uses the agreement
-                  table format; extract CAPITAL_INVEST_TARGET_NAME and
-                  CAPITAL_INVEST_AMOUNT. Sub-detected inside the Agreement branch.
+Agreement (pure JV / distribution)
+    Annexure A uses the agreement-party table but no investment amount is stated;
+    no structured facts extracted; full text captured as excerpt.
 
-  Agreement     — Board approved a pure JV or distribution agreement with no stated
-                  investment amount. Annexure A uses the agreement table format;
-                  no structured facts extracted; full text captured as excerpt.
+Buyback announcement
+    Board authorised an equity buyback. Cover letter states the aggregate amount
+    and price per share. Extracts CAPITAL_BUYBACK_AMOUNT and
+    CAPITAL_BUYBACK_PRICE_PER_SHARE.
 
-  Other         — Buyback authorisation, director changes, and anything else.
-                  Cover letter captured as an excerpt; no structured facts extracted.
+Fundraising (QIP / Rights / Preferential / NCD)
+    Board approved raising capital via equity or debt instruments. Extracts
+    CAPITAL_FUNDRAISE_TYPE and CAPITAL_FUNDRAISE_AMOUNT.
 
-Dividend extraction applies to all sub-types: a single board meeting may approve
-results, declare a dividend, AND approve an acquisition.
+Management changes
+    Board approved or noted appointment, reappointment, or resignation of a
+    director or KMP. Extracts GOVERNANCE_DIRECTOR, GOVERNANCE_DIRECTOR_CHANGE_TYPE,
+    and GOVERNANCE_DIRECTOR_CHANGE_ROLE; grouped by section "director_change_N".
 
-Dividend period inference:
-  "quarter/year ended [date]" is parsed from the cover letter. Falls back to the
-  most recent Indian fiscal year end (March 31) from source_date when a dividend
-  is declared but no period phrase is found (standalone dividend announcement).
+Other
+    Any board outcome not matching the above; cover letter captured as excerpt
+    only with a warning.
+
+Always-on extraction
+--------------------
+All extractors except the Annexure-based ones (acquisition, investment/agreement)
+run unconditionally on the cover letter.  A single board meeting may both declare
+a dividend AND announce a management change; all facts will be captured.
+
+Dividend period inference
+--------------------------
+"quarter/year ended [date]" is parsed from the cover letter. Falls back to the
+most recent Indian fiscal year end (March 31) from source_date when a dividend
+is declared but no period phrase is found (standalone dividend announcement).
 """
 from __future__ import annotations
 
@@ -41,6 +55,7 @@ import re
 from datetime import datetime
 
 from atlas.analysis.base import (
+    AnalysisFact,
     AnalysisResult,
     FactKind,
     FactUnit,
@@ -54,12 +69,12 @@ from atlas.analysis.patterns import (
 )
 from atlas.knowledge.base import KnowledgeBase
 
-ANALYZER_VERSION = "1.0"
+ANALYZER_VERSION = "1.1"
 
 _COVER_WINDOW = 5_000
 
 # ---------------------------------------------------------------------------
-# Sub-type anchors
+# Sub-type anchors (Annexure A structure detection)
 # ---------------------------------------------------------------------------
 
 # Acquisition Annexure A: SEBI-mandated target entity table
@@ -141,10 +156,15 @@ _RE_EV_USD = re.compile(
     r"Enterprise\s+Value\b[^.]*?USD\s+([\d,.]+)\s*(million|billion)\b",
     re.IGNORECASE | re.DOTALL,
 )
+_RE_EV_INR = re.compile(
+    r"Enterprise\s+Value\b[^.]*?(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d+)?)\s*(?:crore|cr\.?)\b",
+    re.IGNORECASE | re.DOTALL,
+)
 _RE_STAKE = re.compile(r"\b(\d{2,3})\s*%")
 _RE_COMPLETION = re.compile(
     r"expected to be completed\s+by\s+(\w+ \d+,?\s*\d{4})", re.IGNORECASE
 )
+
 
 def _extract_acq_type_a(
     cover: str, ann_a: str, ann_b: str,
@@ -181,6 +201,7 @@ def _extract_acq_type_a(
         warnings.append("Consideration type not found in Annexure A")
 
     m_usd = _RE_EV_USD.search(ann_a)
+    m_inr = _RE_EV_INR.search(ann_a)
     if m_usd:
         amount_str = m_usd.group(1).replace(",", "")
         scale = m_usd.group(2).lower()
@@ -193,6 +214,17 @@ def _extract_acq_type_a(
             facts.append(_fact(
                 FactKind.CAPITAL_ACQ_ENTERPRISE_VALUE, amount, unit,
                 "annexure_a", ann_a, m_usd.start(),
+            ))
+    elif m_inr:
+        amount_str = m_inr.group(1).replace(",", "")
+        try:
+            amount = float(amount_str)
+        except ValueError:
+            warnings.append(f"Could not parse enterprise value: {amount_str!r}")
+        else:
+            facts.append(_fact(
+                FactKind.CAPITAL_ACQ_ENTERPRISE_VALUE, amount, FactUnit.CRORE_INR,
+                "annexure_a", ann_a, m_inr.start(),
             ))
     else:
         warnings.append("Enterprise value not found in Annexure A")
@@ -251,8 +283,6 @@ def _extract_investment(
         warnings.append("Could not identify subsidiary receiving investment from cover letter")
 
     # Investment amount: search press release (ann_b) first; fall back to Annexure A
-    # (PDF layout can embed the press release page 1 inside Annexure A before the
-    # formal "Annexure B" label is detected).
     def _find_inr(texts: list[tuple[str, str]]) -> tuple[re.Match | None, str, str]:
         for text, section in texts:
             m = _RE_INVEST_AMOUNT_INR.search(text)
@@ -304,6 +334,233 @@ def _extract_investment(
 
 
 # ---------------------------------------------------------------------------
+# Buyback announcement extraction
+# ---------------------------------------------------------------------------
+
+_RE_BUYBACK_SIGNAL = re.compile(
+    r"buyback\s+of\s+equity\s+shares"
+    r"|approved\s+(?:the\s+)?(?:proposal\s+(?:for\s+)?)?buyback\b",
+    re.IGNORECASE,
+)
+_RE_BUYBACK_AMOUNT = re.compile(
+    r"(?:aggregate\s+)?(?:amount\s+)?(?:not\s+exceeding|not\s+more\s+than|up\s+to|of\s+(?:INR|Rs\.?|₹))?"
+    r"\s*(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d+)?)\s*(?:crore|cr\.?)\b",
+    re.IGNORECASE,
+)
+_RE_BUYBACK_PRICE = re.compile(
+    r"price\s+(?:not\s+exceeding|of)\s+(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d+)?)\s*per\s+(?:equity\s+)?share",
+    re.IGNORECASE,
+)
+
+
+def _extract_buyback(cover: str) -> tuple[list[AnalysisFact], list[str]]:
+    """Extract CAPITAL_BUYBACK_* facts from a buyback announcement in the cover letter."""
+    facts: list[AnalysisFact] = []
+    warnings: list[str] = []
+
+    if not _RE_BUYBACK_SIGNAL.search(cover):
+        return facts, warnings
+
+    m_amt = _RE_BUYBACK_AMOUNT.search(cover)
+    if m_amt:
+        raw = m_amt.group(1).replace(",", "")
+        try:
+            amount = float(raw)
+        except ValueError:
+            warnings.append(f"Could not parse buyback amount: {m_amt.group(1)!r}")
+        else:
+            facts.append(_fact(
+                FactKind.CAPITAL_BUYBACK_AMOUNT, amount, FactUnit.CRORE_INR,
+                "cover_letter", cover, m_amt.start(),
+            ))
+    else:
+        warnings.append("Buyback amount not found in cover letter")
+
+    m_price = _RE_BUYBACK_PRICE.search(cover)
+    if m_price:
+        raw = m_price.group(1).replace(",", "")
+        try:
+            price = float(raw)
+        except ValueError:
+            warnings.append(f"Could not parse buyback price: {m_price.group(1)!r}")
+        else:
+            facts.append(_fact(
+                FactKind.CAPITAL_BUYBACK_PRICE_PER_SHARE, price, FactUnit.RUPEES_PER_SHARE,
+                "cover_letter", cover, m_price.start(),
+            ))
+
+    return facts, warnings
+
+
+# ---------------------------------------------------------------------------
+# Fundraising detection (QIP / Rights Issue / Preferential Allotment / NCD)
+# ---------------------------------------------------------------------------
+
+_FUNDRAISE_SIGNALS: list[tuple[re.Pattern, str]] = [
+    (re.compile(r"Qualified\s+Institutional\s+Placement|(?<!\w)QIP(?!\w)", re.IGNORECASE), "QIP"),
+    (re.compile(r"rights?\s+issue\b", re.IGNORECASE), "rights_issue"),
+    (re.compile(r"preferential\s+(?:allotment|issue)\b", re.IGNORECASE), "preferential_allotment"),
+    (re.compile(r"Non[-–]?Convertible\s+Debentures?|(?<!\w)NCDs?(?!\w)", re.IGNORECASE), "NCD"),
+]
+
+_RE_FUNDRAISE_AMOUNT = re.compile(
+    r"(?:not\s+exceeding|not\s+more\s+than|up\s+to"
+    r"|aggregate(?:\s+amount)?(?:\s+of)?(?:\s+not\s+exceeding)?)"
+    r"\s+(?:INR|Rs\.?|₹)\s*([\d,]+(?:\.\d+)?)\s*(?:crore|cr\.?)\b",
+    re.IGNORECASE,
+)
+
+
+def _extract_fundraising(cover: str) -> tuple[list[AnalysisFact], list[str]]:
+    """Extract CAPITAL_FUNDRAISE_* facts from equity/debt capital raise announcements."""
+    facts: list[AnalysisFact] = []
+    warnings: list[str] = []
+
+    detected: list[tuple[str, int]] = []
+    for pattern, kind in _FUNDRAISE_SIGNALS:
+        m = pattern.search(cover)
+        if m:
+            detected.append((kind, m.start()))
+
+    if not detected:
+        return facts, warnings
+
+    m_amount = _RE_FUNDRAISE_AMOUNT.search(cover)
+    amount: float | None = None
+    amount_pos = 0
+    if m_amount:
+        raw = m_amount.group(1).replace(",", "")
+        try:
+            amount = float(raw)
+            amount_pos = m_amount.start()
+        except ValueError:
+            warnings.append(f"Could not parse fundraise amount: {m_amount.group(1)!r}")
+
+    for kind, offset in detected:
+        facts.append(_fact(
+            FactKind.CAPITAL_FUNDRAISE_TYPE, kind, None,
+            "cover_letter", cover, offset,
+        ))
+        if amount is not None:
+            facts.append(_fact(
+                FactKind.CAPITAL_FUNDRAISE_AMOUNT, amount, FactUnit.CRORE_INR,
+                "cover_letter", cover, amount_pos,
+            ))
+
+    return facts, warnings
+
+
+# ---------------------------------------------------------------------------
+# Management change detection (director / KMP appointments and resignations)
+# ---------------------------------------------------------------------------
+
+# Step 1: anchor — "appointment/resignation of " (case-insensitive)
+_RE_DIR_CHANGE_ANCHOR = re.compile(
+    r"(re-?appointment|appointment|resignation|cessation)\s+of\s+",
+    re.IGNORECASE,
+)
+# Step 2: title-case person name immediately following the anchor (case-sensitive)
+_RE_PERSON_NAME = re.compile(
+    r"([A-Z][a-zA-Z]{2,}(?:\s+[A-Z][a-zA-Z.]{1,}){1,4})"
+)
+# Step 3: role after "as" / "from the position of" etc. in the 300 chars after the name
+_RE_AS_ROLE = re.compile(
+    r"\bas\s+([^.,;\n]{5,120}?)(?=\s*(?:effective|w\.?e\.?f\.?|with\s+effect"
+    r"|subject|of\s+the\s+Company|,|\.|$))",
+    re.IGNORECASE,
+)
+
+_DIR_NAME_STOPWORDS = frozenset({
+    "board", "directors", "director", "committee", "company", "trustee",
+    "sebi", "stock", "exchange", "income", "supreme", "court", "high",
+    "national", "reserve", "bank", "securities", "act", "regulation",
+    "annual", "general", "meeting", "executive", "the",
+})
+
+
+def _clean_role(role: str) -> str:
+    """Strip trailing noise from extracted role strings."""
+    role = role.strip().rstrip(" ,")
+    for suffix_re in (
+        re.compile(r"\s+(?:effective|w\.?e\.?f\.?|with\s+effect).*$", re.IGNORECASE),
+        re.compile(r"\s+of\s+the\s+Company.*$", re.IGNORECASE),
+        re.compile(r",?\s+subject\s+to.*$", re.IGNORECASE),
+    ):
+        role = suffix_re.sub("", role).strip()
+    return role
+
+
+def _extract_management_changes(cover: str) -> tuple[list[AnalysisFact], list[str]]:
+    """Extract GOVERNANCE_DIRECTOR* facts for director/KMP changes.
+
+    Facts for each person are grouped under section "director_change_N" so the
+    builder can assemble DirectorChange objects per person.
+    """
+    facts: list[AnalysisFact] = []
+    warnings: list[str] = []
+    seen_names: set[str] = set()
+    counter = 0
+
+    for m_anchor in _RE_DIR_CHANGE_ANCHOR.finditer(cover):
+        change_type_raw = m_anchor.group(1).lower()
+
+        # Look for title-case person name immediately after the anchor
+        window_start = m_anchor.end()
+        window = cover[window_start:window_start + 200]
+        m_name = _RE_PERSON_NAME.match(window)
+        if m_name is None:
+            continue
+
+        name = m_name.group(1).strip()
+        parts = name.split()
+        if len(parts) < 2 or parts[0].lower() in _DIR_NAME_STOPWORDS:
+            continue
+
+        name_key = name.lower()
+        if name_key in seen_names:
+            continue
+        seen_names.add(name_key)
+
+        # Normalise change type
+        cr = change_type_raw.replace("-", "").replace(" ", "")
+        if "reappointment" in cr:
+            change_type = "reappointment"
+        elif "appointment" in cr:
+            change_type = "appointment"
+        else:
+            change_type = "resignation"
+
+        section = f"director_change_{counter}"
+        counter += 1
+
+        name_pos = window_start + m_name.start(1)
+        facts.append(_fact(
+            FactKind.GOVERNANCE_DIRECTOR, name, None,
+            section, cover, name_pos,
+        ))
+        facts.append(_fact(
+            FactKind.GOVERNANCE_DIRECTOR_CHANGE_TYPE, change_type, None,
+            section, cover, m_anchor.start(1),
+        ))
+
+        # Look for role ("as [role]") in the 300 chars after the name.
+        # Normalise internal whitespace so multi-line role strings are captured.
+        role_window_start = window_start + m_name.end()
+        role_window = re.sub(r"\s+", " ", cover[role_window_start:role_window_start + 300])
+        m_role = _RE_AS_ROLE.search(role_window)
+        if m_role:
+            role = _clean_role(m_role.group(1))
+            if role:
+                role_pos = role_window_start + m_role.start(1)
+                facts.append(_fact(
+                    FactKind.GOVERNANCE_DIRECTOR_CHANGE_ROLE, role, None,
+                    section, cover, role_pos,
+                ))
+
+    return facts, warnings
+
+
+# ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
 
@@ -343,8 +600,10 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     if ann_b.strip():
         result.excerpts["press_release"] = ann_b.strip()
 
-    # --- Dividend extraction (applies to all sub-types) ---
     cover_scan = cover or content[:_COVER_WINDOW]
+
+    # --- Always-on cover-letter extractors ---
+
     period = _detect_period(cover_scan[:_COVER_WINDOW])
     div_facts = extract_dividend_facts(cover_scan[:_COVER_WINDOW], period)
     if period is None and div_facts:
@@ -353,45 +612,63 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
             f.period = period
     result.facts.extend(div_facts)
 
-    # --- Sub-type dispatch for non-dividend structured facts ---
+    bb_facts, bb_warnings = _extract_buyback(cover_scan[:_COVER_WINDOW])
+    result.facts.extend(bb_facts)
+    result.warnings.extend(bb_warnings)
+
+    fundraise_facts, fundraise_warnings = _extract_fundraising(cover_scan[:_COVER_WINDOW])
+    result.facts.extend(fundraise_facts)
+    result.warnings.extend(fundraise_warnings)
+
+    mgmt_facts, mgmt_warnings = _extract_management_changes(cover_scan[:_COVER_WINDOW])
+    result.facts.extend(mgmt_facts)
+    result.warnings.extend(mgmt_warnings)
+
+    # --- Annexure-based routing ---
+
+    acq_detected = False
     if ann_a and _RE_TYPE_A_ANCHOR.search(ann_a):
         acq_facts, acq_warnings = _extract_acq_type_a(cover, ann_a, ann_b)
         result.facts.extend(acq_facts)
         result.warnings.extend(acq_warnings)
-        core_kinds = {f.kind for f in result.facts}
-        if (
-            FactKind.CAPITAL_ACQ_TARGET_NAME in core_kinds
-            and FactKind.CAPITAL_ACQ_CONSIDERATION_TYPE in core_kinds
-            and FactKind.CAPITAL_ACQ_STAKE_PCT in core_kinds
-        ):
-            result.confidence = "high"
-        else:
-            result.confidence = "medium"
+        acq_detected = True
 
     elif ann_a and _RE_AGREEMENT_ANCHOR.search(ann_a):
         inv_facts, inv_warnings = _extract_investment(cover, ann_a, ann_b)
         if inv_facts:
             result.facts.extend(inv_facts)
             result.warnings.extend(inv_warnings)
-            result.confidence = "medium"
         else:
             result.warnings.append(
                 "Annexure A contains a material agreement disclosure (JV/SHA/subscription); "
                 "no structured facts extracted — see annexure_a excerpt"
             )
-            result.confidence = "medium" if div_facts else "low"
 
-    elif div_facts:
-        core_div = {f.kind for f in div_facts}
-        if FactKind.CAPITAL_DIVIDEND_PER_SHARE in core_div:
-            result.confidence = "high"
-        else:
-            result.confidence = "medium"
+    # --- Confidence scoring ---
 
+    kinds = {f.kind for f in result.facts}
+
+    if acq_detected and (
+        FactKind.CAPITAL_ACQ_TARGET_NAME in kinds
+        and FactKind.CAPITAL_ACQ_CONSIDERATION_TYPE in kinds
+        and FactKind.CAPITAL_ACQ_STAKE_PCT in kinds
+    ):
+        result.confidence = "high"
+    elif FactKind.CAPITAL_DIVIDEND_PER_SHARE in kinds:
+        result.confidence = "high"
+    elif kinds & {
+        FactKind.CAPITAL_ACQ_TARGET_NAME,
+        FactKind.CAPITAL_INVEST_TARGET_NAME,
+        FactKind.CAPITAL_BUYBACK_AMOUNT,
+        FactKind.CAPITAL_FUNDRAISE_TYPE,
+        FactKind.GOVERNANCE_DIRECTOR,
+    }:
+        result.confidence = "medium"
     else:
-        result.warnings.append(
-            "No dividend or acquisition disclosure detected; "
-            "see cover_letter excerpt for board decisions"
-        )
+        if not result.facts:
+            result.warnings.append(
+                "No structured facts detected; "
+                "see cover_letter excerpt for board decisions"
+            )
 
     return result

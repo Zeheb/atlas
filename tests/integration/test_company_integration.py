@@ -38,16 +38,16 @@ _BUYBACK_ID = "bse-news-e2b7edf6-e25b-4a08-a7da-cdb7f6e7befa"
 
 
 @pytest.fixture(scope="module")
-def tcs_root() -> Path:
+def tcs_root(isolated_repo_factory) -> Path:
     if not _TCS_REPO.exists():
         pytest.skip("TCS repository not found")
-    return _TCS_REPO
+    return isolated_repo_factory(
+        _TCS_REPO, evidence_ids=[_ANN_ID, _Q2_ID, _SHP_ID, _CREDIT_ID, _BUYBACK_ID]
+    )
 
 
 @pytest.fixture(scope="module")
 def kb(tcs_root: Path) -> Generator[KnowledgeBase, None, None]:
-    db = tcs_root / "knowledge_company_inttest.db"
-    db.unlink(missing_ok=True)
     instance = KnowledgeBase(tcs_root)
     from atlas.acquisition.repository import Repository
     repo = Repository(tcs_root)
@@ -56,7 +56,6 @@ def kb(tcs_root: Path) -> Generator[KnowledgeBase, None, None]:
         if entry is not None:
             instance.parse(entry)
     yield instance
-    db.unlink(missing_ok=True)
 
 
 @pytest.fixture(scope="module")

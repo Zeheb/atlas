@@ -31,16 +31,16 @@ _AGM_2024_ID = "bse-news-481ce326-fd14-4e6f-9676-1d68115654bb"   # 29th AGM
 
 
 @pytest.fixture(scope="module")
-def tcs_root() -> Path:
+def tcs_root(isolated_repo_factory) -> Path:
     if not _TCS_REPO.exists():
         pytest.skip("TCS repository not found")
-    return _TCS_REPO
+    return isolated_repo_factory(
+        _TCS_REPO, evidence_ids=[_AGM_2025_ID, _AGM_2026_ID, _AGM_2024_ID]
+    )
 
 
 @pytest.fixture(scope="module")
 def kb(tcs_root: Path) -> Generator[KnowledgeBase, None, None]:
-    db = tcs_root / "knowledge.db"
-    db.unlink(missing_ok=True)
     instance = KnowledgeBase(tcs_root)
     repo = Repository(tcs_root)
     for eid in (_AGM_2025_ID, _AGM_2026_ID, _AGM_2024_ID):
@@ -48,7 +48,6 @@ def kb(tcs_root: Path) -> Generator[KnowledgeBase, None, None]:
         if entry is not None:
             instance.parse(entry)
     yield instance
-    db.unlink(missing_ok=True)
 
 
 def _facts(result: AnalysisResult, kind: FactKind) -> list:

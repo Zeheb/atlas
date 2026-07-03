@@ -7,11 +7,13 @@ from atlas.company.model import (
     CompanyProfile,
     CreditHistory,
     CreditRatingEntry,
+    DirectorChange,
     DividendEvent,
     ESGSnapshot,
     ESGTimeSeries,
     FinancialSnapshot,
     FinancialTimeSeries,
+    FundraisingEvent,
     GovernanceProfile,
     InvestmentEvent,
     OwnershipSnapshot,
@@ -21,7 +23,8 @@ from atlas.company.model import (
     StrategyEntry,
     StrategyProfile,
 )
-from atlas.company.builder import build_profile
+from atlas.company.builder import build_profile, merge_result
+from atlas.company.store import CompanyStore, StaleResultError
 from atlas.company import derived
 
 __all__ = [
@@ -33,11 +36,13 @@ __all__ = [
     "CompanyProfile",
     "CreditHistory",
     "CreditRatingEntry",
+    "DirectorChange",
     "DividendEvent",
     "ESGSnapshot",
     "ESGTimeSeries",
     "FinancialSnapshot",
     "FinancialTimeSeries",
+    "FundraisingEvent",
     "GovernanceProfile",
     "InvestmentEvent",
     "OwnershipSnapshot",
@@ -46,6 +51,9 @@ __all__ = [
     "SegmentTimeSeries",
     "StrategyEntry",
     "StrategyProfile",
+    "CompanyStore",
+    "StaleResultError",
     "build_profile",
+    "merge_result",
     "derived",
 ]

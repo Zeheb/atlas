@@ -16,7 +16,7 @@ board_outcome          → CapitalEventLedger (dividends | acquisitions | invest
 credit_rating_report   → CreditHistory (debt_ratings or esg_ratings)
 agm_notice             → GovernanceProfile.resolutions
 
-Other kinds (annual_report) are currently ignored.
+annual_report          → ESGTimeSeries (CSR spend) + GovernanceProfile.audit_kams
 
 Processing order
 ----------------
@@ -42,15 +42,18 @@ from atlas.company.model import (
     CompanyProfile,
     CreditHistory,
     CreditRatingEntry,
+    DirectorChange,
     DividendEvent,
     ESGSnapshot,
     ESGTimeSeries,
     FinancialSnapshot,
     FinancialTimeSeries,
+    FundraisingEvent,
     GovernanceProfile,
     InvestmentEvent,
     OwnershipSnapshot,
     OwnershipTimeSeries,
+    RiskEntry,
     SegmentEntry,
     SegmentTimeSeries,
     StrategyEntry,
@@ -72,6 +75,11 @@ _ESG_KINDS: frozenset[FactKind] = frozenset(
 _OWNERSHIP_KINDS: frozenset[FactKind] = frozenset(
     k for k in FactKind if k.value.startswith("ownership_")
 )
+
+# Bump when builder logic changes in a way that would produce different output
+# from the same AnalysisResult inputs.  CompanyStore records this to detect
+# profiles built with an older algorithm.
+BUILDER_VERSION = "1.0"
 
 _STRATEGY_KIND_TO_KEY: dict[FactKind, str] = {
     FactKind.STRATEGY_PRIORITY: "priority",
@@ -229,6 +237,70 @@ def _ingest_investor_presentation_result(
             )
             profile.financial.snapshots.append(snap)
             existing[key] = snap
+
+
+_ANNUAL_REPORT_AUTHORITATIVE_ESG: frozenset[FactKind] = frozenset({
+    FactKind.ESG_CSR_SPEND,
+})
+
+
+def _ingest_annual_report_result(result: AnalysisResult, profile: CompanyProfile) -> None:
+    """Ingest an annual_report AnalysisResult into the CompanyProfile.
+
+    ESG_CSR_SPEND is authoritative (update) — the mandatory s.135 disclosure
+    is the canonical source.  Workforce ESG facts (attrition) are supplementary
+    (setdefault) because BRSR data is more detailed and verified.
+    AUDIT_KAM_TITLE facts go to GovernanceProfile.audit_kams (deduped).
+    """
+    auth_snaps: dict[str, dict[FactKind, float]] = defaultdict(dict)
+    supp_snaps: dict[str, dict[FactKind, float]] = defaultdict(dict)
+
+    for fact in result.facts:
+        if fact.kind not in _ESG_KINDS:
+            continue
+        if fact.period is None or not isinstance(fact.value, (int, float)):
+            continue
+        if fact.kind in _ANNUAL_REPORT_AUTHORITATIVE_ESG:
+            auth_snaps[fact.period][fact.kind] = float(fact.value)
+        else:
+            supp_snaps[fact.period][fact.kind] = float(fact.value)
+
+    existing = {s.period: s for s in profile.esg.snapshots}
+
+    for period, facts in auth_snaps.items():
+        if period in existing:
+            existing[period].facts.update(facts)
+            if result.evidence_id not in existing[period].sources:
+                existing[period].sources.append(result.evidence_id)
+        else:
+            snap = ESGSnapshot(period=period, facts=facts, sources=[result.evidence_id])
+            profile.esg.snapshots.append(snap)
+            existing[period] = snap
+
+    for period, facts in supp_snaps.items():
+        if period in existing:
+            for fk, fv in facts.items():
+                existing[period].facts.setdefault(fk, fv)
+            if result.evidence_id not in existing[period].sources:
+                existing[period].sources.append(result.evidence_id)
+        else:
+            snap = ESGSnapshot(period=period, facts=facts, sources=[result.evidence_id])
+            profile.esg.snapshots.append(snap)
+            existing[period] = snap
+
+    for fact in result.facts:
+        if fact.kind == FactKind.AUDIT_KAM_TITLE and isinstance(fact.value, str):
+            title = fact.value
+            if title not in profile.governance.audit_kams:
+                profile.governance.audit_kams.append(title)
+
+    for fact in result.facts:
+        if fact.kind == FactKind.RISK_FACTOR and isinstance(fact.value, str) and fact.period:
+            profile.governance.risk_factors.append(RiskEntry(
+                period=fact.period,
+                text=fact.value,
+                evidence_id=result.evidence_id,
+            ))
 
 
 def _ingest_brsr_result(result: AnalysisResult, profile: CompanyProfile) -> None:
@@ -480,11 +552,87 @@ def _ingest_buyback_result(result: AnalysisResult, profile: CompanyProfile) -> N
     ))
 
 
+def _ingest_board_outcome_buyback(result: AnalysisResult, profile: CompanyProfile) -> None:
+    """Create a BuybackEvent(sub_type='announcement') from board_outcome buyback facts."""
+    first: dict[FactKind, AnalysisFact] = {}
+    for fact in result.facts:
+        if fact.kind in (FactKind.CAPITAL_BUYBACK_AMOUNT, FactKind.CAPITAL_BUYBACK_PRICE_PER_SHARE):
+            first.setdefault(fact.kind, fact)
+    amount_fact = first.get(FactKind.CAPITAL_BUYBACK_AMOUNT)
+    price_fact = first.get(FactKind.CAPITAL_BUYBACK_PRICE_PER_SHARE)
+    profile.capital_events.buybacks.append(BuybackEvent(
+        source_date=result.source_date,
+        sub_type="announcement",
+        amount=float(amount_fact.value) if amount_fact and isinstance(amount_fact.value, (int, float)) else None,
+        price_per_share=float(price_fact.value) if price_fact and isinstance(price_fact.value, (int, float)) else None,
+        evidence_id=result.evidence_id,
+    ))
+
+
+def _ingest_fundraise_facts(result: AnalysisResult, profile: CompanyProfile) -> None:
+    """Create one FundraisingEvent per fundraise type detected in the result."""
+    # Amount is shared across all detected types (a board typically approves one ceiling)
+    amount_fact = next(
+        (f for f in result.facts if f.kind == FactKind.CAPITAL_FUNDRAISE_AMOUNT),
+        None,
+    )
+    amount = (
+        float(amount_fact.value)
+        if amount_fact and isinstance(amount_fact.value, (int, float))
+        else None
+    )
+    seen_types: set[str] = set()
+    for fact in result.facts:
+        if fact.kind == FactKind.CAPITAL_FUNDRAISE_TYPE:
+            ftype = str(fact.value)
+            if ftype in seen_types:
+                continue
+            seen_types.add(ftype)
+            profile.capital_events.fundraises.append(FundraisingEvent(
+                source_date=result.source_date,
+                fundraise_type=ftype,
+                amount=amount,
+                evidence_id=result.evidence_id,
+            ))
+
+
+def _ingest_director_changes(result: AnalysisResult, profile: CompanyProfile) -> None:
+    """Assemble DirectorChange objects from director_change_N section-grouped facts."""
+    by_section: dict[str, dict[FactKind, AnalysisFact]] = defaultdict(dict)
+    for fact in result.facts:
+        sec = fact.provenance.section if fact.provenance else ""
+        if sec.startswith("director_change_"):
+            by_section[sec].setdefault(fact.kind, fact)
+
+    for _sec, facts in sorted(by_section.items()):
+        name_fact = facts.get(FactKind.GOVERNANCE_DIRECTOR)
+        type_fact = facts.get(FactKind.GOVERNANCE_DIRECTOR_CHANGE_TYPE)
+        if name_fact is None or type_fact is None:
+            continue
+        role_fact = facts.get(FactKind.GOVERNANCE_DIRECTOR_CHANGE_ROLE)
+        profile.governance.director_changes.append(DirectorChange(
+            source_date=result.source_date,
+            change_type=str(type_fact.value),
+            name=str(name_fact.value),
+            role=str(role_fact.value) if role_fact else None,
+            evidence_id=result.evidence_id,
+        ))
+
+
 def _ingest_board_outcome_result(result: AnalysisResult, profile: CompanyProfile) -> None:
     kinds = {f.kind for f in result.facts}
 
     if FactKind.CAPITAL_DIVIDEND_PER_SHARE in kinds:
         _ingest_dividend_facts(result, profile)
+
+    if FactKind.CAPITAL_BUYBACK_AMOUNT in kinds:
+        _ingest_board_outcome_buyback(result, profile)
+
+    if FactKind.CAPITAL_FUNDRAISE_TYPE in kinds:
+        _ingest_fundraise_facts(result, profile)
+
+    if FactKind.GOVERNANCE_DIRECTOR in kinds:
+        _ingest_director_changes(result, profile)
 
     if FactKind.CAPITAL_ACQ_TARGET_NAME in kinds:
         _ingest_acquisition_facts(result, profile)
@@ -581,9 +729,12 @@ def _finalize_profile(profile: CompanyProfile) -> None:
     profile.capital_events.buybacks.sort(key=lambda e: e.source_date)
     profile.capital_events.acquisitions.sort(key=lambda e: e.source_date)
     profile.capital_events.investments.sort(key=lambda e: e.source_date)
+    profile.capital_events.fundraises.sort(key=lambda e: e.source_date)
     profile.strategy.entries.sort(key=lambda e: e.source_date)
     profile.strategy.csat.sort(key=lambda e: e.period)
     profile.governance.resolutions.sort(key=lambda r: (r.period or "", r.title))
+    profile.governance.director_changes.sort(key=lambda d: d.source_date)
+    profile.governance.risk_factors.sort(key=lambda r: r.period)
 
 
 # ---------------------------------------------------------------------------
@@ -591,22 +742,43 @@ def _finalize_profile(profile: CompanyProfile) -> None:
 # ---------------------------------------------------------------------------
 
 _DISPATCH = {
-    "financial_results": _ingest_financial_result,
-    "earnings_transcript": _ingest_transcript_result,
-    "investor_presentation": _ingest_investor_presentation_result,
-    "brsr": _ingest_brsr_result,
-    "shareholding_pattern": _ingest_shp_result,
-    "credit_rating_report": _ingest_credit_rating_result,
-    "buyback": _ingest_buyback_result,
-    "acquisition": _ingest_acquisition_facts,
-    "board_outcome": _ingest_board_outcome_result,
-    "agm_notice": _ingest_agm_notice_result,
+    "financial_results":      _ingest_financial_result,
+    "earnings_transcript":    _ingest_transcript_result,
+    "investor_presentation":  _ingest_investor_presentation_result,
+    "brsr":                   _ingest_brsr_result,
+    "shareholding_pattern":   _ingest_shp_result,
+    "credit_rating_report":   _ingest_credit_rating_result,
+    "buyback":                _ingest_buyback_result,
+    "acquisition":            _ingest_acquisition_facts,
+    "board_outcome":          _ingest_board_outcome_result,
+    "agm_notice":             _ingest_agm_notice_result,
+    "annual_report":          _ingest_annual_report_result,
 }
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
+
+def merge_result(result: AnalysisResult, profile: CompanyProfile) -> None:
+    """Apply one AnalysisResult to an existing CompanyProfile in place.
+
+    This is the incremental primitive used by CompanyStore.  Callers do not
+    need to worry about processing order — the same update semantics apply
+    as in build_profile():
+
+    - financial_results:       dict.update() — overwrites existing facts
+    - earnings_transcript:     setdefault()  — supplements without overwriting
+    - investor_presentation:   setdefault()  — supplements without overwriting
+
+    Unknown kinds are silently skipped.
+    All collections are re-sorted after ingestion.
+    """
+    fn = _DISPATCH.get(result.kind)
+    if fn is not None:
+        fn(result, profile)
+    _finalize_profile(profile)
 
 
 def build_profile(
@@ -624,7 +796,7 @@ def build_profile(
     - earnings_transcript and investor_presentation (priority=2) supplement
       only — they never overwrite facts already present from XBRL sources.
 
-    Unknown kinds (annual_report) are silently skipped.
+    Unknown kinds are silently skipped.
     """
     profile = CompanyProfile(company_id=company_id)
 

@@ -9,26 +9,37 @@ from typing import Literal
 from atlas.acquisition.catalog import CatalogEntry
 from atlas.knowledge import extractors as _ext
 
-PARSER_VERSION = "1.0"
+PARSER_VERSION = "2.0"
 
 _CREATE_TABLES = """
     CREATE TABLE IF NOT EXISTS parsed_documents (
-        evidence_id    TEXT PRIMARY KEY,
-        kind           TEXT NOT NULL,
-        title          TEXT NOT NULL,
-        source_date    TEXT NOT NULL,
-        local_path     TEXT NOT NULL,
-        parsed_at      TEXT NOT NULL,
-        parser_version TEXT NOT NULL,
-        status         TEXT NOT NULL,
-        error          TEXT,
-        char_count     INTEGER
+        evidence_id       TEXT PRIMARY KEY,
+        kind              TEXT NOT NULL,
+        title             TEXT NOT NULL,
+        source_date       TEXT NOT NULL,
+        local_path        TEXT NOT NULL,
+        parsed_at         TEXT NOT NULL,
+        parser_version    TEXT NOT NULL,
+        status            TEXT NOT NULL,
+        error             TEXT,
+        char_count        INTEGER,
+        extraction_method TEXT,
+        quality_score     REAL,
+        ocr_attempted     INTEGER NOT NULL DEFAULT 0
     );
     CREATE TABLE IF NOT EXISTS document_contents (
         evidence_id TEXT PRIMARY KEY,
         content     TEXT
     );
 """
+
+# Columns added in parser_version 2.0.  Applied as a migration when the DB
+# was originally created by parser_version 1.0.
+_MIGRATE_V2 = [
+    "ALTER TABLE parsed_documents ADD COLUMN extraction_method TEXT",
+    "ALTER TABLE parsed_documents ADD COLUMN quality_score REAL",
+    "ALTER TABLE parsed_documents ADD COLUMN ocr_attempted INTEGER NOT NULL DEFAULT 0",
+]
 
 
 @dataclass
@@ -41,11 +52,15 @@ class ParsedDocument:
     parsed_at: datetime
     parser_version: str
     status: Literal["ok", "failed"]
-    error: str | None
-    char_count: int | None
+    error: str | None = None
+    char_count: int | None = None
+    extraction_method: Literal["native", "ocr"] | None = None
+    quality_score: float | None = None
+    ocr_attempted: bool = False
 
 
 def _row_to_doc(row: sqlite3.Row) -> ParsedDocument:
+    keys = row.keys()
     return ParsedDocument(
         evidence_id=row["evidence_id"],
         kind=row["kind"],
@@ -57,6 +72,9 @@ def _row_to_doc(row: sqlite3.Row) -> ParsedDocument:
         status=row["status"],
         error=row["error"],
         char_count=row["char_count"],
+        extraction_method=row["extraction_method"] if "extraction_method" in keys else None,
+        quality_score=row["quality_score"] if "quality_score" in keys else None,
+        ocr_attempted=bool(row["ocr_attempted"]) if "ocr_attempted" in keys else False,
     )
 
 
@@ -90,6 +108,14 @@ class KnowledgeBase:
         conn = sqlite3.connect(str(self._db_path))
         try:
             conn.executescript(_CREATE_TABLES)
+            # Idempotent migration: add v2.0 columns to existing databases.
+            for stmt in _MIGRATE_V2:
+                try:
+                    conn.execute(stmt)
+                    conn.commit()
+                except sqlite3.OperationalError:
+                    # Column already exists — silently skip.
+                    pass
         finally:
             conn.close()
 
@@ -106,10 +132,22 @@ class KnowledgeBase:
         return frozenset(row[0] for row in rows)
 
     def ok_ids(self) -> frozenset[str]:
-        """Return evidence_ids whose last parse succeeded."""
+        """Return evidence_ids whose last parse produced usable content.
+
+        Two exclusion rules:
+        1. char_count = 0 — HTML-as-PDF or empty files that silently produced
+           no text; must be re-parsed after the HTML-detection fix.
+        2. parser_version != PARSER_VERSION — documents parsed by an older
+           pipeline version must be re-processed to populate quality metadata
+           (extraction_method, quality_score) introduced in v2.0.
+        """
         with self._db_conn() as conn:
             rows = conn.execute(
-                "SELECT evidence_id FROM parsed_documents WHERE status = 'ok'"
+                "SELECT evidence_id FROM parsed_documents"
+                " WHERE status = 'ok'"
+                " AND COALESCE(char_count, 0) > 0"
+                " AND parser_version = ?",
+                (PARSER_VERSION,),
             ).fetchall()
         return frozenset(row[0] for row in rows)
 
@@ -146,33 +184,48 @@ class KnowledgeBase:
     def parse(self, entry: CatalogEntry) -> ParsedDocument:
         """Extract content from entry.local_path and persist the result.
 
-        Dispatches on the file extension derived from local_path. Extensions
-        not registered in the extractor map produce status='failed' and are
-        retried on the next call, as are prior extraction failures.
+        PDFs go through the multi-stage quality pipeline in extract_pdf():
+        native extraction → quality scoring → OCR fallback.  All other
+        formats use the single-function extractors in _EXTRACTORS.
 
         Never raises — all extraction errors are captured in status='failed'.
         """
         path = self._root / entry.local_path
         ext = Path(entry.local_path).suffix.lstrip(".").lower()
-        extractor = _ext._EXTRACTORS.get(ext)
         parsed_at = datetime.now(timezone.utc)
 
         content: str | None = None
         status: Literal["ok", "failed"] = "ok"
         error: str | None = None
         char_count: int | None = None
+        extraction_method: Literal["native", "ocr"] | None = None
+        quality_score: float | None = None
+        ocr_attempted: bool = False
 
-        if extractor is None:
-            status = "failed"
-            label = f".{ext}" if ext else "(none)"
-            error = f"No extractor registered for extension '{label}'"
-        else:
+        if ext == "pdf":
             try:
-                content = extractor(path)
+                result = _ext.extract_pdf(path)
+                content = result.text
                 char_count = len(content)
+                extraction_method = result.extraction_method
+                quality_score = result.quality_score
+                ocr_attempted = result.ocr_attempted
             except Exception as exc:  # noqa: BLE001
                 status = "failed"
                 error = str(exc)
+        else:
+            extractor = _ext._EXTRACTORS.get(ext)
+            if extractor is None:
+                status = "failed"
+                label = f".{ext}" if ext else "(none)"
+                error = f"No extractor registered for extension '{label}'"
+            else:
+                try:
+                    content = extractor(path)
+                    char_count = len(content)
+                except Exception as exc:  # noqa: BLE001
+                    status = "failed"
+                    error = str(exc)
 
         doc = ParsedDocument(
             evidence_id=entry.evidence_id,
@@ -185,6 +238,9 @@ class KnowledgeBase:
             status=status,
             error=error,
             char_count=char_count,
+            extraction_method=extraction_method,
+            quality_score=quality_score,
+            ocr_attempted=ocr_attempted,
         )
         self._upsert(doc, content)
         return doc
@@ -195,8 +251,9 @@ class KnowledgeBase:
                 """
                 INSERT OR REPLACE INTO parsed_documents
                     (evidence_id, kind, title, source_date, local_path,
-                     parsed_at, parser_version, status, error, char_count)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     parsed_at, parser_version, status, error, char_count,
+                     extraction_method, quality_score, ocr_attempted)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     doc.evidence_id,
@@ -209,6 +266,9 @@ class KnowledgeBase:
                     doc.status,
                     doc.error,
                     doc.char_count,
+                    doc.extraction_method,
+                    doc.quality_score,
+                    int(doc.ocr_attempted),
                 ),
             )
             conn.execute(

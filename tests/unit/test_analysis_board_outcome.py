@@ -633,3 +633,351 @@ class TestOther:
     def test_cover_letter_in_excerpts(self) -> None:
         result = analyze("eid-oth", _make_kb("eid-oth", _COVER_OTHER))
         assert "cover_letter" in result.excerpts
+
+
+# ---------------------------------------------------------------------------
+# New sub-type: Buyback announcement with amount and price
+# ---------------------------------------------------------------------------
+
+_COVER_BUYBACK_FULL = """\
+TCS/SE/099/2024-25
+October 11, 2024
+
+Dear Sirs,
+
+Sub: Outcome of Board Meeting — Buyback of Equity Shares
+
+Pursuant to Regulation 30 of the SEBI (LODR) Regulations, 2015, we wish to inform
+you that the Board of Directors of Tata Consultancy Services Limited at its meeting
+held today has approved the buyback of equity shares of the Company for an aggregate
+amount not exceeding INR 17,000 crore at a price not exceeding Rs. 4,150 per Equity
+Share, subject to approval of the shareholders through postal ballot.
+
+Yours faithfully,
+For Tata Consultancy Services Limited
+Company Secretary
+"""
+
+_COVER_BUYBACK_AMOUNT_ONLY = """\
+Sub: Board approval for buyback of equity shares.
+
+The Board has approved buyback of equity shares of the Company not exceeding
+INR 5,000 crore. The price per share will be determined later.
+"""
+
+
+class TestBuybackAnnouncement:
+    def test_confidence_medium(self) -> None:
+        result = analyze("eid-bb", _make_kb("eid-bb", _COVER_BUYBACK_FULL))
+        assert result.confidence == "medium"
+
+    def test_buyback_amount_17000(self) -> None:
+        result = analyze("eid-bb", _make_kb("eid-bb", _COVER_BUYBACK_FULL))
+        facts = _facts(result, FactKind.CAPITAL_BUYBACK_AMOUNT)
+        assert len(facts) == 1
+        assert facts[0].value == pytest.approx(17000.0)
+        assert facts[0].unit == FactUnit.CRORE_INR
+
+    def test_buyback_price_4150(self) -> None:
+        result = analyze("eid-bb", _make_kb("eid-bb", _COVER_BUYBACK_FULL))
+        facts = _facts(result, FactKind.CAPITAL_BUYBACK_PRICE_PER_SHARE)
+        assert len(facts) == 1
+        assert facts[0].value == pytest.approx(4150.0)
+        assert facts[0].unit == FactUnit.RUPEES_PER_SHARE
+
+    def test_buyback_facts_section_is_cover_letter(self) -> None:
+        result = analyze("eid-bb", _make_kb("eid-bb", _COVER_BUYBACK_FULL))
+        for f in _facts(result, FactKind.CAPITAL_BUYBACK_AMOUNT):
+            assert f.provenance.section == "cover_letter"
+
+    def test_no_warnings(self) -> None:
+        result = analyze("eid-bb", _make_kb("eid-bb", _COVER_BUYBACK_FULL))
+        assert result.warnings == []
+
+    def test_amount_only_no_price_fact(self) -> None:
+        result = analyze("eid-bb2", _make_kb("eid-bb2", _COVER_BUYBACK_AMOUNT_ONLY))
+        assert len(_facts(result, FactKind.CAPITAL_BUYBACK_AMOUNT)) == 1
+        assert _facts(result, FactKind.CAPITAL_BUYBACK_PRICE_PER_SHARE) == []
+
+
+# ---------------------------------------------------------------------------
+# New sub-type: Fundraising (QIP / Rights Issue / NCD)
+# ---------------------------------------------------------------------------
+
+_COVER_QIP = """\
+Sub: Outcome of Board Meeting — Fund Raising
+
+Pursuant to Regulation 30, the Board of Directors has approved the raising of funds
+by way of issuance of equity shares through Qualified Institutional Placement (QIP),
+for an aggregate amount not exceeding INR 5,000 crore, subject to necessary approvals.
+"""
+
+_COVER_RIGHTS_ISSUE = """\
+Sub: Board Meeting — Rights Issue
+
+The Board has approved the raising of funds through Rights Issue of equity shares of
+the Company for an aggregate amount not exceeding INR 3,000 crore, subject to
+regulatory and shareholder approvals.
+"""
+
+_COVER_NCD = """\
+Sub: Board Meeting — Issue of Non-Convertible Debentures
+
+The Board has approved the issue of Non-Convertible Debentures (NCDs) for an
+aggregate amount not exceeding INR 2,000 crore, in one or more tranches.
+"""
+
+_COVER_QIP_NO_AMOUNT = """\
+Sub: Board Meeting — QIP
+
+The Board has approved the raising of funds through Qualified Institutional Placement
+subject to SEBI regulations and shareholder approval. The specific amount has not been
+finalised.
+"""
+
+
+class TestFundraisingQIP:
+    def test_confidence_medium(self) -> None:
+        result = analyze("eid-qip", _make_kb("eid-qip", _COVER_QIP))
+        assert result.confidence == "medium"
+
+    def test_fundraise_type_qip(self) -> None:
+        result = analyze("eid-qip", _make_kb("eid-qip", _COVER_QIP))
+        facts = _facts(result, FactKind.CAPITAL_FUNDRAISE_TYPE)
+        assert len(facts) == 1
+        assert facts[0].value == "QIP"
+
+    def test_fundraise_amount_5000(self) -> None:
+        result = analyze("eid-qip", _make_kb("eid-qip", _COVER_QIP))
+        facts = _facts(result, FactKind.CAPITAL_FUNDRAISE_AMOUNT)
+        assert len(facts) == 1
+        assert facts[0].value == pytest.approx(5000.0)
+        assert facts[0].unit == FactUnit.CRORE_INR
+
+    def test_no_warnings(self) -> None:
+        result = analyze("eid-qip", _make_kb("eid-qip", _COVER_QIP))
+        assert result.warnings == []
+
+    def test_fundraise_facts_section_cover_letter(self) -> None:
+        result = analyze("eid-qip", _make_kb("eid-qip", _COVER_QIP))
+        for f in _facts(result, FactKind.CAPITAL_FUNDRAISE_TYPE):
+            assert f.provenance.section == "cover_letter"
+
+    def test_qip_no_amount_still_extracts_type(self) -> None:
+        result = analyze("eid-qna", _make_kb("eid-qna", _COVER_QIP_NO_AMOUNT))
+        assert len(_facts(result, FactKind.CAPITAL_FUNDRAISE_TYPE)) == 1
+        assert _facts(result, FactKind.CAPITAL_FUNDRAISE_AMOUNT) == []
+
+
+class TestFundraisingRightsIssue:
+    def test_fundraise_type_rights_issue(self) -> None:
+        result = analyze("eid-ri", _make_kb("eid-ri", _COVER_RIGHTS_ISSUE))
+        facts = _facts(result, FactKind.CAPITAL_FUNDRAISE_TYPE)
+        assert len(facts) == 1
+        assert facts[0].value == "rights_issue"
+
+    def test_fundraise_amount_3000(self) -> None:
+        result = analyze("eid-ri", _make_kb("eid-ri", _COVER_RIGHTS_ISSUE))
+        facts = _facts(result, FactKind.CAPITAL_FUNDRAISE_AMOUNT)
+        assert len(facts) == 1
+        assert facts[0].value == pytest.approx(3000.0)
+
+
+class TestFundraisingNCD:
+    def test_fundraise_type_ncd(self) -> None:
+        result = analyze("eid-ncd", _make_kb("eid-ncd", _COVER_NCD))
+        facts = _facts(result, FactKind.CAPITAL_FUNDRAISE_TYPE)
+        assert len(facts) == 1
+        assert facts[0].value == "NCD"
+
+    def test_fundraise_amount_2000(self) -> None:
+        result = analyze("eid-ncd", _make_kb("eid-ncd", _COVER_NCD))
+        facts = _facts(result, FactKind.CAPITAL_FUNDRAISE_AMOUNT)
+        assert len(facts) == 1
+        assert facts[0].value == pytest.approx(2000.0)
+
+
+# ---------------------------------------------------------------------------
+# New sub-type: Management changes (director / KMP appointment and resignation)
+# ---------------------------------------------------------------------------
+
+_COVER_MGMT_APPOINTMENT = """\
+TCS/SE/104/2026-27
+November 1, 2026
+
+Dear Sirs,
+
+Sub: Outcome of Board Meeting — Change in Directors
+
+Pursuant to Regulation 30 of the SEBI (LODR) Regulations, 2015, we wish to inform
+you that the Board of Directors of Tata Consultancy Services Limited at its meeting
+held today has approved:
+
+1. The appointment of Milind Lakkad as Executive Vice President and Chief Human
+   Resources Officer of the Company effective November 1, 2026, subject to
+   shareholders' approval.
+
+2. The resignation of Ajoy Mukherjee from the position of Executive Vice President
+   and Chief Human Resources Officer of the Company with effect from October 31, 2026.
+
+Yours faithfully,
+For Tata Consultancy Services Limited
+"""
+
+_COVER_MGMT_REAPPOINTMENT = """\
+Sub: Outcome of Board Meeting
+
+The Board approved the re-appointment of Rajesh Gopinathan as Managing Director
+and Chief Executive Officer of the Company for a period of five years with effect
+from February 21, 2027, subject to shareholders' approval.
+"""
+
+_COVER_MGMT_CFO_CHANGE = """\
+Sub: Board Meeting — Change in KMP
+
+The Board has approved the appointment of Samir Seksaria as Chief Financial Officer
+of the Company effective April 1, 2022.
+"""
+
+
+class TestManagementAppointment:
+    def test_confidence_medium(self) -> None:
+        result = analyze("eid-mgt", _make_kb("eid-mgt", _COVER_MGMT_APPOINTMENT))
+        assert result.confidence == "medium"
+
+    def test_director_names_extracted(self) -> None:
+        result = analyze("eid-mgt", _make_kb("eid-mgt", _COVER_MGMT_APPOINTMENT))
+        names = [str(f.value) for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR)]
+        assert any("Milind Lakkad" in n for n in names)
+        assert any("Ajoy Mukherjee" in n for n in names)
+
+    def test_change_types_extracted(self) -> None:
+        result = analyze("eid-mgt", _make_kb("eid-mgt", _COVER_MGMT_APPOINTMENT))
+        types = {str(f.value) for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR_CHANGE_TYPE)}
+        assert "appointment" in types
+        assert "resignation" in types
+
+    def test_roles_extracted(self) -> None:
+        result = analyze("eid-mgt", _make_kb("eid-mgt", _COVER_MGMT_APPOINTMENT))
+        roles = [str(f.value) for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR_CHANGE_ROLE)]
+        assert any("Chief Human Resources Officer" in r for r in roles)
+
+    def test_facts_grouped_by_section(self) -> None:
+        result = analyze("eid-mgt", _make_kb("eid-mgt", _COVER_MGMT_APPOINTMENT))
+        sections = {f.provenance.section for f in result.facts
+                    if f.kind == FactKind.GOVERNANCE_DIRECTOR}
+        assert all(s.startswith("director_change_") for s in sections)
+        assert len(sections) == 2  # two distinct persons
+
+    def test_two_director_facts(self) -> None:
+        result = analyze("eid-mgt", _make_kb("eid-mgt", _COVER_MGMT_APPOINTMENT))
+        assert len(_facts(result, FactKind.GOVERNANCE_DIRECTOR)) == 2
+
+
+class TestManagementReappointment:
+    def test_reappointment_type(self) -> None:
+        result = analyze("eid-reappt", _make_kb("eid-reappt", _COVER_MGMT_REAPPOINTMENT))
+        types = [str(f.value) for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR_CHANGE_TYPE)]
+        assert len(types) == 1
+        assert types[0] == "reappointment"
+
+    def test_name_extracted(self) -> None:
+        result = analyze("eid-reappt", _make_kb("eid-reappt", _COVER_MGMT_REAPPOINTMENT))
+        names = [str(f.value) for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR)]
+        assert any("Rajesh Gopinathan" in n for n in names)
+
+    def test_role_contains_md_ceo(self) -> None:
+        result = analyze("eid-reappt", _make_kb("eid-reappt", _COVER_MGMT_REAPPOINTMENT))
+        roles = [str(f.value) for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR_CHANGE_ROLE)]
+        assert any("Managing Director" in r for r in roles)
+
+
+class TestManagementCFO:
+    def test_cfo_appointment_extracted(self) -> None:
+        result = analyze("eid-cfo", _make_kb("eid-cfo", _COVER_MGMT_CFO_CHANGE))
+        types = [str(f.value) for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR_CHANGE_TYPE)]
+        assert len(types) == 1
+        assert types[0] == "appointment"
+
+    def test_cfo_name(self) -> None:
+        result = analyze("eid-cfo", _make_kb("eid-cfo", _COVER_MGMT_CFO_CHANGE))
+        names = [str(f.value) for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR)]
+        assert any("Samir Seksaria" in n for n in names)
+
+    def test_cfo_role(self) -> None:
+        result = analyze("eid-cfo", _make_kb("eid-cfo", _COVER_MGMT_CFO_CHANGE))
+        roles = [str(f.value) for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR_CHANGE_ROLE)]
+        assert any("Chief Financial Officer" in r for r in roles)
+
+
+# ---------------------------------------------------------------------------
+# Acquisition EV in INR crore (domestic acquisition)
+# ---------------------------------------------------------------------------
+
+_COVER_ACQ_INR_EV = """\
+Sub: Disclosure under Regulation 30 of SEBI (LODR) Regulations, 2015
+
+The Board has approved the acquisition of Alpha Digital Solutions Private Limited
+and its subsidiaries.
+"""
+
+_ANNEXURE_A_INR_EV = """\
+Annexure - A
+
+Sr. No.  Particulars                                  Details
+1.       Name of the target entity                    Alpha Digital Solutions Private Limited
+
+7.       Consideration — whether cash consideration
+         or share swap or any other form
+         Cash consideration
+
+8.       Cost of acquisition and/or the price at which the shares are acquired
+         Enterprise Value of INR 800 crore
+
+9.       Percentage of shareholding / control acquired
+         100%
+
+10.      Indicative time period for completion of the acquisition
+         The transaction is expected to be completed by June 30, 2027.
+"""
+
+
+class TestAcquisitionINREV:
+    def test_enterprise_value_inr(self) -> None:
+        content = _COVER_ACQ_INR_EV + _ANNEXURE_A_INR_EV
+        result = analyze("eid-acq-inr", _make_kb("eid-acq-inr", content))
+        facts = _facts(result, FactKind.CAPITAL_ACQ_ENTERPRISE_VALUE)
+        assert len(facts) == 1
+        assert facts[0].value == pytest.approx(800.0)
+        assert facts[0].unit == FactUnit.CRORE_INR
+
+    def test_confidence_high(self) -> None:
+        content = _COVER_ACQ_INR_EV + _ANNEXURE_A_INR_EV
+        result = analyze("eid-acq-inr", _make_kb("eid-acq-inr", content))
+        assert result.confidence == "high"
+
+
+# ---------------------------------------------------------------------------
+# Multi-event: dividend + management change in one meeting
+# ---------------------------------------------------------------------------
+
+_COVER_MULTI = """\
+Sub: Outcome of Board Meeting
+
+The Board has declared an interim dividend of INR 10 per share for the quarter
+ended September 30, 2025.
+
+The Board has also approved the appointment of Priya Shankar as Chief Financial
+Officer of the Company effective October 1, 2025, subject to shareholders' approval.
+"""
+
+
+class TestMultiEvent:
+    def test_both_dividend_and_director_change(self) -> None:
+        result = analyze("eid-multi", _make_kb("eid-multi", _COVER_MULTI))
+        assert len(_facts(result, FactKind.CAPITAL_DIVIDEND_PER_SHARE)) == 1
+        assert len(_facts(result, FactKind.GOVERNANCE_DIRECTOR)) == 1
+
+    def test_confidence_high_due_to_dividend(self) -> None:
+        result = analyze("eid-multi", _make_kb("eid-multi", _COVER_MULTI))
+        assert result.confidence == "high"

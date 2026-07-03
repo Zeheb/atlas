@@ -21,6 +21,14 @@ extract_dividend_facts  Pull all four CAPITAL_DIVIDEND_* facts from a cover
 
 parse_indian_int        Strip Indian-format commas and parse an integer.
 parse_indian_float      Strip Indian-format commas and parse a float.
+
+fix_ocr_numbers         Recover Indian-format numbers mangled by OCR comma/period
+                        confusion; shared by financial_results and
+                        investor_presentation.
+parse_number            Parse a single numeric token, handling "(123)" negatives
+                        and "-" as nil/zero.
+extract_n_values        Collect up to n numeric values from a table row window,
+                        stopping at the next non-numeric label line.
 """
 from __future__ import annotations
 
@@ -253,3 +261,121 @@ def parse_indian_float(s: str) -> float | None:
         return float(s.replace(",", "").replace(" ", ""))
     except ValueError:
         return None
+
+
+# ---------------------------------------------------------------------------
+# fix_ocr_numbers / parse_number / extract_n_values
+# ---------------------------------------------------------------------------
+
+_MAX_VALUE_SCAN = 1500
+
+# Matches: (123) for negatives, - for nil, or Indian-format numbers like 1,26,872
+_RE_NUM_TOKEN = re.compile(
+    r"\([\d,]+(?:\.\d+)?\)"   # (123) = negative
+    r"|(?<!\w)-(?!\w)"        # standalone dash = nil/zero
+    r"|[\d,]+(?:\.\d+)?"      # positive number with optional decimal
+)
+
+# OCR artifact patterns: some PDFs replace comma thousands-separators with
+# periods, producing "58.216.04" (two periods) or "34.228 34" (period+space).
+# Indian lakh-crore numbers use two separators: "1,10,960.11" → "1.10.960.11".
+# Sometimes only one separator is corrupted, mixing period and comma:
+#   2,16,840.35 → 2.16,840.35 (first comma → period, second stays)
+#   2,27,296.20 → 2,27.296.20 (second comma → period, first stays)
+_RE_OCR_MIX_PERIOD_COMMA = re.compile(
+    # First separator corrupted: X.XX,XXX.XX
+    r"(?<!\d)(\d{1,2})\.(\d{2}),(\d{3})\.(\d{2})(?!\d)"
+)
+_RE_OCR_TRIPLE_PERIOD = re.compile(
+    r"(?<!\d)(\d{1,2})\.(\d{2})\.(\d{3})\.(\d{2})(?!\d)"
+)
+_RE_OCR_DOUBLE_PERIOD = re.compile(
+    r"(?<!\d)(\d+)\.(\d{3})\.(\d{2})(?!\d)"
+)
+_RE_OCR_SPACE_DECIMAL = re.compile(
+    r"(?<!\d)(\d+)\.(\d{3}) (\d{2})(?!\d)"
+)
+# "68.55L.81" is OCR for "68,551.81": the digit "1" was read as "L".
+# Match: a digit immediately followed by L and then a digit-or-period.
+_RE_OCR_L_AS_1 = re.compile(r"(?<=\d)L(?=[.\d])")
+
+
+def fix_ocr_numbers(text: str) -> str:
+    """Recover Indian-format numbers mangled by OCR (comma → period artifact).
+
+    Handles four manifestations (all seen in Tata Steel BSE filings):
+      2,16,840.35 → 2.16,840.35  (first comma only → period)  → restored
+      1,10,960.11 → 1.10.960.11  (all commas → periods)       → restored
+      58,216.04   → 58.216.04    (one comma → period)          → restored
+      34,228.34   → 34.228 34    (period then space fragment)  → restored
+    The second-comma-only variant (2,27.296.20) is caught by DOUBLE_PERIOD
+    matching the "27.296.20" sub-string.
+    """
+    text = _RE_OCR_L_AS_1.sub("1", text)
+    text = _RE_OCR_MIX_PERIOD_COMMA.sub(r"\1,\2,\3.\4", text)
+    text = _RE_OCR_TRIPLE_PERIOD.sub(r"\1,\2,\3.\4", text)
+    text = _RE_OCR_DOUBLE_PERIOD.sub(r"\1,\2.\3", text)
+    text = _RE_OCR_SPACE_DECIMAL.sub(r"\1,\2.\3", text)
+    return text
+
+
+def parse_number(s: str) -> float | None:
+    s = s.strip()
+    if not s or s == "-":
+        return 0.0
+    if s.startswith("(") and s.endswith(")"):
+        inner = s[1:-1].replace(",", "").replace(" ", "")
+        try:
+            return -float(inner)
+        except ValueError:
+            return None
+    try:
+        return float(s.replace(",", "").replace(" ", ""))
+    except ValueError:
+        return None
+
+
+def extract_n_values(text: str, after: int, n: int = 6) -> list[float | None]:
+    """Collect up to n numeric values starting at text[after:].
+
+    Stops at the first non-numeric, non-blank line encountered after values
+    have started accumulating (i.e., the next table label row).
+
+    Applies OCR artifact correction before tokenising, so comma-as-period
+    mangling (common in older Tata Steel / BSE PDF extractions) does not
+    fragment large numbers into spurious decimals.
+    """
+    values: list[float | None] = []
+    segment = fix_ocr_numbers(text[after: after + _MAX_VALUE_SCAN])
+    collecting = False
+
+    for line in segment.split("\n"):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        tokens = _RE_NUM_TOKEN.findall(line)
+        if tokens:
+            # Require the line to be purely numeric (no leftover text after
+            # removing all matched tokens).  Section markers like
+            # "(3) Assets held for sale" and headers like "TOTAL - ASSETS"
+            # both have residual text and must not trigger collection.
+            non_token = _RE_NUM_TOKEN.sub("", line).strip()
+            # Strip OCR table-border artefacts: Tesseract reads ruling lines
+            # as '|' or ']' glyphs appended to numeric cells, e.g. "20,159.67]"
+            # or "19,160.44 |".  These are not content and must not block collection.
+            non_token = re.sub(r"[|\[\]_]+", "", non_token).strip()
+            if non_token:
+                if collecting:
+                    break
+                continue
+            collecting = True
+            for t in tokens:
+                if len(values) >= n:
+                    return values
+                v = parse_number(t)
+                if v is not None:
+                    values.append(v)
+        elif collecting:
+            # Non-numeric non-blank line after values started = next row label
+            break
+    return values

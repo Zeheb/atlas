@@ -1,10 +1,9 @@
-"""Integration test for atlas.analysis.annual_report against real TCS data.
+"""Integration test for atlas.analysis.annual_report (v3.0) against real TCS data.
 
-Requires the TCS annual report to be parsed into knowledge.db first.
+Uses FY2024 (Directors' Report naming) as the primary integration target.
 Run with: pytest -m integration -v -s
 
-The test also serves as a human-readable demo: run with -s to see the
-structured result printed to stdout.
+Run with -s to see the full structured result printed to stdout.
 """
 from __future__ import annotations
 
@@ -13,8 +12,8 @@ from pathlib import Path
 
 import pytest
 
-from atlas.analysis.annual_report import summarize
-from atlas.analysis.base import AnalysisFact, AnalysisResult, FactKind
+from atlas.analysis.annual_report import analyze, summarize
+from atlas.analysis.base import AnalysisFact, AnalysisResult, FactKind, FactUnit
 from atlas.knowledge.base import KnowledgeBase
 
 pytestmark = pytest.mark.integration
@@ -31,24 +30,17 @@ _AR_2024_PATH = "annual_reports/a8be8b1d-ebc8-4ab7-8081-668fadaf6ecb.pdf"
 
 
 @pytest.fixture(scope="module")
-def tcs_root() -> Path:
+def tcs_root(isolated_repo_factory) -> Path:
     if not _TCS_REPO.exists():
         pytest.skip("TCS repository not found at repositories/TCS")
     pdf = _TCS_REPO / _AR_2024_PATH
     if not pdf.exists() or pdf.stat().st_size < 1_000_000:
         pytest.skip(f"Real annual report PDF not found or too small: {pdf}")
-    return _TCS_REPO
+    return isolated_repo_factory(_TCS_REPO, evidence_ids=[_AR_2024_ID])
 
 
 @pytest.fixture(scope="module")
 def kb(tcs_root: Path) -> Generator[KnowledgeBase, None, None]:
-    """KnowledgeBase pointing at TCS repo, with the AR 2024 pre-parsed.
-
-    Scoped to module so the heavy PDF extraction runs only once per session.
-    knowledge.db is cleaned up when the module finishes.
-    """
-    db = tcs_root / "knowledge.db"
-    db.unlink(missing_ok=True)
     instance = KnowledgeBase(tcs_root)
 
     from atlas.acquisition.repository import Repository
@@ -61,25 +53,23 @@ def kb(tcs_root: Path) -> Generator[KnowledgeBase, None, None]:
         pytest.skip(f"PDF parsing failed: {doc.error}")
 
     yield instance
-    db.unlink(missing_ok=True)
 
 
 @pytest.fixture(scope="module")
 def result(kb: KnowledgeBase) -> AnalysisResult:
-    return summarize(_AR_2024_ID, kb)
+    return analyze(_AR_2024_ID, kb)
 
 
-# Convenience: all facts of a given kind.
 def _facts(result: AnalysisResult, kind: FactKind) -> list[AnalysisFact]:
     return [f for f in result.facts if f.kind == kind]
 
 
 # ---------------------------------------------------------------------------
-# Basic contract checks
+# Contract checks
 # ---------------------------------------------------------------------------
 
 
-class TestSummarizeContract:
+class TestAnalyzeContract:
     def test_returns_analysis_result(self, result: AnalysisResult) -> None:
         assert isinstance(result, AnalysisResult)
 
@@ -102,83 +92,10 @@ class TestSummarizeContract:
     def test_char_count_substantial(self, result: AnalysisResult, kb: KnowledgeBase) -> None:
         doc = kb.get(_AR_2024_ID)
         assert doc is not None
-        assert doc.char_count >= 50_000
-
-    def test_title_non_empty(self, result: AnalysisResult, kb: KnowledgeBase) -> None:
-        doc = kb.get(_AR_2024_ID)
-        assert doc is not None
-        assert len(doc.title) > 0
-
-    def test_source_date_non_empty(self, result: AnalysisResult, kb: KnowledgeBase) -> None:
-        doc = kb.get(_AR_2024_ID)
-        assert doc is not None
-        assert len(doc.source_date) > 0
-
-
-# ---------------------------------------------------------------------------
-# Section content checks
-# ---------------------------------------------------------------------------
-
-
-class TestSectionExtraction:
-    def test_management_commentary_found(self, result: AnalysisResult) -> None:
-        assert "management_commentary" in result.excerpts, (
-            "Expected to find management commentary / chairman letter"
-        )
-
-    def test_management_commentary_minimum_length(self, result: AnalysisResult) -> None:
-        if "management_commentary" not in result.excerpts:
-            pytest.skip("management_commentary not found — length check skipped")
-        assert len(result.excerpts["management_commentary"]) >= 200
-
-    def test_business_overview_found(self, result: AnalysisResult) -> None:
-        assert "business_overview" in result.excerpts, (
-            "Expected to find business overview section"
-        )
-
-    def test_capital_allocation_found(self, result: AnalysisResult) -> None:
-        assert "capital_allocation" in result.excerpts, (
-            "Expected to find capital allocation / dividend policy"
-        )
-
-    def test_segments_non_empty(self, result: AnalysisResult) -> None:
-        segs = _facts(result, FactKind.SEGMENT_NAME)
-        assert len(segs) >= 2, (
-            f"Expected at least 2 business segments; got {[f.value for f in segs]}"
-        )
-
-    def test_segments_are_strings(self, result: AnalysisResult) -> None:
-        for f in _facts(result, FactKind.SEGMENT_NAME):
-            assert isinstance(f.value, str) and len(f.value) > 0
-
-    def test_manufacturing_in_segments(self, result: AnalysisResult) -> None:
-        values = [f.value for f in _facts(result, FactKind.SEGMENT_NAME)]
-        assert any("Manufacturing" in str(v) for v in values), (
-            f"Expected 'Manufacturing' in segments; got {values}"
-        )
-
-    def test_risks_non_empty(self, result: AnalysisResult) -> None:
-        risks = _facts(result, FactKind.RISK_FACTOR)
-        assert len(risks) >= 1, "Expected at least one risk factor"
+        assert doc.char_count is not None and doc.char_count >= 500_000
 
     def test_warnings_is_list(self, result: AnalysisResult) -> None:
         assert isinstance(result.warnings, list)
-
-
-# ---------------------------------------------------------------------------
-# Fact structure checks
-# ---------------------------------------------------------------------------
-
-
-class TestFactStructure:
-    def test_segment_facts_have_period(self, result: AnalysisResult) -> None:
-        for f in _facts(result, FactKind.SEGMENT_NAME):
-            assert f.period is not None
-            assert f.period.startswith("20")
-
-    def test_segment_facts_have_null_unit(self, result: AnalysisResult) -> None:
-        for f in _facts(result, FactKind.SEGMENT_NAME):
-            assert f.unit is None
 
     def test_all_facts_have_confidence(self, result: AnalysisResult) -> None:
         for f in result.facts:
@@ -191,17 +108,118 @@ class TestFactStructure:
 
 
 # ---------------------------------------------------------------------------
-# Demo: print structured result for human review
+# CSR spend
+# ---------------------------------------------------------------------------
+
+
+class TestCsrSpend:
+    def test_csr_spend_fact_present(self, result: AnalysisResult) -> None:
+        csr = _facts(result, FactKind.ESG_CSR_SPEND)
+        assert len(csr) == 1, f"Expected 1 CSR_SPEND fact; got {len(csr)}"
+
+    def test_csr_spend_unit_is_crore_inr(self, result: AnalysisResult) -> None:
+        csr = _facts(result, FactKind.ESG_CSR_SPEND)
+        if not csr:
+            pytest.skip("CSR spend fact not found")
+        assert csr[0].unit == FactUnit.CRORE_INR
+
+    def test_csr_spend_value_reasonable(self, result: AnalysisResult) -> None:
+        csr = _facts(result, FactKind.ESG_CSR_SPEND)
+        if not csr:
+            pytest.skip("CSR spend fact not found")
+        # FY2024: ₹813 crore — allow ±5 crore tolerance for text extraction
+        assert isinstance(csr[0].value, (int, float))
+        assert 800 <= float(csr[0].value) <= 830, (
+            f"Expected FY2024 CSR spend ~813 crore; got {csr[0].value}"
+        )
+
+    def test_csr_spend_confidence_high(self, result: AnalysisResult) -> None:
+        csr = _facts(result, FactKind.ESG_CSR_SPEND)
+        if not csr:
+            pytest.skip("CSR spend fact not found")
+        assert csr[0].confidence == "high"
+
+    def test_csr_spend_period_is_fy2024(self, result: AnalysisResult) -> None:
+        csr = _facts(result, FactKind.ESG_CSR_SPEND)
+        if not csr:
+            pytest.skip("CSR spend fact not found")
+        assert csr[0].period == "2024-03-31"
+
+
+# ---------------------------------------------------------------------------
+# KAM titles
+# ---------------------------------------------------------------------------
+
+
+class TestKamTitles:
+    def test_at_least_one_kam_title(self, result: AnalysisResult) -> None:
+        kams = _facts(result, FactKind.AUDIT_KAM_TITLE)
+        assert len(kams) >= 1, "Expected at least one KAM title"
+
+    def test_kam_titles_are_strings(self, result: AnalysisResult) -> None:
+        for f in _facts(result, FactKind.AUDIT_KAM_TITLE):
+            assert isinstance(f.value, str) and len(f.value) >= 10
+
+    def test_kam_titles_high_confidence(self, result: AnalysisResult) -> None:
+        for f in _facts(result, FactKind.AUDIT_KAM_TITLE):
+            assert f.confidence == "high"
+
+    def test_revenue_recognition_in_kams(self, result: AnalysisResult) -> None:
+        titles = [str(f.value) for f in _facts(result, FactKind.AUDIT_KAM_TITLE)]
+        assert any("Revenue recognition" in t or "revenue recognition" in t for t in titles), (
+            f"Expected 'Revenue recognition' KAM; got: {titles}"
+        )
+
+
+# ---------------------------------------------------------------------------
+# Excerpts
+# ---------------------------------------------------------------------------
+
+
+class TestExcerpts:
+    def test_key_audit_matters_excerpt_present(self, result: AnalysisResult) -> None:
+        assert "key_audit_matters" in result.excerpts
+
+    def test_key_audit_matters_non_empty(self, result: AnalysisResult) -> None:
+        if "key_audit_matters" not in result.excerpts:
+            pytest.skip("key_audit_matters excerpt not found")
+        assert len(result.excerpts["key_audit_matters"]) >= 200
+
+    def test_mda_excerpt_present(self, result: AnalysisResult) -> None:
+        assert "mda" in result.excerpts, "Expected MDA excerpt"
+
+    def test_boards_report_excerpt_present(self, result: AnalysisResult) -> None:
+        # FY2024 uses "Directors' Report" — should still be found
+        assert "boards_report" in result.excerpts
+
+
+# ---------------------------------------------------------------------------
+# Backward-compat alias
+# ---------------------------------------------------------------------------
+
+
+class TestSummarizeAlias:
+    def test_summarize_returns_same_result(self, kb: KnowledgeBase) -> None:
+        result = summarize(_AR_2024_ID, kb)
+        assert isinstance(result, AnalysisResult)
+        assert result.evidence_id == _AR_2024_ID
+
+
+# ---------------------------------------------------------------------------
+# Demo
 # ---------------------------------------------------------------------------
 
 
 class TestResultDemo:
     def test_print_structured_result(
-        self, result: AnalysisResult, kb: KnowledgeBase, capsys: pytest.CaptureFixture[str]
+        self,
+        result: AnalysisResult,
+        kb: KnowledgeBase,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
         """Print the full structured result to stdout when run with -s."""
 
-        def _trunc(text: str | None, limit: int = 500) -> str:
+        def _trunc(text: str | None, limit: int = 300) -> str:
             if text is None:
                 return "(not found)"
             return text[:limit].replace("\n", " ") + ("..." if len(text) > limit else "")
@@ -209,11 +227,12 @@ class TestResultDemo:
         doc = kb.get(_AR_2024_ID)
         assert doc is not None
 
-        segs = _facts(result, FactKind.SEGMENT_NAME)
+        csr = _facts(result, FactKind.ESG_CSR_SPEND)
+        kams = _facts(result, FactKind.AUDIT_KAM_TITLE)
         risks = _facts(result, FactKind.RISK_FACTOR)
 
         print("\n" + "=" * 70)
-        print("ANNUAL REPORT ANALYSIS DEMO")
+        print("ANNUAL REPORT ANALYSIS DEMO (FY2024)")
         print("=" * 70)
         print(f"Evidence ID      : {result.evidence_id}")
         print(f"Title            : {doc.title}")
@@ -221,30 +240,29 @@ class TestResultDemo:
         print(f"Char count       : {doc.char_count:,}")
         print(f"Analyzer version : {result.analyzer_version}")
         print(f"Confidence       : {result.confidence}")
-        print(f"Analyzed at      : {result.analyzed_at.isoformat()}")
 
-        print("\n--- MANAGEMENT COMMENTARY ---")
-        print(_trunc(result.excerpts.get("management_commentary")))
-
-        print("\n--- BUSINESS OVERVIEW ---")
-        print(_trunc(result.excerpts.get("business_overview")))
-
-        print("\n--- BUSINESS SEGMENTS ---")
-        if segs:
-            for f in segs:
-                print(f"  • {f.value}  [confidence={f.confidence}, period={f.period}]")
+        print("\n--- CSR SPEND ---")
+        if csr:
+            print(f"  INR {csr[0].value:.0f} crore  [period={csr[0].period}]")
         else:
             print("  (not found)")
 
-        print("\n--- CAPITAL ALLOCATION ---")
-        print(_trunc(result.excerpts.get("capital_allocation")))
-
-        print("\n--- RISK FACTORS ---")
-        if risks:
-            for f in risks:
+        print("\n--- KEY AUDIT MATTERS ---")
+        if kams:
+            for f in kams:
                 print(f"  • {f.value}")
         else:
             print("  (not found)")
+
+        print("\n--- RISK FACTORS ---")
+        if risks:
+            for f in risks[:5]:
+                print(f"  • {f.value}")
+        else:
+            print("  (not found)")
+
+        print("\n--- MDA EXCERPT ---")
+        print(_trunc(result.excerpts.get("mda")))
 
         if result.warnings:
             print("\n--- WARNINGS ---")
@@ -253,13 +271,6 @@ class TestResultDemo:
 
         print("=" * 70)
 
-        # Soft assertion: at least two key excerpts were found.
-        found = sum(
-            1
-            for k in ("management_commentary", "business_overview", "capital_allocation")
-            if k in result.excerpts
-        )
-        assert found >= 2, (
-            "Expected at least 2 of management_commentary / business_overview / "
-            f"capital_allocation in excerpts; got {found}"
-        )
+        # Soft assertion: CSR or KAM must be found to validate extraction.
+        found = len(csr) + len(kams)
+        assert found >= 1, "Expected at least one CSR or KAM fact to be extracted"

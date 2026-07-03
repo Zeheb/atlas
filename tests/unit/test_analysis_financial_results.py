@@ -23,6 +23,7 @@ from atlas.analysis.financial_results import (
     _detect_filing,
     _detect_n_cols,
     _extract_balance_sheet_facts,
+    _extract_banking_facts,
     _extract_cashflow_facts,
     _extract_eps_facts,
     _extract_n_values,
@@ -32,6 +33,8 @@ from atlas.analysis.financial_results import (
     _find_bs_region,
     _find_cf_region,
     _find_pl_regions,
+    _fix_ocr_numbers,
+    _is_banking_filing,
     _parse_number,
     _primary_col,
     analyze,
@@ -876,6 +879,49 @@ class TestDetectFiling:
         assert pt == "quarterly"
         assert pe == "2024-06-30"
 
+    def test_half_year_period_is_quarterly_not_annual(self) -> None:
+        # Regression: "half year ended" contains "year ended" — must not classify as annual.
+        text = "Results for quarter and half year ended September 30, 2025."
+        pt, pe = _detect_filing(text)
+        assert pt == "quarterly"
+        assert pe == "2025-09-30"
+
+    def test_half_year_standalone_is_quarterly(self) -> None:
+        text = "Financial results for the half year ended September 30, 2025."
+        pt, pe = _detect_filing(text)
+        assert pt == "quarterly"
+        assert pe == "2025-09-30"
+
+    def test_annual_still_detected_after_half_year_fix(self) -> None:
+        text = "Results for the year ended March 31, 2026."
+        pt, pe = _detect_filing(text)
+        assert pt == "annual"
+        assert pe == "2026-03-31"
+
+    def test_q4_annual_bundle_detected_as_annual(self) -> None:
+        # Regression: Tata Steel-style Q4 filing that mentions BOTH
+        # "quarter ended March 31" and "financial year ended March 31".
+        # The shared date means this is an annual filing.
+        text = (
+            "Results of the Company for the quarter ended March 31, 2025. "
+            "Also approved the Standalone and Consolidated Financial Statements "
+            "for the financial year ended March 31, 2025."
+        )
+        pt, pe = _detect_filing(text)
+        assert pt == "annual"
+        assert pe == "2025-03-31"
+
+    def test_q2_quarterly_not_confused_by_prior_year_annual_mention(self) -> None:
+        # A Q2 filing might mention last year's annual period somewhere —
+        # the dates differ so it must remain "quarterly".
+        text = (
+            "Results for the quarter and half year ended September 30, 2025. "
+            "This compares to the year ended March 31, 2025."
+        )
+        pt, pe = _detect_filing(text)
+        assert pt == "quarterly"
+        assert pe == "2025-09-30"
+
 
 # ---------------------------------------------------------------------------
 # _primary_col
@@ -1582,6 +1628,170 @@ class TestExtractBalanceSheetFacts:
 
 
 # ---------------------------------------------------------------------------
+# Regression: _extract_n_values must ignore mixed numeric+text lines
+# ---------------------------------------------------------------------------
+
+class TestExtractNValuesPureNumericCheck:
+    """Section markers and headers that contain digits must not trigger
+    value collection (regression for Tata Steel balance-sheet layout)."""
+
+    def test_section_marker_3_not_collected(self) -> None:
+        text = "(3) Assets held for sale\n44,589.94\n"
+        vals = _extract_n_values(text, 0)
+        # (3) has non-numeric residual "Assets held for sale" → skip
+        # 44,589.94 is pure numeric → collect
+        assert vals == [44589.94]
+
+    def test_dash_in_label_not_collected(self) -> None:
+        text = "TOTAL - ASSETS\n44,589.94\n"
+        vals = _extract_n_values(text, 0)
+        # "TOTAL - ASSETS" has residual text → skip
+        assert vals == [44589.94]
+
+    def test_sub_total_label_not_collected(self) -> None:
+        text = "Sub-total - Current assets\n9,604.96\n"
+        vals = _extract_n_values(text, 0)
+        assert vals == [9604.96]
+
+    def test_pure_section_marker_stops_collection(self) -> None:
+        text = "10,000\n20,000\n(3) Something\n30,000\n"
+        vals = _extract_n_values(text, 0)
+        # Collection starts at 10,000; "(3) Something" has text residual → break
+        assert vals == [10000.0, 20000.0]
+
+    def test_dash_alone_on_line_is_zero(self) -> None:
+        text = "-\n-\n5,000\n"
+        vals = _extract_n_values(text, 0)
+        assert vals == [0.0, 0.0, 5000.0]
+
+
+# ---------------------------------------------------------------------------
+# Regression: OCR "L as 1" correction in _fix_ocr_numbers
+# ---------------------------------------------------------------------------
+
+class TestOcrLAs1:
+    def test_l_between_digit_and_period(self) -> None:
+        assert _fix_ocr_numbers("68.55L.81") == "68,551.81"
+
+    def test_l_between_two_digits(self) -> None:
+        assert _fix_ocr_numbers("1L234") == "11234"
+
+    def test_l_not_replaced_at_end(self) -> None:
+        result = _fix_ocr_numbers("50L")
+        assert "L" in result  # trailing L not replaced
+
+    def test_l_not_replaced_before_space(self) -> None:
+        result = _fix_ocr_numbers("68L crore")
+        assert "L" in result  # L before space not replaced
+
+
+# ---------------------------------------------------------------------------
+# Deferred BS layout (Tata Steel style): Cash, Equity, Debt
+# ---------------------------------------------------------------------------
+
+_BS_DEFERRED = """
+ASSETS
+(I) Non-current assets
+Property, plant and equipment
+Sub-total - Non current assets
+As at 31.03.2025 Audited
+1,25,215.17
+2,11,003.26
+Crore
+As at 31.03.2024 Audited
+1,23,538.14
+2,02,875.25
+(2) Current assets
+(a)
+Inventories
+(b) Financial assets
+(i)
+Investments
+(ii)
+Trade receivables
+(iii)
+Cash and cash equivalents
+(iv)
+Other balances with banks
+(v)
+Loans
+TOTAL - ASSETS
+Sub-total - Current assets
+44,589.94
+442.65
+5,260.06
+9,604.96
+2,042.02
+4.98
+68,391.54
+2,79,394.80
+B
+EQUITY AND LIABILITIES
+(1) Equity
+(a) Equity share capital
+(b) Other equity
+Equity attributable to shareholders of the company
+Non controlling interest
+Sub-total - Total equity
+(2) Non-current liabilities
+(a) Financial liabilities
+(i)
+Borrowings
+(ii)
+Lease Liabilities
+(b) Provisions
+(c) Deferred income
+Sub-total - Non current liabilities
+(3) Current liabilities
+(a) Financial liabilities
+(i)
+Borrowings
+TOTAL - EQUITY AND LIABILITIES
+1,247.44
+89,922.19
+91,169.63
+183.15
+91,352.78
+68,551.81
+4,832.71
+5,806.50
+2,789.83
+81,980.85
+20,412.00
+
+CASH FLOWS FROM OPERATING ACTIVITIES
+"""
+
+
+class TestDeferredBalanceSheetLayout:
+    def test_cash_extracted_at_index_3(self) -> None:
+        facts = _extract_balance_sheet_facts(_BS_DEFERRED, "2025-03-31")
+        cash = [f for f in facts if f.kind == FactKind.FINANCIAL_CASH_AND_EQUIVALENTS]
+        assert len(cash) == 1
+        assert cash[0].value == pytest.approx(9604.96)
+
+    def test_equity_sub_total_detected_algebraically(self) -> None:
+        facts = _extract_balance_sheet_facts(_BS_DEFERRED, "2025-03-31")
+        eq = [f for f in facts if f.kind == FactKind.FINANCIAL_TOTAL_EQUITY]
+        assert len(eq) == 1
+        assert eq[0].value == pytest.approx(91352.78)
+
+    def test_debt_is_ncl_plus_cl_borrowings(self) -> None:
+        facts = _extract_balance_sheet_facts(_BS_DEFERRED, "2025-03-31")
+        debt = [f for f in facts if f.kind == FactKind.FINANCIAL_TOTAL_DEBT]
+        assert len(debt) == 1
+        # NCL Borrowings 68,551.81 + CL Borrowings 20,412.00 = 88,963.81
+        assert debt[0].value == pytest.approx(88963.81, abs=1.0)
+
+    def test_ocr_l_as_1_in_deferred_borrowings(self) -> None:
+        text_with_ocr = _BS_DEFERRED.replace("68,551.81", "68.55L.81")
+        facts = _extract_balance_sheet_facts(text_with_ocr, "2025-03-31")
+        debt = [f for f in facts if f.kind == FactKind.FINANCIAL_TOTAL_DEBT]
+        assert len(debt) == 1
+        assert debt[0].value == pytest.approx(88963.81)
+
+
+# ---------------------------------------------------------------------------
 # Cash flow extraction
 # ---------------------------------------------------------------------------
 
@@ -1792,3 +2002,183 @@ class TestAnalyzeAnnualBalanceSheetAndCashFlow:
         result = analyze("fr-002", kb)
         capex = _facts(result, FactKind.FINANCIAL_CAPEX)
         assert capex[0].value > 0
+
+
+# ---------------------------------------------------------------------------
+# _fix_ocr_numbers — OCR comma→period artifact recovery
+# ---------------------------------------------------------------------------
+
+
+class TestFixOcrNumbers:
+    """Regression tests for the OCR comma→period artifact.
+
+    Tata Steel (and some other BSE filers) have PDFs where the comma
+    thousands-separator is converted to a period by the OCR engine, producing
+    multi-period strings ("58.216.04") or period+space fragments ("34.228 34").
+    """
+
+    def test_double_period_thousands(self) -> None:
+        # 58,216.04 → 58.216.04 (OCR) → restored
+        assert _fix_ocr_numbers("58.216.04") == "58,216.04"
+
+    def test_double_period_thousands_small(self) -> None:
+        assert _fix_ocr_numbers("52.744.07") == "52,744.07"
+
+    def test_triple_period_lakhs(self) -> None:
+        # 1,10,960.11 → 1.10.960.11 (OCR) → restored
+        assert _fix_ocr_numbers("1.10.960.11") == "1,10,960.11"
+
+    def test_triple_period_large_lakhs(self) -> None:
+        assert _fix_ocr_numbers("2.16.840.35") == "2,16,840.35"
+
+    def test_space_decimal_fragment(self) -> None:
+        # 34,228.34 → 34.228 34 (period then space) → restored
+        assert _fix_ocr_numbers("34.228 34") == "34,228.34"
+
+    def test_space_decimal_other_value(self) -> None:
+        assert _fix_ocr_numbers("64.827 44") == "64,827.44"
+
+    def test_already_correct_number_unchanged(self) -> None:
+        # TCS-style numbers with comma separators are left intact
+        assert _fix_ocr_numbers("70,698.00") == "70,698.00"
+
+    def test_plain_decimal_unchanged(self) -> None:
+        assert _fix_ocr_numbers("25.3") == "25.3"
+
+    def test_small_number_unchanged(self) -> None:
+        assert _fix_ocr_numbers("451.20") == "451.20"
+
+    def test_mixed_period_comma_first_sep_corrupted(self) -> None:
+        # 2,16,840.35 → 2.16,840.35 (first comma → period, second OK)
+        assert _fix_ocr_numbers("2.16,840.35") == "2,16,840.35"
+
+    def test_mixed_period_comma_second_sep_corrupted(self) -> None:
+        # 2,27,296.20 → 2,27.296.20 (second comma → period, first OK)
+        # DOUBLE_PERIOD catches "27.296.20" sub-string
+        assert _fix_ocr_numbers("2,27.296.20") == "2,27,296.20"
+
+    def test_multiple_values_in_line(self) -> None:
+        line = "58.216.04 52.744.07 1.10.960.11"
+        result = _fix_ocr_numbers(line)
+        assert "58,216.04" in result
+        assert "52,744.07" in result
+        assert "1,10,960.11" in result
+
+    def test_extract_n_values_handles_ocr(self) -> None:
+        # End-to-end: values mangled by OCR should be correctly extracted
+        text = "Revenue from operations\n58.216.04\n52.744.07\n53.489.73\n"
+        vals = _extract_n_values(text, len("Revenue from operations\n"), n=3)
+        assert vals == pytest.approx([58216.04, 52744.07, 53489.73])
+
+    def test_extract_n_values_handles_space_decimal(self) -> None:
+        text = "Revenue from operations\n34.228 34\n30.599 10\n32.013.76\n"
+        vals = _extract_n_values(text, len("Revenue from operations\n"), n=3)
+        assert vals[0] == pytest.approx(34228.34)
+        assert vals[2] == pytest.approx(32013.76)
+
+
+# ---------------------------------------------------------------------------
+# Banking-format detection and extraction (regression: SBI validation sprint)
+# ---------------------------------------------------------------------------
+
+_BANKING_RESULTS_TEXT = """\
+State Bank of India
+UNAUDITED FINANCIAL RESULTS FOR THE QUARTER ENDED SEPTEMBER 30, 2025
+
+Standalone        Consolidated
+Q2FY26  Q1FY26  Q2FY25    Q2FY26  Q1FY26  Q2FY25
+
+Interest Earned
+86,182  85,437  82,049    88,993  88,146  84,652
+
+Other Income
+15,325  17,345  15,270    47,457  41,263  42,757
+
+Net Profit for the quarter
+20,159  19,160  18,331    21,504  21,626  20,219
+
+CASH FLOWS FROM OPERATING ACTIVITIES
+"""
+
+_NON_BANKING_TEXT = """\
+Revenue from operations
+53,000  50,000  48,000
+Net Profit for the quarter
+10,000   9,500   9,000
+"""
+
+
+class TestBankingFormatDetection:
+    def test_banking_filing_detected(self) -> None:
+        assert _is_banking_filing(_BANKING_RESULTS_TEXT) is True
+
+    def test_non_banking_filing_not_detected(self) -> None:
+        assert _is_banking_filing(_NON_BANKING_TEXT) is False
+
+    def test_banking_facts_extract_net_profit(self) -> None:
+        facts = _extract_banking_facts(_BANKING_RESULTS_TEXT, "2025-09-30", "quarterly")
+        pat_facts = [f for f in facts if f.kind == FactKind.FINANCIAL_PAT]
+        assert len(pat_facts) >= 1
+        assert pat_facts[0].value == pytest.approx(20159.0)
+
+    def test_banking_facts_period_assigned(self) -> None:
+        facts = _extract_banking_facts(_BANKING_RESULTS_TEXT, "2025-09-30", "quarterly")
+        pat = [f for f in facts if f.kind == FactKind.FINANCIAL_PAT]
+        assert pat and pat[0].period == "2025-09-30"
+
+    def test_no_banking_facts_when_no_profit_row(self) -> None:
+        text = "Interest Earned\n86,182\nOther Income\n15,325\n"
+        facts = _extract_banking_facts(text, "2025-09-30", "quarterly")
+        assert facts == []
+
+    def test_cover_letter_bank_name_detected(self) -> None:
+        """Regression: heavily OCR-corrupted SBI PDFs have no readable 'Interest
+        Earned' text; fallback detects 'Bank' in the cover letter instead."""
+        ocr_text = (
+            "State Bank of India\nBSE SCRIP Code: 500112\n"
+            "lnt€resU dlacounl on advancea\n"  # OCR-corrupted "Interest/discount..."
+            "86 182 58\n85 437 92\n"
+        )
+        assert _is_banking_filing(ocr_text) is True
+
+    def test_non_bank_entity_not_triggered_by_cover_fallback(self) -> None:
+        """A non-banking company with no 'Revenue from operations' line (e.g.,
+        an NBFC disclosing only interest income without the banking P&L format)
+        should NOT be mis-classified via the cover-letter fallback if the word
+        'Bank' doesn't appear in the cover."""
+        text = (
+            "Tata Consultancy Services Ltd\nQ2FY26 Quarterly Results\n"
+            "Exceptional items and other disclosures\n"
+            "10,000 9,500 9,000\n"
+        )
+        assert _is_banking_filing(text) is False
+
+
+class TestBankingFactKindsPresent:
+    """Smoke-test that the new banking FactKind members exist in the ontology."""
+    def test_nii_kind_exists(self) -> None:
+        assert hasattr(FactKind, "FINANCIAL_NET_INTEREST_INCOME")
+
+    def test_nim_kind_exists(self) -> None:
+        assert hasattr(FactKind, "FINANCIAL_NET_INTEREST_MARGIN")
+
+    def test_gross_npa_ratio_kind_exists(self) -> None:
+        assert hasattr(FactKind, "FINANCIAL_GROSS_NPA_RATIO")
+
+    def test_net_npa_ratio_kind_exists(self) -> None:
+        assert hasattr(FactKind, "FINANCIAL_NET_NPA_RATIO")
+
+    def test_pcr_kind_exists(self) -> None:
+        assert hasattr(FactKind, "FINANCIAL_PROVISION_COVERAGE_RATIO")
+
+    def test_credit_cost_kind_exists(self) -> None:
+        assert hasattr(FactKind, "FINANCIAL_CREDIT_COST")
+
+    def test_casa_ratio_kind_exists(self) -> None:
+        assert hasattr(FactKind, "FINANCIAL_CASA_RATIO")
+
+    def test_car_kind_exists(self) -> None:
+        assert hasattr(FactKind, "FINANCIAL_CAPITAL_ADEQUACY_RATIO")
+
+    def test_slippage_ratio_kind_exists(self) -> None:
+        assert hasattr(FactKind, "FINANCIAL_SLIPPAGE_RATIO")

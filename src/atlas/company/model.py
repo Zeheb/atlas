@@ -133,6 +133,27 @@ class InvestmentEvent:
 
 
 @dataclass
+class FundraisingEvent:
+    """Board approval for raising capital via equity or debt instruments."""
+
+    source_date: datetime
+    fundraise_type: str             # "QIP" | "rights_issue" | "preferential_allotment" | "NCD"
+    amount: float | None = None     # CRORE_INR — maximum amount authorised
+    evidence_id: str = ""
+
+
+@dataclass
+class DirectorChange:
+    """A director or KMP appointment, reappointment, or resignation."""
+
+    source_date: datetime
+    change_type: str                # "appointment" | "reappointment" | "resignation"
+    name: str                       # as stated in filing
+    role: str | None = None         # e.g. "Managing Director & CEO", "Independent Director"
+    evidence_id: str = ""
+
+
+@dataclass
 class CapitalEventLedger:
     """All capital allocation events, each list sorted ASC by source_date."""
 
@@ -140,6 +161,7 @@ class CapitalEventLedger:
     buybacks: list[BuybackEvent] = field(default_factory=list)
     acquisitions: list[AcquisitionEvent] = field(default_factory=list)
     investments: list[InvestmentEvent] = field(default_factory=list)
+    fundraises: list[FundraisingEvent] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -295,10 +317,27 @@ class AGMResolution:
 
 
 @dataclass
+class RiskEntry:
+    """One risk factor from an annual report's Board's/Directors' Report.
+
+    period:      Fiscal year end ISO date ("2024-03-31").
+    text:        Risk factor description as stated in the filing.
+    evidence_id: Source annual report evidence ID.
+    """
+
+    period: str
+    text: str
+    evidence_id: str = ""
+
+
+@dataclass
 class GovernanceProfile:
-    """AGM voting history, sorted ASC by (period, title)."""
+    """AGM voting history, director change events, auditor KAM titles, and risk factors."""
 
     resolutions: list[AGMResolution] = field(default_factory=list)
+    director_changes: list[DirectorChange] = field(default_factory=list)
+    audit_kams: list[str] = field(default_factory=list)
+    risk_factors: list[RiskEntry] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------

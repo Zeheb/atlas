@@ -35,16 +35,14 @@ _ANN_PATH = "financial_results/bse-news-e4ffa3fc-e4f0-4da0-89fe-75d2f7b7b956.pdf
 
 
 @pytest.fixture(scope="module")
-def tcs_root() -> Path:
+def tcs_root(isolated_repo_factory) -> Path:
     if not _TCS_REPO.exists():
         pytest.skip("TCS repository not found")
-    return _TCS_REPO
+    return isolated_repo_factory(_TCS_REPO, evidence_ids=[_Q2_ID, _ANN_ID])
 
 
 @pytest.fixture(scope="module")
 def kb(tcs_root: Path) -> Generator[KnowledgeBase, None, None]:
-    db = tcs_root / "knowledge.db"
-    db.unlink(missing_ok=True)
     instance = KnowledgeBase(tcs_root)
     from atlas.acquisition.repository import Repository
     repo = Repository(tcs_root)
@@ -53,7 +51,6 @@ def kb(tcs_root: Path) -> Generator[KnowledgeBase, None, None]:
         if entry is not None:
             instance.parse(entry)
     yield instance
-    db.unlink(missing_ok=True)
 
 
 @pytest.fixture(scope="module")

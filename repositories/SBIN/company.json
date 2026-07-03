@@ -1,0 +1,12 @@
+{
+  "id": "cmp_f551526777dd4dae9cf67787e31cf87d",
+  "ticker": "SBIN",
+  "created_at": "2026-07-02T08:53:44.415381+00:00",
+  "atlas_version": "0.1.0",
+  "exchange_identities": {
+    "BSE": {
+      "scrip_code": 500112,
+      "resolved_at": "2026-07-02T08:55:07.893446+00:00"
+    }
+  }
+}

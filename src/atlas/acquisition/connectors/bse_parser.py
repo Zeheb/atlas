@@ -281,12 +281,13 @@ class BSEParser:
         if not newsid:
             return None
         filename = str(record.get("ATTACHMENTNAME") or "")
+        title = str(record.get("HEADLINE") or "")
         return Evidence(
             evidence_id=f"bse-news-{newsid}",
             company_id=company_id,
             source=EvidenceSource.BSE,
-            kind=self._to_kind(str(record.get("SUBCATNAME") or "")),
-            title=str(record.get("HEADLINE") or ""),
+            kind=self._classify_kind(str(record.get("SUBCATNAME") or ""), title),
+            title=title,
             source_date=self._parse_timestamp(str(record.get("DT_TM") or "")),
             document_url=self._build_url(filename, int(record.get("OLD", 0))),
             file_size_bytes=record.get("Fld_Attachsize"),
@@ -303,6 +304,25 @@ class BSEParser:
                 _log.warning("Unmapped BSE subcategory %r — filed as OTHER", subcatname)
             self._unknown_subcats[subcatname] += 1
             return EvidenceKind.OTHER
+        return kind
+
+    _RE_TRANSCRIPT_TITLE = re.compile(
+        r"\b(?:transcript|call transcript|analyst\s+meet\s+transcript)\b",
+        re.IGNORECASE,
+    )
+
+    def _classify_kind(self, subcatname: str, title: str) -> EvidenceKind:
+        """Return EvidenceKind, with title-based refinement.
+
+        A filing classified as INVESTOR_PRESENTATION by subcategory is
+        reclassified as EARNINGS_TRANSCRIPT when the title contains the word
+        "Transcript".  This handles banks and other companies that file
+        earnings-call transcripts under the generic 'Analyst / Investor Meet'
+        subcategory.
+        """
+        kind = self._to_kind(subcatname)
+        if kind == EvidenceKind.INVESTOR_PRESENTATION and self._RE_TRANSCRIPT_TITLE.search(title):
+            return EvidenceKind.EARNINGS_TRANSCRIPT
         return kind
 
     def _build_url(self, filename: str, old: int) -> str | None:

@@ -25,7 +25,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from atlas.analysis.shareholding_pattern import ANALYZER_VERSION, analyze
+from atlas.analysis.shareholding_pattern import ANALYZER_VERSION, analyze, _detect_decimal_format
 from atlas.analysis.base import AnalysisResult, FactKind, FactUnit
 
 
@@ -358,3 +358,87 @@ class TestErrorHandling:
     def test_malformed_xml_raises(self):
         with pytest.raises(ValueError, match="XML parse error"):
             analyze("x", _kb("not xml at all"))
+
+
+# ---------------------------------------------------------------------------
+# Old BSE XBRL format: percentages in 0–100 scale (pre-Oct 2025)
+# ---------------------------------------------------------------------------
+
+_NS_OLD = "http://www.bseindia.com/xbrl/shp/2022-09-30/in-bse-shp"
+
+
+def _xml_old(
+    promoter_pct: str = "33.19",
+    public_pct: str = "66.81",
+    fpi_pct: str = "18.00",
+    dii_pct: str = "17.72",
+) -> str:
+    """Build an old-format BSE XBRL SHP where percentages are 0–100 scale."""
+    return textwrap.dedent(f"""\
+        <?xml version="1.0" encoding="UTF-8"?>
+        <xbrli:xbrl
+            xmlns:xbrli="http://www.xbrl.org/2003/instance"
+            xmlns:s="{_NS_OLD}">
+          <xbrli:context id="MainI">
+            <xbrli:entity><xbrli:identifier scheme="x">500470</xbrli:identifier></xbrli:entity>
+            <xbrli:period><xbrli:instant>2024-09-30</xbrli:instant></xbrli:period>
+          </xbrli:context>
+          <s:DateOfReport contextRef="MainI">2024-09-30</s:DateOfReport>
+          <s:WhetherAnySharesHeldByPromotersAreEncumberedUnderPledged contextRef="MainI">false</s:WhetherAnySharesHeldByPromotersAreEncumberedUnderPledged>
+          <s:NumberOfFullyPaidUpEquityShares contextRef="ShareholdingPattern_ContextI">12471290974</s:NumberOfFullyPaidUpEquityShares>
+          <s:ShareholdingAsAPercentageOfTotalNumberOfShares contextRef="ShareholdingOfPromoterAndPromoterGroup_ContextI">{promoter_pct}</s:ShareholdingAsAPercentageOfTotalNumberOfShares>
+          <s:ShareholdingAsAPercentageOfTotalNumberOfShares contextRef="PublicShareholding_ContextI">{public_pct}</s:ShareholdingAsAPercentageOfTotalNumberOfShares>
+          <s:ShareholdingAsAPercentageOfTotalNumberOfShares contextRef="InstitutionsForeign_ContextI">{fpi_pct}</s:ShareholdingAsAPercentageOfTotalNumberOfShares>
+          <s:ShareholdingAsAPercentageOfTotalNumberOfShares contextRef="InstitutionsDomestic_ContextI">{dii_pct}</s:ShareholdingAsAPercentageOfTotalNumberOfShares>
+          <s:ShareholdingAsAPercentageOfTotalNumberOfShares contextRef="MutualFundsOrUTI_ContextI">5.00</s:ShareholdingAsAPercentageOfTotalNumberOfShares>
+          <s:ShareholdingAsAPercentageOfTotalNumberOfShares contextRef="InsuranceCompanies_ContextI">4.00</s:ShareholdingAsAPercentageOfTotalNumberOfShares>
+          <s:ShareholdingAsAPercentageOfTotalNumberOfShares contextRef="NonResidentIndians_ContextI">1.00</s:ShareholdingAsAPercentageOfTotalNumberOfShares>
+        </xbrli:xbrl>
+    """)
+
+
+class TestOldBseXbrlFormat:
+    """Regression tests for the pre-Oct-2025 BSE XBRL 0–100 percentage scale.
+
+    Old documents store 33.19 for 33.19%; new documents store 0.3319.
+    The analyzer must detect the format and NOT double-multiply old values.
+    """
+
+    def test_detect_old_format_returns_false(self):
+        assert _detect_decimal_format(_xml_old()) is False
+
+    def test_detect_new_format_returns_true(self):
+        assert _detect_decimal_format(_xml()) is True
+
+    def test_old_format_promoter_not_multiplied(self):
+        result = analyze("x", _kb(_xml_old(promoter_pct="33.19")))
+        facts = _facts(result, FactKind.OWNERSHIP_PROMOTER_PCT)
+        assert len(facts) == 1
+        assert facts[0].value == pytest.approx(33.19)
+
+    def test_old_format_public_not_multiplied(self):
+        result = analyze("x", _kb(_xml_old(public_pct="66.81")))
+        facts = _facts(result, FactKind.OWNERSHIP_PUBLIC_PCT)
+        assert len(facts) == 1
+        assert facts[0].value == pytest.approx(66.81)
+
+    def test_old_format_fpi_not_multiplied(self):
+        result = analyze("x", _kb(_xml_old(fpi_pct="18.00")))
+        facts = _facts(result, FactKind.OWNERSHIP_FPI_PCT)
+        assert len(facts) == 1
+        assert facts[0].value == pytest.approx(18.0)
+
+    def test_new_format_promoter_is_multiplied(self):
+        result = analyze("x", _kb(_xml(promoter_pct="0.3319")))
+        facts = _facts(result, FactKind.OWNERSHIP_PROMOTER_PCT)
+        assert len(facts) == 1
+        assert facts[0].value == pytest.approx(33.19)
+
+    def test_old_format_promoter_75pct(self):
+        result = analyze("x", _kb(_xml_old(promoter_pct="75.00", public_pct="25.00")))
+        facts = _facts(result, FactKind.OWNERSHIP_PROMOTER_PCT)
+        assert facts[0].value == pytest.approx(75.0)
+
+    def test_old_format_has_high_confidence(self):
+        result = analyze("x", _kb(_xml_old()))
+        assert result.confidence == "high"

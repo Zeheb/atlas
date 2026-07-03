@@ -1,15 +1,23 @@
 """Rule-based fact extraction from parsed annual report text.
 
-Extracts durable structured facts and verbatim excerpts from one annual
-report document. Does not compare across documents — cross-document
-reasoning belongs in a future Facts layer.
+Extracts durable structured facts and verbatim excerpts from an annual
+report document.  Does not compare across documents.
 
-Section detection uses a TOC-skip strategy: a pattern match is only
-accepted if at least _MIN_SECTION_CONTENT chars of substantive text
-follow it, filtering out table-of-contents entries that match the same
-header keyword but are followed only by a page number.
+Section detection uses a two-level TOC-skip strategy:
+
+1. If the first non-blank content after a header match is a bare page number
+   *and* the item following that page number is *also* followed by a page
+   number (i.e., the ``text → num → text → num`` TOC pattern), the match is
+   skipped as a table-of-contents entry.
+
+2. If the first non-blank content is a bare page number but the content
+   *after* that page number is prose (not another ``text/num`` pair), the
+   match is a running page header inside the section body and is accepted,
+   using the prose content that follows the page number.
+
+This handles the common Indian PDF structure where section names appear both
+in the TOC and as running headers on every body page.
 """
-
 from __future__ import annotations
 
 import re
@@ -27,47 +35,35 @@ from atlas.analysis.base import (
 from atlas.analysis.patterns import fiscal_year_end
 from atlas.knowledge.base import KnowledgeBase
 
-ANALYZER_VERSION = "2.0"
+ANALYZER_VERSION = "3.0"
 
 # ---------------------------------------------------------------------------
-# Extraction configuration
+# Configuration
 # ---------------------------------------------------------------------------
 
-_SECTION_CHARS = 4_000      # chars to capture after a section header match
-_MIN_SECTION_CONTENT = 200  # minimum chars to accept a match as a real section
+_SECTION_CHARS = 80_000   # chars to capture from a section header onward
+_MIN_SECTION_CONTENT = 200
 
 # ---------------------------------------------------------------------------
 # Section header patterns
+#
+# Both ASCII apostrophe (U+0027) and Unicode right single quotation mark
+# (U+2019) are accepted.  TCS PDFs consistently use U+2019, which breaks
+# naïve ASCII-only patterns.
 # ---------------------------------------------------------------------------
 
-_RE_BUSINESS_OVERVIEW = re.compile(
-    r"^(?:Business Overview|About TCS|Company Overview|Our Business)\s*$",
-    re.IGNORECASE | re.MULTILINE,
-)
+_APO = r"[’']"
 
-_RE_MANAGEMENT = re.compile(
-    r"(?:"
-    r"^Letter from the\n?Chairman"
-    r"|^Chairman['']?s?\s+(?:Letter|Message|Statement|Review)"
-    r"|^Directors['']?\s+Report"
-    r"|^Management Discussion and Analysis"
-    r"|^CEO['']?s?\s+(?:Letter|Message)"
-    r"|Dear Shareholders?[,.]"
-    r")",
-    re.IGNORECASE | re.MULTILINE,
+_RE_BOARDS_REPORT = re.compile(rf"Board{_APO}s\s+Report", re.IGNORECASE)
+_RE_DIRS_REPORT = re.compile(rf"Directors{_APO}\s+Report", re.IGNORECASE)
+_RE_MDA = re.compile(r"Management\s+Discussion\s+and\s+Analysis", re.IGNORECASE)
+_RE_AUDITOR_CONSOL = re.compile(
+    # Standard: "Independent Auditors' Report" (IndAS manufacturing/services)
+    # Banking: "Statutory Central Auditors' Report" / "Report of the Auditors" (Banking Regulation Act)
+    rf"(?:Independent|Statutory(?:\s+Central)?)\s+Auditor{_APO}s?\s+Report"
+    r"|Report\s+of\s+the\s+(?:Statutory\s+)?(?:Central\s+)?Auditors?",
+    re.IGNORECASE,
 )
-
-_RE_CAPITAL_ALLOCATION = re.compile(
-    r"(?:"
-    r"capital\s+allocation\s+policy"
-    r"|^Capital\s+Allocation\s*$"
-    r"|^Dividend(?:s)?\s*$"
-    r"|recommended\s+a\s+(?:final|interim)\s+dividend"
-    r"|buyback\s+program"
-    r")",
-    re.IGNORECASE | re.MULTILINE,
-)
-
 _RE_RISKS = re.compile(
     r"(?:"
     r"^Risk\s+Factors?\s*$"
@@ -81,42 +77,111 @@ _RE_RISKS = re.compile(
     re.IGNORECASE | re.MULTILINE,
 )
 
-_RE_SEGMENT_PARAGRAPH = re.compile(
-    r"(?i)Among the Business Segments?[,\s]+(.*?)(?=\n\n|\. Among|\. The company)",
-    re.DOTALL,
+# ---------------------------------------------------------------------------
+# Fact extraction patterns
+# ---------------------------------------------------------------------------
+
+# Mandatory CSR disclosure (Companies Act s.135 annual table in Board's Report).
+# Backtick (`) appears as a rupee-symbol OCR artefact in older filings.
+# \x07 (BEL) is a stray control character seen in some PDF extractions.
+# Banking format: "Total CSR Expenditure" in summary highlight box (no "(a)" label).
+_RE_CSR_SPEND = re.compile(
+    r"\(a\)\s+(?:\x07\s*)?Amount\s+spent\s+on\s+CSR\s+Projects?"
+    r"[^:]*?:\s*(?:₹|Rs\.?|[`₹H])\s*([\d,]+(?:\.\d+)?)\s*(?:crore|Cr\.?)"
+    r"|(?:₹|Rs\.?|[`₹HI])\s*([\d,]+(?:\.\d+)?)\s*(?:crore|Cr\.?)\s*\|?\s*Total\s+CSR\s+Expenditure"
+    r"|Total\s+CSR\s+Expenditure\s*\|?\s*(?:₹|Rs\.?|[`₹HI])\s*([\d,]+(?:\.\d+)?)\s*(?:crore|Cr\.?)",
+    re.IGNORECASE | re.DOTALL,
 )
 
-_RE_SEGMENT_ENTRY = re.compile(
-    r"([\w,\s&]+?)\s+grew\s+[\d.]+%",
+# KAM entry title: a capitalised line immediately followed by "See Note".
+_RE_KAM_ENTRY = re.compile(r"^([^\n]{20,300})\nSee\s+Note", re.MULTILINE)
+
+# KAM section header within the auditor's report.
+# FY2026/FY2025 write "Key Audit Matters"; FY2024 writes "Key Audit Matter(s)".
+_RE_KAM_HEADER = re.compile(
+    r"Key\s+Audit\s+Matter(?:s|\(s\))?\s*\n", re.IGNORECASE
+)
+
+# Voluntary LTM attrition rate, typically in MDA workforce discussion.
+_RE_ATTRITION = re.compile(
+    r"(?:voluntary\s+)?(?:LTM\s+)?(?:IT\s+services?\s+)?attrition"
+    r"(?:\s+in\s+IT\s+[Ss]ervices?)?"
+    r"[^%\n]{0,80}?([\d]+\.[\d]+)\s*%",
     re.IGNORECASE,
 )
 
+_RE_BARE_PAGE_NUM = re.compile(r"^\d{1,3}$")
+
+# Validator for the auditor's report: confirm the section body is genuine
+# report text (not a TOC listing).  FY2025/FY2024 TOC layouts differ from
+# FY2026, so the two-level page-number check alone is insufficient.
+_RE_AUDITOR_BODY = re.compile(
+    r"To the Members|Report on the Audit|Basis for Opinion",
+    re.IGNORECASE,
+)
+_VALIDATOR_CHARS = 2_000
+
 # ---------------------------------------------------------------------------
-# Internal extraction helpers
-# (These are the stable extraction core — no output-type dependency.)
+# Section finding
 # ---------------------------------------------------------------------------
 
 
 def _find_section(
-    text: str, pattern: re.Pattern[str]
+    content: str,
+    patterns: list[re.Pattern[str]],
+    min_content: int = _MIN_SECTION_CONTENT,
+    validator: re.Pattern[str] | None = None,
 ) -> tuple[str, int] | None:
-    """Return (excerpt, match_char_offset) for the first substantial match.
+    """Return ``(section_text, header_char_offset)`` for the first real match.
 
-    Skips TOC entries by requiring at least _MIN_SECTION_CONTENT chars of
-    following text. Returns None if no qualifying match is found.
+    Tries each pattern in order, returning the first qualifying hit.
+    Applies the two-level TOC-skip strategy described in the module docstring.
+
+    If *validator* is given, the candidate excerpt must contain a match for
+    that pattern within its first ``_VALIDATOR_CHARS`` characters.  This lets
+    callers rule out TOC entries whose text content passes the length check but
+    lacks distinguishing prose (e.g. the auditor's report "To the Members"
+    opening that is absent from a TOC line).
     """
-    for m in pattern.finditer(text):
-        start = m.end()
-        excerpt = text[start : start + _SECTION_CHARS].strip()
-        if len(excerpt) >= _MIN_SECTION_CONTENT:
-            return excerpt, m.start()
+    for pat in patterns:
+        for m in pat.finditer(content):
+            after = content[m.end(): m.end() + _SECTION_CHARS + 500]
+            non_blank = [ln.strip() for ln in after.split("\n") if ln.strip()]
+            if not non_blank:
+                continue
+
+            if _RE_BARE_PAGE_NUM.match(non_blank[0]):
+                # First non-blank is a bare page number.
+                rest = non_blank[1:]
+                if not rest:
+                    continue
+                # TOC test: if the item after the page number is *itself*
+                # followed by another page number → classic TOC pattern → skip.
+                if len(rest) >= 2 and _RE_BARE_PAGE_NUM.match(rest[1]):
+                    continue
+                # Running header in the section body: use the prose that follows.
+                body = "\n".join(rest)
+                if len(body) >= min_content:
+                    excerpt = body[:_SECTION_CHARS]
+                    if validator and not validator.search(excerpt[:_VALIDATOR_CHARS]):
+                        continue
+                    return excerpt, m.start()
+                continue
+
+            # First non-blank is prose — genuine section content.
+            body = "\n".join(non_blank)
+            if len(body) >= min_content:
+                excerpt = after.strip()[:_SECTION_CHARS]
+                if validator and not validator.search(excerpt[:_VALIDATOR_CHARS]):
+                    continue
+                return excerpt, m.start()
+
     return None
 
 
-def _extract_section(text: str, pattern: re.Pattern[str]) -> str | None:
-    """Return section text or None. Backward-compatible wrapper around _find_section."""
-    result = _find_section(text, pattern)
-    return result[0] if result is not None else None
+# ---------------------------------------------------------------------------
+# List and risk helpers (stable extraction core)
+# ---------------------------------------------------------------------------
 
 
 def _extract_list_items(text: str) -> list[str]:
@@ -134,38 +199,17 @@ def _extract_list_items(text: str) -> list[str]:
     return items
 
 
-def _extract_segments(text: str) -> list[str]:
-    """Extract business segment names from the 'Among the Business Segments' paragraph."""
-    m = _RE_SEGMENT_PARAGRAPH.search(text)
-    if m:
-        paragraph = m.group(1)
-        segments = [
-            entry.group(1).strip().rstrip(",")
-            for entry in _RE_SEGMENT_ENTRY.finditer(paragraph)
-        ]
-        if segments:
-            return segments
-
-    section = _extract_section(
-        text,
-        re.compile(
-            r"^(?:Business\s+Segments?|Service\s+Lines?|Industry\s+Verticals?|Reportable\s+Segments?)\s*$",
-            re.IGNORECASE | re.MULTILINE,
-        ),
-    )
-    return _extract_list_items(section) if section else []
-
-
-def _extract_risks(text: str) -> list[str]:
-    """Extract risk factor names from the risk section."""
-    section = _extract_section(text, _RE_RISKS)
-    if not section:
+def _extract_risks(content: str) -> list[str]:
+    """Extract risk factor names from the MDA/risk section."""
+    result = _find_section(content, [_RE_RISKS])
+    if not result:
         return []
-    items = _extract_list_items(section)
+    section_text = result[0]
+    items = _extract_list_items(section_text)
     if items:
         return items[:10]
     headings: list[str] = []
-    for line in section.split("\n"):
+    for line in section_text.split("\n"):
         line = line.strip()
         words = line.split()
         if (
@@ -180,18 +224,89 @@ def _extract_risks(text: str) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
+# Fact extractors
+# ---------------------------------------------------------------------------
+
+
+def _extract_csr_spend(
+    content: str,
+) -> tuple[float | None, int | None, str | None]:
+    """Return ``(amount_crore, char_offset, excerpt)`` for the mandatory CSR table."""
+    m = _RE_CSR_SPEND.search(content)
+    if not m:
+        return None, None, None
+    # The pattern has three alternating capture groups (main / banking-pre / banking-post).
+    raw_group = m.group(1) or m.group(2) or m.group(3)
+    if not raw_group:
+        return None, None, None
+    raw = raw_group.replace(",", "")
+    try:
+        amount = float(raw)
+    except ValueError:
+        return None, None, None
+    return amount, m.start(), _snip(content, m.start())
+
+
+def _extract_kam_titles(
+    content: str,
+    auditor_header_offset: int,
+) -> list[tuple[str, int]]:
+    """Return ``[(title, char_offset)]`` for KAM entries in the consolidated auditor's report.
+
+    Searches within ``_SECTION_CHARS`` bytes of ``auditor_header_offset``.
+    KAM titles are lines that immediately precede "See Note" in the KAM section.
+    """
+    section_text = content[auditor_header_offset: auditor_header_offset + _SECTION_CHARS]
+    kam_m = _RE_KAM_HEADER.search(section_text)
+    if not kam_m:
+        return []
+    kam_body = section_text[kam_m.end():]
+    results: list[tuple[str, int]] = []
+    for entry_m in _RE_KAM_ENTRY.finditer(kam_body):
+        title = entry_m.group(1).strip()
+        if title and not title[0].islower():
+            abs_offset = auditor_header_offset + kam_m.end() + entry_m.start()
+            results.append((title, abs_offset))
+    return results
+
+
+def _extract_attrition(
+    content: str,
+) -> tuple[float | None, int | None, str | None]:
+    """Return ``(attrition_pct, char_offset, excerpt)`` for the LTM attrition rate."""
+    m = _RE_ATTRITION.search(content)
+    if not m:
+        return None, None, None
+    try:
+        pct = float(m.group(1))
+    except ValueError:
+        return None, None, None
+    return pct, m.start(), _snip(content, m.start())
+
+
+# ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
 
-def summarize(
-    evidence_id: str,
-    kb: KnowledgeBase,
-) -> AnalysisResult:
-    """Extract structured facts and verbatim excerpts from a parsed annual report.
+def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
+    """Extract structured facts from a parsed annual report document.
 
-    Returns AnalysisResult. Raises KeyError if evidence_id is not recorded
-    in the knowledge base; raises ValueError if the document failed to parse.
+    Fact kinds produced:
+
+    * ``ESG_CSR_SPEND`` — mandatory s.135 CSR expenditure from Board's/Directors' Report
+    * ``AUDIT_KAM_TITLE`` — Key Audit Matter titles from the consolidated auditor's report
+    * ``ESG_WORKFORCE_ATTRITION_PCT`` — voluntary LTM attrition from MDA (supplementary)
+    * ``RISK_FACTOR`` — major risk factors from the MDA risk section
+
+    Excerpts stored:
+
+    * ``boards_report`` — first qualifying Board's/Directors' Report section text
+    * ``mda`` — Management Discussion and Analysis section text
+    * ``key_audit_matters`` — consolidated auditor's report section text
+
+    Raises ``KeyError`` when ``evidence_id`` is not in the knowledge base.
+    Raises ``ValueError`` when the document failed to parse or has no content.
     """
     doc = kb.get(evidence_id)
     if doc is None:
@@ -210,43 +325,65 @@ def summarize(
     excerpts: dict[str, str] = {}
     warnings: list[str] = []
 
-    # --- Business segments ---
-    seg_match = _RE_SEGMENT_PARAGRAPH.search(content)
-    segment_names = _extract_segments(content)
-    seg_offset = seg_match.start() if seg_match is not None else None
-    seg_snip = _snip(content, seg_offset) if seg_offset is not None else None
+    # ------------------------------------------------------------------ #
+    # 1. Board's / Directors' Report — excerpt + CSR mandatory spend       #
+    # ------------------------------------------------------------------ #
+    boards_result = _find_section(content, [_RE_BOARDS_REPORT, _RE_DIRS_REPORT])
+    if boards_result:
+        excerpts["boards_report"] = boards_result[0]
+    else:
+        warnings.append("Board's/Directors' Report section not found")
 
-    for name in segment_names:
+    csr_amount, csr_offset, csr_snip = _extract_csr_spend(content)
+    if csr_amount is not None:
         facts.append(
             AnalysisFact(
-                kind=FactKind.SEGMENT_NAME,
-                value=name,
-                unit=None,
+                kind=FactKind.ESG_CSR_SPEND,
+                value=csr_amount,
+                unit=FactUnit.CRORE_INR,
                 period=period,
                 confidence="high",
                 provenance=Provenance(
-                    section="segment_paragraph",
-                    char_offset=seg_offset,
-                    excerpt=seg_snip,
+                    section="boards_report_csr",
+                    char_offset=csr_offset,
+                    excerpt=csr_snip,
                 ),
             )
         )
-    if not segment_names:
-        warnings.append("No business segments extracted")
-
-    # --- Risk factors ---
-    risk_result = _find_section(content, _RE_RISKS)
-    major_risks = _extract_risks(content)
-
-    if risk_result is not None:
-        _, risk_offset = risk_result
-        risk_snip = _snip(content, risk_offset)
-        risk_conf: Literal["high", "medium", "low"] = "medium"
     else:
-        risk_offset = None
-        risk_snip = None
-        risk_conf = "low"
+        warnings.append("CSR mandatory disclosure not found")
 
+    # ------------------------------------------------------------------ #
+    # 2. MDA — excerpt + attrition + risk factors                          #
+    # ------------------------------------------------------------------ #
+    mda_result = _find_section(content, [_RE_MDA])
+    if mda_result:
+        excerpts["mda"] = mda_result[0]
+    else:
+        warnings.append("MDA section not found")
+
+    attrition, attr_offset, attr_snip = _extract_attrition(content)
+    if attrition is not None:
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.ESG_WORKFORCE_ATTRITION_PCT,
+                value=attrition,
+                unit=FactUnit.PERCENT,
+                period=period,
+                confidence="medium",
+                provenance=Provenance(
+                    section="mda_attrition",
+                    char_offset=attr_offset,
+                    excerpt=attr_snip,
+                ),
+            )
+        )
+
+    major_risks = _extract_risks(content)
+    risk_result = _find_section(content, [_RE_RISKS])
+    risk_offset = risk_result[1] if risk_result else None
+    risk_snip = _snip(content, risk_offset) if risk_offset is not None else None
+    risk_conf: Literal["high", "medium", "low"] = "medium" if risk_result else "low"
     for risk in major_risks:
         facts.append(
             AnalysisFact(
@@ -256,42 +393,55 @@ def summarize(
                 period=period,
                 confidence=risk_conf,
                 provenance=Provenance(
-                    section="risk_section",
+                    section="mda_risk",
                     char_offset=risk_offset,
                     excerpt=risk_snip,
                 ),
             )
         )
     if not major_risks:
-        warnings.append("No risk factors extracted")
+        warnings.append("Risk factors not found")
 
-    # --- Verbatim excerpts ---
-    biz_result = _find_section(content, _RE_BUSINESS_OVERVIEW)
-    if biz_result:
-        excerpts["business_overview"] = biz_result[0]
-    else:
-        warnings.append("Business overview section not found")
-
-    mgmt_result = _find_section(content, _RE_MANAGEMENT)
-    if mgmt_result:
-        excerpts["management_commentary"] = mgmt_result[0]
-    else:
-        warnings.append("Management commentary not found")
-
-    cap_result = _find_section(content, _RE_CAPITAL_ALLOCATION)
-    if cap_result:
-        excerpts["capital_allocation"] = cap_result[0]
-    else:
-        warnings.append("Capital allocation section not found")
-
-    # --- Result-level confidence ---
-    key_excerpts = sum(
-        1 for k in ("business_overview", "management_commentary") if k in excerpts
+    # ------------------------------------------------------------------ #
+    # 3. Consolidated auditor's report — KAM titles                        #
+    # ------------------------------------------------------------------ #
+    auditor_result = _find_section(
+        content, [_RE_AUDITOR_CONSOL], validator=_RE_AUDITOR_BODY
     )
-    has_segments = len(segment_names) >= 2
-    if key_excerpts == 2 and has_segments:
+    if auditor_result:
+        excerpts["key_audit_matters"] = auditor_result[0]
+        auditor_offset = auditor_result[1]
+        kam_entries = _extract_kam_titles(content, auditor_offset)
+        for title, kam_offset in kam_entries:
+            facts.append(
+                AnalysisFact(
+                    kind=FactKind.AUDIT_KAM_TITLE,
+                    value=title,
+                    unit=None,
+                    period=period,
+                    confidence="high",
+                    provenance=Provenance(
+                        section="auditor_report_kam",
+                        char_offset=kam_offset,
+                        excerpt=_snip(content, kam_offset),
+                    ),
+                )
+            )
+        if not kam_entries:
+            warnings.append("No KAM entries found in auditor's report")
+    else:
+        warnings.append("Consolidated auditor's report not found")
+
+    # ------------------------------------------------------------------ #
+    # Result-level confidence                                              #
+    # ------------------------------------------------------------------ #
+    has_csr = csr_amount is not None
+    has_kams = any(f.kind == FactKind.AUDIT_KAM_TITLE for f in facts)
+    excerpt_count = len(excerpts)
+
+    if has_csr and has_kams and excerpt_count >= 2:
         result_confidence: Literal["high", "medium", "low"] = "high"
-    elif key_excerpts >= 1 or has_segments:
+    elif has_csr or has_kams:
         result_confidence = "medium"
     else:
         result_confidence = "low"
@@ -306,3 +456,8 @@ def summarize(
         facts=facts,
         excerpts=excerpts,
     )
+
+
+def summarize(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
+    """Backward-compatible alias for ``analyze()``."""
+    return analyze(evidence_id, kb)

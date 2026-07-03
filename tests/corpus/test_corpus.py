@@ -51,10 +51,12 @@ _CASE_IDS = [c["_path"].replace(".json", "") for c in _CASES]
 
 
 @pytest.fixture(scope="module")
-def tcs_repo() -> Path:
+def tcs_repo(isolated_repo_factory) -> Path:
     if not _TCS_REPO.exists():
         pytest.skip("TCS repository not found")
-    return _TCS_REPO
+    return isolated_repo_factory(
+        _TCS_REPO, evidence_ids=[case["evidence_id"] for case in _CASES]
+    )
 
 
 @pytest.fixture(scope="module")
@@ -62,8 +64,6 @@ def kb(tcs_repo: Path) -> Generator:
     from atlas.knowledge.base import KnowledgeBase
     from atlas.acquisition.repository import Repository
 
-    db = tcs_repo / "knowledge.db"
-    db.unlink(missing_ok=True)
     instance = KnowledgeBase(tcs_repo)
     repo = Repository(tcs_repo)
 
@@ -75,7 +75,6 @@ def kb(tcs_repo: Path) -> Generator:
             instance.parse(entry)
 
     yield instance
-    db.unlink(missing_ok=True)
 
 
 @pytest.mark.parametrize("case", _CASES, ids=_CASE_IDS)

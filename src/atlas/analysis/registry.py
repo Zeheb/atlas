@@ -30,6 +30,7 @@ from atlas.analysis.earnings_transcript import analyze as _earnings_transcript
 from atlas.analysis.investor_presentation import analyze as _investor_presentation
 from atlas.analysis.agm_notice import analyze as _agm_notice
 from atlas.analysis.brsr import analyze as _brsr
+from atlas.analysis.annual_report import analyze as _annual_report
 
 _REGISTRY: dict[str, object] = {
     "financial_results":      _financial_results,
@@ -42,6 +43,7 @@ _REGISTRY: dict[str, object] = {
     "investor_presentation":  _investor_presentation,
     "agm_notice":             _agm_notice,
     "brsr":                   _brsr,
+    "annual_report":          _annual_report,
 }
 
 

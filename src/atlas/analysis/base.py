@@ -85,6 +85,10 @@ class FactKind(enum.Enum):
     CAPITAL_INVEST_TARGET_NAME = "capital_invest_target_name"  # subsidiary receiving the investment; unit=None
     CAPITAL_INVEST_AMOUNT = "capital_invest_amount"            # committed capital; unit=CRORE_INR|USD_BILLION
 
+    # Board-approved equity / debt fundraising (QIP, rights, preferential, NCD)
+    CAPITAL_FUNDRAISE_TYPE   = "capital_fundraise_type"    # "QIP"|"rights_issue"|"preferential_allotment"|"NCD"; unit=None
+    CAPITAL_FUNDRAISE_AMOUNT = "capital_fundraise_amount"  # max amount authorised; unit=CRORE_INR
+
     # Business segment data
     SEGMENT_NAME = "segment_name"                 # textual; one fact per segment
     SEGMENT_GROWTH_PCT = "segment_growth_pct"     # unit=PERCENT
@@ -103,14 +107,17 @@ class FactKind(enum.Enum):
     # Audit
     AUDIT_OPINION = "audit_opinion"               # "unmodified" | "qualified" | ...
     AUDIT_FIRM = "audit_firm"
+    AUDIT_KAM_TITLE = "audit_kam_title"           # Key Audit Matter title text; unit=None; textual
 
     # Exceptional items
     EXCEPTIONAL_DESCRIPTION = "exceptional_description"   # textual
     EXCEPTIONAL_AMOUNT = "exceptional_amount"             # unit=CRORE_INR
 
     # Governance — board and director data
-    # GOVERNANCE_DIRECTOR: reserved — valid concept; populated when annual_report.py is built
-    GOVERNANCE_DIRECTOR = "governance_director"
+    # Director / KMP changes (grouped by section "director_change_N" in board_outcome)
+    GOVERNANCE_DIRECTOR             = "governance_director"               # full name; unit=None
+    GOVERNANCE_DIRECTOR_CHANGE_TYPE = "governance_director_change_type"  # "appointment"|"reappointment"|"resignation"; unit=None
+    GOVERNANCE_DIRECTOR_CHANGE_ROLE = "governance_director_change_role"  # role string; unit=None
 
     # AGM voting results (one fact per resolution; period=AGM date; section="resolution_N")
     GOVERNANCE_RESOLUTION_TITLE   = "governance_resolution_title"    # agenda text; unit=None
@@ -157,6 +164,27 @@ class FactKind(enum.Enum):
     FINANCIAL_OPERATING_CASH_FLOW = "financial_operating_cash_flow"   # net cash from operating activities; unit=CRORE_INR
     FINANCIAL_CAPEX               = "financial_capex"                  # PP&E purchases only; unit=CRORE_INR; absolute value
 
+    # Banking / NBFC financial metrics (broadly applicable across financial sector)
+    # Period conventions: quarterly KPIs use quarter-end date; annual KPIs use
+    # fiscal year-end date.  Ratio facts use unit=PERCENT; stock/flow facts use
+    # unit=CRORE_INR.
+    FINANCIAL_NET_INTEREST_INCOME     = "financial_net_interest_income"      # NII = interest income − interest expense; unit=CRORE_INR
+    FINANCIAL_NET_INTEREST_MARGIN     = "financial_net_interest_margin"      # NIM = NII / avg earning assets; unit=PERCENT
+    FINANCIAL_GROSS_NPA_RATIO         = "financial_gross_npa_ratio"          # Gross NPA / Gross Advances; unit=PERCENT
+    FINANCIAL_NET_NPA_RATIO           = "financial_net_npa_ratio"            # Net NPA / Net Advances; unit=PERCENT
+    FINANCIAL_PROVISION_COVERAGE_RATIO = "financial_provision_coverage_ratio" # provisions held / gross NPA; unit=PERCENT
+    FINANCIAL_CREDIT_COST             = "financial_credit_cost"              # provisioning expense / avg advances; unit=PERCENT
+    FINANCIAL_CASA_RATIO              = "financial_casa_ratio"               # (current + savings deposits) / total deposits; unit=PERCENT
+    FINANCIAL_CAPITAL_ADEQUACY_RATIO  = "financial_capital_adequacy_ratio"   # CRAR / CAR (Basel III Tier1+Tier2); unit=PERCENT
+    FINANCIAL_SLIPPAGE_RATIO          = "financial_slippage_ratio"           # fresh NPA additions / opening standard advances; unit=PERCENT
+
+    # Physical operating volumes (industrial / manufacturing companies)
+    # Cross-sector concept: any company reporting bulk physical output (steel,
+    # cement, aluminium, etc.) discloses these in investor presentations even
+    # when the financial_results filing carries only rupee figures.
+    FINANCIAL_PRODUCTION_VOLUME = "financial_production_volume"  # physical output produced; unit=MILLION_TONNES|COUNT
+    FINANCIAL_DELIVERY_VOLUME   = "financial_delivery_volume"    # physical volume sold/delivered; unit=MILLION_TONNES|COUNT
+
     # ESG — environmental, social, governance sustainability facts (BRSR source)
     # All yearly metrics: period = Indian fiscal year end ("YYYY-03-31")
     # All commitment facts: period = target year fiscal year end
@@ -196,6 +224,7 @@ class FactUnit(enum.Enum):
     MEGAJOULE = "megajoule"     # MJ — energy consumption
     KILOLITRE = "kilolitre"     # KL — water consumption
     METRIC_TONNE = "metric_tonne"  # MT — waste mass
+    MILLION_TONNES = "million_tonnes"  # bulk production/delivery volume (steel, cement, etc.)
 
 
 @dataclass

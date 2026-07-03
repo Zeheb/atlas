@@ -489,3 +489,42 @@ class TestAgencyDetection:
         result = analyze("x", _kb(text))
         agency = _facts(result, FactKind.CREDIT_AGENCY)[0].value
         assert agency == "India Ratings"
+
+
+# ---------------------------------------------------------------------------
+# Revision-table parsing (CARE / India Ratings BSE intimation format)
+# ---------------------------------------------------------------------------
+
+_REVISION_TABLE_TEXT = (
+    "Details of revision in ratings for Company:\n"
+    "Name of the Company\tCredit Rating Agency\tType of Credit Rating\tExisting\tRevised\n"
+    "Tata Steel Limited\tCARE Ratings\tLong-term credit rating\t"
+    "‘AA’\nOutlook:\nNegative\t"
+    "‘AA+’\nOutlook:\nStable\n"
+    "The report from the credit rating agency covering the rationale for revision is enclosed."
+)
+
+
+class TestRevisionTableParsing:
+    def _result(self, text: str = _REVISION_TABLE_TEXT) -> AnalysisResult:
+        return analyze("x", _kb(text))
+
+    def test_revised_rating_extracted(self) -> None:
+        rating = _facts(self._result(), FactKind.CREDIT_RATING)
+        assert rating and rating[0].value == "AA+"
+
+    def test_revised_outlook_is_stable_not_existing(self) -> None:
+        # Regression: prior bug extracted 'negative' (Existing column) instead
+        # of 'stable' (Revised column) because the outlook search started at
+        # m.start() (the 'Revised' header) rather than m.end() (after 'AA+').
+        outlook = _facts(self._result(), FactKind.CREDIT_OUTLOOK)
+        assert outlook and outlook[0].value == "stable"
+
+    def test_action_is_revised(self) -> None:
+        actions = _facts(self._result(), FactKind.CREDIT_ACTION)
+        assert any(a.value == "revised" for a in actions)
+
+    def test_instrument_is_long_term(self) -> None:
+        instruments = _facts(self._result(), FactKind.CREDIT_INSTRUMENT)
+        # Should have revision_table section instrument
+        assert any(i.value == "Long-term" for i in instruments)

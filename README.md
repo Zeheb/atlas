@@ -97,16 +97,16 @@ The aim is to bring together the relevant evidence so that an investor can make 
 
 ## Current Status
 
-Atlas has completed Stages 1, 2, and the foundation of Stage 3. TCS is the reference company used throughout development.
+Atlas has completed Stages 1 and 2, a working Stage 3 (`CompanyProfile` + `CompanyStore` + an OCR-hardened knowledge layer), and the beginning of Stage 4 (a deterministic query engine + CLI). Three companies are used as the reference set, chosen to span sectors: **TCS** (IT services), **Tata Steel** (manufacturing), **SBI** (banking).
 
 ---
 
 ### Stage 1 — Data Collection: Complete
 
 * BSE integration: filing discovery, download, deduplication, verification
-* Evidence catalog with 156 TCS documents across 13 filing types
+* Evidence catalog across TCS (156 documents), Tata Steel (334), and SBI (307), spanning 13+ filing types
 * Acquisition pipeline: `AcquisitionPolicy`, per-run records, incremental updates
-* Knowledge base: PDF → text parsing with page and character offsets preserved
+* Knowledge base: multi-stage PDF extraction — native text layer first, objective quality scoring (density + garbled-word coherence), automatic Tesseract OCR fallback below threshold. Validated against real filings: clean PDFs stay native, scanned/broken-encoding filings (common in older SBI filings) correctly trigger OCR, with zero false positives observed across 742 PDFs / 16,891 pages
 
 Filing types in the TCS catalog:
 
@@ -128,32 +128,33 @@ Filing types in the TCS catalog:
 
 ---
 
-### Stage 2 — Information Extraction: Complete
+### Stage 2 — Information Extraction: Complete, extraction quality actively improving
 
-A typed fact ontology (`FactKind`) with 98 members and 12 units (`FactUnit`), spanning financial, capital allocation, ESG, governance, ownership, credit, strategy, and segment domains.
+A typed fact ontology (`FactKind`) with 114 members and 13 units (`FactUnit`), spanning financial, capital allocation, ESG, governance, ownership, credit, strategy, and segment domains — including a banking-ratio family (NIM, NPA, PCR, CASA, credit cost, capital adequacy, slippage) and physical production/delivery volume for industrial companies.
 
-Ten analyzers, each implementing `analyze(evidence_id, kb) → AnalysisResult`:
+Eleven analyzers, each implementing `analyze(evidence_id, kb) → AnalysisResult`:
 
-| Analyzer | Document type | FactKinds extracted | Tests |
-|---|---|---|---|
-| `financial_results` | Quarterly / annual Reg 33 | 26 (full P&L, balance sheet, cash flow, segments, EPS, audit) | 177 |
-| `brsr` | Business Responsibility & Sustainability Report | 15 (GHG, energy, water, waste, workforce, safety, SBTi) | 154 |
-| `agm_notice` | AGM voting results (Reg 44) | 5 (resolution title, type, outcome, vote percentages) | 85 |
-| `investor_presentation` | Strategy decks and analyst day slides | 10 (strategy priorities, guidance, CSAT, segment growth, ROE, FCF) | 88 |
-| `credit_rating` | ESG and debt rating rationales | 6 (agency, instrument, amount, rating, outlook, action) | 89 |
-| `board_outcome` | Board meeting Reg 30 filings | 8 (dividends, M&A events, subsidiary investments) | 94 |
-| `acquisition` | Acquisition Reg 30 filings | 5 (target, consideration type, enterprise value, stake, timeline) | 79 |
-| `buyback` | Buyback filings | 5 (amount, price, shares offered/bought, record date) | 70 |
-| `shareholding_pattern` | BSE XBRL quarterly SHP | 11 (promoter, FPI, DII, MF, insurance, retail, HNI, NRI holdings) | 66 |
-| `earnings_transcript` | Earnings call transcripts | 6 (revenue, TCV, operating margin, net margin, period metadata) | 71 |
+| Analyzer | Document type | Notes |
+|---|---|---|
+| `financial_results` | Quarterly / annual Reg 33 | Full P&L, balance sheet, cash flow, segments, EPS, audit; dedicated Banking Regulation Act path for bank filings |
+| `annual_report` | Annual report (Board's/Director's Report, MDA, auditor's report) | CSR spend, KAM titles, workforce attrition, risk factors |
+| `brsr` | Business Responsibility & Sustainability Report | GHG, energy, water, waste, workforce, safety, SBTi targets |
+| `agm_notice` | AGM voting results (Reg 44) | Resolution title, type, outcome, vote percentages |
+| `investor_presentation` | Investor decks, press-release-style filings, IR schedules | **v2.0 redesign in progress** — rebuilt around cross-sector concepts (forward guidance, ROE/FCF, banking ratios, production/delivery volume, segment growth) after v1 was found to be validated against a single TCS deck and to extract nothing from the large majority of Tata Steel/SBI presentations. Verified manually against real TCS, Tata Steel, and SBI filings; unit/integration test coverage not yet written |
+| `credit_rating` | ESG and debt rating rationales | Agency, instrument, amount, rating, outlook, action |
+| `board_outcome` | Board meeting Reg 30 filings | Dividends, M&A events, subsidiary investments, fundraising, director changes |
+| `acquisition` | Acquisition Reg 30 filings | Target, consideration type, enterprise value, stake, timeline |
+| `buyback` | Buyback filings | Amount, price, shares offered/bought, record date |
+| `shareholding_pattern` | BSE XBRL quarterly SHP | Promoter, FPI, DII, MF, insurance, retail, HNI, NRI holdings |
+| `earnings_transcript` | Earnings call transcripts | Revenue, TCV, operating margin, net margin, period metadata |
 
-A `shareholding_trend` module (`analyze_trend`) aggregates multiple SHP results into QoQ and YoY holding deltas and directional signals (69 tests).
+A `shareholding_trend` module (`analyze_trend`) aggregates multiple SHP results into QoQ and YoY holding deltas and directional signals.
 
-A golden corpus of 11 real TCS documents with expected facts validates extraction quality on every test run. Total test suite: 1,675+ tests, 92%+ line coverage.
+A golden corpus of real TCS documents with expected facts validates extraction quality on every test run. Total test suite: 2,100+ tests.
 
 ---
 
-### Stage 3 — Knowledge Repository: Foundation Complete
+### Stage 3 — Knowledge Repository: Working
 
 A `CompanyProfile` assembles `AnalysisResult` objects from multiple filings into a structured, time-ordered knowledge object:
 
@@ -164,16 +165,28 @@ CompanyProfile
 ├── CapitalEventLedger      — dividends, buybacks, acquisitions, investments
 ├── CreditHistory           — rating entries sorted by date
 ├── OwnershipTimeSeries     — promoter, FPI, DII, retail holding snapshots
-└── SegmentTimeSeries       — revenue and EBIT per business segment
+├── SegmentTimeSeries       — revenue and EBIT per business segment
+├── StrategyProfile         — priorities, guidance, aspiration, CSAT
+└── GovernanceProfile       — resolutions, director changes, audit KAMs, risk factors
 ```
 
 A `derived` module computes net debt/cash, EBIT, EBITDA, margins (EBIT, EBITDA, PAT), capex intensity, GAAP FCF, and employee cost percentage from the snapshot facts.
+
+`CompanyStore` persists a `CompanyProfile` to disk as JSON, with idempotent incremental merge (`store.merge(result)`) so a new filing updates the profile without a full rebuild from all historical results.
+
+---
+
+### Stage 4 — Research: Foundation started
+
+A deterministic, rule-based query engine (`atlas.query.engine`) operates on `CompanyProfile` — no LLM calls, no raw document access — answering: `revenue`, `leverage`, `ownership` (with QoQ/streak signal detection), `capital` (allocation events), `acquisitions`, `ratings`, `risks`, `strategy`.
+
+CLI: `atlas repository build <ticker>`, `atlas acquire <ticker>`, `atlas profile build <ticker>`, `atlas query <ticker> <query>` — the full pipeline from catalog to answered question.
 
 ---
 
 ### Next
 
-* Wire `investor_presentation` and `agm_notice` results into `CompanyProfile` (Strategy and Governance sub-models)
-* `CompanyStore`: serialize `CompanyProfile` to disk for incremental updates
-* CLI: `atlas profile <company>` — end-to-end pipeline from catalog to profile
-* Fix and register `annual_report` analyzer (currently partial; not in the registry)
+* Finish `investor_presentation` v2.0: unit tests (synthetic layouts), integration tests (real TCS/Tata Steel/SBI filings), regression tests for the layout variations found during manual validation
+* Wire the new banking-ratio and production/delivery-volume `FactKind`s into `CompanyProfile` ingestion (`builder.py`) and rebuild all three company profiles
+* `corporate_governance_report` analyzer — SEBI LODR Reg. 27(2) board-composition filing, recommended as the next document type: fills the currently-reserved `GOVERNANCE_DIRECTOR` gap and has real volume (37+ filings for Tata Steel alone), though its table layout carries similar alignment risk to what was just fixed in `financial_results`' segment extraction
+* Broaden the query engine and CLI beyond the current 8 queries as Stage 3 domain coverage grows

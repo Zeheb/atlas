@@ -51,6 +51,8 @@ Financial Results Q4 & Full Year FY 2026 Conference Call
 April 09, 2026
 
 Moderator: Ladies and gentlemen, good day and welcome to the TCS Earnings Conference Call.
+From the management side we have Mr. K Krithivasan, Chief Executive Officer, and \
+Mr. Samir Seksaria, Chief Financial Officer.
 
 Nehal Shah: Thank you, operator. Good evening, everyone. Our leadership team is present.
 
@@ -80,6 +82,8 @@ Sub: Transcript of the earnings conference call for the quarter and six-month pe
  September 30, 2025
 
 Moderator: Ladies and gentlemen, good day.
+On the call today: Mr. K Krithivasan, Chief Executive Officer, and \
+Mr. Samir Seksaria, Chief Financial Officer.
 
 Nehal Shah: Thank you, operator.
 
@@ -98,7 +102,7 @@ Our Q2 operating margin stood at 25.2%.
 Our net income margin was 19.6%.
 """
 
-# Minimal — no TCV, triggers warning
+# Minimal — no TCV
 _NO_TCV_TRANSCRIPT = """\
 TCS/SE/1/2025-26
 April 12, 2025
@@ -106,7 +110,8 @@ April 12, 2025
 Sub: Transcript of the earnings conference call for the quarter and year ended\
  March 31, 2025
 
-Moderator: Welcome.
+Moderator: Welcome. Speakers today: Mr. K Krithivasan, Chief Executive Officer, \
+and Mr. Samir Seksaria, Chief Financial Officer.
 
 Nehal Shah: Good evening.
 
@@ -273,7 +278,7 @@ class TestQ2Transcript:
 
 
 # ---------------------------------------------------------------------------
-# Missing TCV → warning
+# Transcript without TCV (e.g. non-IT company or TCS call with no TCV mention)
 # ---------------------------------------------------------------------------
 
 class TestNoTCV:
@@ -281,8 +286,9 @@ class TestNoTCV:
     def result(self):
         return analyze("t-003", _kb(_NO_TCV_TRANSCRIPT, source_date="2025-04-12T17:46:16+05:30"))
 
-    def test_warning_no_tcv(self, result):
-        assert any("TCV" in w for w in result.warnings)
+    def test_no_tcv_warning_emitted(self, result):
+        # TCV absence no longer produces a warning — TCV is IT-sector specific.
+        assert not any("TCV" in w for w in result.warnings)
 
     def test_still_extracts_revenue(self, result):
         revs = _facts(result, FactKind.FINANCIAL_REVENUE)

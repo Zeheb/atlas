@@ -34,6 +34,7 @@ promoter pledging sub-context; a warning is emitted if those values are absent.
 """
 from __future__ import annotations
 
+import re
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from typing import Literal
@@ -82,6 +83,32 @@ _TAG_SHARES = "NumberOfFullyPaidUpEquityShares"
 _TAG_PCT = "ShareholdingAsAPercentageOfTotalNumberOfShares"
 _TAG_DATE = "DateOfReport"
 
+# BSE changed their XBRL format sometime between the 2025-07 and 2025-10
+# filings: percentages switched from a 0–100 scale ("33.19" for 33.19%)
+# to a 0–1 decimal scale ("0.3319" for 33.19%).  The schema namespace URL
+# is NOT a reliable indicator — the same schema date ("2025-05-31") appears
+# in both formats.  Instead we inspect the raw values: if any percentage
+# tag in the document exceeds 1.5, the document is in 0–100 scale.
+_RE_PCT_VALUE = re.compile(
+    r"<[^>]+ShareholdingAsAPercentageOfTotalNumberOfShares[^>]*>([^<]+)<"
+)
+
+
+def _detect_decimal_format(content: str) -> bool:
+    """Return True if the XBRL uses the new 0–1 decimal percentage scale.
+
+    Checks all percentage values in the document.  Any value > 1.5 means
+    the old 0–100 format is in use; all values ≤ 1.5 means the new 0–1
+    format is in use.
+    """
+    for m in _RE_PCT_VALUE.finditer(content):
+        try:
+            if float(m.group(1)) > 1.5:
+                return False  # old 0–100 format
+        except ValueError:
+            continue
+    return True  # no value exceeded 1.5 → assume new 0–1 format
+
 
 # ---------------------------------------------------------------------------
 # XBRL parsing helpers
@@ -108,13 +135,20 @@ def _get(fmap: dict[tuple[str, str], str], tag: str, ctx: str) -> str | None:
     return fmap.get((tag, ctx))
 
 
-def _pct(fmap: dict[tuple[str, str], str], ctx: str) -> float | None:
-    """Return the shareholding percentage (0–100) for a context, or None."""
+def _pct(fmap: dict[tuple[str, str], str], ctx: str, *, decimal_scale: bool) -> float | None:
+    """Return the shareholding percentage (0–100) for a context, or None.
+
+    Args:
+        decimal_scale: True for the new BSE schema (≥ 2025-10-31) where values
+            are stored as 0–1 decimals; False for the older schema where values
+            are already in 0–100 percent form.
+    """
     raw = _get(fmap, _TAG_PCT, ctx)
     if raw is None:
         return None
     try:
-        return round(float(raw) * 100, 4)
+        val = float(raw)
+        return round(val * 100 if decimal_scale else val, 4)
     except ValueError:
         return None
 
@@ -188,6 +222,8 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
         ) from exc
 
     fmap = _build_fact_map(root)
+    # BSE changed from 0–100 percent to 0–1 decimal scale in Oct 2025.
+    decimal_scale = _detect_decimal_format(content)
 
     result = AnalysisResult(
         evidence_id=evidence_id,
@@ -217,23 +253,23 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
 
     # --- Category percentages ---
     _add_pct(result, fmap, FactKind.OWNERSHIP_PROMOTER_PCT, _CTX_PROMOTER, period,
-             "Promoter and Promoter Group percentage not found")
+             "Promoter and Promoter Group percentage not found", decimal_scale=decimal_scale)
     _add_pct(result, fmap, FactKind.OWNERSHIP_PUBLIC_PCT, _CTX_PUBLIC, period,
-             "Public shareholding percentage not found")
+             "Public shareholding percentage not found", decimal_scale=decimal_scale)
     _add_pct(result, fmap, FactKind.OWNERSHIP_FPI_PCT, _CTX_FPI, period,
-             "FPI percentage not found")
+             "FPI percentage not found", decimal_scale=decimal_scale)
     _add_pct(result, fmap, FactKind.OWNERSHIP_DII_PCT, _CTX_DII, period,
-             "DII percentage not found")
+             "DII percentage not found", decimal_scale=decimal_scale)
     _add_pct(result, fmap, FactKind.OWNERSHIP_MF_PCT, _CTX_MF, period,
-             "Mutual funds percentage not found")
+             "Mutual funds percentage not found", decimal_scale=decimal_scale)
     _add_pct(result, fmap, FactKind.OWNERSHIP_INSURANCE_PCT, _CTX_INSURANCE, period,
-             "Insurance companies percentage not found")
+             "Insurance companies percentage not found", decimal_scale=decimal_scale)
     _add_pct(result, fmap, FactKind.OWNERSHIP_NRI_PCT, _CTX_NRI, period,
-             "NRI percentage not found")
+             "NRI percentage not found", decimal_scale=decimal_scale)
     _add_pct(result, fmap, FactKind.OWNERSHIP_RETAIL_PCT, _CTX_RETAIL, period,
-             "Retail individual percentage not found", warn_missing=False)
+             "Retail individual percentage not found", warn_missing=False, decimal_scale=decimal_scale)
     _add_pct(result, fmap, FactKind.OWNERSHIP_HNI_PCT, _CTX_HNI, period,
-             "HNI individual percentage not found", warn_missing=False)
+             "HNI individual percentage not found", warn_missing=False, decimal_scale=decimal_scale)
 
     # --- Promoter pledging ---
     pledged_raw = _get(fmap, _TAG_PLEDGED_BOOL, _CTX_MAIN_I)
@@ -248,13 +284,14 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
             result.facts.append(pledged_fact)
     else:
         # Pledges exist — try to extract actual percentage
-        pledged_pct = _pct(fmap, _CTX_PROMOTER + "_Pledged")
+        pledged_pct = _pct(fmap, _CTX_PROMOTER + "_Pledged", decimal_scale=decimal_scale)
         if pledged_pct is None:
             # Try the encumbered percentage tag in the promoter context
             raw = _get(fmap, _TAG_PCT_ENCUMBERED, _CTX_PROMOTER)
             if raw:
                 try:
-                    pledged_pct = round(float(raw) * 100, 4)
+                    val = float(raw)
+                    pledged_pct = round(val * 100 if decimal_scale else val, 4)
                 except ValueError:
                     pass
         if pledged_pct is not None:
@@ -294,8 +331,10 @@ def _add_pct(
     period: str,
     warn_msg: str,
     warn_missing: bool = True,
+    *,
+    decimal_scale: bool,
 ) -> None:
-    val = _pct(fmap, ctx)
+    val = _pct(fmap, ctx, decimal_scale=decimal_scale)
     if val is not None:
         f = _ownership_fact(kind, val, FactUnit.PERCENT, ctx, period)
         if f:

@@ -17,6 +17,8 @@ import pytest
 
 from atlas.analysis.board_outcome import ANALYZER_VERSION, analyze
 from atlas.analysis.base import AnalysisFact, AnalysisResult, FactKind, FactUnit
+from atlas.company.builder import build_profile
+from atlas.company.model import CompanyProfile
 from atlas.knowledge.base import KnowledgeBase
 from atlas.acquisition.repository import Repository
 
@@ -34,16 +36,14 @@ _ALL_IDS = [_ID_Q2_2024, _ID_HYPERVAULT, _ID_COASTAL, _ID_FY2026]
 
 
 @pytest.fixture(scope="module")
-def tcs_root() -> Path:
+def tcs_root(isolated_repo_factory) -> Path:
     if not _TCS_REPO.exists():
         pytest.skip("TCS repository not found")
-    return _TCS_REPO
+    return isolated_repo_factory(_TCS_REPO, evidence_ids=_ALL_IDS)
 
 
 @pytest.fixture(scope="module")
 def kb(tcs_root: Path) -> Generator[KnowledgeBase, None, None]:
-    db = tcs_root / "knowledge_board_outcome_test.db"
-    db.unlink(missing_ok=True)
     instance = KnowledgeBase(tcs_root)
     repo = Repository(tcs_root)
     for eid in _ALL_IDS:
@@ -51,7 +51,6 @@ def kb(tcs_root: Path) -> Generator[KnowledgeBase, None, None]:
         if entry is not None:
             instance.parse(entry)
     yield instance
-    db.unlink(missing_ok=True)
 
 
 def _facts(result: AnalysisResult, kind: FactKind) -> list[AnalysisFact]:
@@ -256,3 +255,93 @@ class TestFY2026FinalDividend:
 
     def test_no_acquisition_facts(self, result: AnalysisResult) -> None:
         assert _facts(result, FactKind.CAPITAL_ACQ_TARGET_NAME) == []
+
+
+# ---------------------------------------------------------------------------
+# Analyzer version
+# ---------------------------------------------------------------------------
+
+class TestAnalyzerVersion:
+    """All four board outcome filings should report the current ANALYZER_VERSION."""
+
+    @pytest.mark.parametrize("eid", _ALL_IDS)
+    def test_version(self, kb: KnowledgeBase, eid: str) -> None:
+        _skip_if_not_parsed(kb, eid)
+        result = analyze(eid, kb)
+        assert result.analyzer_version == ANALYZER_VERSION
+
+
+# ---------------------------------------------------------------------------
+# No spurious new facts — existing documents must not produce false positives
+# for buyback / fundraising / management changes
+# ---------------------------------------------------------------------------
+
+class TestNoSpuriousBoardOutcomeFacts:
+    """The four TCS board outcome filings contain no buybacks, fundraising events,
+    or director/KMP changes.  The new extractors must not produce false positives.
+    """
+
+    @pytest.mark.parametrize("eid", _ALL_IDS)
+    def test_no_buyback_facts(self, kb: KnowledgeBase, eid: str) -> None:
+        _skip_if_not_parsed(kb, eid)
+        result = analyze(eid, kb)
+        assert _facts(result, FactKind.CAPITAL_BUYBACK_AMOUNT) == []
+
+    @pytest.mark.parametrize("eid", _ALL_IDS)
+    def test_no_fundraise_facts(self, kb: KnowledgeBase, eid: str) -> None:
+        _skip_if_not_parsed(kb, eid)
+        result = analyze(eid, kb)
+        assert _facts(result, FactKind.CAPITAL_FUNDRAISE_TYPE) == []
+
+    @pytest.mark.parametrize("eid", _ALL_IDS)
+    def test_no_director_change_facts(self, kb: KnowledgeBase, eid: str) -> None:
+        _skip_if_not_parsed(kb, eid)
+        result = analyze(eid, kb)
+        assert _facts(result, FactKind.GOVERNANCE_DIRECTOR) == []
+
+
+# ---------------------------------------------------------------------------
+# CompanyProfile ingestion — board outcomes flow into capital_events + governance
+# ---------------------------------------------------------------------------
+
+class TestBoardOutcomeProfileIngestion:
+    """Proves that board_outcome results are correctly ingested into CompanyProfile."""
+
+    @pytest.fixture(scope="class")
+    def all_results(self, kb: KnowledgeBase) -> list[AnalysisResult]:
+        results = []
+        for eid in _ALL_IDS:
+            entry = kb.get(eid)
+            if entry is not None and entry.status == "ok":
+                results.append(analyze(eid, kb))
+        return results
+
+    def test_dividends_ingested(self, all_results: list[AnalysisResult]) -> None:
+        if not all_results:
+            pytest.skip("No board outcome results available")
+        profile = build_profile("TCS", all_results)
+        assert len(profile.capital_events.dividends) > 0
+
+    def test_acquisitions_ingested(self, all_results: list[AnalysisResult]) -> None:
+        if not all_results:
+            pytest.skip("No board outcome results available")
+        profile = build_profile("TCS", all_results)
+        assert len(profile.capital_events.acquisitions) > 0
+
+    def test_investments_ingested(self, all_results: list[AnalysisResult]) -> None:
+        if not all_results:
+            pytest.skip("No board outcome results available")
+        profile = build_profile("TCS", all_results)
+        assert len(profile.capital_events.investments) > 0
+
+    def test_fundraises_empty_for_tcs_corpus(self, all_results: list[AnalysisResult]) -> None:
+        if not all_results:
+            pytest.skip("No board outcome results available")
+        profile = build_profile("TCS", all_results)
+        assert profile.capital_events.fundraises == []
+
+    def test_director_changes_empty_for_tcs_corpus(self, all_results: list[AnalysisResult]) -> None:
+        if not all_results:
+            pytest.skip("No board outcome results available")
+        profile = build_profile("TCS", all_results)
+        assert profile.governance.director_changes == []

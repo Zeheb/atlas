@@ -41,16 +41,14 @@ _ALL_IDS = [
 
 
 @pytest.fixture(scope="module")
-def tcs_root() -> Path:
+def tcs_root(isolated_repo_factory) -> Path:
     if not _TCS_REPO.exists():
         pytest.skip("TCS repository not found")
-    return _TCS_REPO
+    return isolated_repo_factory(_TCS_REPO, evidence_ids=_ALL_IDS)
 
 
 @pytest.fixture(scope="module")
 def kb(tcs_root: Path) -> Generator[KnowledgeBase, None, None]:
-    db = tcs_root / "knowledge.db"
-    db.unlink(missing_ok=True)
     instance = KnowledgeBase(tcs_root)
     repo = Repository(tcs_root)
     for eid in _ALL_IDS:
@@ -58,7 +56,6 @@ def kb(tcs_root: Path) -> Generator[KnowledgeBase, None, None]:
         if entry is not None:
             instance.parse(entry)
     yield instance
-    db.unlink(missing_ok=True)
 
 
 def _facts(result: AnalysisResult, kind: FactKind) -> list[AnalysisFact]:

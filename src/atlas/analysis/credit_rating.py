@@ -64,6 +64,13 @@ ANALYZER_VERSION = "1.0"
 # ---------------------------------------------------------------------------
 
 _AGENCY_PATTERNS: list[tuple[re.Pattern[str], str]] = [
+    # International agencies must appear before generic patterns to avoid
+    # "CARE" in surrounding text grabbing priority over "Moody's".
+    (re.compile(r"moody['’‘]?s\s+ratings?", re.I), "Moody's"),
+    (re.compile(r"moody['’‘]?s", re.I), "Moody's"),
+    (re.compile(r"s\s*&\s*p\s+global\s+ratings?", re.I), "S&P Global Ratings"),
+    (re.compile(r"s\s*&\s*p\s+global", re.I), "S&P Global"),
+    (re.compile(r"\bfitch\b", re.I), "Fitch"),
     (re.compile(r"crisil\s+esg\s+ratings?\s*&?\s*analytics", re.I), "CRISIL ESG"),
     (re.compile(r"nse\s+sustainability\s+ratings?\s*&?\s*analytics", re.I), "NSE Sustainability"),
     (re.compile(r"\bcrisil\b", re.I), "CRISIL"),
@@ -85,7 +92,11 @@ _ACTION_MAP: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\bupgrad",   re.I), "upgraded"),
     (re.compile(r"\bwithdraw", re.I), "withdrawn"),
     (re.compile(r"\breaffirm", re.I), "reaffirmed"),
+    (re.compile(r"\baffirm",   re.I), "reaffirmed"),  # S&P uses "affirmed", not "reaffirmed"
     (re.compile(r"\bassign",   re.I), "assigned"),
+    (re.compile(r"\brevise",   re.I), "revised"),     # CARE revision-table disclosures
+    (re.compile(r"\bremain",   re.I), "reaffirmed"),  # S&P "remains"
+    (re.compile(r"\bchange",   re.I), "revised"),     # S&P "changed"
 ]
 
 # ---------------------------------------------------------------------------
@@ -120,12 +131,15 @@ _RE_ESG_CATEGORY = re.compile(
 # which would fail \b. Single-letter ratings (C, D) are only matched when
 # accompanied by an agency prefix to avoid spurious matches in words like
 # "Debentures" (D) or "Commercial" (C).
+# Moody's long-term scale: Aaa Aa1..Aa3 A1..A3 Baa1..Baa3 Ba1..Ba3 B1..B3 Caa1..Caa3 Ca C
 _RE_DEBT_RATING = re.compile(
     r"(?:"
-    # Agency-prefixed long-term and short-term ratings
+    # Agency-prefixed long-term and short-term ratings (Indian agencies)
     r"\[?(?:CRISIL|ICRA|CARE|IND)\]?\s*"
     r"(?:AAA|AA[+-]?|A[+-](?!\d)|BBB[+-]?|BB[+-]?|B[+-]?|C|D|A[1-4]\+?)"
     r"(?:\s*\([^)]{1,30}\))?"
+    # Moody's scale (word-boundary safe; must be whole token)
+    r"|(?<!\w)(?:Aaa|Aa[123]|A[123]|Baa[123]|Ba[123]|B[123]|Caa[123]|Ca)(?!\w)"
     # Standalone multi-character ratings without agency prefix (word-boundary safe)
     r"|(?<!\w)(?:AAA|AA[+-]?|A[+-](?!\d)|BBB[+-]?|BB[+-]?|A[1-4]\+?)(?!\w)"
     r")",
@@ -389,6 +403,212 @@ def _parse_debt_rationale(
     return facts, excerpts, warnings
 
 
+# ---------------------------------------------------------------------------
+# Narrative issuer-rating cover letter path
+# ---------------------------------------------------------------------------
+
+# Matches the key sentence in BSE cover letters that disclose a rating action:
+#   "S&P Global Ratings affirmed its issuer credit ratings on Tata Steel at 'BBB' with a Stable Outlook"
+#   "Moody's upgraded the issuer rating of Tata Steel from 'Baa3 (Stable)' to 'Baa2 (Stable)'"
+#   "The issuer credit rating remains 'BBB Stable Outlook'"
+_RE_ISSUER_SENTENCE = re.compile(
+    r"(?:issuer\s+(?:credit\s+)?rating|credit\s+rating)"
+    r".{0,200}"
+    r"(?:at|to|remains?)\s+[''\"'‘’“”]?"
+    r"([A-Za-z][A-Za-z0-9+\-]*(?:\s*\([^)]{1,30}\))?)"
+    r"[''\"'‘’“”]?",
+    re.I | re.DOTALL,
+)
+
+# After "from X to Y" — captures the NEW (post-action) rating for upgrades/downgrades
+_RE_ISSUER_FROM_TO = re.compile(
+    r"from\s+[''\"'‘’“”]?[A-Za-z0-9+\-]+(?:\s*\([^)]+\))?[''\"'‘’“”]?"
+    r"\s+to\s+[''\"'‘’“”]?"
+    r"([A-Za-z][A-Za-z0-9+\-]*(?:\s*\([^)]{1,30}\))?)"
+    r"[''\"'‘’“”]?",
+    re.I,
+)
+
+
+# ---------------------------------------------------------------------------
+# Revision-table path (CARE / India Ratings BSE disclosure format)
+# ---------------------------------------------------------------------------
+
+# BSE disclosures for Indian agency downgrades/upgrades use a table:
+#   Name | Agency | Type of Credit Rating | Existing | Revised
+# The "Revised" cell holds the new rating.  PDF extraction often wraps each
+# cell across lines, so we match "Revised" followed by the first rating-like
+# token within the next 200 chars.
+# Quote chars seen in BSE PDFs (U+0027, U+0022, U+2018, U+2019, U+201C, U+201D).
+# Expressed as bytes to avoid encoding issues in the source file.
+_QUOTES = b'\x27\x22\xe2\x80\x98\xe2\x80\x99\xe2\x80\x9c\xe2\x80\x9d'.decode('utf-8')
+
+_RE_REVISION_CELL = re.compile(
+    r'\bRevised\b.{0,400}?'
+    r'[' + re.escape(_QUOTES) + r'][A-Za-z][A-Za-z0-9+-]{0,5}[' + re.escape(_QUOTES) + r']'
+    r'.{0,200}?'
+    r'[' + re.escape(_QUOTES) + r']([A-Za-z][A-Za-z0-9+-]{0,5})[' + re.escape(_QUOTES) + r']',
+    re.I | re.DOTALL,
+)
+
+
+def _parse_revision_table(
+    text: str, period: str
+) -> tuple[list[AnalysisFact], list[str]]:
+    """Extract facts from the CARE/India Ratings 'Existing → Revised' BSE table.
+
+    Returns (facts, warnings).
+    """
+    facts: list[AnalysisFact] = []
+    warnings: list[str] = []
+
+    m = _RE_REVISION_CELL.search(text[:3000])
+    if m is None:
+        return facts, warnings
+
+    raw_rating = m.group(1).strip()
+    if not _RE_DEBT_RATING.search(raw_rating):
+        return facts, warnings
+
+    action_val, act_off = _extract_action(text[:2000])
+
+    # Outlook: search AFTER the revised rating (m.end()), not from m.start().
+    # Searching from m.start() would find the Existing column's outlook first.
+    window = text[m.end():m.end() + 120]
+    m_out = _RE_OUTLOOK.search(window)
+    outlook_val = m_out.group(1).strip().lower() if m_out else None
+
+    facts.append(AnalysisFact(
+        kind=FactKind.CREDIT_INSTRUMENT,
+        value="Long-term",
+        unit=None,
+        period=period,
+        confidence="medium",
+        provenance=Provenance(section="revision_table", char_offset=m.start()),
+    ))
+    facts.append(AnalysisFact(
+        kind=FactKind.CREDIT_RATING,
+        value=raw_rating,
+        unit=None,
+        period=period,
+        confidence="medium",
+        provenance=Provenance(
+            section="revision_table",
+            char_offset=m.start(),
+            excerpt=window[:80].replace("\n", " ").strip(),
+        ),
+    ))
+    if outlook_val:
+        facts.append(AnalysisFact(
+            kind=FactKind.CREDIT_OUTLOOK,
+            value=outlook_val,
+            unit=None,
+            period=period,
+            confidence="medium",
+            provenance=Provenance(section="revision_table", char_offset=m.start()),
+        ))
+    if action_val:
+        facts.append(AnalysisFact(
+            kind=FactKind.CREDIT_ACTION,
+            value=action_val,
+            unit=None,
+            period=period,
+            confidence="medium",
+            provenance=Provenance(section="revision_table", char_offset=act_off),
+        ))
+
+    return facts, warnings
+
+
+def _parse_narrative_issuer_rating(
+    text: str, period: str
+) -> tuple[list[AnalysisFact], list[str]]:
+    """Extract facts from short BSE cover letters disclosing international agency ratings.
+
+    Handles patterns like:
+      - "S&P affirmed its issuer credit ratings on Tata Steel at 'BBB' with a Stable Outlook"
+      - "Moody's upgraded the issuer rating from 'Baa3 (Stable)' to 'Baa2 (Stable)'"
+      - "The issuer credit rating remains 'BBB Stable Outlook'"
+
+    Returns (facts, warnings).
+    """
+    facts: list[AnalysisFact] = []
+    warnings: list[str] = []
+
+    # Try "from X to Y" pattern first — gives the new (post-action) rating
+    m_from_to = _RE_ISSUER_FROM_TO.search(text[:2000])
+    if m_from_to:
+        raw_rating = m_from_to.group(1).strip()
+    else:
+        m_at = _RE_ISSUER_SENTENCE.search(text[:2000])
+        raw_rating = m_at.group(1).strip() if m_at else None
+
+    if raw_rating is None:
+        warnings.append("Narrative issuer rating sentence not found")
+        return facts, warnings
+
+    # Validate: must look like a rating symbol
+    if not _RE_DEBT_RATING.search(raw_rating):
+        warnings.append(f"Narrative rating candidate {raw_rating!r} did not match known patterns")
+        return facts, warnings
+
+    # Outlook: embedded "Baa2 (Stable)" or standalone keyword
+    m_emb = re.search(r"\(([^)]+)\)", raw_rating)
+    outlook_val: str | None = None
+    if m_emb:
+        outlook_val = m_emb.group(1).strip().lower()
+    else:
+        m_out = _RE_OUTLOOK.search(text[:2000])
+        if m_out:
+            outlook_val = m_out.group(1).strip().lower()
+
+    # Clean the rating: strip embedded outlook
+    clean_rating = re.sub(r"\s*\([^)]+\)", "", raw_rating).strip()
+
+    action_val, act_off = _extract_action(text[:2000])
+
+    facts.append(AnalysisFact(
+        kind=FactKind.CREDIT_INSTRUMENT,
+        value="Issuer",
+        unit=None,
+        period=period,
+        confidence="high",
+        provenance=Provenance(section="narrative_cover", char_offset=0),
+    ))
+    facts.append(AnalysisFact(
+        kind=FactKind.CREDIT_RATING,
+        value=clean_rating,
+        unit=None,
+        period=period,
+        confidence="high",
+        provenance=Provenance(
+            section="narrative_cover",
+            char_offset=0,
+            excerpt=(m_from_to or m_at).group(0)[:120] if (m_from_to or m_at) else None,
+        ),
+    ))
+    if outlook_val:
+        facts.append(AnalysisFact(
+            kind=FactKind.CREDIT_OUTLOOK,
+            value=outlook_val,
+            unit=None,
+            period=period,
+            confidence="high",
+            provenance=Provenance(section="narrative_cover", char_offset=0),
+        ))
+    if action_val:
+        facts.append(AnalysisFact(
+            kind=FactKind.CREDIT_ACTION,
+            value=action_val,
+            unit=None,
+            period=period,
+            confidence="high",
+            provenance=Provenance(section="narrative_cover", char_offset=act_off),
+        ))
+
+    return facts, warnings
+
+
 def _collect_rationale_excerpts(text: str, excerpts: dict[str, str]) -> None:
     _capture_excerpt(excerpts, text, r"key\s+(?:rating\s+)?(?:strengths?|drivers?)", "key_strengths")
     _capture_excerpt(excerpts, text, r"key\s+(?:rating\s+)?(?:concerns?|weaknesses?|risks?)", "key_concerns")
@@ -481,6 +701,28 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
         facts, excerpts, warnings = _parse_esg_cover_letter(content, period)
     else:
         facts, excerpts, warnings = _parse_debt_rationale(content, period)
+        # If no CREDIT_RATING was extracted, try two fallback paths in order:
+        # 1. Revision-table: CARE/India Ratings BSE disclosure table with
+        #    "Existing | Revised" columns (often the only rating source).
+        # 2. Narrative: S&P/Moody's/Fitch cover letters with a sentence like
+        #    "affirmed at 'BBB'" or "upgraded from Baa3 to Baa2".
+        if FactKind.CREDIT_RATING not in {f.kind for f in facts}:
+            revision_facts, revision_warnings = _parse_revision_table(content, period)
+            if revision_facts:
+                facts = [f for f in facts if f.kind != FactKind.CREDIT_INSTRUMENT] + revision_facts
+                warnings = [w for w in warnings if "No instrument table rows" not in w]
+                warnings.extend(revision_warnings)
+            else:
+                narrative_facts, narrative_warnings = _parse_narrative_issuer_rating(
+                    content, period
+                )
+                if narrative_facts:
+                    facts = [f for f in facts if f.kind != FactKind.CREDIT_INSTRUMENT] + narrative_facts
+                    warnings = [w for w in warnings if "No instrument table rows" not in w]
+                    warnings.extend(narrative_warnings)
+                else:
+                    warnings.extend(revision_warnings)
+                    warnings.extend(narrative_warnings)
 
     result.facts.extend(facts)
     result.excerpts.update(excerpts)

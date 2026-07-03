@@ -4,10 +4,10 @@ These tests require the TCS repository to be present at repositories/TCS
 with at least one real annual report PDF. They are marked `integration` and
 are excluded from the default test run: use `-m integration` to run them.
 
-KnowledgeBase and Repository share the same root directory (the company
-repository). This means knowledge.db is written into repositories/TCS/ during
-these tests. Each test fixture cleans it up on both entry and exit so runs
-are idempotent.
+KnowledgeBase and Repository operate on a private tmp copy of the real TCS
+repository (see isolated_repo_factory in tests/conftest.py), containing only
+the catalog metadata and the one PDF these tests need. knowledge.db is
+written into that tmp copy, never into repositories/TCS/.
 """
 from collections.abc import Generator
 from pathlib import Path
@@ -40,29 +40,27 @@ _MIN_CHARS = 50_000
 
 
 @pytest.fixture(scope="module")
-def tcs_root() -> Path:
-    """Return the TCS repo root, or skip the whole module if it is absent."""
+def tcs_root(isolated_repo_factory) -> Path:
+    """Return an isolated tmp copy of the TCS repo, or skip if absent."""
     if not _TCS_REPO.exists():
         pytest.skip("TCS repository not found at repositories/TCS")
     pdf = _TCS_REPO / _AR_2024_PATH
     if not pdf.exists() or pdf.stat().st_size < 1_000_000:
         pytest.skip(f"Real annual report PDF not found or too small: {pdf}")
-    return _TCS_REPO
+    return isolated_repo_factory(_TCS_REPO, evidence_ids=[_AR_2024_ID])
 
 
 @pytest.fixture
 def kb(tcs_root: Path) -> Generator[KnowledgeBase, None, None]:
-    """KnowledgeBase rooted at the real TCS repository.
+    """KnowledgeBase rooted at the isolated tmp copy of the TCS repository.
 
     KnowledgeBase and Repository must share the same root so that
     self._root / entry.local_path resolves to the real PDF on disk.
-    knowledge.db is written into repositories/TCS/ and removed after
-    each test to keep runs idempotent.
+    knowledge.db is written into the tmp copy only (tcs_root is module-scoped
+    but reset here at the start of every test for a fresh-DB guarantee).
     """
-    db = tcs_root / "knowledge.db"
-    db.unlink(missing_ok=True)
+    (tcs_root / "knowledge.db").unlink(missing_ok=True)
     yield KnowledgeBase(tcs_root)
-    db.unlink(missing_ok=True)
 
 
 @pytest.fixture
