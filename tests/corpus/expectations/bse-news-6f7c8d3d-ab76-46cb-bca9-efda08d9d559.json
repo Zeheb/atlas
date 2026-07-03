@@ -1,0 +1,12 @@
+{
+  "evidence_id": "bse-news-6f7c8d3d-ab76-46cb-bca9-efda08d9d559",
+  "document_kind": "board_outcome",
+  "analyzer": "board_outcome",
+  "min_confidence": "medium",
+  "max_warnings": 0,
+  "description": "TCS HyperVault AI investment — SSA with TPG for up to Rs 18,000 crore into wholly-owned subsidiary",
+  "expected_facts": [
+    {"kind": "capital_invest_target_name", "value": "HyperVault AI Data Center Limited"},
+    {"kind": "capital_invest_amount",      "value": 18000.0, "unit": "crore_inr"}
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "evidence_id": "bse-news-d73b015e-301e-43d4-a739-f44bdbaaf3c9",
+  "document_kind": "agm_notice",
+  "analyzer": "agm_notice",
+  "min_confidence": "high",
+  "max_warnings": 0,
+  "description": "TCS 31st AGM 2026-06-09 — Format B proceedings; 3 ordinary resolutions all passed via global 'All Resolutions declared as passed'; Res3 has lowest approval at 96.49%",
+  "expected_facts": [
+    {"kind": "governance_resolution_title",   "period": "2026-06-09"},
+    {"kind": "governance_resolution_type",    "value": "ordinary", "period": "2026-06-09"},
+    {"kind": "governance_resolution_outcome", "value": "passed",   "period": "2026-06-09"},
+    {"kind": "governance_vote_pct_for",     "period": "2026-06-09", "unit": "percent"},
+    {"kind": "governance_vote_pct_against", "period": "2026-06-09", "unit": "percent"},
+    {"kind": "governance_vote_pct_for",     "period": "2026-06-09", "value": 96.4936, "unit": "percent"},
+    {"kind": "governance_vote_pct_against", "period": "2026-06-09", "value": 3.5064,  "unit": "percent"}
+  ]
+}

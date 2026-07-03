@@ -1,0 +1,14 @@
+{
+  "evidence_id": "bse-news-cc058c30-6e60-4779-b61e-67f67028408d",
+  "document_kind": "credit_rating_report",
+  "analyzer": "credit_rating",
+  "min_confidence": "high",
+  "max_warnings": 0,
+  "description": "TCS ESG rating — NSE Sustainability Jun 2025, assigned score 73, no category",
+  "expected_facts": [
+    {"kind": "credit_agency",     "value": "NSE Sustainability", "period": "2025-06-06"},
+    {"kind": "credit_instrument", "value": "ESG",                "period": "2025-06-06"},
+    {"kind": "credit_rating",     "value": "73",                 "period": "2025-06-06"},
+    {"kind": "credit_action",     "value": "assigned",           "period": "2025-06-06"}
+  ]
+}

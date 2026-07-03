@@ -1,0 +1,15 @@
+{
+  "evidence_id": "bse-news-820cd8b2-2882-4766-819e-10f0c0dc8714",
+  "document_kind": "credit_rating_report",
+  "analyzer": "credit_rating",
+  "min_confidence": "high",
+  "max_warnings": 0,
+  "description": "TCS ESG rating — CRISIL ESG Apr 2025, assigned score CRISIL ESG 74, category Leadership",
+  "expected_facts": [
+    {"kind": "credit_agency",     "value": "CRISIL ESG",      "period": "2025-04-18"},
+    {"kind": "credit_instrument", "value": "ESG",             "period": "2025-04-18"},
+    {"kind": "credit_rating",     "value": "CRISIL ESG 74",  "period": "2025-04-18"},
+    {"kind": "credit_outlook",    "value": "leadership",      "period": "2025-04-18"},
+    {"kind": "credit_action",     "value": "assigned",        "period": "2025-04-18"}
+  ]
+}

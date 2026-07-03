@@ -1,0 +1,12 @@
+{
+  "id": "cmp_7fd1138161ac4203996a1476d5a743d8",
+  "ticker": "TCS",
+  "created_at": "2026-06-25T10:36:40.480772+00:00",
+  "atlas_version": "0.1.0",
+  "exchange_identities": {
+    "BSE": {
+      "scrip_code": 532540,
+      "resolved_at": "2026-06-25T11:10:13.679356+00:00"
+    }
+  }
+}
