@@ -37,6 +37,17 @@ _REPO_ROOT = Path(__file__).parents[2] / "repositories" / "TCS"
 _PROFILE_PATH = _REPO_ROOT / "profile.json"
 
 
+def _kwargs_for(query_name: str) -> dict[str, object]:
+    """timeline/compare/drilldown need an extra required argument beyond
+    profile — every other query works from profile alone. Mirrors the CLI's
+    own kwargs-building logic in cli.py's query_cmd."""
+    if query_name in ("timeline", "compare"):
+        return {"metric": "revenue"}
+    if query_name == "drilldown":
+        return {"evidence_id": "bse-news-e4ffa3fc-e4f0-4da0-89fe-75d2f7b7b956"}
+    return {}
+
+
 @pytest.fixture(scope="module")
 def tcs_profile() -> CompanyProfile:
     """Load the TCS company profile from the repository."""
@@ -316,7 +327,7 @@ class TestRunQueryIntegration:
     def test_all_registered_queries_execute(self, tcs_profile: CompanyProfile) -> None:
         """Every registered query name should run without exception on real data."""
         for q in available_queries():
-            result = run_query(q, tcs_profile)
+            result = run_query(q, tcs_profile, **_kwargs_for(q))
             assert isinstance(result, QueryResult), f"{q} did not return QueryResult"
             assert result.company_id == "TCS"
 
@@ -347,7 +358,7 @@ class TestRenderIntegration:
 
     def test_render_result_is_string(self, tcs_profile: CompanyProfile) -> None:
         for q in available_queries():
-            result = run_query(q, tcs_profile)
+            result = run_query(q, tcs_profile, **_kwargs_for(q))
             rendered = render_result(result)
             assert isinstance(rendered, str)
             assert result.company_id in rendered

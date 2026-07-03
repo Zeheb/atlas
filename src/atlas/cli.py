@@ -204,28 +204,43 @@ def profile_build(ticker: str, force: bool) -> None:
 @cli.command("query")
 @click.argument("ticker")
 @click.argument("query_name", metavar="QUERY")
+@click.argument("query_arg", required=False, metavar="[METRIC|EVIDENCE_ID]")
 @click.option("--basis", default="consolidated", show_default=True, help="Balance sheet basis.")
+@click.option("--period-type", default=None, help="Filter to 'quarterly' or 'annual' (timeline/compare).")
 @click.option("--keyword", default=None, help="Keyword filter (strategy query only).")
 @click.option("--last-n", default=8, show_default=True, help="Quarters to show (ownership query).")
+@click.option("-n", "compare_n", default=2, show_default=True, help="Periods to show (compare query).")
 def query_cmd(
     ticker: str,
     query_name: str,
+    query_arg: str | None,
     basis: str,
+    period_type: str | None,
     keyword: str | None,
     last_n: int,
+    compare_n: int,
 ) -> None:
     """Run an investor query on TICKER's profile.
 
     Available queries: revenue, capital, strategy, acquisitions, ownership,
-    leverage, ratings, risks.
+    leverage, ratings, risks, summary, timeline, compare, drilldown.
+
+    timeline/compare take a METRIC key (run 'atlas metrics' to list all);
+    drilldown takes an EVIDENCE_ID (see the Sources column in any table).
 
     Examples:
 
       atlas query TCS revenue
 
-      atlas query TCS strategy --keyword ai
+      atlas query TCS summary
 
-      atlas query TCS ownership --last-n 4
+      atlas query TCS timeline gross_npa_ratio
+
+      atlas query TCS compare operating_margin -n 3
+
+      atlas query TCS drilldown bse-news-7ff81737-8eeb-4f5a-afad-f5f79b216e83
+
+      atlas query TCS strategy --keyword ai
     """
     from pathlib import Path
 
@@ -253,6 +268,21 @@ def query_cmd(
         kwargs["keyword"] = keyword
     if query_name == "ownership":
         kwargs["last_n"] = last_n
+    if query_name in ("timeline", "compare"):
+        if not query_arg:
+            click.echo(f"'{query_name}' requires a metric argument. Run: atlas metrics", err=True)
+            raise SystemExit(1)
+        kwargs["metric"] = query_arg
+        kwargs["basis"] = basis
+        if period_type:
+            kwargs["period_type"] = period_type
+        if query_name == "compare":
+            kwargs["n"] = compare_n
+    if query_name == "drilldown":
+        if not query_arg:
+            click.echo("'drilldown' requires an evidence_id argument.", err=True)
+            raise SystemExit(1)
+        kwargs["evidence_id"] = query_arg
 
     try:
         result = run_query(query_name, prof, **kwargs)
@@ -262,3 +292,79 @@ def query_cmd(
         raise SystemExit(1)
 
     click.echo(render_result(result))
+
+
+@cli.command("screen")
+@click.argument("metric")
+@click.argument("op", required=False)
+@click.argument("threshold", required=False, type=float)
+@click.option("--basis", default="consolidated", show_default=True, help="Balance sheet basis.")
+@click.option("--period-type", default=None, help="Filter to 'quarterly' or 'annual'.")
+def screen_cmd(
+    metric: str,
+    op: str | None,
+    threshold: float | None,
+    basis: str,
+    period_type: str | None,
+) -> None:
+    """Rank every company with a saved profile by METRIC, optionally filtered.
+
+    Cross-company - the one query with no single ticker. Loads every
+    repository under the configured base path that has a profile.json.
+
+    Examples:
+
+      atlas screen operating_margin
+
+      atlas screen gross_npa_ratio "<" 2.0
+
+      atlas screen promoter_pledged_pct ">" 0
+    """
+    from atlas.query import screen as screen_mod
+
+    atlas = Atlas.from_environment()
+    profiles = screen_mod.discover_companies(atlas.settings.repository_base_path)
+
+    if not profiles:
+        click.echo(
+            f"No company profiles found under {atlas.settings.repository_base_path}. "
+            "Run: atlas profile build <TICKER>",
+            err=True,
+        )
+        raise SystemExit(1)
+
+    kwargs: dict[str, object] = {"basis": basis}
+    if period_type:
+        kwargs["period_type"] = period_type
+    if op is not None:
+        kwargs["op"] = op
+    if threshold is not None:
+        kwargs["threshold"] = threshold
+
+    try:
+        result = screen_mod.screen(profiles, metric, **kwargs)
+    except ValueError as exc:
+        click.echo(str(exc), err=True)
+        raise SystemExit(1)
+
+    click.echo(render_result(result))
+
+
+@cli.command("metrics")
+@click.option("--domain", default=None, help="Filter to 'financial', 'esg', or 'ownership'.")
+def metrics_cmd(domain: str | None) -> None:
+    """List every metric key available to 'timeline', 'compare', and 'screen'."""
+    from atlas.query import metrics as metrics_mod
+
+    by_domain = metrics_mod.metrics_by_domain()
+    domains = [domain] if domain else ["financial", "esg", "ownership"]
+
+    for d in domains:
+        specs = by_domain.get(d, [])
+        if not specs:
+            continue
+        click.echo(f"\n{d.upper()} ({len(specs)})")
+        click.echo("-" * (len(d) + len(str(len(specs))) + 3))
+        for spec in specs:
+            unit_label = spec.unit.value if spec.unit else "-"
+            click.echo(f"  {spec.key:<28} {spec.label:<45} [{unit_label}]")

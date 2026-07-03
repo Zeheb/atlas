@@ -914,6 +914,11 @@ class TestAvailableQueries:
         for q in ("revenue", "capital", "strategy", "acquisitions", "ownership", "leverage", "ratings", "risks"):
             assert q in qs
 
+    def test_contains_v2_queries(self) -> None:
+        qs = available_queries()
+        for q in ("summary", "timeline", "compare", "drilldown"):
+            assert q in qs
+
 
 # ---------------------------------------------------------------------------
 # TestEdgeCases
