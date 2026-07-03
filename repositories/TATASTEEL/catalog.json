@@ -1577,7 +1577,7 @@
     {
       "evidence_id": "bse-news-8a56f637-5050-4fc9-be5f-240626b52c6f",
       "source": "BSE",
-      "kind": "investor_presentation",
+      "kind": "earnings_transcript",
       "title": "Transcript of the 2QFY23 Earnings Discussion",
       "source_date": "2022-11-09T04:37:11+00:00",
       "document_url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/359c62b5-3aad-4199-b6fd-b4b4a15e07e1.pdf",

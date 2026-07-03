@@ -323,7 +323,7 @@
     {
       "evidence_id": "bse-news-95273449-bfc3-407f-98ca-a2793fb883f4",
       "source": "BSE",
-      "kind": "investor_presentation",
+      "kind": "earnings_transcript",
       "title": "Transcript of Analyst Meet held on 08.05.2026",
       "source_date": "2026-05-15T12:47:48+00:00",
       "document_url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/9a3280a0-5ce9-445e-a881-6b7c505e9a90.pdf",
@@ -521,7 +521,7 @@
     {
       "evidence_id": "bse-news-98a6d99c-23f3-478b-a08a-33d5d47d85d5",
       "source": "BSE",
-      "kind": "investor_presentation",
+      "kind": "earnings_transcript",
       "title": "Transcript of Analyst Meet (Q2FY26) held on 04.11.2025",
       "source_date": "2025-11-12T12:59:56+00:00",
       "document_url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/ad15487a-d1a9-4e33-90e9-624255749750.pdf",
@@ -862,7 +862,7 @@
     {
       "evidence_id": "bse-news-91618a80-67fb-4d66-b4eb-3bd20f8d755b",
       "source": "BSE",
-      "kind": "investor_presentation",
+      "kind": "earnings_transcript",
       "title": "Transcript of Q4-FY25 Results",
       "source_date": "2025-05-09T12:57:15+00:00",
       "document_url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/bba71336-f98b-40e2-8d50-c9435948876b.pdf",
@@ -928,7 +928,7 @@
     {
       "evidence_id": "bse-news-8be60d44-d579-4a8e-af03-f86fefef4eb5",
       "source": "BSE",
-      "kind": "investor_presentation",
+      "kind": "earnings_transcript",
       "title": "Analyst meet Transcript Q2FY25",
       "source_date": "2024-11-16T13:13:42+00:00",
       "document_url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/698e6ee7-1a5b-4eb3-b525-a18fb11b36f5.pdf",
@@ -1104,7 +1104,7 @@
     {
       "evidence_id": "bse-news-601a1bda-8d2b-41c5-b539-6ea4218deb48",
       "source": "BSE",
-      "kind": "investor_presentation",
+      "kind": "earnings_transcript",
       "title": "Transcript of Analyst Meet dated 09.05.2024",
       "source_date": "2024-05-16T13:00:57+00:00",
       "document_url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/68b86c74-1a02-41cf-9daf-d040d60cd34d.pdf",
@@ -1258,7 +1258,7 @@
     {
       "evidence_id": "bse-news-39b7709b-6783-45a0-8839-e6f4460b5659",
       "source": "BSE",
-      "kind": "investor_presentation",
+      "kind": "earnings_transcript",
       "title": "Transcript of Analyst Meet dated 04.11.2023",
       "source_date": "2023-11-10T11:36:51+00:00",
       "document_url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/1a58f0d8-f71e-4d4d-8dab-6e3e21d65281.pdf",
@@ -2226,7 +2226,7 @@
     {
       "evidence_id": "bse-news-93829cfe-dea2-43d4-b9b7-798bc02e59cb",
       "source": "BSE",
-      "kind": "investor_presentation",
+      "kind": "earnings_transcript",
       "title": "Transcript of Q2FY22 post result conference call",
       "source_date": "2021-11-08T15:24:51+00:00",
       "document_url": "https://www.bseindia.com/xml-data/corpfiling/AttachHis/4fd42357-9d95-4e4c-b5d7-4e169643b94c.pdf",

@@ -146,11 +146,11 @@ Eleven analyzers, each implementing `analyze(evidence_id, kb) → AnalysisResult
 | `acquisition` | Acquisition Reg 30 filings | Target, consideration type, enterprise value, stake, timeline |
 | `buyback` | Buyback filings | Amount, price, shares offered/bought, record date |
 | `shareholding_pattern` | BSE XBRL quarterly SHP | Promoter, FPI, DII, MF, insurance, retail, HNI, NRI holdings |
-| `earnings_transcript` | Earnings call transcripts | Revenue, TCV, operating margin, net margin, period metadata |
+| `earnings_transcript` | Earnings call transcripts | **v2.0** — rebuilt around cross-sector concepts (revenue, margins, TCV, forward guidance, quarterly headcount/diversity) rather than v1's TCS-only speaker structure, after a filing survey found v1's core abstraction — gating extraction behind identifying "the CFO's speaker turn" — doesn't generalize: SBI has no CEO or CFO at all (a Chairman plus four Managing Directors), and Tata Steel's CFO gives one continuous narrative with no clean quarterly/annual split. Fact extraction is now content-window-bound (prepared remarks vs. Q&A) rather than speaker-gated. No new `FactKind`s were needed — forward guidance and workforce facts reuse `STRATEGY_GUIDANCE` and BRSR's `ESG_WORKFORCE_*` kinds, since a transcript supplies a materially higher-frequency (quarterly vs. annual) version of facts the ontology already models. Validated against real TCS, Tata Steel, and SBI filings, including a data-catalog fix (7 SBI transcripts were mis-catalogued as `investor_presentation`) and two `CompanyProfile`-layer bugs a full profile rebuild surfaced: a USD-denominated revenue fact silently corrupting a crore-denominated display column, and a quarterly-scoped figure getting mislabeled as annual when no authoritative snapshot yet existed for that period |
 
 A `shareholding_trend` module (`analyze_trend`) aggregates multiple SHP results into QoQ and YoY holding deltas and directional signals.
 
-A golden corpus of real TCS documents with expected facts validates extraction quality on every test run. Total test suite: 2,150+ tests.
+A golden corpus of real TCS documents with expected facts validates extraction quality on every test run. Total test suite: 2,140+ tests.
 
 ---
 
@@ -186,6 +186,10 @@ CLI: `atlas repository build <ticker>`, `atlas acquire <ticker>`, `atlas profile
 
 ### Next
 
+Ranked by incremental investment insight, not engineering elegance:
+
 * `corporate_governance_report` analyzer — SEBI LODR Reg. 27(2) board-composition filing, recommended as the next document type: fills the currently-reserved `GOVERNANCE_DIRECTOR` gap and has real volume (37+ filings for Tata Steel alone), though its table layout carries similar alignment risk to what was just fixed in `financial_results`' segment extraction and `investor_presentation`'s operating-volume rows
-* Broaden the query engine and CLI beyond the current 8 queries as Stage 3 domain coverage grows (banking ratios, production/delivery volume, and segment growth are now in `CompanyProfile` but not yet surfaced by a query)
+* Broaden the query engine and CLI beyond the current 8 queries as Stage 3 domain coverage grows — banking ratios, production/delivery volume, segment growth, TCV, margins, forward guidance, and quarterly workforce facts are now in `CompanyProfile` but not yet surfaced by a query; TCV in particular is one of Atlas's most defensible non-duplicated facts for IT-services names and currently goes nowhere
+* Fix `brsr`'s workforce-headcount extraction for Tata Steel — found during `earnings_transcript` v2.0's validation (values of 144-152 for a ~30,000-employee company), pre-existing and unrelated to that redesign, but now more visible since the transcript analyzer correctly populates TCS's headcount for comparison
 * `investor_presentation`'s STRATEGY_PRIORITY heading-anchor and STRATEGY_GUIDANCE keyword patterns are conservative by design (precision over recall) — worth revisiting with more cross-company sample filings as the repository grows
+* Client-concentration band tracking ($100M+/$50M+ accounts, observed in TCS transcripts) — real, non-duplicated investment value, but deferred pending evidence the convention recurs across more than one company; not worth new ontology surface area on a sample of one

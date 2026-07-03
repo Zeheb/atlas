@@ -29,6 +29,14 @@ parse_number            Parse a single numeric token, handling "(123)" negatives
                         and "-" as nil/zero.
 extract_n_values        Collect up to n numeric values from a table row window,
                         stopping at the next non-numeric label line.
+
+find_guidance_statements  Sentences containing a forward-looking cue
+                        (target/guidance/aspire) plus a number — a
+                        STRATEGY_GUIDANCE candidate; shared by
+                        investor_presentation and earnings_transcript, since
+                        both a slide deck and a CFO's spoken remarks express
+                        forward targets the same way ("targeting Rs 7,140
+                        crores in FY2027", "guidance to maintain NIM above 3%").
 """
 from __future__ import annotations
 
@@ -379,3 +387,52 @@ def extract_n_values(text: str, after: int, n: int = 6) -> list[float | None]:
             # Non-numeric non-blank line after values started = next row label
             break
     return values
+
+
+# ---------------------------------------------------------------------------
+# find_guidance_statements
+# ---------------------------------------------------------------------------
+
+# A sentence containing both a forward-looking cue and a number — captured
+# whole as text, since guidance is expressed as margin ranges, crore
+# cost-savings targets, and leverage-ratio targets depending on sector, with
+# no single numeric shape. Operates on whitespace-normalized text (no
+# newlines) so a sentence that wraps across PDF lines is not truncated
+# mid-clause.
+#
+# Cue list calibrated against real filings, not guessed: "target(ing)",
+# "guidance", "aspir*", and "stated range" cover slide-deck-style guidance
+# (TCS/SBI); "aiming to achieve" and "intend to increase...to" were added
+# after Tata Steel's earnings-call CFO was found to express both its
+# FY2027 cost-savings and capex targets that way, with neither of the
+# original cues present at all.
+_RE_GUIDANCE_STATEMENT = re.compile(
+    r"\b((?:target(?:ing)?|guidance|aspir\w+|stated\s+range|"
+    r"aiming\s+to\s+achieve|intend(?:ing)?\s+to\s+increase)"
+    r"[^.\n]{0,80}?\d[^.\n]{0,40})",
+    re.IGNORECASE,
+)
+
+
+def find_guidance_statements(
+    normalized_text: str, max_count: int = 3,
+) -> list[tuple[str, int]]:
+    """Find up to max_count forward-guidance sentences, deduplicated.
+
+    Returns (text, char_offset) pairs. normalized_text should already have
+    newlines collapsed to spaces (see investor_presentation.py / earnings_
+    transcript.py for the normalization step) so a guidance sentence split
+    across PDF lines is captured whole rather than cut off at the wrap.
+    """
+    seen: set[str] = set()
+    out: list[tuple[str, int]] = []
+    for m in _RE_GUIDANCE_STATEMENT.finditer(normalized_text):
+        if len(out) >= max_count:
+            break
+        text = re.sub(r"\s+", " ", m.group(1)).strip()
+        key = text.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append((text, m.start()))
+    return out

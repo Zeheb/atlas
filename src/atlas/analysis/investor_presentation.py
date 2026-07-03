@@ -91,7 +91,7 @@ from atlas.analysis.base import (
     Provenance,
     _snip,
 )
-from atlas.analysis.patterns import extract_n_values, parse_iso_date
+from atlas.analysis.patterns import extract_n_values, find_guidance_statements, parse_iso_date
 from atlas.knowledge.base import KnowledgeBase
 
 ANALYZER_VERSION = "2.0"
@@ -263,15 +263,10 @@ def _extract_priorities(content: str, result: AnalysisResult) -> None:
 # 3. Forward guidance / targets
 # ---------------------------------------------------------------------------
 
-# A sentence containing both a forward-looking cue (target/guidance/aspire,
-# or an explicit future fiscal year) and a number — captured whole as text,
-# since guidance is expressed as margin ranges, crore cost-savings targets,
-# and leverage-ratio ranges depending on sector, with no single numeric shape.
-_RE_GUIDANCE = re.compile(
-    r"\b((?:target(?:ing)?|guidance|aspir\w+|stated\s+range)"
-    r"[^.\n]{0,80}?\d[^.\n]{0,40})",
-    re.IGNORECASE,
-)
+# Sentence-based guidance detection lives in patterns.py (find_guidance_
+# statements) — shared with earnings_transcript.py, since both a slide deck
+# and a CFO's spoken remarks express forward targets the same way.
+#
 # Fallback for chart-style guidance with no verb at all — a range value sits
 # directly under a generic heading like "Margin Levers" / "Margin Guidance" /
 # "Outlook" with no sentence around it (common in infographic slide layouts).
@@ -290,18 +285,12 @@ _MAX_GUIDANCE = 3
 def _extract_guidance(normalized: str, content: str, result: AnalysisResult) -> None:
     seen: set[str] = set()
     count = 0
-    for m in _RE_GUIDANCE.finditer(normalized):
-        if count >= _MAX_GUIDANCE:
-            break
-        text = re.sub(r"\s+", " ", m.group(1)).strip()
-        key = text.lower()
-        if key in seen:
-            continue
-        seen.add(key)
+    for text, offset in find_guidance_statements(normalized, _MAX_GUIDANCE):
+        seen.add(text.lower())
         count += 1
         result.facts.append(_pf(
             FactKind.STRATEGY_GUIDANCE, text, None, None,
-            "guidance", m.start(), text,
+            "guidance", offset, text,
         ))
 
     m_heading = _RE_GUIDANCE_HEADING.search(content)

@@ -157,33 +157,108 @@ def _ingest_transcript_result(result: AnalysisResult, profile: CompanyProfile) -
             period_type = str(f.value)
             break
 
+    # 1. Financial facts (revenue, margins, TCV) -> FinancialTimeSeries
+    #
+    # FINANCIAL_REVENUE is the one snapshot fact with two legitimate units —
+    # a transcript states it in ₹ crore *and* sometimes restates it in $
+    # billion in the same breath. FinancialSnapshot.facts is dict[FactKind,
+    # float] with no unit dimension, so only one value can occupy the
+    # FINANCIAL_REVENUE slot; every renderer (CLI, query engine) assumes
+    # that value is crore_inr, since that's the only unit financial_results'
+    # authoritative XBRL data ever provides. A USD-billion revenue fact
+    # (e.g. "$30.2 billion") must never win that slot — it would silently
+    # be displayed as "30 cr", 4 orders of magnitude off. Dropped here at
+    # the ingestion boundary, not at extraction, so analyze() output still
+    # carries the USD figure for provenance/audit purposes.
+    # A Q4-and-full-year call reports two different scopes (3-month, 12-
+    # month) under the *same* calendar period-end date, but FinancialSnapshot
+    # holds one period_type per (period, basis) key — it cannot represent
+    # both. When the document is annual overall but no annual-scoped
+    # revenue mention was actually found (only the quarterly figure), the
+    # snapshot must be labelled "quarterly" to match what it actually
+    # holds — mislabelling a 3-month figure as the 12-month one is worse
+    # than not extracting it at all.
     snaps: dict[str, dict[FactKind, float]] = defaultdict(dict)
+    snap_period_type: dict[str, str] = {}
     for fact in result.facts:
         if fact.kind not in _FINANCIAL_SNAPSHOT_KINDS:
             continue
         if fact.period is None or not isinstance(fact.value, (int, float)):
             continue
+        if fact.kind == FactKind.FINANCIAL_REVENUE and fact.unit != FactUnit.CRORE_INR:
+            continue
         snaps[fact.period][fact.kind] = float(fact.value)
+        if fact.kind == FactKind.FINANCIAL_REVENUE and fact.provenance:
+            snap_period_type[fact.period] = fact.provenance.section
 
     existing = {(s.period, s.basis): s for s in profile.financial.snapshots}
     for period, facts in snaps.items():
         key = (period, "consolidated")
         if key in existing:
-            # Supplement only — do not overwrite authoritative XBRL data
+            target = existing[key]
+            # Supplement only — do not overwrite authoritative XBRL data.
+            # A revenue fact whose own scope (quarterly/annual, from its
+            # provenance.section) disagrees with the existing snapshot's
+            # period_type must not attach to it — same Q4-date-equals-
+            # FY-date collision as above, just on the merge-into-existing
+            # path (e.g. an "annual" snapshot already created for genuinely
+            # annual facts like FCF, with only a quarterly revenue mention
+            # found in this particular transcript).
+            fact_scope = snap_period_type.get(period)
             for fk, fv in facts.items():
-                existing[key].facts.setdefault(fk, fv)
-            if result.evidence_id not in existing[key].sources:
-                existing[key].sources.append(result.evidence_id)
+                if fk == FactKind.FINANCIAL_REVENUE and fact_scope and fact_scope != target.period_type:
+                    continue
+                target.facts.setdefault(fk, fv)
+            if result.evidence_id not in target.sources:
+                target.sources.append(result.evidence_id)
         else:
             snap = FinancialSnapshot(
                 period=period,
-                period_type=period_type,
+                period_type=snap_period_type.get(period, period_type),
                 basis="consolidated",
                 facts=facts,
                 sources=[result.evidence_id],
             )
             profile.financial.snapshots.append(snap)
             existing[key] = snap
+
+    # 2. Spoken forward guidance -> StrategyProfile.entries (reuses the same
+    # FactKind and destination as investor_presentation.py's guidance facts)
+    for fact in result.facts:
+        if fact.kind == FactKind.STRATEGY_GUIDANCE and isinstance(fact.value, str) and fact.value:
+            profile.strategy.entries.append(StrategyEntry(
+                source_date=result.source_date,
+                kind="guidance",
+                text=fact.value,
+                evidence_id=result.evidence_id,
+            ))
+
+    # 3. Workforce facts (quarterly headcount/diversity refresh of BRSR's
+    # annual figures) -> ESGTimeSeries, supplement only — BRSR's audited
+    # annual figure remains authoritative if the same period ever collides.
+    esg_snaps: dict[str, dict[FactKind, float]] = defaultdict(dict)
+    for fact in result.facts:
+        if fact.kind not in _ESG_KINDS:
+            continue
+        if fact.period is None or not isinstance(fact.value, (int, float)):
+            continue
+        esg_snaps[fact.period][fact.kind] = float(fact.value)
+
+    existing_esg = {s.period: s for s in profile.esg.snapshots}
+    for period, facts in esg_snaps.items():
+        if period in existing_esg:
+            for fk, fv in facts.items():
+                existing_esg[period].facts.setdefault(fk, fv)
+            if result.evidence_id not in existing_esg[period].sources:
+                existing_esg[period].sources.append(result.evidence_id)
+        else:
+            esg_snap = ESGSnapshot(
+                period=period,
+                facts=facts,
+                sources=[result.evidence_id],
+            )
+            profile.esg.snapshots.append(esg_snap)
+            existing_esg[period] = esg_snap
 
 
 def _ingest_investor_presentation_result(
