@@ -210,7 +210,23 @@ def _ingest_investor_presentation_result(
                 evidence_id=result.evidence_id,
             ))
 
-    # 2. Numeric financial facts (ROE, FCF) → FinancialTimeSeries (supplement only)
+    # 2. Numeric financial facts → FinancialTimeSeries (supplement only)
+    #
+    # Investor presentations mix two very different cadences: ROE/FCF are
+    # usually a 5-year bar chart unrelated to the filing's own cover-letter
+    # period, while the banking-ratio family and production/delivery volume
+    # are reported for the SAME quarter or year the filing's cover letter
+    # names (REPORT_PERIOD_END/REPORT_PERIOD_TYPE facts, when present).
+    # Prefer the analyzer's own detected period_type for a given period;
+    # default to "annual" only when nothing more specific is known — the
+    # historically correct assumption for ROE/FCF's own bar-chart years,
+    # which never have a matching REPORT_PERIOD_TYPE fact.
+    period_type_by_period: dict[str, str] = {
+        f.period: str(f.value)
+        for f in result.facts
+        if f.kind == FactKind.REPORT_PERIOD_TYPE and f.period and f.value
+    }
+
     snaps: dict[str, dict[FactKind, float]] = defaultdict(dict)
     for fact in result.facts:
         if fact.kind not in _FINANCIAL_SNAPSHOT_KINDS:
@@ -230,7 +246,7 @@ def _ingest_investor_presentation_result(
         else:
             snap = FinancialSnapshot(
                 period=period,
-                period_type="annual",   # ROE and FCF are annual management metrics
+                period_type=period_type_by_period.get(period, "annual"),
                 basis="consolidated",
                 facts=facts,
                 sources=[result.evidence_id],

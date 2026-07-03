@@ -128,7 +128,7 @@ Filing types in the TCS catalog:
 
 ---
 
-### Stage 2 — Information Extraction: Complete, extraction quality actively improving
+### Stage 2 — Information Extraction: Complete
 
 A typed fact ontology (`FactKind`) with 114 members and 13 units (`FactUnit`), spanning financial, capital allocation, ESG, governance, ownership, credit, strategy, and segment domains — including a banking-ratio family (NIM, NPA, PCR, CASA, credit cost, capital adequacy, slippage) and physical production/delivery volume for industrial companies.
 
@@ -140,7 +140,7 @@ Eleven analyzers, each implementing `analyze(evidence_id, kb) → AnalysisResult
 | `annual_report` | Annual report (Board's/Director's Report, MDA, auditor's report) | CSR spend, KAM titles, workforce attrition, risk factors |
 | `brsr` | Business Responsibility & Sustainability Report | GHG, energy, water, waste, workforce, safety, SBTi targets |
 | `agm_notice` | AGM voting results (Reg 44) | Resolution title, type, outcome, vote percentages |
-| `investor_presentation` | Investor decks, press-release-style filings, IR schedules | **v2.0 redesign in progress** — rebuilt around cross-sector concepts (forward guidance, ROE/FCF, banking ratios, production/delivery volume, segment growth) after v1 was found to be validated against a single TCS deck and to extract nothing from the large majority of Tata Steel/SBI presentations. Verified manually against real TCS, Tata Steel, and SBI filings; unit/integration test coverage not yet written |
+| `investor_presentation` | Investor decks, press-release-style filings, IR schedules | **v2.0** — rebuilt around cross-sector concepts (forward guidance, ROE/FCF, a banking-ratio family, production/delivery volume, segment growth) rather than v1's TCS-specific slide titles, after v1 was found to extract nothing from the large majority of Tata Steel/SBI presentations. Validated against real TCS, Tata Steel, and SBI filings with dedicated regression tests for the layout quirks each surfaced (interleaved bar-chart pairing, ambiguous section headings, footnote markers, stray connector words) |
 | `credit_rating` | ESG and debt rating rationales | Agency, instrument, amount, rating, outlook, action |
 | `board_outcome` | Board meeting Reg 30 filings | Dividends, M&A events, subsidiary investments, fundraising, director changes |
 | `acquisition` | Acquisition Reg 30 filings | Target, consideration type, enterprise value, stake, timeline |
@@ -150,7 +150,7 @@ Eleven analyzers, each implementing `analyze(evidence_id, kb) → AnalysisResult
 
 A `shareholding_trend` module (`analyze_trend`) aggregates multiple SHP results into QoQ and YoY holding deltas and directional signals.
 
-A golden corpus of real TCS documents with expected facts validates extraction quality on every test run. Total test suite: 2,100+ tests.
+A golden corpus of real TCS documents with expected facts validates extraction quality on every test run. Total test suite: 2,150+ tests.
 
 ---
 
@@ -186,7 +186,6 @@ CLI: `atlas repository build <ticker>`, `atlas acquire <ticker>`, `atlas profile
 
 ### Next
 
-* Finish `investor_presentation` v2.0: unit tests (synthetic layouts), integration tests (real TCS/Tata Steel/SBI filings), regression tests for the layout variations found during manual validation
-* Wire the new banking-ratio and production/delivery-volume `FactKind`s into `CompanyProfile` ingestion (`builder.py`) and rebuild all three company profiles
-* `corporate_governance_report` analyzer — SEBI LODR Reg. 27(2) board-composition filing, recommended as the next document type: fills the currently-reserved `GOVERNANCE_DIRECTOR` gap and has real volume (37+ filings for Tata Steel alone), though its table layout carries similar alignment risk to what was just fixed in `financial_results`' segment extraction
-* Broaden the query engine and CLI beyond the current 8 queries as Stage 3 domain coverage grows
+* `corporate_governance_report` analyzer — SEBI LODR Reg. 27(2) board-composition filing, recommended as the next document type: fills the currently-reserved `GOVERNANCE_DIRECTOR` gap and has real volume (37+ filings for Tata Steel alone), though its table layout carries similar alignment risk to what was just fixed in `financial_results`' segment extraction and `investor_presentation`'s operating-volume rows
+* Broaden the query engine and CLI beyond the current 8 queries as Stage 3 domain coverage grows (banking ratios, production/delivery volume, and segment growth are now in `CompanyProfile` but not yet surfaced by a query)
+* `investor_presentation`'s STRATEGY_PRIORITY heading-anchor and STRATEGY_GUIDANCE keyword patterns are conservative by design (precision over recall) — worth revisiting with more cross-company sample filings as the repository grows

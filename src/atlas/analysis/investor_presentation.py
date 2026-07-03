@@ -275,8 +275,13 @@ _RE_GUIDANCE = re.compile(
 # Fallback for chart-style guidance with no verb at all — a range value sits
 # directly under a generic heading like "Margin Levers" / "Margin Guidance" /
 # "Outlook" with no sentence around it (common in infographic slide layouts).
+# Case-sensitive and closed to specific known headings deliberately: an
+# open "Margin\s+\w*" wildcard matches a stray lowercase "margin" inside an
+# unrelated sentence (e.g. "...consistent cash conversion, margin Over
+# 50%...") long before it reaches the real slide heading, since re.search
+# stops at the first match.
 _RE_GUIDANCE_HEADING = re.compile(
-    r"(?:Margin\s+\w*|Guidance|Outlook)\s*\n", re.IGNORECASE,
+    r"(?:Margin\s+(?:Levers|Guidance|Outlook|Trajectory)|Guidance|Outlook)\s*\n",
 )
 _RE_GUIDANCE_RANGE = re.compile(r"(\d{2,3}\s*-\s*\d{2,3})\s*%")
 _MAX_GUIDANCE = 3
@@ -522,21 +527,38 @@ def _half_year_period(label: str) -> str | None:
 
 
 def _extract_csat(content: str, result: AnalysisResult) -> None:
-    m_marker = _RE_CSAT_MARKER.search(content)
-    if not m_marker:
+    """Extract the most recent half-year CSAT score, when disclosed.
+
+    "Customer Satisfaction" can appear more than once in a deck — a real TCS
+    filing mentions it once in an unrelated AI-adoption stat (a bare
+    percentage with no period label) before the actual half-year CSAT
+    section. Every occurrence is tried in turn until one has a nearby
+    period label; a marker without one is not treated as a failure.
+    """
+    for m_marker in _RE_CSAT_MARKER.finditer(content):
+        window = content[max(0, m_marker.start() - 1200): m_marker.start() + 200]
+        vals = _RE_CSAT_VALUE.findall(window)
+        periods = _RE_CSAT_PERIOD.findall(window)
+        if not periods:
+            continue
+        # A 1200-char backward window can pick up unrelated stray
+        # percentages from an earlier, different slide (segment growth
+        # rates etc.) alongside the real CSAT bar-chart values. The real
+        # values are always the ones immediately preceding the period
+        # labels (closest to the marker) — take the tail of the list, not
+        # the head, so a positional zip does not mis-pair noise with the
+        # real periods.
+        vals = vals[-len(periods):] if len(vals) >= len(periods) else vals
+        pairs = list(zip(vals, periods))
+        if not pairs:
+            continue
+        latest_val, latest_label = pairs[-1]
+        period = _half_year_period(latest_label)
+        result.facts.append(_pf(
+            FactKind.STRATEGY_CSAT, float(latest_val), FactUnit.PERCENT,
+            period, "csat", m_marker.start(), f"CSAT {latest_val}% {latest_label}",
+        ))
         return
-    window = content[max(0, m_marker.start() - 1200): m_marker.start() + 200]
-    vals = _RE_CSAT_VALUE.findall(window)
-    periods = _RE_CSAT_PERIOD.findall(window)
-    pairs = list(zip(vals, periods))
-    if not pairs:
-        return
-    latest_val, latest_label = pairs[-1]
-    period = _half_year_period(latest_label)
-    result.facts.append(_pf(
-        FactKind.STRATEGY_CSAT, float(latest_val), FactUnit.PERCENT,
-        period, "csat", m_marker.start(), f"CSAT {latest_val}% {latest_label}",
-    ))
 
 
 # ---------------------------------------------------------------------------
@@ -629,7 +651,14 @@ def _extract_volume_row(
     m = pattern.search(content)
     if not m:
         return
-    values = extract_n_values(content, m.end(), n=1)
+    # Skip to the next newline before scanning for values: a footnote
+    # superscript digit is often appended directly to the row label with no
+    # separating newline ("Production (mn tons)2 \n6.22 \n..."), and would
+    # otherwise be read by extract_n_values as the row's first (and, at
+    # n=1, only) value instead of the real production figure.
+    line_end = content.find("\n", m.end())
+    scan_from = line_end if line_end != -1 else m.end()
+    values = extract_n_values(content, scan_from, n=1)
     numeric = [v for v in values if v is not None]
     if not numeric:
         return
@@ -680,7 +709,7 @@ def _extract_segment_growth(content: str, result: AnalysisResult) -> None:
 
 _RE_MGMT_COMMENTARY = re.compile(
     r"Management\s+Comments?\s*:?\s*\n"
-    r"((?:Mr\.|Ms\.|Mrs\.|Dr\.)[^\n]{5,80}:.{100,2000}?)"
+    r"((?:Mr\.|Ms\.|Mrs\.|Dr\.)[^\n]{5,80}:.{100,4000}?)"
     r"(?=\n(?:Disclaimer|Mr\.|Ms\.|Mrs\.|Dr\.|About\s)|\Z)",
     re.DOTALL,
 )

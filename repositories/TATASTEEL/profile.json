@@ -2,1890 +2,1890 @@
   "store_version": "1",
   "builder_version": "1.0",
   "company_id": "TATASTEEL",
-  "built_at": "2026-07-03T04:18:54.842418+00:00",
+  "built_at": "2026-07-03T06:43:12.060850+00:00",
   "ingested_results": [
     {
       "evidence_id": "bse-shp-500470-90",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2016-07-20T13:19:23+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.527385+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.304211+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-91",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2016-10-21T03:38:15+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.532795+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.308796+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-92",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2017-01-20T13:01:43+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.546138+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.314751+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-93",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2017-04-19T05:07:57+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.553848+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.319303+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-94",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2017-07-18T05:53:13+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.563178+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.323969+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-95",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2017-10-16T10:11:47+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.568802+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.330157+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-96",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2018-01-08T13:52:33+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.575424+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.335024+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-97",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2018-08-08T07:22:26+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.581715+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.340457+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-98",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2018-08-08T07:22:37+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.589285+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.345453+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-99",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2018-10-11T09:57:43+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.594799+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.350624+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-100",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2019-01-18T14:07:33+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.602166+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.355764+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-101",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2019-04-17T11:13:22+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.607965+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.362086+00:00"
     },
     {
       "evidence_id": "bse-news-a9313ae3-2b90-42e9-aabf-e083d13fc9f5",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2019-05-27T12:58:37+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.610587+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.364096+00:00"
     },
     {
       "evidence_id": "bse-news-ecf49e5a-8c4c-4064-b49a-2c46b4f1311c",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2019-05-29T10:52:10+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.612272+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.366128+00:00"
     },
     {
       "evidence_id": "bse-news-2cac7833-801f-4918-93a7-206a18090eb0",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2019-06-07T12:38:12+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.614987+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.368147+00:00"
     },
     {
       "evidence_id": "bse-news-dbab460c-f599-4407-b27b-30a16b9ad39c",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2019-06-11T13:42:36+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.617574+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.370276+00:00"
     },
     {
       "evidence_id": "bse-news-0244d866-6641-4400-aa04-c02d30f0eff0",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2019-06-13T14:31:53+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.619543+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.372286+00:00"
     },
     {
       "evidence_id": "bse-news-513c4a11-c339-41ab-9583-13f9715891b9",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2019-06-19T09:27:08+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.621492+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.374407+00:00"
     },
     {
       "evidence_id": "bse-news-2cb0f3df-9fc7-4c3a-b4a7-7d62d39f3dd1",
       "kind": "annual_report",
       "analyzer_version": "3.0",
       "source_date": "2019-06-22T18:38:58+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.937701+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.617511+00:00"
     },
     {
       "evidence_id": "bse-news-b952dee7-af56-4d69-8df5-8b680f624f96",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2019-06-22T18:47:34+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.940230+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.619546+00:00"
     },
     {
       "evidence_id": "bse-news-f26a467c-ba7b-4c96-865c-c13ce6c3d1ae",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2019-06-25T13:22:49+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.942851+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.621651+00:00"
     },
     {
       "evidence_id": "bse-news-35d1fa37-4a0e-4808-a087-8141e556a81a",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2019-06-28T11:11:41+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.944536+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.623707+00:00"
     },
     {
       "evidence_id": "bse-news-3b89d3b1-1022-40d1-a6a1-21dcda71b0ed",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2019-07-10T04:12:30+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.946236+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.625689+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-102",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2019-07-19T08:00:52+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.952944+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.631418+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-103",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2019-10-18T11:42:42+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.960201+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.636239+00:00"
     },
     {
       "evidence_id": "bse-news-f0abf19a-f91f-475f-932e-80ff9fce7b0e",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2019-11-13T11:55:42+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.962419+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.638178+00:00"
     },
     {
       "evidence_id": "bse-news-5a72a389-dfb7-4e36-9104-3f0359dcb463",
       "kind": "financial_results",
       "analyzer_version": "1.0",
       "source_date": "2019-11-19T12:23:32+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.965561+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.640928+00:00"
     },
     {
       "evidence_id": "bse-news-71a204ca-ae5a-4aa7-9ef1-3ecc3e403a42",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2019-11-22T09:56:29+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.967559+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.642209+00:00"
     },
     {
       "evidence_id": "bse-news-95bfadf7-b1e8-43c4-b2c9-095f1b999bd8",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2019-11-25T10:05:21+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.969823+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.644034+00:00"
     },
     {
       "evidence_id": "bse-news-41c91968-273b-4dae-8d6c-f3a497c66771",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2019-12-05T11:23:46+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.972451+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.646004+00:00"
     },
     {
       "evidence_id": "bse-news-38763f1c-3514-4243-809b-9c0f801ebfda",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2019-12-06T12:26:15+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.975018+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.647989+00:00"
     },
     {
       "evidence_id": "bse-news-e81cbc90-3b10-4c36-99a0-91ff4ce63552",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2019-12-09T12:22:19+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.977815+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.649882+00:00"
     },
     {
       "evidence_id": "bse-news-27624e05-ee38-4902-9ad8-441c67f2be33",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2019-12-11T12:51:23+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.980894+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.651784+00:00"
     },
     {
       "evidence_id": "bse-news-3c78d3ed-bc9f-41da-822c-10aeccd94fc3",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2019-12-16T13:42:18+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.983738+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.653701+00:00"
     },
     {
       "evidence_id": "bse-news-5999a7bb-89ef-4c5a-85c7-9628d92e4df6",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2019-12-17T13:18:02+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.987944+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.655892+00:00"
     },
     {
       "evidence_id": "bse-news-ea2f6f50-5c94-426f-9ffd-b06e06664fd7",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-01-07T10:02:07+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.990001+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.657801+00:00"
     },
     {
       "evidence_id": "bse-news-eb4992d1-94f5-4b91-9b31-b69ae0e55214",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-01-07T12:33:39+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.992066+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.659719+00:00"
     },
     {
       "evidence_id": "bse-news-dd4bdeff-8fea-4f1a-a8c5-12b64c00f4fa",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-01-09T12:54:08+00:00",
-      "analyzed_at": "2026-07-03T04:18:50.994087+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.661679+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-104",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2020-01-21T04:35:02+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.004972+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.666761+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-105",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2020-04-13T09:27:30+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.018803+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.671464+00:00"
     },
     {
       "evidence_id": "bse-news-1ae07871-61ca-4e11-8098-c0950734f0bd",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-04-17T10:29:23+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.021348+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.673077+00:00"
     },
     {
       "evidence_id": "bse-news-84cff403-7d71-4126-8865-6333fa9ebcad",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-04-22T12:07:14+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.023324+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.675010+00:00"
     },
     {
       "evidence_id": "bse-news-d50f7140-fb21-4c66-bdab-cdd105a7d4df",
       "kind": "board_outcome",
       "analyzer_version": "1.1",
       "source_date": "2020-04-24T13:51:20+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.025407+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.677039+00:00"
     },
     {
       "evidence_id": "bse-news-a5eaa6d6-d51f-401b-8720-3685e8c128ae",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-04-27T08:33:26+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.029216+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.679033+00:00"
     },
     {
       "evidence_id": "bse-news-b7ee750f-1d79-4591-bd3a-36cfb9644239",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-05-06T14:02:39+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.031706+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.680989+00:00"
     },
     {
       "evidence_id": "bse-news-5857636a-8838-4f13-8cb8-b9f3b03d935f",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-06-02T08:11:36+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.033549+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.683032+00:00"
     },
     {
       "evidence_id": "bse-news-24d56850-bb88-4efb-846d-16e2f1f07f7e",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-06-28T09:15:56+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.035265+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.685167+00:00"
     },
     {
       "evidence_id": "bse-news-b462a633-3e66-46e4-981e-aeb5506410a7",
       "kind": "board_outcome",
       "analyzer_version": "1.1",
       "source_date": "2020-06-29T12:41:17+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.038759+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.688753+00:00"
     },
     {
       "evidence_id": "bse-news-6f71707a-3c0f-47f7-b5bc-b8360eaa155d",
       "kind": "financial_results",
       "analyzer_version": "1.0",
       "source_date": "2020-06-29T12:50:08+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.058308+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.702851+00:00"
     },
     {
       "evidence_id": "bse-news-205b2d7e-64a1-4b79-964e-fb705eb747b2",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-06-30T08:46:40+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.061120+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.704400+00:00"
     },
     {
       "evidence_id": "bse-news-68c0b796-6c1f-45b4-9fc0-67a465845982",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-07-07T07:02:19+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.065145+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.717119+00:00"
     },
     {
       "evidence_id": "bse-news-52b57dc3-572f-49f2-9c12-5d1dd0005b8e",
       "kind": "financial_results",
       "analyzer_version": "1.0",
       "source_date": "2020-07-09T07:03:33+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.066994+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.719375+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-106",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2020-07-20T07:06:00+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.075023+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.724406+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-107",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2020-10-20T02:26:06+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.084570+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.730134+00:00"
     },
     {
       "evidence_id": "bse-news-6ec8e946-afca-417a-bd90-001474fb335c",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-11-18T06:42:16+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.087002+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.731833+00:00"
     },
     {
       "evidence_id": "bse-news-ccb44e00-10f9-427c-8aa2-49ae358db345",
       "kind": "financial_results",
       "analyzer_version": "1.0",
       "source_date": "2020-11-18T16:14:21+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.090059+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.735133+00:00"
     },
     {
       "evidence_id": "bse-news-9ea8cc4c-1143-4c29-9079-e07f2662d853",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-11-20T10:10:57+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.092367+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.736507+00:00"
     },
     {
       "evidence_id": "bse-news-55a80da3-e788-4398-aebf-02e732ccb2aa",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-11-23T12:30:40+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.094130+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.738531+00:00"
     },
     {
       "evidence_id": "bse-news-c9c183f0-45c3-405a-852d-92711aa23409",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-11-28T05:08:30+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.095803+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.740648+00:00"
     },
     {
       "evidence_id": "bse-news-45ff3f2c-93af-4c04-90b4-320307c20676",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-12-03T07:33:24+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.097549+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.742774+00:00"
     },
     {
       "evidence_id": "bse-news-1df02739-45eb-4528-94b5-fddd57293192",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-12-07T07:03:37+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.099240+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.744778+00:00"
     },
     {
       "evidence_id": "bse-news-6e9a3397-023a-4a56-a0a4-a485d4ca8f03",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-12-07T11:10:30+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.100863+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.746804+00:00"
     },
     {
       "evidence_id": "bse-news-0a090043-3937-486f-a903-9338021b946d",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-12-14T14:38:39+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.102435+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.748812+00:00"
     },
     {
       "evidence_id": "bse-news-66bf1465-e8cc-4a75-9179-5fc98792e7e6",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2020-12-14T15:09:55+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.104097+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.750891+00:00"
     },
     {
       "evidence_id": "bse-news-f1ba00c2-0ff1-40eb-baaf-614631a8d194",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-12-17T11:29:58+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.105884+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.752237+00:00"
     },
     {
       "evidence_id": "bse-news-1407e2d6-702d-4c34-bd7d-047310234bce",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-12-22T11:42:04+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.107661+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.754326+00:00"
     },
     {
       "evidence_id": "bse-news-8eb4ea93-d91a-44df-8bed-a691ffac0e4d",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-12-29T07:37:16+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.109288+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.756406+00:00"
     },
     {
       "evidence_id": "bse-news-ca53370f-8139-4021-811a-b9031ed08e02",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2020-12-29T13:51:39+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.110912+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.758367+00:00"
     },
     {
       "evidence_id": "bse-news-4fe76cdd-d70d-41ec-bc6c-03e56f3c634e",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2021-01-04T13:46:25+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.112661+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.760322+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-108",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2021-01-15T09:57:54+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.119874+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.765579+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-108_01",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2021-04-01T11:53:23+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.128410+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.770570+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-109",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2021-04-10T05:42:33+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.139404+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.775775+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-109_01",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2021-05-03T02:44:15+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.148357+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.780676+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-109_02",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2021-05-21T09:10:26+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.157857+00:00"
+      "analyzed_at": "2026-07-03T06:43:08.785416+00:00"
     },
     {
       "evidence_id": "bse-news-30754fe8-194e-46a8-8894-12d91e55fcf9",
       "kind": "annual_report",
       "analyzer_version": "3.0",
       "source_date": "2021-06-07T15:42:05+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.507597+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.055009+00:00"
     },
     {
       "evidence_id": "bse-news-2d45b9cd-9ae8-4595-82db-eef022e5a892",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2021-06-07T15:48:22+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.509735+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.058006+00:00"
     },
     {
       "evidence_id": "bse-news-44eb504b-0a21-4f51-990d-f9c211dc8e0c",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2021-06-09T07:49:49+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.511636+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.059789+00:00"
     },
     {
       "evidence_id": "bse-news-83619d1f-e343-4b2b-870a-8db777e10820",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2021-06-30T09:20:12+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.513609+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.062325+00:00"
     },
     {
       "evidence_id": "bse-news-820b2bd3-f0cb-4c61-83cf-93bfdb06efea",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2021-06-30T09:21:38+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.516349+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.069712+00:00"
     },
     {
       "evidence_id": "bse-news-4fae36f1-7c81-44b3-a117-589377fd66b1",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2021-06-30T19:23:33+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.519262+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.077865+00:00"
     },
     {
       "evidence_id": "bse-news-87274927-5d38-468c-9bee-4c5133e4db3c",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2021-06-30T19:25:47+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.522736+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.081333+00:00"
     },
     {
       "evidence_id": "bse-news-11d1a1ae-66a1-4513-bb9f-78d8bd8867d2",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2021-07-05T17:30:11+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.526080+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.084653+00:00"
     },
     {
       "evidence_id": "bse-news-a3f32ff8-ddb6-42a1-8f25-84cd4349cfb4",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2021-07-06T08:30:37+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.528011+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.087911+00:00"
     },
     {
       "evidence_id": "bse-news-0849debb-78bd-48eb-b63e-3dcd017498ed",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2021-07-07T09:32:41+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.538145+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.111985+00:00"
     },
     {
       "evidence_id": "bse-news-f5e910c1-bfa5-446d-a2c3-f14bd9257528",
       "kind": "credit_rating_report",
       "analyzer_version": "1.0",
       "source_date": "2021-07-08T14:34:35+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.541142+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.114365+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-110",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2021-07-17T04:44:15+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.561168+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.132650+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-110_01",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2021-08-11T03:15:17+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.569796+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.138838+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-111",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2021-10-12T10:41:32+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.577075+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.143986+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-111_01",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2021-11-10T02:36:26+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.583793+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.149096+00:00"
     },
     {
       "evidence_id": "bse-news-8ce97a98-6238-41a5-a046-bdbe4b29b7ef",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2021-11-10T07:23:06+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.586434+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.150915+00:00"
     },
     {
       "evidence_id": "bse-news-1145c1df-41fc-4347-a5a6-14cdb4ffe4aa",
       "kind": "financial_results",
       "analyzer_version": "1.0",
       "source_date": "2021-11-11T13:18:27+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.590571+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.155536+00:00"
     },
     {
       "evidence_id": "bse-news-d8a1d530-183c-44af-8381-64d6373ff65a",
       "kind": "financial_results",
       "analyzer_version": "1.0",
       "source_date": "2021-11-11T13:22:59+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.594420+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.158639+00:00"
     },
     {
       "evidence_id": "bse-news-1ac7b809-9129-43c0-8cb9-546b2f9a759d",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2021-11-11T13:27:26+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.597959+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.160120+00:00"
     },
     {
       "evidence_id": "bse-news-110cbfd2-b663-421d-941e-504ac5d3c5ff",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2021-11-12T14:40:08+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.602976+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.174504+00:00"
     },
     {
       "evidence_id": "bse-news-0807f52f-9d5f-4a51-a6ea-70b8cae32f41",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2021-11-15T14:43:00+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.606347+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.176740+00:00"
     },
     {
       "evidence_id": "bse-news-ad3aa588-4e22-4c63-a600-9887c074ff34",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2021-12-06T09:29:37+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.609540+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.178912+00:00"
     },
     {
       "evidence_id": "bse-news-63195ee6-5178-4cce-b637-7d2b1057508b",
       "kind": "credit_rating_report",
       "analyzer_version": "1.0",
       "source_date": "2021-12-16T06:14:47+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.613191+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.181099+00:00"
     },
     {
       "evidence_id": "bse-news-1d143a46-c0c1-4386-bec4-ed79db0f29d6",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2021-12-16T07:50:04+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.618550+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.183821+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-111_02",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2022-01-04T14:03:56+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.626621+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.188878+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-112",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2022-01-12T14:30:37+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.634833+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.193794+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-112_01",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2022-03-23T15:00:48+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.641347+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.198838+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-113",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2022-04-20T04:47:31+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.649700+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.204207+00:00"
     },
     {
       "evidence_id": "bse-news-c4211dc0-6766-4833-bac3-2c0827b7e1fc",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2022-05-24T17:31:14+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.652275+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.205924+00:00"
     },
     {
       "evidence_id": "bse-news-18cdbd77-5947-4095-9cc9-0385ff487449",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2022-05-25T14:49:45+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.654166+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.208151+00:00"
     },
     {
       "evidence_id": "bse-news-5b3d05c3-4521-4557-90ba-ab77634714a5",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2022-05-31T04:16:55+00:00",
-      "analyzed_at": "2026-07-03T04:18:51.656384+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.209800+00:00"
     },
     {
       "evidence_id": "bse-news-a38ce221-64ce-4b3d-8fee-c2c8aa08b50b",
       "kind": "annual_report",
       "analyzer_version": "3.0",
       "source_date": "2022-06-04T16:26:50+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.051000+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.546514+00:00"
     },
     {
       "evidence_id": "bse-news-2bc4d7a1-8ec7-4eff-8c72-4aad3ddadb1a",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2022-06-04T16:32:49+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.056356+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.549535+00:00"
     },
     {
       "evidence_id": "bse-news-ae88e086-5838-49a2-9789-e610884598b5",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2022-06-06T12:22:58+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.060945+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.551930+00:00"
     },
     {
       "evidence_id": "bse-news-f5109ea1-b625-40a1-9683-6b72cd345639",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2022-06-08T05:39:08+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.063497+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.554463+00:00"
     },
     {
       "evidence_id": "bse-news-461a61d1-48e8-48dd-97f2-9b607bf5770b",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2022-06-08T14:38:58+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.065082+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.556623+00:00"
     },
     {
       "evidence_id": "bse-news-5da1cbbe-4a63-4ad6-a1b4-d40642b5718d",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2022-06-10T18:20:45+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.066839+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.558332+00:00"
     },
     {
       "evidence_id": "bse-news-6523049f-642e-4a22-af7b-2393e538355f",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2022-06-15T13:46:52+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.068851+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.560306+00:00"
     },
     {
       "evidence_id": "bse-news-93f92fd8-d8ad-4f52-b9c9-f5c04426ea5e",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2022-06-15T13:50:28+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.070824+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.561969+00:00"
     },
     {
       "evidence_id": "bse-news-eed8272e-5f3a-4958-abb2-052e6f420c34",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2022-06-22T04:35:25+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.073207+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.563577+00:00"
     },
     {
       "evidence_id": "bse-news-673443cb-895d-48fa-bfcf-37924d5f7ee0",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2022-06-23T15:12:55+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.074709+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.565795+00:00"
     },
     {
       "evidence_id": "bse-news-f185f2c5-fb8a-4cd2-841b-cd9cb4d212c9",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2022-06-27T13:08:40+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.076143+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.567130+00:00"
     },
     {
       "evidence_id": "bse-news-0fa3260d-31d2-4424-87ec-979280e56723",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2022-06-28T09:23:29+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.078148+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.569222+00:00"
     },
     {
       "evidence_id": "bse-news-0a794340-5541-43ef-9ffd-fbbefd347cbf",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2022-06-28T19:30:58+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.082227+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.575590+00:00"
     },
     {
       "evidence_id": "bse-news-5aa16b9d-b0d4-4042-8639-d6e9bc9cc848",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2022-06-28T19:33:40+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.087777+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.580047+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-114",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2022-07-14T07:37:59+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.097748+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.587433+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-114_01",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2022-08-10T16:34:03+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.113958+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.592117+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-115",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2022-10-21T14:17:28+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.125075+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.597378+00:00"
     },
     {
       "evidence_id": "bse-news-c43913d8-a1b8-48f6-9acb-cf580f8a7d19",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2022-10-26T13:28:50+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.127810+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.599100+00:00"
     },
     {
       "evidence_id": "bse-news-eda8c31d-ad96-420c-97bb-938e0e14ca42",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2022-10-29T16:04:32+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.130431+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.602284+00:00"
     },
     {
       "evidence_id": "bse-news-f1bf231c-9165-4c05-9ab9-2b046ecb8cc2",
       "kind": "board_outcome",
       "analyzer_version": "1.1",
       "source_date": "2022-10-31T11:52:23+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.133953+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.604761+00:00"
     },
     {
       "evidence_id": "bse-news-ec8df814-bebf-4be4-910b-e3958db12560",
       "kind": "financial_results",
       "analyzer_version": "1.0",
       "source_date": "2022-10-31T12:00:49+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.149555+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.616849+00:00"
     },
     {
       "evidence_id": "bse-news-d51e3a80-16b2-41e4-989a-97d247f1cf4e",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2022-10-31T12:03:01+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.151985+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.618184+00:00"
     },
     {
       "evidence_id": "bse-news-98483abe-c7b7-476d-a746-de2fe1cdb2d1",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2022-11-02T06:20:50+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.157573+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.629559+00:00"
     },
     {
       "evidence_id": "bse-news-32e8b311-0bcf-463d-8c85-a959a8582bc5",
       "kind": "financial_results",
       "analyzer_version": "1.0",
       "source_date": "2022-11-02T14:58:56+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.167737+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.637285+00:00"
     },
     {
       "evidence_id": "bse-news-0ff26040-0c0c-468a-883b-d2f4ef1b0afb",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2022-11-07T05:06:30+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.170194+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.638735+00:00"
     },
     {
       "evidence_id": "bse-news-8a56f637-5050-4fc9-be5f-240626b52c6f",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2022-11-09T04:37:11+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.172393+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.640778+00:00"
     },
     {
       "evidence_id": "bse-news-cd6aa1f6-cd4a-4af0-99e2-097fd3833fb3",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2022-11-14T07:23:18+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.174507+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.642663+00:00"
     },
     {
       "evidence_id": "bse-news-8eaabb9b-6cf6-4147-beed-9cc12666b7f0",
       "kind": "financial_results",
       "analyzer_version": "1.0",
       "source_date": "2022-11-22T15:40:44+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.196217+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.650076+00:00"
     },
     {
       "evidence_id": "bse-news-a909f0c5-3378-48da-80ab-88d709c16e40",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2022-11-28T05:04:50+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.198235+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.651540+00:00"
     },
     {
       "evidence_id": "bse-news-24c4165e-2810-4a3c-95fd-dc7e97ebcacf",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2022-11-29T14:31:37+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.200723+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.653628+00:00"
     },
     {
       "evidence_id": "bse-news-1c8b3771-1d33-4d72-ac0d-626006966cc7",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2022-12-01T15:03:52+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.203121+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.655643+00:00"
     },
     {
       "evidence_id": "bse-news-72441dde-a6f0-45e4-8a42-31985172c68a",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2022-12-06T13:37:28+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.205420+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.657690+00:00"
     },
     {
       "evidence_id": "bse-news-7a4bbe89-4064-4889-9a93-b2d20685c938",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2022-12-13T16:28:18+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.208627+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.659808+00:00"
     },
     {
       "evidence_id": "bse-news-33fe7bdf-862e-4eb4-9e4c-ef3d88cd631d",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2022-12-14T15:30:27+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.211492+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.661854+00:00"
     },
     {
       "evidence_id": "bse-news-bae2fa9b-07c3-40ee-afde-114106b8ecf5",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2022-12-27T07:09:33+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.216919+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.664063+00:00"
     },
     {
       "evidence_id": "bse-news-a097d5a5-663b-4546-b88b-e6c32d1dc872",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2022-12-28T13:27:40+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.220066+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.666190+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-116",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2023-01-18T13:31:15+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.232758+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.671793+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-116_01",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2023-03-28T14:02:09+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.241326+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.678143+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-116_02",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2023-04-13T04:32:07+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.249138+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.683965+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-117",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2023-04-20T16:33:03+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.267134+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.689671+00:00"
     },
     {
       "evidence_id": "bse-news-28b358f4-ae22-4635-97d8-8bdaf151d0ec",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2023-05-31T13:39:09+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.270045+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.692286+00:00"
     },
     {
       "evidence_id": "bse-news-dd736af7-e87d-48b5-8a30-e22fbe4e6dd3",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2023-06-06T11:24:24+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.272404+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.695439+00:00"
     },
     {
       "evidence_id": "bse-news-594ea3d5-0c2d-45ec-b94b-0480b338920b",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2023-06-08T11:58:46+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.275153+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.698710+00:00"
     },
     {
       "evidence_id": "bse-news-1fba438e-416a-44ed-b8b7-4526d583567c",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2023-06-12T18:21:52+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.289340+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.702229+00:00"
     },
     {
       "evidence_id": "bse-news-e671c9e1-ff24-439a-b031-1c2d0b27e86f",
       "kind": "brsr",
       "analyzer_version": "1.0",
       "source_date": "2023-06-12T18:24:14+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.299624+00:00"
+      "analyzed_at": "2026-07-03T06:43:09.706833+00:00"
     },
     {
       "evidence_id": "bse-news-243ce7fd-812c-4456-b2ad-2892b9a56164",
       "kind": "annual_report",
       "analyzer_version": "3.0",
       "source_date": "2023-06-12T18:32:30+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.817624+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.163832+00:00"
     },
     {
       "evidence_id": "bse-news-eb0216f5-f965-4f9a-8c1e-86076e14387e",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2023-06-19T11:47:30+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.820283+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.166182+00:00"
     },
     {
       "evidence_id": "bse-news-3af537fe-0c6c-4ed3-9068-323a875de706",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2023-06-26T13:08:37+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.821844+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.168394+00:00"
     },
     {
       "evidence_id": "bse-news-c1b54e41-c610-47e5-9b76-75d905f18e50",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2023-06-27T13:24:04+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.823280+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.170602+00:00"
     },
     {
       "evidence_id": "bse-news-724410a2-08b8-4a97-846b-5fe104e7c6e8",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2023-07-05T09:30:50+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.824781+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.172749+00:00"
     },
     {
       "evidence_id": "bse-news-a89366f4-a441-4ec6-a1ed-d6b5794fbd24",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2023-07-06T05:11:55+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.827294+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.180678+00:00"
     },
     {
       "evidence_id": "bse-news-36f839df-ad62-4f9c-a97a-412a06cc1ff0",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2023-07-06T05:13:57+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.830504+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.183886+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-118",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2023-07-13T11:51:38+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.842304+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.191476+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-119",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2023-10-18T12:32:38+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.856786+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.198896+00:00"
     },
     {
       "evidence_id": "bse-news-fc7bf4b3-1779-4cb6-b4fb-87410ede125e",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2023-11-16T13:29:15+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.859970+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.201082+00:00"
     },
     {
       "evidence_id": "bse-news-d82ee8da-86c8-4b55-a284-0d3b7a4a6d0f",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2023-11-23T13:19:25+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.861596+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.203381+00:00"
     },
     {
       "evidence_id": "bse-news-a304da93-05c0-44e3-b051-b9cb58d6db56",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2023-11-28T13:34:03+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.863515+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.205384+00:00"
     },
     {
       "evidence_id": "bse-news-07d7edb7-3f2c-497f-a985-ef2e01b31985",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2023-11-28T13:39:37+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.865803+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.207639+00:00"
     },
     {
       "evidence_id": "bse-news-4d29ae2c-2682-4c39-8481-d069b486096b",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2023-12-01T09:50:15+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.867718+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.209744+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-119_01",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2023-12-01T13:12:57+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.876099+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.216386+00:00"
     },
     {
       "evidence_id": "bse-news-c1c890b0-6891-45d7-b485-92cefa330ccc",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2023-12-11T13:13:19+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.878331+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.218199+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-120",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2024-01-19T14:04:37+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.885853+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.225329+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-120_01",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2024-01-31T12:48:16+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.893448+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.231284+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-120_02",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2024-02-16T12:22:15+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.901239+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.237166+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-121",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2024-04-17T11:12:12+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.907574+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.243169+00:00"
     },
     {
       "evidence_id": "bse-news-9a2f106e-e5b7-407f-99db-cf78cd47afe3",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2024-05-30T12:28:20+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.909474+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.244937+00:00"
     },
     {
       "evidence_id": "bse-news-b47bf50d-cb27-4bfa-b66e-51f0746879bf",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2024-05-30T16:12:24+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.911168+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.246889+00:00"
     },
     {
       "evidence_id": "bse-news-a9766ab2-5ff5-474b-a016-6202320127fe",
       "kind": "earnings_transcript",
       "analyzer_version": "1.0",
       "source_date": "2024-06-06T06:39:09+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.913288+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.248827+00:00"
     },
     {
       "evidence_id": "bse-news-fab67efc-0662-490a-b9af-3e5aff4b9d14",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2024-06-06T15:42:15+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.915373+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.250369+00:00"
     },
     {
       "evidence_id": "bse-news-b345e963-c425-4052-b711-9859a12c7a61",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2024-06-12T06:51:11+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.917650+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.252353+00:00"
     },
     {
       "evidence_id": "bse-news-815e503f-458f-418e-9551-2d2ea7e71414",
       "kind": "credit_rating_report",
       "analyzer_version": "1.0",
       "source_date": "2024-06-14T09:35:06+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.921269+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.258099+00:00"
     },
     {
       "evidence_id": "bse-news-c2cc471d-cde2-443f-a4c3-cdcebf52a492",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2024-06-20T04:38:04+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.926172+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.263428+00:00"
     },
     {
       "evidence_id": "bse-news-3378354f-2351-46c9-aee8-f0a53d388926",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2024-06-20T04:43:38+00:00",
-      "analyzed_at": "2026-07-03T04:18:52.927798+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.265550+00:00"
     },
     {
       "evidence_id": "bse-news-2dd40d2c-c682-4df6-b557-50c622993381",
       "kind": "annual_report",
       "analyzer_version": "3.0",
       "source_date": "2024-06-22T13:50:23+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.344383+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.686325+00:00"
     },
     {
       "evidence_id": "bse-news-60bd47dc-4238-43d3-8dd4-ce2e539ec429",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2024-06-22T14:03:14+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.347063+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.688771+00:00"
     },
     {
       "evidence_id": "bse-news-f37068c9-0d0c-486b-9d88-c086570733d5",
       "kind": "brsr",
       "analyzer_version": "1.0",
       "source_date": "2024-06-22T14:07:02+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.359416+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.691507+00:00"
     },
     {
       "evidence_id": "bse-news-316e221e-366e-411f-8527-f1510685a620",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2024-06-25T15:53:50+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.417406+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.745840+00:00"
     },
     {
       "evidence_id": "bse-news-d1b3c2e0-f7e7-4eff-8071-f4edb2ed0af9",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2024-06-28T13:30:40+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.418870+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.747427+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-122",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2024-07-18T12:35:20+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.436005+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.755025+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-123",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2024-10-17T13:24:05+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.443626+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.761970+00:00"
     },
     {
       "evidence_id": "bse-news-08e38336-5c51-4708-9e38-09423b588831",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2024-10-31T09:33:53+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.445688+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.764653+00:00"
     },
     {
       "evidence_id": "bse-news-502ef416-a7ec-4528-830e-2b4c31747556",
       "kind": "board_outcome",
       "analyzer_version": "1.1",
       "source_date": "2024-11-06T12:01:38+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.449843+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.769324+00:00"
     },
     {
       "evidence_id": "bse-news-bfd93c54-a5a1-4180-a47a-b29175906b01",
       "kind": "financial_results",
       "analyzer_version": "1.0",
       "source_date": "2024-11-06T12:08:23+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.465020+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.785995+00:00"
     },
     {
       "evidence_id": "bse-news-5a1c3471-0aa4-4871-b918-4bfb3d217dfb",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2024-11-06T14:26:32+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.466712+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.788372+00:00"
     },
     {
       "evidence_id": "bse-news-208fb41b-11ad-4318-8304-2fc97f4a2851",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2024-11-07T14:14:16+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.470630+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.800053+00:00"
     },
     {
       "evidence_id": "bse-news-2fe3bc35-7241-4081-8e63-1d20e55071b5",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2024-11-12T15:23:04+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.472123+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.802030+00:00"
     },
     {
       "evidence_id": "bse-news-06d0bb1c-2546-45cc-9aae-9d7e4efd4b44",
       "kind": "earnings_transcript",
       "analyzer_version": "1.0",
       "source_date": "2024-11-13T10:21:04+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.473587+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.804596+00:00"
     },
     {
       "evidence_id": "bse-news-3f5a9357-2d54-43a0-b936-a32377b4b641",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2024-11-25T10:15:22+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.475459+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.806285+00:00"
     },
     {
       "evidence_id": "bse-news-67cbf9b7-599f-49a2-becf-162f7e8501d4",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2024-11-28T11:57:53+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.477366+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.808138+00:00"
     },
     {
       "evidence_id": "bse-news-2a046b50-1073-4c68-b9b4-6480486fe783",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2024-12-26T08:56:50+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.478870+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.810399+00:00"
     },
     {
       "evidence_id": "bse-news-610d41fd-3631-4c79-b72d-09570f034250",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2024-12-26T08:58:54+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.481859+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.811999+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-124",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2025-01-20T13:37:00+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.492523+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.818154+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-125",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2025-04-18T16:51:13+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.503453+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.825474+00:00"
     },
     {
       "evidence_id": "bse-news-cd0b1de9-6e06-45df-981b-32be41b1ec7e",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2025-05-08T10:41:04+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.507864+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.827552+00:00"
     },
     {
       "evidence_id": "bse-news-5c19a207-3d2d-4a46-ae4d-6cf201f90668",
       "kind": "financial_results",
       "analyzer_version": "1.0",
       "source_date": "2025-05-12T13:42:01+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.535709+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.847208+00:00"
     },
     {
       "evidence_id": "bse-news-4662e4fb-7bea-4335-b6ab-8a3f9a05bd0d",
       "kind": "board_outcome",
       "analyzer_version": "1.1",
       "source_date": "2025-05-12T13:51:33+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.541851+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.850102+00:00"
     },
     {
       "evidence_id": "bse-news-14e2ef9b-c5fd-4edd-959b-e816df46d1ac",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2025-05-12T13:59:52+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.551576+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.859664+00:00"
     },
     {
       "evidence_id": "bse-news-f1096977-49ff-4036-af11-f3f206ab4837",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2025-05-12T14:05:55+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.558317+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.881001+00:00"
     },
     {
       "evidence_id": "bse-news-fa8127a9-b29c-4dd0-9812-2fb2665ab411",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2025-05-12T15:01:42+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.564377+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.887770+00:00"
     },
     {
       "evidence_id": "bse-news-37abaa22-a317-44b1-b2ef-fde424111077",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2025-05-13T16:53:07+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.565863+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.889205+00:00"
     },
     {
       "evidence_id": "bse-news-c5d6ca3c-2e42-4072-a1b5-1e2f431b4e01",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2025-05-16T06:47:49+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.567716+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.891775+00:00"
     },
     {
       "evidence_id": "bse-news-3913c1a5-83a1-410a-9562-414fb716ddd7",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2025-05-16T06:50:29+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.571805+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.894347+00:00"
     },
     {
       "evidence_id": "bse-news-5eae6951-b818-4ea5-92d8-db406a20e326",
       "kind": "earnings_transcript",
       "analyzer_version": "1.0",
       "source_date": "2025-05-18T06:39:02+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.574365+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.896656+00:00"
     },
     {
       "evidence_id": "bse-news-186986ae-df44-4f79-8d2a-2e01c7ffc98a",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2025-05-26T13:10:18+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.582360+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.904611+00:00"
     },
     {
       "evidence_id": "bse-news-138c67df-057d-44c3-b714-a37bf56af030",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2025-05-28T10:25:38+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.584074+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.906929+00:00"
     },
     {
       "evidence_id": "bse-news-045f3dc5-33f0-4ada-86af-6db104df0782",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2025-05-30T16:11:57+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.585877+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.909207+00:00"
     },
     {
       "evidence_id": "bse-news-be05eed6-1c24-4ccf-ad84-f652c9301020",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2025-05-30T16:13:41+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.587494+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.911466+00:00"
     },
     {
       "evidence_id": "bse-news-7ab2ec14-33a7-4a36-879e-65aacd03988d",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2025-06-05T15:45:45+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.589246+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.913699+00:00"
     },
     {
       "evidence_id": "bse-news-9e1fb148-bae9-4931-b9fe-bc6c99c72c97",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2025-06-05T15:47:17+00:00",
-      "analyzed_at": "2026-07-03T04:18:53.591080+00:00"
+      "analyzed_at": "2026-07-03T06:43:10.915810+00:00"
     },
     {
       "evidence_id": "bse-news-0b312c48-9fdd-4255-8646-82609789b2e4",
       "kind": "annual_report",
       "analyzer_version": "3.0",
       "source_date": "2025-06-06T14:01:00+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.074921+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.302023+00:00"
     },
     {
       "evidence_id": "bse-news-add45bb6-0c39-41b5-a361-7dae845ba6b9",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2025-06-06T14:35:36+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.076921+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.304017+00:00"
     },
     {
       "evidence_id": "bse-news-dd50551f-0108-4874-8b1c-8b235883c6eb",
       "kind": "brsr",
       "analyzer_version": "1.0",
       "source_date": "2025-06-06T14:41:59+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.080300+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.306214+00:00"
     },
     {
       "evidence_id": "bse-news-bd2d5092-36eb-4fd8-b75c-0f602290df8d",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2025-06-25T16:07:29+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.113685+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.337888+00:00"
     },
     {
       "evidence_id": "bse-news-a3f27a77-040d-4d15-bb63-550089b5d92f",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2025-06-25T16:30:47+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.115057+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.339276+00:00"
     },
     {
       "evidence_id": "bse-news-65d3561e-0668-4746-8d1f-11ad6416df58",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2025-07-02T09:06:31+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.116501+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.340706+00:00"
     },
     {
       "evidence_id": "bse-news-e224143e-95c2-47f8-81c7-ed4219df69a2",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2025-07-02T17:40:00+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.118737+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.346561+00:00"
     },
     {
       "evidence_id": "bse-news-8ec14bb7-0fc5-47ea-8cef-136109d5fc96",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2025-07-02T17:45:43+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.122152+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.349910+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-126",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2025-07-21T14:31:28+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.163053+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.385441+00:00"
     },
     {
       "evidence_id": "bse-news-6d75182d-7b1f-4e29-a73e-53eb96956db5",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2025-09-24T12:53:07+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.167956+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.389152+00:00"
     },
     {
       "evidence_id": "bse-news-6565c52b-1ef2-46a2-93ca-ac4a4275170f",
       "kind": "credit_rating_report",
       "analyzer_version": "1.0",
       "source_date": "2025-09-30T12:44:27+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.169404+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.390480+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-127",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2025-10-17T17:03:57+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.208644+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.424088+00:00"
     },
     {
       "evidence_id": "bse-news-69291cb2-2f8c-4164-8e91-2a528e6cb85f",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2025-10-29T12:08:10+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.213486+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.427853+00:00"
     },
     {
       "evidence_id": "bse-news-876434a6-9da5-4f70-ba82-860c0e5026ff",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2025-11-07T12:11:09+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.214957+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.429345+00:00"
     },
     {
       "evidence_id": "bse-news-82815620-3061-4b3c-bcb9-427b5f328092",
       "kind": "board_outcome",
       "analyzer_version": "1.1",
       "source_date": "2025-11-12T12:29:28+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.217749+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.436569+00:00"
     },
     {
       "evidence_id": "bse-news-a6d50c73-eb79-430e-893b-0e90dcdafd0b",
       "kind": "financial_results",
       "analyzer_version": "1.0",
       "source_date": "2025-11-12T12:38:46+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.229267+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.448614+00:00"
     },
     {
       "evidence_id": "bse-news-d4627918-a412-4897-baff-700091e69a3b",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2025-11-12T12:43:40+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.231054+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.450660+00:00"
     },
     {
       "evidence_id": "bse-news-def50d88-39e2-41b9-91ba-a6a5c33b226f",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2025-11-12T12:47:04+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.235422+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.463947+00:00"
     },
     {
       "evidence_id": "bse-news-7a5ff4cf-29d8-4822-8156-5be12d0e3646",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2025-11-13T12:35:05+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.236897+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.465382+00:00"
     },
     {
       "evidence_id": "bse-news-b342b4d5-4484-4f92-a6f7-d23bdd92ddc6",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2025-11-14T04:02:42+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.238414+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.467472+00:00"
     },
     {
       "evidence_id": "bse-news-8229a996-7672-4042-98b3-be8441151003",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2025-11-14T04:10:38+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.240043+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.469696+00:00"
     },
     {
       "evidence_id": "bse-news-2dddbded-5804-4a7f-be94-e5254489c51b",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2025-11-14T17:00:32+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.241616+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.472161+00:00"
     },
     {
       "evidence_id": "bse-news-ea094b83-8580-4ac7-9e16-f0d59a2135a0",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2025-11-17T13:29:52+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.243060+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.473525+00:00"
     },
     {
       "evidence_id": "bse-news-b0147e50-3ae0-44f8-9bef-85e2d6938c07",
       "kind": "earnings_transcript",
       "analyzer_version": "1.0",
       "source_date": "2025-11-19T14:22:50+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.246663+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.475780+00:00"
     },
     {
       "evidence_id": "bse-news-ace1a2b8-7dff-4996-8767-014251b08a36",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2025-12-08T16:39:10+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.253892+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.482774+00:00"
     },
     {
       "evidence_id": "bse-news-7d5b41f3-3ba2-4db8-a7fe-259c8185437a",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2025-12-10T13:16:54+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.255661+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.485039+00:00"
     },
     {
       "evidence_id": "bse-news-5277c321-b430-489e-b58e-b19c462247c1",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2025-12-10T13:36:21+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.257210+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.486447+00:00"
     },
     {
       "evidence_id": "bse-news-0c8cb42d-f32b-4e3d-b1df-dc23cf8ae575",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2025-12-12T14:19:30+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.259763+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.494538+00:00"
     },
     {
       "evidence_id": "bse-news-fe3a645d-d678-4ab4-b60f-2a38c0172f8a",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2025-12-19T12:24:58+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.261306+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.496587+00:00"
     },
     {
       "evidence_id": "bse-news-c569cced-1e64-4bf3-a560-2b52cbc0f311",
       "kind": "credit_rating_report",
       "analyzer_version": "1.0",
       "source_date": "2025-12-24T11:53:55+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.262869+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.497953+00:00"
     },
     {
       "evidence_id": "bse-news-41174e27-e521-451f-b1ca-d8d1e8afa013",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2025-12-31T13:51:05+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.268995+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.503906+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-128",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2026-01-20T17:43:01+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.311045+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.538162+00:00"
     },
     {
       "evidence_id": "bse-news-abfdba67-fb50-4264-b384-81cce7858707",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2026-04-09T13:12:26+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.315011+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.543741+00:00"
     },
     {
       "evidence_id": "bse-shp-500470-129",
       "kind": "shareholding_pattern",
       "analyzer_version": "1.0",
       "source_date": "2026-04-20T13:49:57+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.358773+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.583265+00:00"
     },
     {
       "evidence_id": "bse-news-a23e850f-4c27-494f-919a-1a7b59bcd7a2",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2026-04-21T14:29:51+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.363169+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.587290+00:00"
     },
     {
       "evidence_id": "bse-news-260227e4-3b6c-4f4c-84e0-3c8c1d834b1c",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2026-05-12T16:44:26+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.364619+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.588650+00:00"
     },
     {
       "evidence_id": "bse-news-f98ac28e-d822-4d6e-aa78-ee7d40176e44",
       "kind": "board_outcome",
       "analyzer_version": "1.1",
       "source_date": "2026-05-15T12:15:03+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.367385+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.592866+00:00"
     },
     {
       "evidence_id": "bse-news-2cf3f833-00a2-44d6-b16e-7eb9376f6519",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2026-05-15T12:19:20+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.374911+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.600036+00:00"
     },
     {
       "evidence_id": "bse-news-a34ee895-4953-41a7-af11-b871adcb1895",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2026-05-15T13:04:33+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.384428+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.619730+00:00"
     },
     {
       "evidence_id": "bse-news-8fc0dfd8-66b5-4d0f-93f5-1c05a97500a8",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2026-05-17T07:29:37+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.391066+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.625457+00:00"
     },
     {
       "evidence_id": "bse-news-ee68c4f0-4ad5-4e68-a453-7ac611317316",
       "kind": "earnings_transcript",
       "analyzer_version": "1.0",
       "source_date": "2026-05-20T15:58:44+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.392880+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.627788+00:00"
     },
     {
       "evidence_id": "bse-news-dcacaa9b-145c-4fa8-93b4-7ccd584c4005",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2026-05-22T13:55:45+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.400707+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.635009+00:00"
     },
     {
       "evidence_id": "bse-news-25542ec4-dff1-43f5-a3c5-f111681e8337",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2026-05-26T12:12:29+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.403635+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.637312+00:00"
     },
     {
       "evidence_id": "bse-news-c489279e-ecdb-400a-b1e8-48a0a44cbabd",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2026-05-27T16:01:33+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.405718+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.639652+00:00"
     },
     {
       "evidence_id": "bse-news-6b56b9d8-edeb-475d-ba5f-131db9ec20c5",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2026-05-27T16:07:07+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.407156+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.641792+00:00"
     },
     {
       "evidence_id": "bse-news-f912754a-5572-4ec9-8ce6-a6d33df9a868",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2026-05-27T16:11:32+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.408753+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.643883+00:00"
     },
     {
       "evidence_id": "bse-news-9171d47c-1ac1-4834-9af1-7b92fa005ab3",
       "kind": "credit_rating_report",
       "analyzer_version": "1.0",
       "source_date": "2026-05-29T13:26:29+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.410250+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.645996+00:00"
     },
     {
       "evidence_id": "bse-news-b42d8f35-5980-4d6f-b7f6-3ff5e30f9ce4",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2026-06-03T09:53:58+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.417320+00:00"
+      "analyzed_at": "2026-07-03T06:43:11.653030+00:00"
     },
     {
       "evidence_id": "bse-news-0cb1c25e-e5c6-4d7f-b3b4-691fb6f858fb",
       "kind": "annual_report",
       "analyzer_version": "3.0",
       "source_date": "2026-06-03T14:14:12+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.795729+00:00"
+      "analyzed_at": "2026-07-03T06:43:12.018177+00:00"
     },
     {
       "evidence_id": "bse-news-a472a966-8e74-42c6-a9a3-b2fcee28a215",
       "kind": "agm_notice",
       "analyzer_version": "1.0",
       "source_date": "2026-06-03T14:25:25+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.797714+00:00"
+      "analyzed_at": "2026-07-03T06:43:12.020378+00:00"
     },
     {
       "evidence_id": "bse-news-b5642912-3101-44c1-8acf-85162e07b218",
       "kind": "brsr",
       "analyzer_version": "1.0",
       "source_date": "2026-06-03T14:33:03+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.804075+00:00"
+      "analyzed_at": "2026-07-03T06:43:12.023117+00:00"
     },
     {
       "evidence_id": "bse-news-e6c0c0e1-7187-4c89-9124-70f199301eb6",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2026-06-18T16:29:28+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.835858+00:00"
+      "analyzed_at": "2026-07-03T06:43:12.052645+00:00"
     },
     {
       "evidence_id": "bse-news-5033b4ac-e247-4d8b-bdb3-36a8e900c107",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2026-06-18T16:36:08+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.837489+00:00"
+      "analyzed_at": "2026-07-03T06:43:12.054688+00:00"
     },
     {
       "evidence_id": "bse-news-51af55dd-7ade-4121-9743-b718d5efa89d",
       "kind": "investor_presentation",
-      "analyzer_version": "1.0",
+      "analyzer_version": "2.0",
       "source_date": "2026-06-22T13:29:37+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.838977+00:00"
+      "analyzed_at": "2026-07-03T06:43:12.056725+00:00"
     },
     {
       "evidence_id": "bse-news-67f19b95-e3f9-4e2d-afba-41e58ef6eec2",
       "kind": "acquisition",
       "analyzer_version": "1.0",
       "source_date": "2026-06-24T15:31:15+00:00",
-      "analyzed_at": "2026-07-03T04:18:54.840469+00:00"
+      "analyzed_at": "2026-07-03T06:43:12.058768+00:00"
     }
   ],
   "profile": {
@@ -1901,10 +1901,13 @@
             "financial_other_income": 0.0,
             "financial_depreciation": 5.0,
             "financial_other_expenses": 5.0,
-            "financial_deferred_tax": 13.0
+            "financial_deferred_tax": 13.0,
+            "financial_production_volume": 7.37,
+            "financial_delivery_volume": 6.5
           },
           "sources": [
-            "bse-news-6f71707a-3c0f-47f7-b5bc-b8360eaa155d"
+            "bse-news-6f71707a-3c0f-47f7-b5bc-b8360eaa155d",
+            "bse-news-205b2d7e-64a1-4b79-964e-fb705eb747b2"
           ]
         },
         {
@@ -1925,16 +1928,43 @@
           ]
         },
         {
+          "period": "2021-09-30",
+          "period_type": "quarterly",
+          "basis": "consolidated",
+          "facts": {
+            "financial_fcf": 6876.0,
+            "financial_production_volume": 7.77,
+            "financial_delivery_volume": 7.39
+          },
+          "sources": [
+            "bse-news-1ac7b809-9129-43c0-8cb9-546b2f9a759d"
+          ]
+        },
+        {
+          "period": "2022-03-31",
+          "period_type": "annual",
+          "basis": "consolidated",
+          "facts": {
+            "financial_fcf": 84237.0
+          },
+          "sources": [
+            "bse-news-1ac7b809-9129-43c0-8cb9-546b2f9a759d"
+          ]
+        },
+        {
           "period": "2022-09-30",
           "period_type": "quarterly",
           "basis": "consolidated",
           "facts": {
             "financial_revenue": 0.0,
             "financial_finance_cost": 11717.67,
-            "financial_depreciation": 0.0
+            "financial_depreciation": 0.0,
+            "financial_production_volume": 7.56,
+            "financial_delivery_volume": 7.23
           },
           "sources": [
-            "bse-news-ec8df814-bebf-4be4-910b-e3958db12560"
+            "bse-news-ec8df814-bebf-4be4-910b-e3958db12560",
+            "bse-news-d51e3a80-16b2-41e4-989a-97d247f1cf4e"
           ]
         },
         {
@@ -1964,10 +1994,13 @@
             "financial_depreciation": 2596.74,
             "financial_other_expenses": 17493.81,
             "financial_current_tax": 1142.0,
-            "financial_deferred_tax": 263.45
+            "financial_deferred_tax": 263.45,
+            "financial_production_volume": 7.69,
+            "financial_delivery_volume": 7.52
           },
           "sources": [
-            "bse-news-bfd93c54-a5a1-4180-a47a-b29175906b01"
+            "bse-news-bfd93c54-a5a1-4180-a47a-b29175906b01",
+            "bse-news-5a1c3471-0aa4-4871-b918-4bfb3d217dfb"
           ]
         },
         {
@@ -2001,10 +2034,14 @@
             "financial_deferred_tax": -1527.57,
             "financial_cash_and_equivalents": 9604.96,
             "financial_total_equity": 91352.78,
-            "financial_total_debt": 88963.81
+            "financial_total_debt": 88963.81,
+            "financial_fcf": 1000.0,
+            "financial_production_volume": 5.44,
+            "financial_delivery_volume": 5.6
           },
           "sources": [
-            "bse-news-5c19a207-3d2d-4a46-ae4d-6cf201f90668"
+            "bse-news-5c19a207-3d2d-4a46-ae4d-6cf201f90668",
+            "bse-news-14e2ef9b-c5fd-4edd-959b-e816df46d1ac"
           ]
         },
         {
@@ -2035,10 +2072,13 @@
             "financial_depreciation": 2893.0,
             "financial_other_expenses": 18573.35,
             "financial_current_tax": 1196.72,
-            "financial_deferred_tax": -168.12
+            "financial_deferred_tax": -168.12,
+            "financial_production_volume": 7.73,
+            "financial_delivery_volume": 7.91
           },
           "sources": [
-            "bse-news-a6d50c73-eb79-430e-893b-0e90dcdafd0b"
+            "bse-news-a6d50c73-eb79-430e-893b-0e90dcdafd0b",
+            "bse-news-d4627918-a412-4897-baff-700091e69a3b"
           ]
         },
         {
@@ -2056,6 +2096,19 @@
           },
           "sources": [
             "bse-news-a6d50c73-eb79-430e-893b-0e90dcdafd0b"
+          ]
+        },
+        {
+          "period": "2026-03-31",
+          "period_type": "annual",
+          "basis": "consolidated",
+          "facts": {
+            "financial_fcf": 10738.0,
+            "financial_production_volume": 6.22,
+            "financial_delivery_volume": 6.19
+          },
+          "sources": [
+            "bse-news-2cf3f833-00a2-44d6-b16e-7eb9376f6519"
           ]
         }
       ]
@@ -2881,7 +2934,374 @@
       "entries": []
     },
     "strategy": {
-      "entries": [],
+      "entries": [
+        {
+          "source_date": "2021-06-30T09:20:12+00:00",
+          "kind": "priority",
+          "text": "Leadership in India",
+          "evidence_id": "bse-news-83619d1f-e343-4b2b-870a-8db777e10820"
+        },
+        {
+          "source_date": "2021-06-30T09:20:12+00:00",
+          "kind": "priority",
+          "text": "Consolidate position as a global cost leader",
+          "evidence_id": "bse-news-83619d1f-e343-4b2b-870a-8db777e10820"
+        },
+        {
+          "source_date": "2021-06-30T09:20:12+00:00",
+          "kind": "priority",
+          "text": "Attain leadership position in adjacent businesses",
+          "evidence_id": "bse-news-83619d1f-e343-4b2b-870a-8db777e10820"
+        },
+        {
+          "source_date": "2021-06-30T09:20:12+00:00",
+          "kind": "priority",
+          "text": "Leadership in sustainability",
+          "evidence_id": "bse-news-83619d1f-e343-4b2b-870a-8db777e10820"
+        },
+        {
+          "source_date": "2021-06-30T09:20:12+00:00",
+          "kind": "priority",
+          "text": "Industrial Products & Projects",
+          "evidence_id": "bse-news-83619d1f-e343-4b2b-870a-8db777e10820"
+        },
+        {
+          "source_date": "2021-06-30T09:20:12+00:00",
+          "kind": "priority",
+          "text": "Increased share of business in the Lifting & Excavation and Pre-",
+          "evidence_id": "bse-news-83619d1f-e343-4b2b-870a-8db777e10820"
+        },
+        {
+          "source_date": "2021-06-30T09:20:12+00:00",
+          "kind": "priority",
+          "text": "Engineered Building segments by enriching product offering",
+          "evidence_id": "bse-news-83619d1f-e343-4b2b-870a-8db777e10820"
+        },
+        {
+          "source_date": "2021-06-30T09:20:12+00:00",
+          "kind": "priority",
+          "text": "Downstream business",
+          "evidence_id": "bse-news-83619d1f-e343-4b2b-870a-8db777e10820"
+        },
+        {
+          "source_date": "2021-06-30T09:20:12+00:00",
+          "kind": "guidance",
+          "text": "target of achieving 35-40 MTPA capacity by 2030 Work on 2",
+          "evidence_id": "bse-news-83619d1f-e343-4b2b-870a-8db777e10820"
+        },
+        {
+          "source_date": "2021-06-30T09:20:12+00:00",
+          "kind": "guidance",
+          "text": "targets 2030 targets Carbon Emission TSI: <2 tCO",
+          "evidence_id": "bse-news-83619d1f-e343-4b2b-870a-8db777e10820"
+        },
+        {
+          "source_date": "2021-06-30T09:20:12+00:00",
+          "kind": "guidance",
+          "text": "Aspire for no net loss of biodiversity 17 Health Continues to be a focus area Sa",
+          "evidence_id": "bse-news-83619d1f-e343-4b2b-870a-8db777e10820"
+        },
+        {
+          "source_date": "2021-06-30T09:21:38+00:00",
+          "kind": "priority",
+          "text": "Leadership in India",
+          "evidence_id": "bse-news-820b2bd3-f0cb-4c61-83cf-93bfdb06efea"
+        },
+        {
+          "source_date": "2021-06-30T09:21:38+00:00",
+          "kind": "priority",
+          "text": "Consolidate position as a global cost leader",
+          "evidence_id": "bse-news-820b2bd3-f0cb-4c61-83cf-93bfdb06efea"
+        },
+        {
+          "source_date": "2021-06-30T09:21:38+00:00",
+          "kind": "priority",
+          "text": "Attain leadership position in adjacent businesses",
+          "evidence_id": "bse-news-820b2bd3-f0cb-4c61-83cf-93bfdb06efea"
+        },
+        {
+          "source_date": "2021-06-30T09:21:38+00:00",
+          "kind": "priority",
+          "text": "Leadership in sustainability",
+          "evidence_id": "bse-news-820b2bd3-f0cb-4c61-83cf-93bfdb06efea"
+        },
+        {
+          "source_date": "2021-06-30T09:21:38+00:00",
+          "kind": "priority",
+          "text": "Industrial Products & Projects",
+          "evidence_id": "bse-news-820b2bd3-f0cb-4c61-83cf-93bfdb06efea"
+        },
+        {
+          "source_date": "2021-06-30T09:21:38+00:00",
+          "kind": "priority",
+          "text": "Increased share of business in the Lifting & Excavation and Pre-",
+          "evidence_id": "bse-news-820b2bd3-f0cb-4c61-83cf-93bfdb06efea"
+        },
+        {
+          "source_date": "2021-06-30T09:21:38+00:00",
+          "kind": "priority",
+          "text": "Engineered Building segments by enriching product offering",
+          "evidence_id": "bse-news-820b2bd3-f0cb-4c61-83cf-93bfdb06efea"
+        },
+        {
+          "source_date": "2021-06-30T09:21:38+00:00",
+          "kind": "priority",
+          "text": "Downstream business",
+          "evidence_id": "bse-news-820b2bd3-f0cb-4c61-83cf-93bfdb06efea"
+        },
+        {
+          "source_date": "2021-06-30T09:21:38+00:00",
+          "kind": "guidance",
+          "text": "target of achieving 35-40 MTPA capacity by 2030 Work on 2",
+          "evidence_id": "bse-news-820b2bd3-f0cb-4c61-83cf-93bfdb06efea"
+        },
+        {
+          "source_date": "2021-06-30T09:21:38+00:00",
+          "kind": "guidance",
+          "text": "targets 2030 targets Carbon Emission TSI: <2 tCO",
+          "evidence_id": "bse-news-820b2bd3-f0cb-4c61-83cf-93bfdb06efea"
+        },
+        {
+          "source_date": "2021-06-30T09:21:38+00:00",
+          "kind": "guidance",
+          "text": "Aspire for no net loss of biodiversity 17 Health Continues to be a focus area Sa",
+          "evidence_id": "bse-news-820b2bd3-f0cb-4c61-83cf-93bfdb06efea"
+        },
+        {
+          "source_date": "2021-07-06T08:30:37+00:00",
+          "kind": "aspiration",
+          "text": "We aspire to be the global steel industry benchmark for : inability Poli = ! Value Creation and Corporate Citizenship J Sustainability Policy I & | Material Issues 2",
+          "evidence_id": "bse-news-a3f32ff8-ddb6-42a1-8f25-84cd4349cfb4"
+        },
+        {
+          "source_date": "2021-07-06T08:30:37+00:00",
+          "kind": "guidance",
+          "text": "Targeting value accretive growth in India (3) India to be the dominant manufacturing",
+          "evidence_id": "bse-news-a3f32ff8-ddb6-42a1-8f25-84cd4349cfb4"
+        },
+        {
+          "source_date": "2021-07-06T08:30:37+00:00",
+          "kind": "guidance",
+          "text": "target | in India 13 Production capacity(MTPA) / mFlat =Lon",
+          "evidence_id": "bse-news-a3f32ff8-ddb6-42a1-8f25-84cd4349cfb4"
+        },
+        {
+          "source_date": "2021-07-06T08:30:37+00:00",
+          "kind": "guidance",
+          "text": "Aspirations for this decade v Identified 7 TLAs with 40+ projects ENG = Deliver ‘n",
+          "evidence_id": "bse-news-a3f32ff8-ddb6-42a1-8f25-84cd4349cfb4"
+        },
+        {
+          "source_date": "2021-11-11T13:27:26+00:00",
+          "kind": "guidance",
+          "text": "targeted towards ‘Individual home builder’ segment; 2",
+          "evidence_id": "bse-news-1ac7b809-9129-43c0-8cb9-546b2f9a759d"
+        },
+        {
+          "source_date": "2021-11-11T13:27:26+00:00",
+          "kind": "guidance",
+          "text": "Target 1HFY22 performance = Investment grade fin",
+          "evidence_id": "bse-news-1ac7b809-9129-43c0-8cb9-546b2f9a759d"
+        },
+        {
+          "source_date": "2021-11-11T13:27:26+00:00",
+          "kind": "guidance",
+          "text": "targets) Interest Cover at 4x policy; robust pay-out RolC: Return on",
+          "evidence_id": "bse-news-1ac7b809-9129-43c0-8cb9-546b2f9a759d"
+        },
+        {
+          "source_date": "2022-06-28T09:23:29+00:00",
+          "kind": "guidance",
+          "text": "targets reached in more than 940 villages Drinking water facilities ac",
+          "evidence_id": "bse-news-0fa3260d-31d2-4424-87ec-979280e56723"
+        },
+        {
+          "source_date": "2022-06-28T09:23:29+00:00",
+          "kind": "guidance",
+          "text": "Aspire for no net loss of biodiversity FY05 FY22 3",
+          "evidence_id": "bse-news-0fa3260d-31d2-4424-87ec-979280e56723"
+        },
+        {
+          "source_date": "2022-10-31T12:03:01+00:00",
+          "kind": "guidance",
+          "text": "Targets Higher scrap charge 2025 ; ; = Achieve <2 tCO, per ton of cru",
+          "evidence_id": "bse-news-d51e3a80-16b2-41e4-989a-97d247f1cf4e"
+        },
+        {
+          "source_date": "2022-10-31T12:03:01+00:00",
+          "kind": "guidance",
+          "text": "Target Leverage Investment grade metrices § Portfolio restructuring Ox 4x a™“N Ee Net Debt/EBITDA Interest Cover",
+          "evidence_id": "bse-news-d51e3a80-16b2-41e4-989a-97d247f1cf4e"
+        },
+        {
+          "source_date": "2022-10-31T12:03:01+00:00",
+          "kind": "guidance",
+          "text": "target segments - oc =\" th _ Pre-Engineered Buildings : A Solar ay aay mee | 1400+ km 9",
+          "evidence_id": "bse-news-d51e3a80-16b2-41e4-989a-97d247f1cf4e"
+        },
+        {
+          "source_date": "2024-06-12T06:51:11+00:00",
+          "kind": "guidance",
+          "text": "Target Net Debt to EBITDA <2",
+          "evidence_id": "bse-news-b345e963-c425-4052-b711-9859a12c7a61"
+        },
+        {
+          "source_date": "2024-11-06T14:26:32+00:00",
+          "kind": "priority",
+          "text": "Presentation",
+          "evidence_id": "bse-news-5a1c3471-0aa4-4871-b918-4bfb3d217dfb"
+        },
+        {
+          "source_date": "2024-11-06T14:26:32+00:00",
+          "kind": "priority",
+          "text": "Leadership in Sustainability",
+          "evidence_id": "bse-news-5a1c3471-0aa4-4871-b918-4bfb3d217dfb"
+        },
+        {
+          "source_date": "2024-11-06T14:26:32+00:00",
+          "kind": "priority",
+          "text": "Hisarna",
+          "evidence_id": "bse-news-5a1c3471-0aa4-4871-b918-4bfb3d217dfb"
+        },
+        {
+          "source_date": "2024-11-06T14:26:32+00:00",
+          "kind": "priority",
+          "text": "EasyMelt",
+          "evidence_id": "bse-news-5a1c3471-0aa4-4871-b918-4bfb3d217dfb"
+        },
+        {
+          "source_date": "2024-11-06T14:26:32+00:00",
+          "kind": "priority",
+          "text": "COG Injection",
+          "evidence_id": "bse-news-5a1c3471-0aa4-4871-b918-4bfb3d217dfb"
+        },
+        {
+          "source_date": "2024-11-06T14:26:32+00:00",
+          "kind": "priority",
+          "text": "Process improvement",
+          "evidence_id": "bse-news-5a1c3471-0aa4-4871-b918-4bfb3d217dfb"
+        },
+        {
+          "source_date": "2024-11-06T14:26:32+00:00",
+          "kind": "priority",
+          "text": "Carbon direct avoidance",
+          "evidence_id": "bse-news-5a1c3471-0aa4-4871-b918-4bfb3d217dfb"
+        },
+        {
+          "source_date": "2024-11-06T14:26:32+00:00",
+          "kind": "priority",
+          "text": "Carbon Capture & Utilisation",
+          "evidence_id": "bse-news-5a1c3471-0aa4-4871-b918-4bfb3d217dfb"
+        },
+        {
+          "source_date": "2024-11-06T14:26:32+00:00",
+          "kind": "guidance",
+          "text": "targets prioritised across 15 relevant UN SDG goals Strategic Updat",
+          "evidence_id": "bse-news-5a1c3471-0aa4-4871-b918-4bfb3d217dfb"
+        },
+        {
+          "source_date": "2024-11-06T14:26:32+00:00",
+          "kind": "guidance",
+          "text": "targets 11 2QFY25 Results Presentation Source :",
+          "evidence_id": "bse-news-5a1c3471-0aa4-4871-b918-4bfb3d217dfb"
+        },
+        {
+          "source_date": "2024-11-06T14:26:32+00:00",
+          "kind": "guidance",
+          "text": "targeted crude steel capacity by FY30 - 31 ~200 Key Trends India steel deman",
+          "evidence_id": "bse-news-5a1c3471-0aa4-4871-b918-4bfb3d217dfb"
+        },
+        {
+          "source_date": "2025-05-12T13:59:52+00:00",
+          "kind": "guidance",
+          "text": "targets prioritised across 15 relevant UN SDG goals 57 lakh+ lives i",
+          "evidence_id": "bse-news-14e2ef9b-c5fd-4edd-959b-e816df46d1ac"
+        },
+        {
+          "source_date": "2025-05-12T13:59:52+00:00",
+          "kind": "guidance",
+          "text": "Targeted FY2026 savings of Rs 11,500 crores (i",
+          "evidence_id": "bse-news-14e2ef9b-c5fd-4edd-959b-e816df46d1ac"
+        },
+        {
+          "source_date": "2025-07-02T09:06:31+00:00",
+          "kind": "priority",
+          "text": "Circular",
+          "evidence_id": "bse-news-65d3561e-0668-4746-8d1f-11ad6416df58"
+        },
+        {
+          "source_date": "2025-07-02T09:06:31+00:00",
+          "kind": "priority",
+          "text": "Water, Air",
+          "evidence_id": "bse-news-65d3561e-0668-4746-8d1f-11ad6416df58"
+        },
+        {
+          "source_date": "2025-07-02T09:06:31+00:00",
+          "kind": "priority",
+          "text": "Biodiversity,",
+          "evidence_id": "bse-news-65d3561e-0668-4746-8d1f-11ad6416df58"
+        },
+        {
+          "source_date": "2025-07-02T09:06:31+00:00",
+          "kind": "priority",
+          "text": "Employees,",
+          "evidence_id": "bse-news-65d3561e-0668-4746-8d1f-11ad6416df58"
+        },
+        {
+          "source_date": "2025-07-02T09:06:31+00:00",
+          "kind": "priority",
+          "text": "Community",
+          "evidence_id": "bse-news-65d3561e-0668-4746-8d1f-11ad6416df58"
+        },
+        {
+          "source_date": "2025-07-02T09:06:31+00:00",
+          "kind": "priority",
+          "text": "Supply",
+          "evidence_id": "bse-news-65d3561e-0668-4746-8d1f-11ad6416df58"
+        },
+        {
+          "source_date": "2025-07-02T09:06:31+00:00",
+          "kind": "priority",
+          "text": "Technology",
+          "evidence_id": "bse-news-65d3561e-0668-4746-8d1f-11ad6416df58"
+        },
+        {
+          "source_date": "2025-07-02T09:06:31+00:00",
+          "kind": "priority",
+          "text": "Process improvement, Carbon direct avoidance and",
+          "evidence_id": "bse-news-65d3561e-0668-4746-8d1f-11ad6416df58"
+        },
+        {
+          "source_date": "2025-11-12T12:43:40+00:00",
+          "kind": "guidance",
+          "text": "targets prioritised across 15 relevant UN SDG goals >₹2,230 crores s",
+          "evidence_id": "bse-news-d4627918-a412-4897-baff-700091e69a3b"
+        },
+        {
+          "source_date": "2025-11-12T12:43:40+00:00",
+          "kind": "guidance",
+          "text": "Targeted cost transformation program across geographies Rs 11,500 crs or $1",
+          "evidence_id": "bse-news-d4627918-a412-4897-baff-700091e69a3b"
+        },
+        {
+          "source_date": "2026-05-15T12:19:20+00:00",
+          "kind": "guidance",
+          "text": "targeting Rs 7,140 crs",
+          "evidence_id": "bse-news-2cf3f833-00a2-44d6-b16e-7eb9376f6519"
+        },
+        {
+          "source_date": "2026-05-15T12:19:20+00:00",
+          "kind": "guidance",
+          "text": "targets prioritised across 15 relevant UN SDG goals >₹2,500 cr spent",
+          "evidence_id": "bse-news-2cf3f833-00a2-44d6-b16e-7eb9376f6519"
+        },
+        {
+          "source_date": "2026-05-15T12:19:20+00:00",
+          "kind": "guidance",
+          "text": "Guidance, designs and calculators 17 ~10,868 Translates to 95% Compliance t",
+          "evidence_id": "bse-news-2cf3f833-00a2-44d6-b16e-7eb9376f6519"
+        }
+      ],
       "csat": []
     },
     "governance": {

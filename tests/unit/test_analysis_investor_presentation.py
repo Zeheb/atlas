@@ -1,39 +1,45 @@
-"""Unit tests for atlas.analysis.investor_presentation.
+"""Unit tests for atlas.analysis.investor_presentation (v2.0).
 
 All tests use synthetic fixtures — no real repository access required.
 
-Coverage:
-
-  Sub-type detection:
-    - "strategy" for Analyst Day / slide-deck cover letters
-    - "ir_activity" for investor meeting schedule filings
+v2.0 redesigns extraction around cross-sector concepts (see module docstring
+in investor_presentation.py for the full rationale) rather than v1.0's
+TCS-slide-title-literal patterns. Coverage:
 
   Error handling:
-    - Missing evidence_id raises ValueError
-    - Wrong kind raises ValueError
-    - Empty content raises ValueError
+    - Missing evidence_id / wrong kind / empty content raise ValueError
 
-  Strategy path:
-    - STRATEGY_ASPIRATION extracted from aspiration statement
-    - STRATEGY_PRIORITY emitted once per pillar (5 pillars)
-    - STRATEGY_GUIDANCE extracted as range text from Margin Levers slide
-    - SEGMENT_NAME + SEGMENT_GROWTH_PCT pairs from "Y-O-Y CC" table
-    - Duplicate segment names deduplicated
-    - FINANCIAL_ROE extracted from "Return on Equity" bar chart section
-    - FINANCIAL_FCF extracted from "Capital Allocation" bar chart section
-    - STRATEGY_CSAT extracted as most-recent half-year value
-    - Result confidence: high when aspiration + ROE + CSAT present
-    - Result confidence: medium when only aspiration present
+  Period detection:
+    - Textual date ("Quarter Ended September 30, 2024")
+    - Numeric DD.MM.YYYY date (SBI cover-letter style)
+    - "half year ended" is not misdetected as annual (substring-match bug)
+    - "quarter and year ended" (Q4-bundled) is detected as annual
 
-  IR activity path:
-    - REPORT_PERIOD_END + REPORT_PERIOD_TYPE extracted from quarter end date
-    - Quarter date spanning lines is handled via whitespace normalization
-    - Result confidence: high when period extracted; medium otherwise
-    - Missing quarter date → warning emitted
+  Strategy facts:
+    - STRATEGY_ASPIRATION: multiple lead-in phrasings, recurring-header
+      truncation avoidance (regression: real TCS deck repeats the aspiration
+      sentence before every slide's own heading)
+    - STRATEGY_PRIORITY: heading-anchored bullet extraction, dedup, cap
+    - STRATEGY_GUIDANCE: keyword-anchored sentence, chart-style bare-range
+      fallback with no verb at all
 
-  Provenance:
-    - All facts have a non-empty provenance section
-    - Excerpts contain "subtype", "aspiration", "margin_levers" (strategy)
+  Financial facts:
+    - FINANCIAL_ROE / FINANCIAL_FCF: inline sentence disclosure, bar-chart
+      block disclosure (regression: interleaved "year1 value1, year2..year6,
+      value2..value5" layout observed in a real TCS filing), ambiguous
+      heading discrimination (regression: "Capital Allocation" heading
+      precedes a clean chart in one company's deck and unrelated prose
+      bullets in another's — the prose case must not produce false facts)
+    - Banking ratio family (NII/NIM/NPA/PCR/credit cost/CASA/CAR/slippage):
+      labelled KPI table, dedup across repeated table appearances
+    - FINANCIAL_PRODUCTION_VOLUME / FINANCIAL_DELIVERY_VOLUME: labelled row
+
+  Segment growth:
+    - Value-then-label pairing, dedup
+    - Stray connector-word skip (regression: SBI's "YoY Growth in\\nDeposits"
+      layout inserts an extra "in" line the label must not capture)
+
+  Confidence and provenance invariants
 """
 from __future__ import annotations
 
@@ -73,22 +79,6 @@ def _facts(result: AnalysisResult, kind: FactKind):
     return [f for f in result.facts if f.kind == kind]
 
 
-def _strategy(core: str) -> str:
-    """Wrap core text with an Analyst Day cover letter header."""
-    return (
-        "Sub: Submission of presentation to be made during TCS Analyst Day 2025\n\n"
-        + core
-    )
-
-
-def _ir(core: str) -> str:
-    """Wrap core text with an IR schedule cover letter header."""
-    return (
-        "Sub: Schedule of Analyst/Institutional Investor Meeting\n\n"
-        + core
-    )
-
-
 # ---------------------------------------------------------------------------
 # Error handling
 # ---------------------------------------------------------------------------
@@ -106,195 +96,456 @@ class TestErrors:
         with pytest.raises(ValueError, match="no content"):
             analyze("eid", _kb(""))
 
-
-# ---------------------------------------------------------------------------
-# Sub-type detection
-# ---------------------------------------------------------------------------
-
-class TestSubtypeDetection:
-    def test_analyst_day_cover_returns_strategy(self):
-        content = _strategy("Some slide text here.")
-        result = analyze("eid", _kb(content))
-        assert result.excerpts["subtype"] == "strategy"
-
-    def test_ir_schedule_returns_ir_activity(self):
-        content = _ir("Schedule of meetings for November 2021.")
-        result = analyze("eid", _kb(content))
-        assert result.excerpts["subtype"] == "ir_activity"
-
-    def test_earnings_announcement_returns_ir_activity(self):
-        content = (
-            "Sub: Schedule of Analyst/Institutional Investor Meeting\n\n"
-            "TCS to Announce First Quarter FY 2025 Results on July 11, 2024\n"
-            "Quarter Ended June 30, 2024\n"
-        )
-        result = analyze("eid", _kb(content))
-        assert result.excerpts["subtype"] == "ir_activity"
-
-    def test_kind_recorded_in_result(self):
-        result = analyze("eid", _kb(_strategy("text")))
-        assert result.kind == "investor_presentation"
-
     def test_analyzer_version(self):
-        result = analyze("eid", _kb(_strategy("text")))
+        result = analyze("eid", _kb("Quarter Ended June 30, 2024\n"))
         assert result.analyzer_version == ANALYZER_VERSION
 
+    def test_kind_recorded_in_result(self):
+        result = analyze("eid", _kb("Quarter Ended June 30, 2024\n"))
+        assert result.kind == "investor_presentation"
+
 
 # ---------------------------------------------------------------------------
-# Strategy path — aspiration
+# Period detection
+# ---------------------------------------------------------------------------
+
+class TestPeriodDetection:
+    def test_textual_quarter_end(self):
+        result = analyze("eid", _kb("Quarter Ended September 30, 2024\n"))
+        facts = _facts(result, FactKind.REPORT_PERIOD_END)
+        assert len(facts) == 1
+        assert facts[0].value == "2024-09-30"
+
+    def test_textual_quarter_type_is_quarterly(self):
+        result = analyze("eid", _kb("Quarter Ended June 30, 2024\n"))
+        facts = _facts(result, FactKind.REPORT_PERIOD_TYPE)
+        assert facts[0].value == "quarterly"
+
+    def test_numeric_ddmmyyyy_date(self):
+        # SBI cover-letter style: "quarter and half year ended 30.09.2024"
+        content = "Presentation on financial results for the quarter and half year ended 30.09.2024.\n"
+        result = analyze("eid", _kb(content))
+        facts = _facts(result, FactKind.REPORT_PERIOD_END)
+        assert facts[0].value == "2024-09-30"
+
+    def test_half_year_not_misdetected_as_annual(self):
+        # Regression: "half year" contains the substring "year" — a naive
+        # check would wrongly classify this as an annual filing.
+        content = "Presentation for the quarter and half year ended 30.09.2024.\n"
+        result = analyze("eid", _kb(content))
+        facts = _facts(result, FactKind.REPORT_PERIOD_TYPE)
+        assert facts[0].value == "quarterly"
+
+    def test_quarter_and_year_ended_is_annual(self):
+        # Tata Steel style: Q4 results bundled with full-year figures.
+        content = "Investor presentation for the quarter and financial year ended March 31, 2026.\n"
+        result = analyze("eid", _kb(content))
+        facts = _facts(result, FactKind.REPORT_PERIOD_TYPE)
+        assert facts[0].value == "annual"
+
+    def test_period_from_newline_split_date(self):
+        content = "Earnings Conference Call for\nthe Quarter Ended September\n30, 2024\n"
+        result = analyze("eid", _kb(content))
+        facts = _facts(result, FactKind.REPORT_PERIOD_END)
+        assert facts[0].value == "2024-09-30"
+
+    def test_no_period_emits_warning(self):
+        result = analyze("eid", _kb("No date mentioned anywhere in this text.\n"))
+        assert any("period" in w.lower() for w in result.warnings)
+        assert _facts(result, FactKind.REPORT_PERIOD_END) == []
+
+
+# ---------------------------------------------------------------------------
+# Strategic aspiration
 # ---------------------------------------------------------------------------
 
 class TestAspiration:
-    def test_aspiration_extracted(self):
-        content = _strategy(
-            "We will be the world's largest\nAI-led Technology Services company\n"
-            "Our Aspiration\n"
+    def test_we_will_be_phrasing(self):
+        content = "We will be the world's largest AI-led Technology Services company.\n"
+        result = analyze("eid", _kb(content))
+        facts = _facts(result, FactKind.STRATEGY_ASPIRATION)
+        assert len(facts) == 1
+        assert "world's largest" in facts[0].value
+
+    def test_our_vision_is_to_phrasing(self):
+        content = "Our vision is to be the most trusted digital bank in India.\n"
+        result = analyze("eid", _kb(content))
+        facts = _facts(result, FactKind.STRATEGY_ASPIRATION)
+        assert "most trusted digital bank" in facts[0].value
+
+    def test_our_purpose_is_to_phrasing(self):
+        content = "Our purpose is to power sustainable steel for a better India.\n"
+        result = analyze("eid", _kb(content))
+        assert _facts(result, FactKind.STRATEGY_ASPIRATION)
+
+    def test_recurring_header_does_not_bleed_into_capture(self):
+        # Regression: a real TCS deck repeats "We will be the world's
+        # largest AI-led Technology Services company" before every slide's
+        # own "Our Aspiration" heading — the first occurrence in the raw
+        # PDF text has a hard line-wrap, and later slide-title text run
+        # together by whitespace normalization must not be captured.
+        content = (
+            "We will be the world's largest\n"
+            "AI-led Technology Services company\n"
+            "Our Aspiration\n\n"
+            "Pillars of our Transformation\n"
         )
         result = analyze("eid", _kb(content))
         facts = _facts(result, FactKind.STRATEGY_ASPIRATION)
         assert len(facts) == 1
+        assert "Our Aspiration" not in facts[0].value
+        assert "Pillars" not in facts[0].value
 
-    def test_aspiration_value_normalized(self):
-        content = _strategy(
-            "We will be the world's largest\nAI-led Technology Services company\n"
-        )
+    def test_aspiration_unit_and_period_are_none(self):
+        content = "We will be the world's largest AI-led Technology Services company.\n"
         result = analyze("eid", _kb(content))
-        facts = _facts(result, FactKind.STRATEGY_ASPIRATION)
-        assert "\n" not in facts[0].value
-        assert "world's largest" in facts[0].value
-        assert "AI-led" in facts[0].value
+        fact = _facts(result, FactKind.STRATEGY_ASPIRATION)[0]
+        assert fact.unit is None
+        assert fact.period is None
 
-    def test_aspiration_unit_is_none(self):
-        content = _strategy(
-            "We will be the world's largest\nAI-led Technology Services company\n"
-        )
-        result = analyze("eid", _kb(content))
-        assert _facts(result, FactKind.STRATEGY_ASPIRATION)[0].unit is None
-
-    def test_aspiration_period_is_none(self):
-        content = _strategy(
-            "We will be the world's largest\nAI-led Technology Services company\n"
-        )
-        result = analyze("eid", _kb(content))
-        assert _facts(result, FactKind.STRATEGY_ASPIRATION)[0].period is None
-
-    def test_aspiration_not_found_emits_warning(self):
-        content = _strategy("No aspiration text here.")
-        result = analyze("eid", _kb(content))
+    def test_missing_aspiration_emits_warning(self):
+        result = analyze("eid", _kb("Quarter Ended June 30, 2024\n"))
         assert any("aspiration" in w.lower() for w in result.warnings)
-        assert _facts(result, FactKind.STRATEGY_ASPIRATION) == []
 
     def test_aspiration_in_excerpts(self):
-        content = _strategy(
-            "We will be the world's largest\nAI-led Technology Services company\n"
-        )
+        content = "We will be the world's largest AI-led Technology Services company.\n"
         result = analyze("eid", _kb(content))
         assert "aspiration" in result.excerpts
 
 
 # ---------------------------------------------------------------------------
-# Strategy path — transformation pillars
+# Strategic priorities
 # ---------------------------------------------------------------------------
 
-class TestPillars:
-    _PILLAR_TEXT = _strategy(
-        "tcsAI Internal Transformation\n"
-        "Redefining all Services\n"
-        "Future-ready Talent Model\n"
-        "Making AI Real for clients\n"
-        "AI Ecosystem Play\n"
+class TestPriorities:
+    _PRIORITY_TEXT = (
+        "Strategic Priorities\n"
+        "Operational Excellence\n"
+        "Digital Transformation\n"
+        "Sustainable Growth\n"
     )
 
-    def test_five_pillars_extracted(self):
-        result = analyze("eid", _kb(self._PILLAR_TEXT))
-        facts = _facts(result, FactKind.STRATEGY_PRIORITY)
-        values = [f.value for f in facts]
-        assert "tcsAI Internal Transformation" in values
-        assert "Redefining all Services" in values
-        assert "Future-ready Talent Model" in values
-        assert "Making AI Real for clients" in values
-        assert "AI Ecosystem Play" in values
+    def test_priorities_extracted_under_heading(self):
+        result = analyze("eid", _kb(self._PRIORITY_TEXT))
+        values = [f.value for f in _facts(result, FactKind.STRATEGY_PRIORITY)]
+        assert "Operational Excellence" in values
+        assert "Digital Transformation" in values
+        assert "Sustainable Growth" in values
 
-    def test_each_pillar_extracted_once(self):
-        # Pillars repeat many times in a deck; only one fact per pillar.
-        repeated = self._PILLAR_TEXT + self._PILLAR_TEXT
+    def test_no_heading_no_priorities(self):
+        # Bullet lists without an explicit "Strategic Priorities"-style
+        # heading must not be treated as priorities — too easy to false-
+        # positive on arbitrary bullet lists in a deck.
+        content = "Operational Excellence\nDigital Transformation\n"
+        result = analyze("eid", _kb(content))
+        assert _facts(result, FactKind.STRATEGY_PRIORITY) == []
+
+    def test_duplicate_priorities_deduplicated(self):
+        repeated = self._PRIORITY_TEXT + self._PRIORITY_TEXT
         result = analyze("eid", _kb(repeated))
-        facts = _facts(result, FactKind.STRATEGY_PRIORITY)
-        values = [f.value for f in facts]
-        assert values.count("tcsAI Internal Transformation") == 1
+        values = [f.value for f in _facts(result, FactKind.STRATEGY_PRIORITY)]
+        assert values.count("Operational Excellence") == 1
 
-    def test_pillar_unit_is_none(self):
-        result = analyze("eid", _kb(self._PILLAR_TEXT))
+    def test_priority_unit_is_none(self):
+        result = analyze("eid", _kb(self._PRIORITY_TEXT))
         for f in _facts(result, FactKind.STRATEGY_PRIORITY):
             assert f.unit is None
 
-    def test_partial_pillars_ok(self):
-        content = _strategy("tcsAI Internal Transformation\nRedefining all Services\n")
-        result = analyze("eid", _kb(content))
-        facts = _facts(result, FactKind.STRATEGY_PRIORITY)
-        assert len(facts) == 2
+    def test_priority_count_capped(self):
+        many = "Transformation Pillars\n" + "".join(f"Pillar Number {i}\n" for i in range(20))
+        result = analyze("eid", _kb(many))
+        assert len(_facts(result, FactKind.STRATEGY_PRIORITY)) <= 8
 
 
 # ---------------------------------------------------------------------------
-# Strategy path — margin guidance
+# Forward guidance
 # ---------------------------------------------------------------------------
 
-class TestMarginGuidance:
-    def test_guidance_extracted(self):
-        content = _strategy(
-            "Margin Levers\nOperation Excellence\nAI as an Accelerator\n26-28%\n25.2%\n"
-        )
+class TestGuidance:
+    def test_targeting_keyword_sentence(self):
+        content = "Cost transformation program targeting Rs 7,140 crores in FY2027.\n"
         result = analyze("eid", _kb(content))
         facts = _facts(result, FactKind.STRATEGY_GUIDANCE)
+        assert any("targeting" in f.value.lower() for f in facts)
+
+    def test_guidance_keyword_sentence(self):
+        content = "Long-term margin guidance stands at 26-28% over the cycle.\n"
+        result = analyze("eid", _kb(content))
+        facts = _facts(result, FactKind.STRATEGY_GUIDANCE)
+        assert facts
+
+    def test_chart_style_range_under_margin_heading(self):
+        # No verb at all — a bare range sitting under a generic heading,
+        # as in TCS's "Margin Levers" bar-chart slide.
+        content = "Margin Levers\nOperation Excellence\nAI as an Accelerator\n26-28%\n25.2%\n"
+        result = analyze("eid", _kb(content))
+        facts = _facts(result, FactKind.STRATEGY_GUIDANCE)
+        assert any("26-28" in f.value for f in facts)
+
+    def test_guidance_unit_and_period_are_none(self):
+        content = "Targeting Rs 7,140 crores in FY2027.\n"
+        result = analyze("eid", _kb(content))
+        fact = _facts(result, FactKind.STRATEGY_GUIDANCE)[0]
+        assert fact.unit is None
+        assert fact.period is None
+
+    def test_no_guidance_emits_warning(self):
+        result = analyze("eid", _kb("Quarter Ended June 30, 2024\n"))
+        assert any("guidance" in w.lower() for w in result.warnings)
+
+    def test_guidance_count_capped(self):
+        many = "".join(f"targeting {i}% by FY203{i % 9}. " for i in range(10)) + "\n"
+        result = analyze("eid", _kb(many))
+        assert len(_facts(result, FactKind.STRATEGY_GUIDANCE)) <= 3
+
+
+# ---------------------------------------------------------------------------
+# Return on Equity / Free Cash Flow
+# ---------------------------------------------------------------------------
+
+class TestROEFCF:
+    def test_roe_inline_sentence(self):
+        content = "Return on Equity at 21.78% for H1FY25.\n"
+        result = analyze("eid", _kb(content))
+        facts = _facts(result, FactKind.FINANCIAL_ROE)
+        assert facts[0].value == pytest.approx(21.78)
+        assert facts[0].unit == FactUnit.PERCENT
+
+    def test_fcf_inline_sentence(self):
+        content = "Consolidated EBITDA grew and free cash flows ~Rs 10,738 crores in FY2026.\n"
+        result = analyze("eid", _kb(content))
+        facts = _facts(result, FactKind.FINANCIAL_FCF)
+        assert facts[0].value == pytest.approx(10738.0)
+        assert facts[0].unit == FactUnit.CRORE_INR
+
+    def test_roe_bar_chart_block_clean_layout(self):
+        # "All labels, then all values" — the common layout.
+        content = (
+            "Return on Equity\n"
+            "FY 2021\nFY 2022\nFY 2023\n"
+            "38.2%\n42.6%\n45.9%\n"
+            "23.6%\nPeer\nAverage\n"
+            "Industry Leading RoE\n"
+        )
+        result = analyze("eid", _kb(content))
+        facts = _facts(result, FactKind.FINANCIAL_ROE)
+        vals = {f.period: f.value for f in facts}
+        assert vals["2021-03-31"] == pytest.approx(38.2)
+        assert vals["2022-03-31"] == pytest.approx(42.6)
+        assert vals["2023-03-31"] == pytest.approx(45.9)
+        # The "Peer Average" annotation must not be captured as a 4th year.
+        assert 23.6 not in vals.values()
+
+    def test_fcf_bar_chart_block_interleaved_layout(self):
+        # Regression: a real TCS filing's PDF extraction interleaves the
+        # first bar's label+value, then groups the *remaining* years and
+        # values separately — "FY 2021, 30664, FY 2022, FY 2023, 31424,
+        # 45602" rather than "FY 2021, FY 2022, FY 2023, 30664, 31424,
+        # 45602". A naive "years block then values block" split mis-pairs
+        # every single year in this layout.
+        content = (
+            "Capital Allocation\n"
+            "FY 2021\n30,664\nFY 2022\nFY 2023\n31,424\n45,602\n"
+            "Free cashflow after all investments\n"
+        )
+        result = analyze("eid", _kb(content))
+        facts = _facts(result, FactKind.FINANCIAL_FCF)
+        vals = {f.period: f.value for f in facts}
+        assert vals["2021-03-31"] == 30664
+        assert vals["2022-03-31"] == 31424
+        assert vals["2023-03-31"] == 45602
+
+    def test_capital_allocation_heading_prose_not_misread_as_chart(self):
+        # Regression: the exact same "Capital Allocation" heading text
+        # precedes unrelated bulleted prose in a real Tata Steel filing,
+        # containing a capex figure that must not be captured as FCF.
+        content = (
+            "Capital Allocation\n"
+            "Operational excellence\n"
+            "Optimise Capital Structure & Cost\n"
+            "Value accretive investments\n"
+            "Capex of ~Rs 14,026 crores in FY2026\n"
+            "Optimise working capital\n"
+        )
+        result = analyze("eid", _kb(content))
+        facts = _facts(result, FactKind.FINANCIAL_FCF)
+        assert 14026.0 not in [f.value for f in facts]
+
+    def test_roe_fcf_period_ends_in_march(self):
+        # _nearest_fy_period looks backward from the match, matching real
+        # disclosure phrasing ("FY2025 Return on Equity at 21.78%").
+        content = "FY2025 Return on Equity at 21.78%.\n"
+        result = analyze("eid", _kb(content))
+        for f in _facts(result, FactKind.FINANCIAL_ROE):
+            assert f.period is not None and f.period.endswith("-03-31")
+
+
+# ---------------------------------------------------------------------------
+# Customer Satisfaction Score
+# ---------------------------------------------------------------------------
+
+class TestCSAT:
+    def test_csat_most_recent_extracted(self):
+        content = "92.90%\n93.44%\nH2 FY23\nH1 FY24\nCustomer Satisfaction Score\n"
+        result = analyze("eid", _kb(content))
+        facts = _facts(result, FactKind.STRATEGY_CSAT)
+        assert facts[0].value == pytest.approx(93.44)
+
+    def test_csat_period_h1(self):
+        content = "93.44%\nH1 FY24\nCustomer Satisfaction Score\n"
+        result = analyze("eid", _kb(content))
+        assert _facts(result, FactKind.STRATEGY_CSAT)[0].period == "2023-09-30"
+
+    def test_csat_period_h2(self):
+        content = "93.93%\nH2 FY25\nCustomer Satisfaction Score\n"
+        result = analyze("eid", _kb(content))
+        assert _facts(result, FactKind.STRATEGY_CSAT)[0].period == "2025-03-31"
+
+    def test_csat_unit_is_percent(self):
+        content = "94.18%\nH1 FY26\nCustomer Satisfaction Score\n"
+        result = analyze("eid", _kb(content))
+        assert _facts(result, FactKind.STRATEGY_CSAT)[0].unit == FactUnit.PERCENT
+
+    def test_no_csat_no_facts_no_warning(self):
+        # CSAT is a services-sector concept — its absence for a bank or a
+        # steel company is not an extraction problem worth warning about.
+        result = analyze("eid", _kb("Quarter Ended June 30, 2024\n"))
+        assert _facts(result, FactKind.STRATEGY_CSAT) == []
+
+
+# ---------------------------------------------------------------------------
+# Banking ratio family
+# ---------------------------------------------------------------------------
+
+class TestBankingRatios:
+    _KPI_TABLE = (
+        "Key indicators\n"
+        "Quarter Ended\nYoY Growth\n"
+        "Q2FY24\nQ2FY25\n"
+        "Net Interest Income\n39,500\n41,620\n5.37%\n"
+        "Net Interest Margin\n3.29\n3.14\n-15 bps\n"
+        "Credit Cost\n0.22\n0.38\n16 bps\n"
+        "Net NPA\n0.64\n0.53\n-11 bps\n"
+        "PCR\n75.45\n75.66\n21 bps\n"
+        "Capital Adequacy\n14.28\n13.76\n\n"
+    )
+
+    def test_net_interest_income(self):
+        result = analyze("eid", _kb(self._KPI_TABLE))
+        facts = _facts(result, FactKind.FINANCIAL_NET_INTEREST_INCOME)
+        assert facts[0].value == pytest.approx(41620.0)
+        assert facts[0].unit == FactUnit.CRORE_INR
+
+    def test_net_interest_margin(self):
+        result = analyze("eid", _kb(self._KPI_TABLE))
+        facts = _facts(result, FactKind.FINANCIAL_NET_INTEREST_MARGIN)
+        assert facts[0].value == pytest.approx(3.14)
+        assert facts[0].unit == FactUnit.PERCENT
+
+    def test_credit_cost(self):
+        result = analyze("eid", _kb(self._KPI_TABLE))
+        assert _facts(result, FactKind.FINANCIAL_CREDIT_COST)[0].value == pytest.approx(0.38)
+
+    def test_net_npa_ratio(self):
+        result = analyze("eid", _kb(self._KPI_TABLE))
+        assert _facts(result, FactKind.FINANCIAL_NET_NPA_RATIO)[0].value == pytest.approx(0.53)
+
+    def test_provision_coverage_ratio(self):
+        result = analyze("eid", _kb(self._KPI_TABLE))
+        assert _facts(result, FactKind.FINANCIAL_PROVISION_COVERAGE_RATIO)[0].value == pytest.approx(75.66)
+
+    def test_capital_adequacy_ratio(self):
+        result = analyze("eid", _kb(self._KPI_TABLE))
+        assert _facts(result, FactKind.FINANCIAL_CAPITAL_ADEQUACY_RATIO)[0].value == pytest.approx(13.76)
+
+    def test_gross_npa_ratio(self):
+        content = "Key indicators\nGross NPA\n2.42\n2.13\n-29 bps\n"
+        result = analyze("eid", _kb(content))
+        assert _facts(result, FactKind.FINANCIAL_GROSS_NPA_RATIO)[0].value == pytest.approx(2.13)
+
+    def test_casa_ratio(self):
+        content = "Key indicators\nCASA\n40.5\n39.8\n-70 bps\n"
+        result = analyze("eid", _kb(content))
+        assert _facts(result, FactKind.FINANCIAL_CASA_RATIO)[0].value == pytest.approx(39.8)
+
+    def test_slippage_ratio(self):
+        content = "Key indicators\nSlippage Ratio\n0.45\n0.51\n6 bps\n"
+        result = analyze("eid", _kb(content))
+        assert _facts(result, FactKind.FINANCIAL_SLIPPAGE_RATIO)[0].value == pytest.approx(0.51)
+
+    def test_repeated_table_deduplicated(self):
+        # Regression: the same ratio restated in a later detail slide must
+        # not produce a second, possibly-conflicting fact.
+        repeated = self._KPI_TABLE + "\nCapital Adequacy\n13.49\n13.49\n\n"
+        result = analyze("eid", _kb(repeated))
+        facts = _facts(result, FactKind.FINANCIAL_CAPITAL_ADEQUACY_RATIO)
         assert len(facts) == 1
-        assert facts[0].value == "26-28%"
+        assert facts[0].value == pytest.approx(13.76)  # first occurrence wins
 
-    def test_guidance_unit_is_none(self):
-        content = _strategy("Margin Levers\n26-28%\n")
-        result = analyze("eid", _kb(content))
-        assert _facts(result, FactKind.STRATEGY_GUIDANCE)[0].unit is None
-
-    def test_guidance_period_is_none(self):
-        content = _strategy("Margin Levers\n26-28%\n")
-        result = analyze("eid", _kb(content))
-        assert _facts(result, FactKind.STRATEGY_GUIDANCE)[0].period is None
-
-    def test_margin_levers_in_excerpts(self):
-        content = _strategy("Margin Levers\n26-28%\n")
-        result = analyze("eid", _kb(content))
-        assert "margin_levers" in result.excerpts
+    def test_no_kpi_table_no_facts_no_warning(self):
+        # A non-financial-sector company simply has no such table — not a
+        # warning-worthy extraction failure. ("ratio" is deliberately not
+        # searched for here — "aspiration" contains "ratio" as a substring.)
+        result = analyze("eid", _kb("Quarter Ended June 30, 2024\n"))
+        assert _facts(result, FactKind.FINANCIAL_NET_INTEREST_MARGIN) == []
+        assert not any("Key indicators" in w or "NPA" in w or "NIM" in w for w in result.warnings)
 
 
 # ---------------------------------------------------------------------------
-# Strategy path — service line growth
+# Physical production / delivery volume
 # ---------------------------------------------------------------------------
 
-class TestServiceLineGrowth:
-    _GROWTH_TEXT = _strategy(
+class TestOperatingVolume:
+    _VOLUME_TEXT = (
+        "Production (mn tons)\n6.22\n6.34\n5.44\n23.43\n21.68\n"
+        "Deliveries (mn tons)\n6.19\n6.04\n5.60\n22.53\n20.94\n"
+    )
+
+    def test_production_volume_extracted(self):
+        result = analyze("eid", _kb(self._VOLUME_TEXT))
+        facts = _facts(result, FactKind.FINANCIAL_PRODUCTION_VOLUME)
+        assert facts[0].value == pytest.approx(6.22)
+        assert facts[0].unit == FactUnit.MILLION_TONNES
+
+    def test_delivery_volume_extracted(self):
+        result = analyze("eid", _kb(self._VOLUME_TEXT))
+        facts = _facts(result, FactKind.FINANCIAL_DELIVERY_VOLUME)
+        assert facts[0].value == pytest.approx(6.19)
+
+    def test_no_volume_row_no_facts(self):
+        result = analyze("eid", _kb("Quarter Ended June 30, 2024\n"))
+        assert _facts(result, FactKind.FINANCIAL_PRODUCTION_VOLUME) == []
+        assert _facts(result, FactKind.FINANCIAL_DELIVERY_VOLUME) == []
+
+    def test_footnote_marker_not_read_as_value(self):
+        # Regression: a real Tata Steel filing appends a footnote superscript
+        # digit directly to the row label with no separating newline
+        # ("Production (mn tons)2 \n6.22 \n...") — extract_n_values must not
+        # read that stray "2" as the row's production figure.
+        content = "Production (mn tons)2 \n6.22\n6.34\n5.44\n23.43\n21.68\n"
+        result = analyze("eid", _kb(content))
+        facts = _facts(result, FactKind.FINANCIAL_PRODUCTION_VOLUME)
+        assert facts[0].value == pytest.approx(6.22)
+
+
+# ---------------------------------------------------------------------------
+# Segment growth
+# ---------------------------------------------------------------------------
+
+class TestSegmentGrowth:
+    _GROWTH_TEXT = (
         "38.2%\nY-O-Y CC\nAI Services\n"
         "9%\nY-O-Y CC\nInteractive\n"
         "7.5%\nY-O-Y CC\nCyber Security\n"
     )
 
-    def test_segment_names_extracted(self):
+    def test_segment_names_and_growth_paired(self):
         result = analyze("eid", _kb(self._GROWTH_TEXT))
         names = [f.value for f in _facts(result, FactKind.SEGMENT_NAME)]
-        assert "AI Services" in names
-        assert "Interactive" in names
-        assert "Cyber Security" in names
-
-    def test_segment_growth_pct_extracted(self):
-        result = analyze("eid", _kb(self._GROWTH_TEXT))
         growths = [f.value for f in _facts(result, FactKind.SEGMENT_GROWTH_PCT)]
+        assert "AI Services" in names
         assert 38.2 in growths
-        assert 9.0 in growths
-        assert 7.5 in growths
-
-    def test_name_and_growth_counts_match(self):
-        result = analyze("eid", _kb(self._GROWTH_TEXT))
-        n_names   = len(_facts(result, FactKind.SEGMENT_NAME))
-        n_growths = len(_facts(result, FactKind.SEGMENT_GROWTH_PCT))
-        assert n_names == n_growths
+        assert len(names) == len(growths)
 
     def test_growth_unit_is_percent(self):
         result = analyze("eid", _kb(self._GROWTH_TEXT))
@@ -302,248 +553,87 @@ class TestServiceLineGrowth:
             assert f.unit == FactUnit.PERCENT
 
     def test_duplicate_segment_deduplicated(self):
-        # Same segment appearing twice should produce only one fact pair.
-        content = _strategy(
-            "38.2%\nY-O-Y CC\nAI Services\n"
-            "35.0%\nY-O-Y CC\nAI Services\n"
-        )
+        content = "38.2%\nY-O-Y CC\nAI Services\n35.0%\nY-O-Y CC\nAI Services\n"
         result = analyze("eid", _kb(content))
         names = [f.value for f in _facts(result, FactKind.SEGMENT_NAME)]
         assert names.count("AI Services") == 1
 
-
-# ---------------------------------------------------------------------------
-# Strategy path — Return on Equity
-# ---------------------------------------------------------------------------
-
-class TestROE:
-    _ROE_TEXT = _strategy(
-        "Return on Equity\n"
-        "FY 2021\nFY 2022\nFY 2023\n"
-        "38.2%\n42.6%\n45.9%\n"
-        "23.6%\nPeer\nAverage\n"
-        "Industry Leading RoE\n"
-    )
-
-    def test_roe_extracted_for_each_year(self):
-        result = analyze("eid", _kb(self._ROE_TEXT))
-        facts = _facts(result, FactKind.FINANCIAL_ROE)
-        assert len(facts) == 3
-
-    def test_roe_values(self):
-        result = analyze("eid", _kb(self._ROE_TEXT))
-        facts = _facts(result, FactKind.FINANCIAL_ROE)
-        vals = {f.period: f.value for f in facts}
-        assert vals["2021-03-31"] == pytest.approx(38.2)
-        assert vals["2022-03-31"] == pytest.approx(42.6)
-        assert vals["2023-03-31"] == pytest.approx(45.9)
-
-    def test_peer_average_excluded(self):
-        result = analyze("eid", _kb(self._ROE_TEXT))
-        values = [f.value for f in _facts(result, FactKind.FINANCIAL_ROE)]
-        assert 23.6 not in values
-
-    def test_roe_unit_is_percent(self):
-        result = analyze("eid", _kb(self._ROE_TEXT))
-        for f in _facts(result, FactKind.FINANCIAL_ROE):
-            assert f.unit == FactUnit.PERCENT
-
-    def test_roe_period_format(self):
-        result = analyze("eid", _kb(self._ROE_TEXT))
-        for f in _facts(result, FactKind.FINANCIAL_ROE):
-            assert f.period.endswith("-03-31")
-
-    def test_roe_missing_emits_warning(self):
-        content = _strategy("No ROE section here.")
+    def test_connector_word_skipped(self):
+        # Regression: SBI's layout inserts a stray "in" line between the
+        # growth-label line and the real name ("YoY Growth\nin\nDeposits").
+        content = "9.13%\nYoY Growth\nin\nDeposits\n"
         result = analyze("eid", _kb(content))
-        assert any("ROE" in w for w in result.warnings)
+        names = [f.value for f in _facts(result, FactKind.SEGMENT_NAME)]
+        assert names == ["Deposits"]
+        assert "in" not in names
 
-
-# ---------------------------------------------------------------------------
-# Strategy path — Free Cash Flow
-# ---------------------------------------------------------------------------
-
-class TestFCF:
-    _FCF_TEXT = _strategy(
-        "Capital Allocation\n"
-        "FY 2021\n30,664\nFY 2022\nFY 2023\n31,424\n45,602\n"
-        "Free Cash Flow\n"
-        "Free cashflow after all investments\n"
-    )
-
-    def test_fcf_extracted_for_each_year(self):
-        result = analyze("eid", _kb(self._FCF_TEXT))
-        facts = _facts(result, FactKind.FINANCIAL_FCF)
-        assert len(facts) == 3
-
-    def test_fcf_values(self):
-        result = analyze("eid", _kb(self._FCF_TEXT))
-        facts = _facts(result, FactKind.FINANCIAL_FCF)
-        vals = {f.period: f.value for f in facts}
-        assert vals["2021-03-31"] == 30664
-        assert vals["2022-03-31"] == 31424
-        assert vals["2023-03-31"] == 45602
-
-    def test_fcf_unit_is_crore_inr(self):
-        result = analyze("eid", _kb(self._FCF_TEXT))
-        for f in _facts(result, FactKind.FINANCIAL_FCF):
-            assert f.unit == FactUnit.CRORE_INR
-
-    def test_fcf_period_format(self):
-        result = analyze("eid", _kb(self._FCF_TEXT))
-        for f in _facts(result, FactKind.FINANCIAL_FCF):
-            assert f.period.endswith("-03-31")
-
-    def test_fcf_missing_emits_warning(self):
-        content = _strategy("No capital allocation section.")
+    def test_yoy_variant_without_cc_suffix(self):
+        content = "9.13%\nYoY Growth\nin\nDeposits\n"
         result = analyze("eid", _kb(content))
-        assert any("FCF" in w or "Capital Allocation" in w for w in result.warnings)
+        assert _facts(result, FactKind.SEGMENT_GROWTH_PCT)[0].value == pytest.approx(9.13)
 
 
 # ---------------------------------------------------------------------------
-# Strategy path — Customer Satisfaction Score
+# Management commentary excerpt
 # ---------------------------------------------------------------------------
 
-class TestCSAT:
-    def test_csat_most_recent_extracted(self):
-        content = _strategy(
-            "92.90%\n93.44%\nH2 FY23\nH1 FY24\n"
-            "Customer Satisfaction Score\n"
+class TestManagementCommentary:
+    def test_named_quote_block_captured_as_excerpt(self):
+        content = (
+            "Management Comments:\n"
+            "Mr. T V Narendran, Chief Executive Officer & Managing Director:\n"
+            "FY2026 was characterised by elevated uncertainty across global markets, "
+            "and our sustained focus on operational discipline delivered strong results.\n"
+            "Disclaimer\n"
+            "Statements in this release are forward-looking.\n"
         )
         result = analyze("eid", _kb(content))
-        facts = _facts(result, FactKind.STRATEGY_CSAT)
-        assert len(facts) == 1
-        assert facts[0].value == pytest.approx(93.44)
+        assert "management_commentary" in result.excerpts
+        assert "T V Narendran" in result.excerpts["management_commentary"]
 
-    def test_csat_period_h1(self):
-        # H1 FY24 = April–September 2023 → period end 2023-09-30
-        content = _strategy(
-            "93.44%\nH1 FY24\nCustomer Satisfaction Score\n"
+    def test_no_commentary_block_no_excerpt(self):
+        result = analyze("eid", _kb("Quarter Ended June 30, 2024\n"))
+        assert "management_commentary" not in result.excerpts
+
+    def test_commentary_is_excerpt_not_fact(self):
+        content = (
+            "Management Comments:\n"
+            "Mr. T V Narendran, Chief Executive Officer:\n"
+            "Strong performance across all our geographies this year.\n"
         )
         result = analyze("eid", _kb(content))
-        assert _facts(result, FactKind.STRATEGY_CSAT)[0].period == "2023-09-30"
-
-    def test_csat_period_h2(self):
-        # H2 FY25 = October 2024–March 2025 → period end 2025-03-31
-        content = _strategy(
-            "93.93%\nH2 FY25\nCustomer Satisfaction Score\n"
+        # No FactKind exists for free-text commentary — it is excerpt-only.
+        assert len(result.facts) == 0 or all(
+            "Narendran" not in str(f.value) for f in result.facts
         )
-        result = analyze("eid", _kb(content))
-        assert _facts(result, FactKind.STRATEGY_CSAT)[0].period == "2025-03-31"
-
-    def test_csat_unit_is_percent(self):
-        content = _strategy("94.18%\nH1 FY26\nCustomer Satisfaction Score\n")
-        result = analyze("eid", _kb(content))
-        assert _facts(result, FactKind.STRATEGY_CSAT)[0].unit == FactUnit.PERCENT
-
-    def test_csat_takes_last_pair(self):
-        content = _strategy(
-            "92.90%\n93.44%\n94.18%\nH2 FY23\nH1 FY24\nH1 FY26\n"
-            "Customer Satisfaction Score\n"
-        )
-        result = analyze("eid", _kb(content))
-        facts = _facts(result, FactKind.STRATEGY_CSAT)
-        assert facts[0].value == pytest.approx(94.18)
-        assert facts[0].period == "2025-09-30"
-
-    def test_csat_missing_emits_warning(self):
-        content = _strategy("No satisfaction score here.")
-        result = analyze("eid", _kb(content))
-        assert any("Customer Satisfaction" in w or "CSAT" in w for w in result.warnings)
 
 
 # ---------------------------------------------------------------------------
-# Strategy path — confidence levels
+# Confidence scoring
 # ---------------------------------------------------------------------------
 
-class TestStrategyConfidence:
-    def test_high_confidence_with_aspiration_roe_csat(self):
-        content = _strategy(
-            "We will be the world's largest\nAI-led Technology Services company\n"
-            "Return on Equity\nFY 2025\n51.2%\nIndustry Leading RoE\n"
+class TestConfidence:
+    def test_high_confidence_with_multiple_fact_categories(self):
+        content = (
+            "We will be the world's largest AI-led Technology Services company.\n"
+            "Return on Equity at 51.2% for FY2025.\n"
             "94.18%\nH1 FY26\nCustomer Satisfaction Score\n"
         )
         result = analyze("eid", _kb(content))
         assert result.confidence == "high"
 
-    def test_medium_confidence_aspiration_only(self):
-        content = _strategy(
-            "We will be the world's largest\nAI-led Technology Services company\n"
-        )
+    def test_medium_confidence_single_category(self):
+        content = "We will be the world's largest AI-led Technology Services company.\n"
         result = analyze("eid", _kb(content))
         assert result.confidence == "medium"
 
-    def test_low_confidence_no_primary_facts(self):
-        content = _strategy("Some generic text without key sections.")
-        result = analyze("eid", _kb(content))
+    def test_medium_confidence_period_only(self):
+        result = analyze("eid", _kb("Quarter Ended June 30, 2024\n"))
+        assert result.confidence == "medium"
+
+    def test_low_confidence_nothing_found(self):
+        result = analyze("eid", _kb("Some generic text without any recognisable section.\n"))
         assert result.confidence == "low"
-
-
-# ---------------------------------------------------------------------------
-# IR activity path — period extraction
-# ---------------------------------------------------------------------------
-
-class TestIRActivity:
-    def test_period_extracted_from_quarter_end(self):
-        content = _ir("Quarter Ended September 30, 2024\n")
-        result = analyze("eid", _kb(content))
-        facts = _facts(result, FactKind.REPORT_PERIOD_END)
-        assert len(facts) == 1
-        assert facts[0].value == "2024-09-30"
-
-    def test_period_type_quarterly(self):
-        content = _ir("Quarter Ended June 30, 2024\n")
-        result = analyze("eid", _kb(content))
-        facts = _facts(result, FactKind.REPORT_PERIOD_TYPE)
-        assert len(facts) == 1
-        assert facts[0].value == "quarterly"
-
-    def test_period_from_newline_split_date(self):
-        # PDF extraction often splits "September\n30, 2024" across lines.
-        content = _ir(
-            "Earnings Conference Call for\nthe Quarter Ended September\n30, 2024\n"
-        )
-        result = analyze("eid", _kb(content))
-        facts = _facts(result, FactKind.REPORT_PERIOD_END)
-        assert len(facts) == 1
-        assert facts[0].value == "2024-09-30"
-
-    def test_multiple_quarter_dates_picks_first(self):
-        # Both the meeting schedule and earnings announcement mention the date.
-        content = _ir(
-            "Quarter Ended September 30, 2024\n"
-            "Quarter Ended September 30, 2024\n"
-        )
-        result = analyze("eid", _kb(content))
-        facts = _facts(result, FactKind.REPORT_PERIOD_END)
-        assert len(facts) == 1
-
-    def test_various_month_dates(self):
-        test_cases = [
-            ("Quarter Ended December 31, 2023\n", "2023-12-31"),
-            ("Quarter Ended March 31, 2024\n",    "2024-03-31"),
-            ("Quarter Ended June 30, 2023\n",     "2023-06-30"),
-        ]
-        for text, expected in test_cases:
-            content = _ir(text)
-            result = analyze("eid", _kb(content))
-            assert _facts(result, FactKind.REPORT_PERIOD_END)[0].value == expected
-
-    def test_no_quarter_date_emits_warning(self):
-        content = _ir("Meeting schedules with no date mention.")
-        result = analyze("eid", _kb(content))
-        assert result.warnings
-        assert _facts(result, FactKind.REPORT_PERIOD_END) == []
-
-    def test_ir_activity_high_confidence_with_period(self):
-        content = _ir("Quarter Ended September 30, 2024\n")
-        result = analyze("eid", _kb(content))
-        assert result.confidence == "high"
-
-    def test_ir_activity_medium_confidence_without_period(self):
-        content = _ir("Generic meeting schedule text.")
-        result = analyze("eid", _kb(content))
-        assert result.confidence == "medium"
 
 
 # ---------------------------------------------------------------------------
@@ -552,28 +642,22 @@ class TestIRActivity:
 
 class TestProvenance:
     def test_all_facts_have_section(self):
-        content = _strategy(
-            "We will be the world's largest\nAI-led Technology Services company\n"
-            "tcsAI Internal Transformation\n"
-            "Margin Levers\n26-28%\n"
-            "38.2%\nY-O-Y CC\nAI Services\n"
-            "Return on Equity\nFY 2025\n51.2%\nIndustry Leading RoE\n"
-            "Capital Allocation\nFY 2025\n44,962\nFree cashflow after all investments\n"
+        content = (
+            "Quarter Ended June 30, 2024\n"
+            "We will be the world's largest AI-led Technology Services company.\n"
+            "Strategic Priorities\nOperational Excellence\n"
+            "Return on Equity at 51.2% for FY2025.\n"
             "94.18%\nH1 FY26\nCustomer Satisfaction Score\n"
+            "38.2%\nY-O-Y CC\nAI Services\n"
         )
         result = analyze("eid", _kb(content))
+        assert result.facts
         for f in result.facts:
             assert f.provenance.section, f"fact {f.kind} missing section"
 
-    def test_subtype_always_in_excerpts(self):
-        for content in [
-            _strategy("text"),
-            _ir("text"),
-        ]:
-            result = analyze("eid", _kb(content))
-            assert "subtype" in result.excerpts
-
     def test_source_date_preserved(self):
-        result = analyze("eid", _kb(_strategy("text"), source_date="2025-12-17T10:00:00+00:00"))
+        result = analyze(
+            "eid", _kb("Quarter Ended June 30, 2024\n", source_date="2025-12-17T10:00:00+00:00")
+        )
         assert result.source_date.year == 2025
         assert result.source_date.month == 12
