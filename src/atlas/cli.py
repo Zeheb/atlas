@@ -373,15 +373,22 @@ def metrics_cmd(domain: str | None) -> None:
 @cli.command("ask")
 @click.argument("ticker")
 @click.argument("question")
-def ask_cmd(ticker: str, question: str) -> None:
+@click.option(
+    "--show-evidence", is_flag=True, default=False,
+    help="Print the retrieved source excerpt behind each citation (drill-to-source).",
+)
+def ask_cmd(ticker: str, question: str, show_evidence: bool) -> None:
     """Answer a natural-language QUESTION about TICKER, grounded in its evidence.
 
     Reads the saved CompanyProfile (run 'atlas profile build TICKER' first) and
     reasons over it with the Anthropic model configured via ATLAS_ANTHROPIC_API_KEY.
     Every claim is grounded in evidence Atlas already extracted; out-of-scope
-    questions (e.g. valuation) are declined rather than guessed.
+    questions (e.g. valuation) are declined rather than guessed. When the
+    company's KnowledgeBase is present, claim evidence is hydrated with
+    retrieved source excerpts (M1); pass --show-evidence to see them.
     """
     from atlas.company.store import CompanyStore
+    from atlas.knowledge.base import KnowledgeBase
     from atlas.reasoning.ask import ask
     from atlas.reasoning.client import AnthropicClient, MissingAPIKeyError
     from atlas.reasoning.context import build_context
@@ -404,11 +411,14 @@ def ask_cmd(ticker: str, question: str) -> None:
 
     profile = CompanyStore(profile_path, ticker).load()
     subject = SubjectRef(subject_id=ticker, display=ticker)
-    # M0 grounds on the persisted profile; the KnowledgeBase known_ids filter
-    # (C2 identity) is wired at M1 when raw-text retrieval brings the KB in.
-    context = build_context(profile, subject)
+    # M1: hydrate claim evidence with retrieved excerpts when a KnowledgeBase is
+    # present. The known_ids identity filter stays a deliberately separate scope
+    # boundary — wiring it here could drop claims whose source documents predate
+    # the KB, a behavior change beyond what M1 asked for.
+    kb = KnowledgeBase(repo_root) if (repo_root / "knowledge.db").exists() else None
+    context = build_context(profile, subject, kb=kb)
     result = ask(Question(raw_text=question, subject_ref=subject), context, client)
-    click.echo(format_answer(to_answer(result)))
+    click.echo(format_answer(to_answer(result, context=context), show_evidence=show_evidence))
 
 
 @cli.group("eval")
