@@ -368,3 +368,44 @@ def metrics_cmd(domain: str | None) -> None:
         for spec in specs:
             unit_label = spec.unit.value if spec.unit else "-"
             click.echo(f"  {spec.key:<28} {spec.label:<45} [{unit_label}]")
+
+
+@cli.command("ask")
+@click.argument("ticker")
+@click.argument("question")
+def ask_cmd(ticker: str, question: str) -> None:
+    """Answer a natural-language QUESTION about TICKER, grounded in its evidence.
+
+    Reads the saved CompanyProfile (run 'atlas profile build TICKER' first) and
+    reasons over it with the Anthropic model configured via ATLAS_ANTHROPIC_API_KEY.
+    Every claim is grounded in evidence Atlas already extracted; out-of-scope
+    questions (e.g. valuation) are declined rather than guessed.
+    """
+    from atlas.company.store import CompanyStore
+    from atlas.reasoning.ask import ask
+    from atlas.reasoning.client import AnthropicClient, MissingAPIKeyError
+    from atlas.reasoning.context import build_context
+    from atlas.reasoning.contracts import Question, SubjectRef
+    from atlas.reasoning.render import format_answer, to_answer
+
+    ticker = ticker.upper()
+    atlas = Atlas.from_environment()
+    repo_root = atlas.settings.repository_base_path / ticker
+    profile_path = repo_root / "profile.json"
+    if not profile_path.exists():
+        click.echo(f"No profile for '{ticker}'. Run: atlas profile build {ticker}", err=True)
+        raise SystemExit(1)
+
+    try:
+        client = AnthropicClient.from_settings(atlas.settings)
+    except MissingAPIKeyError as exc:
+        click.echo(str(exc), err=True)
+        raise SystemExit(1)
+
+    profile = CompanyStore(profile_path, ticker).load()
+    subject = SubjectRef(subject_id=ticker, display=ticker)
+    # M0 grounds on the persisted profile; the KnowledgeBase known_ids filter
+    # (C2 identity) is wired at M1 when raw-text retrieval brings the KB in.
+    context = build_context(profile, subject)
+    result = ask(Question(raw_text=question, subject_ref=subject), context, client)
+    click.echo(format_answer(to_answer(result)))
