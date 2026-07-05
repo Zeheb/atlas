@@ -4,6 +4,13 @@ The runner is orthogonal to reasoning: it drives reasoning's public API
 (build_context -> ask -> to_answer) via an injected ReasoningRunner and scores
 the output. Both the runner and the judge are injected, so the whole harness is
 unit-testable offline with fakes. One failing case never aborts the batch.
+
+M1: LiveReasoningRunner passes a KnowledgeBase through when the subject's
+knowledge.db exists (else kb=None, identical to M0), and forwards the context
+into to_answer() so citations carry retrieved excerpts — this is the wiring
+that lets `atlas eval run --capabilities ...,drilldown` actually exercise the
+existing t43 (drill-to-source) case. No new eval case was needed: t43 already
+declares requires=["drilldown"] and simply activates.
 """
 from __future__ import annotations
 
@@ -19,6 +26,7 @@ from atlas.eval.correctness import score_correctness
 from atlas.eval.grounding import score_grounding
 from atlas.eval.judge import Judge
 from atlas.eval.report import CaseResult, Report
+from atlas.knowledge.base import KnowledgeBase
 from atlas.reasoning.ask import ask
 from atlas.reasoning.client import LLMClient
 from atlas.reasoning.context import build_context
@@ -51,16 +59,18 @@ class LiveReasoningRunner:
         self._client = client
 
     def run(self, case: EvalCase) -> tuple[ReasoningResult, Answer, GroundingContext]:
-        profile_path = self._settings.repository_base_path / case.subject / "profile.json"
+        repo_root = self._settings.repository_base_path / case.subject
+        profile_path = repo_root / "profile.json"
         if not profile_path.exists():
             raise RunnerError(f"no profile for {case.subject!r}")
         profile = CompanyStore(profile_path, case.subject).load()
         subject = SubjectRef(subject_id=case.subject, display=case.subject)
-        context = build_context(profile, subject)
+        kb = KnowledgeBase(repo_root) if (repo_root / "knowledge.db").exists() else None
+        context = build_context(profile, subject, kb=kb)
         result = ask(
             Question(raw_text=case.question, subject_ref=subject), context, self._client
         )
-        return result, to_answer(result), context
+        return result, to_answer(result, context=context), context
 
 
 def run_suite(
