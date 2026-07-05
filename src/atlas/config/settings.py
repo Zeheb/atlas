@@ -58,3 +58,16 @@ class Settings(BaseSettings):
         gt=0,
         description="Maximum requests per second per domain.",
     )
+
+    # --- Reasoning / LLM (consumed by the reasoning subsystem, M0+) ---
+    anthropic_api_key: str | None = Field(
+        default=None,
+        description=(
+            "API key for the Anthropic reasoning client. Optional so non-reasoning "
+            "commands run without it; the 'ask' command fails clearly when absent."
+        ),
+    )
+    reasoning_model: str = Field(
+        default="claude-sonnet-5",
+        description="Model id used by the reasoning subsystem.",
+    )
