@@ -470,6 +470,15 @@ def eval_run_cmd(
         click.echo(str(exc), err=True)
         raise SystemExit(1)
 
+    # §12.6 amendment 1: the judge gets its OWN client on the separately-pinned
+    # judge_model — upgrading the reasoning model never moves the instrument.
+    judge = None
+    if not no_judge:
+        judge_client = AnthropicClient.from_settings(
+            atlas.settings, model=atlas.settings.judge_model
+        )
+        judge = Judge(judge_client)
+
     cases = load_cases(Path(suite_path) if suite_path else None)
     caps = [c.strip() for c in capabilities.split(",") if c.strip()]
     report = run_suite(
@@ -479,10 +488,11 @@ def eval_run_cmd(
         # measurement, without gating any case's availability (no case
         # requires it — it's a runner-mode switch, not a case gate).
         LiveReasoningRunner(atlas.settings, client, capabilities=frozenset(caps)),
-        None if no_judge else Judge(client),
+        judge,
         caps,
         milestone=milestone,
         model=atlas.settings.reasoning_model,
+        judge_model=None if no_judge else atlas.settings.judge_model,
     )
 
     out = Path(out_path) if out_path else Path("eval_reports") / f"{milestone}.json"

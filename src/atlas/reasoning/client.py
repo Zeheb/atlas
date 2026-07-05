@@ -39,14 +39,19 @@ class AnthropicClient:
         self._max_tokens = max_tokens
 
     @classmethod
-    def from_settings(cls, settings: "Settings") -> "AnthropicClient":
-        """Build from Settings, failing clearly when no key is configured (§9.4)."""
+    def from_settings(cls, settings: "Settings", *, model: str | None = None) -> "AnthropicClient":
+        """Build from Settings, failing clearly when no key is configured (§9.4).
+
+        ``model`` — override the model id (defaults to settings.reasoning_model).
+        Used by the eval harness to build the judge on its separately-pinned
+        settings.judge_model (§12.6 amendment 1).
+        """
         if not settings.anthropic_api_key:
             raise MissingAPIKeyError(
                 "No Anthropic API key configured. Set ATLAS_ANTHROPIC_API_KEY "
                 "in your environment or .env file."
             )
-        return cls(api_key=settings.anthropic_api_key, model=settings.reasoning_model)
+        return cls(api_key=settings.anthropic_api_key, model=model or settings.reasoning_model)
 
     def complete(self, *, system: str, user: str) -> str:
         response = self._client.messages.create(

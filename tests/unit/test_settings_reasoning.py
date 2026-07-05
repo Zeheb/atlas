@@ -29,3 +29,12 @@ def test_fields_read_from_atlas_env_prefix(monkeypatch) -> None:
     settings = Settings(_env_file=None)
     assert settings.anthropic_api_key == "sk-test-123"
     assert settings.reasoning_model == "claude-test-model"
+
+
+def test_judge_model_pinned_separately_from_reasoning_model(monkeypatch) -> None:
+    # §12.6 amendment 1: upgrading the reasoning model must not move the judge.
+    monkeypatch.setenv("ATLAS_REASONING_MODEL", "claude-new-upgrade")
+    settings = Settings(_env_file=None)
+    assert settings.judge_model == "claude-sonnet-5"  # unchanged default
+    monkeypatch.setenv("ATLAS_JUDGE_MODEL", "claude-judge-pin")
+    assert Settings(_env_file=None).judge_model == "claude-judge-pin"

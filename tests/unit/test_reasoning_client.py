@@ -35,3 +35,10 @@ def test_from_settings_builds_with_key(monkeypatch) -> None:
     client = AnthropicClient.from_settings(Settings(_env_file=None))
     assert isinstance(client, LLMClient)
     assert client._model == "claude-test"
+
+
+def test_from_settings_model_override_for_judge(monkeypatch) -> None:
+    monkeypatch.setenv("ATLAS_ANTHROPIC_API_KEY", "sk-test-abc")
+    monkeypatch.setenv("ATLAS_REASONING_MODEL", "claude-reasoning")
+    client = AnthropicClient.from_settings(Settings(_env_file=None), model="claude-judge")
+    assert client._model == "claude-judge"

@@ -99,6 +99,7 @@ def run_suite(
     *,
     milestone: str,
     model: str,
+    judge_model: str | None = None,
 ) -> Report:
     """Run every available case, mark the rest pending, and build a Report."""
     caps = frozenset(capabilities)
@@ -115,6 +116,7 @@ def run_suite(
         capabilities=tuple(sorted(caps)),
         results=tuple(results),
         git_commit=_git_commit(),
+        judge_model=judge_model,
     )
 
 

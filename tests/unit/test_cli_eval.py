@@ -56,9 +56,11 @@ def _suite(path: Path) -> Path:
 def test_eval_run_writes_report_and_prints_summary(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("ATLAS_REPOSITORY_BASE_PATH", str(tmp_path))
     monkeypatch.setenv("ATLAS_ANTHROPIC_API_KEY", "sk-test")
+    # from_settings is called twice: reasoning client (no kwargs) and judge
+    # client (model=judge_model) — the fake accepts both (§12.6 amendment 1).
     monkeypatch.setattr(
         "atlas.reasoning.client.AnthropicClient.from_settings",
-        classmethod(lambda cls, settings: _BranchingFake()),
+        classmethod(lambda cls, settings, **kwargs: _BranchingFake()),
     )
     _seed(tmp_path)
     suite = _suite(tmp_path / "suite.json")
@@ -74,6 +76,7 @@ def test_eval_run_writes_report_and_prints_summary(monkeypatch, tmp_path) -> Non
     assert report["aggregates"]["correctness_pass_rate"] == 1.0
     assert report["aggregates"]["grounding_pass_rate"] == 1.0
     assert report["results"][0]["reasoning_quality"] == 4
+    assert report["judge_model"]  # instrument provenance recorded (§12.6 am. 1)
     assert "coverage" in result.output
 
 

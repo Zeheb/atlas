@@ -38,12 +38,16 @@ class Report:
     capabilities: tuple[str, ...]
     results: tuple[CaseResult, ...]
     git_commit: str | None = None
+    # Judge model recorded separately from the reasoning model: the instrument
+    # is pinned independently of the system under test (§12.6 amendment 1).
+    judge_model: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "milestone": self.milestone,
             "created_at": self.created_at,
             "model": self.model,
+            "judge_model": self.judge_model,
             "git_commit": self.git_commit,
             "capabilities": list(self.capabilities),
             "aggregates": aggregate(self.results),
@@ -73,7 +77,7 @@ class Report:
         return cls(
             milestone=d["milestone"], created_at=d["created_at"], model=d["model"],
             capabilities=tuple(d.get("capabilities", ())), results=results,
-            git_commit=d.get("git_commit"),
+            git_commit=d.get("git_commit"), judge_model=d.get("judge_model"),
         )
 
     @classmethod

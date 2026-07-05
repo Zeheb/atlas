@@ -71,3 +71,11 @@ class Settings(BaseSettings):
         default="claude-sonnet-5",
         description="Model id used by the reasoning subsystem.",
     )
+    judge_model: str = Field(
+        default="claude-sonnet-5",
+        description=(
+            "Model id used by the evaluation judge. Pinned separately from "
+            "reasoning_model so upgrading the system under test never changes "
+            "the measuring instrument (blueprint §12.6, amendment 1)."
+        ),
+    )
