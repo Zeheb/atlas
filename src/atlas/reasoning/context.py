@@ -1,4 +1,5 @@
-"""GroundingContext assembly (M0 commit 3; M1 commit 2 adds retrieval).
+"""GroundingContext assembly (M0 commit 3; M1 commit 2 adds retrieval; M1.5
+commit 2 adds question-conditioned passage merging — ADR-M1.5).
 
 Turns a persisted ``CompanyProfile`` into the closed-world ``GroundingContext``
 (C5) the reasoner is allowed to cite. Each profile record becomes one grounded
@@ -13,12 +14,21 @@ exists — strengthening semantic grounding by exposing the actual prose behind
 a conclusion, not just its structured summary. ``kb=None`` (the default)
 reproduces M0's behavior exactly: no retrieval is attempted, no cost is paid.
 
-Retrieval is deliberately scoped to evidence_ids *already* present in the
-profile-derived claims — it enriches existing evidence, it never introduces a
-new citable id. This keeps the closed-world invariant trivially true (no new
-ids appear in ``evidence_index``) and avoids an open-ended whole-corpus scan;
-mining additional, previously-unextracted documents for new claims is an
-extraction-layer capability for a later milestone, not M1's job.
+M1.5 (ADR-M1.5) adds a second, optional pass: when a ``question`` is ALSO
+supplied, ``retrieval.retrieve_passages`` scans the SAME candidate documents
+(already fetched into the shared content cache during M1's hydration — zero
+extra KB reads) for passages relevant to the *question itself*, not just to an
+existing claim's statement. Each accepted passage becomes an ordinary
+fact-``Claim`` merged into ``claims``. ``question=None`` (the default)
+reproduces M0/M1 behavior exactly.
+
+Retrieval — both M1's hydration and M1.5's question-conditioned merge — is
+deliberately scoped to evidence_ids *already* present in the profile-derived
+claims. This keeps the closed-world invariant trivially true (no new ids ever
+appear in ``evidence_index``, since it is recomputed from the final claim set)
+and avoids an open-ended whole-corpus scan; mining previously-unextracted
+documents for new claims is an extraction-layer capability for a later
+milestone, not this one's job.
 
 Passing ``known_ids`` (e.g. ``KnowledgeBase.known_ids()``) enforces C2's identity
 invariant at assembly: any evidence_id not resolvable in the KB is dropped, and
@@ -55,6 +65,7 @@ def build_context(
     *,
     known_ids: Iterable[str] | None = None,
     kb: KnowledgeBase | None = None,
+    question: str | None = None,
 ) -> GroundingContext:
     """Assemble the GroundingContext for one company from its profile.
 
@@ -63,6 +74,10 @@ def build_context(
     ``kb`` — when supplied, raw-text retrieval hydrates claim evidence with
     verbatim excerpts (M1). Omit for M0-equivalent behavior (structured facts
     only, no retrieval attempted).
+    ``question`` — when ALSO supplied (requires ``kb``), question-conditioned
+    passage retrieval merges additional relevant passages as fact-Claims
+    (M1.5 / ADR-M1.5), at zero extra KB reads beyond what ``kb`` already
+    fetched for hydration. Omit for M0/M1-equivalent behavior.
     """
     allowed: frozenset[str] | None = frozenset(known_ids) if known_ids is not None else None
 
@@ -78,12 +93,19 @@ def build_context(
 
     retrieved: tuple[RetrievedEvidence, ...] = ()
     if kb is not None:
-        claims, retrieved, docs_capped = _hydrate_with_excerpts(claims, kb)
+        content_cache: dict[str, str | None] = {}
+        claims, hydrated_retrieved, docs_capped = _hydrate_with_excerpts(claims, kb, content_cache)
         if docs_capped:
             notes.append(
                 f"Retrieval limited to {_MAX_HYDRATED_DOCS} distinct source "
                 "documents; remaining citations kept without a verbatim excerpt."
             )
+        passage_retrieved: tuple[RetrievedEvidence, ...] = ()
+        if question is not None:
+            claims, passage_retrieved = _merge_question_passages(
+                claims, subject_ref, kb, question, content_cache,
+            )
+        retrieved = hydrated_retrieved + passage_retrieved
 
     evidence_index = frozenset(eid for c in claims for eid in c.evidence_ids)
     return GroundingContext(
@@ -99,13 +121,16 @@ def build_context(
 # Raw-text hydration (M1)
 # ---------------------------------------------------------------------------
 def _hydrate_with_excerpts(
-    claims: list[Claim], kb: KnowledgeBase
+    claims: list[Claim], kb: KnowledgeBase, content_cache: dict[str, str | None],
 ) -> tuple[list[Claim], tuple[RetrievedEvidence, ...], bool]:
     """Enrich each claim's evidence with a verbatim excerpt where a confident
     match exists. Never introduces a new evidence_id; leaves a reference bare
     when no content or no confident match is available (G5).
+
+    ``content_cache`` is owned by the caller (``build_context``) so the M1.5
+    question-conditioned pass can reuse the same fetched document content —
+    zero extra KB reads for that second pass.
     """
-    content_cache: dict[str, str | None] = {}
     retrieved: list[RetrievedEvidence] = []
     seen_spans: set[tuple[str, str]] = set()
     docs_capped = False
@@ -140,6 +165,59 @@ def _hydrate_with_excerpts(
         hydrated_claims.append(replace(claim, evidence=tuple(new_evidence)) if changed else claim)
 
     return hydrated_claims, tuple(retrieved), docs_capped
+
+
+# ---------------------------------------------------------------------------
+# Question-conditioned passage merge (M1.5 / ADR-M1.5)
+# ---------------------------------------------------------------------------
+def _merge_question_passages(
+    claims: list[Claim],
+    subject: SubjectRef,
+    kb: KnowledgeBase,
+    question: str,
+    content_cache: dict[str, str | None],
+) -> tuple[list[Claim], tuple[RetrievedEvidence, ...]]:
+    """Merge additional passages relevant to *question* as fact-Claims.
+
+    Candidate documents are restricted to evidence_ids ALREADY backing a claim
+    AND already present in ``content_cache`` (i.e. already fetched by M1's
+    hydration pass, whether or not a match was found there) — so this pass
+    reads from cache only and never issues a new KB call. This is what keeps
+    the closed-world invariant trivially true: every passage cites an
+    evidence_id the caller already resolved and already trusts.
+    """
+    candidate_ids = frozenset(eid for c in claims for eid in c.evidence_ids) & frozenset(content_cache)
+    if not candidate_ids:
+        return claims, ()
+
+    seen_spans = {
+        (ref.evidence_id, ref.excerpt) for c in claims for ref in c.evidence if ref.excerpt
+    }
+    matches = _retrieval.retrieve_passages(kb, candidate_ids, question, content_cache=content_cache)
+
+    new_claims: list[Claim] = []
+    retrieved: list[RetrievedEvidence] = []
+    for doc_id, match in matches:
+        span_key = (doc_id, match.excerpt)
+        if span_key in seen_spans:
+            continue  # identical to an excerpt already hydrated onto an existing claim
+        seen_spans.add(span_key)
+        ref = EvidenceReference(
+            evidence_id=doc_id, excerpt=match.excerpt,
+            char_offset=match.char_offset, section=match.section,
+        )
+        new_claims.append(Claim(
+            subject_ref=subject,
+            statement=f'Source passage: "{match.excerpt}"',
+            assertability="fact",
+            confidence=match.relevance,
+            evidence=(ref,),
+        ))
+        retrieved.append(RetrievedEvidence(
+            evidence_ref=ref, content_span=match.excerpt, relevance=match.relevance,
+        ))
+
+    return claims + new_claims, tuple(retrieved)
 
 
 # ---------------------------------------------------------------------------
