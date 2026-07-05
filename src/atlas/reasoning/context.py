@@ -1,14 +1,24 @@
-"""GroundingContext assembly (M0 commit 3).
+"""GroundingContext assembly (M0 commit 3; M1 commit 2 adds retrieval).
 
 Turns a persisted ``CompanyProfile`` into the closed-world ``GroundingContext``
 (C5) the reasoner is allowed to cite. Each profile record becomes one grounded
 ``Claim`` (C3) carrying the evidence_ids Atlas already recorded as its source —
 so the grounding chain starts here, fully backed (G1/G10).
 
-M0 grounds on the *structured* profile only; raw-text retrieval over
-``KnowledgeBase.get_content`` (populating ``RetrievedEvidence`` and verbatim
-excerpts) is deferred to M1 (§9.4). Per amendment M0-01, profile-derived
-``EvidenceReference``s therefore carry ``evidence_id`` only.
+M0 grounded on the *structured* profile only (terse "kind = value" strings).
+M1 adds an *optional* raw-text hydration pass: when a ``KnowledgeBase`` is
+supplied, each claim's evidence is enriched with a verbatim excerpt from its
+source document (via ``retrieval.fetch_and_match``) wherever a confident match
+exists — strengthening semantic grounding by exposing the actual prose behind
+a conclusion, not just its structured summary. ``kb=None`` (the default)
+reproduces M0's behavior exactly: no retrieval is attempted, no cost is paid.
+
+Retrieval is deliberately scoped to evidence_ids *already* present in the
+profile-derived claims — it enriches existing evidence, it never introduces a
+new citable id. This keeps the closed-world invariant trivially true (no new
+ids appear in ``evidence_index``) and avoids an open-ended whole-corpus scan;
+mining additional, previously-unextracted documents for new claims is an
+extraction-layer capability for a later milestone, not M1's job.
 
 Passing ``known_ids`` (e.g. ``KnowledgeBase.known_ids()``) enforces C2's identity
 invariant at assembly: any evidence_id not resolvable in the KB is dropped, and
@@ -17,17 +27,26 @@ a claim left with no evidence is dropped with it — nothing unbacked survives.
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator, Sequence
+from dataclasses import replace
 
 from atlas.company.model import CompanyProfile
+from atlas.knowledge.base import KnowledgeBase
+from atlas.reasoning import retrieval as _retrieval
 from atlas.reasoning.contracts import (
     Claim,
     EvidenceReference,
     GroundingContext,
+    RetrievedEvidence,
     SubjectRef,
 )
 
 # Compactness guard so a very deep profile cannot blow the context budget.
 _MAX_CLAIMS = 500
+
+# Bound on distinct evidence_ids whose content is fetched from the KB per
+# build_context() call — bounds DB reads, not the (cheap, cached) per-claim
+# excerpt search against already-fetched content.
+_MAX_HYDRATED_DOCS = 60
 
 
 def build_context(
@@ -35,33 +54,92 @@ def build_context(
     subject_ref: SubjectRef,
     *,
     known_ids: Iterable[str] | None = None,
+    kb: KnowledgeBase | None = None,
 ) -> GroundingContext:
     """Assemble the GroundingContext for one company from its profile.
 
     ``known_ids`` — when supplied, the set of evidence_ids that resolve in the
     KnowledgeBase; references outside it are dropped (C2 identity invariant).
+    ``kb`` — when supplied, raw-text retrieval hydrates claim evidence with
+    verbatim excerpts (M1). Omit for M0-equivalent behavior (structured facts
+    only, no retrieval attempted).
     """
     allowed: frozenset[str] | None = frozenset(known_ids) if known_ids is not None else None
 
-    claims: list[Claim] = []
-    for claim in _iter_claims(profile, subject_ref, allowed):
-        claims.append(claim)
+    claims: list[Claim] = list(_iter_claims(profile, subject_ref, allowed))
 
-    budget_note: str | None = None
+    notes: list[str] = []
     if len(claims) > _MAX_CLAIMS:
         # Keep the most recent evidence (claims are appended roughly oldest-first
         # per time series); record the truncation rather than hiding it (G5).
         dropped = len(claims) - _MAX_CLAIMS
         claims = claims[-_MAX_CLAIMS:]
-        budget_note = f"Truncated to {_MAX_CLAIMS} claims; {dropped} older claims omitted."
+        notes.append(f"Truncated to {_MAX_CLAIMS} claims; {dropped} older claims omitted.")
+
+    retrieved: tuple[RetrievedEvidence, ...] = ()
+    if kb is not None:
+        claims, retrieved, docs_capped = _hydrate_with_excerpts(claims, kb)
+        if docs_capped:
+            notes.append(
+                f"Retrieval limited to {_MAX_HYDRATED_DOCS} distinct source "
+                "documents; remaining citations kept without a verbatim excerpt."
+            )
 
     evidence_index = frozenset(eid for c in claims for eid in c.evidence_ids)
     return GroundingContext(
         subject_ref=subject_ref,
         claims=tuple(claims),
         evidence_index=evidence_index,
-        budget_note=budget_note,
+        retrieved=retrieved,
+        budget_note="; ".join(notes) if notes else None,
     )
+
+
+# ---------------------------------------------------------------------------
+# Raw-text hydration (M1)
+# ---------------------------------------------------------------------------
+def _hydrate_with_excerpts(
+    claims: list[Claim], kb: KnowledgeBase
+) -> tuple[list[Claim], tuple[RetrievedEvidence, ...], bool]:
+    """Enrich each claim's evidence with a verbatim excerpt where a confident
+    match exists. Never introduces a new evidence_id; leaves a reference bare
+    when no content or no confident match is available (G5).
+    """
+    content_cache: dict[str, str | None] = {}
+    retrieved: list[RetrievedEvidence] = []
+    seen_spans: set[tuple[str, str]] = set()
+    docs_capped = False
+
+    hydrated_claims: list[Claim] = []
+    for claim in claims:
+        new_evidence: list[EvidenceReference] = []
+        changed = False
+        for ref in claim.evidence:
+            if ref.evidence_id not in content_cache and len(content_cache) >= _MAX_HYDRATED_DOCS:
+                docs_capped = True
+                new_evidence.append(ref)
+                continue
+            match = _retrieval.fetch_and_match(
+                kb, ref.evidence_id, claim.statement, content_cache=content_cache
+            )
+            if match is None:
+                new_evidence.append(ref)
+                continue
+            hydrated_ref = replace(
+                ref, excerpt=match.excerpt, char_offset=match.char_offset, section=match.section,
+            )
+            new_evidence.append(hydrated_ref)
+            changed = True
+            span_key = (ref.evidence_id, match.excerpt)
+            if span_key not in seen_spans:
+                seen_spans.add(span_key)
+                retrieved.append(RetrievedEvidence(
+                    evidence_ref=hydrated_ref, content_span=match.excerpt,
+                    relevance=match.relevance,
+                ))
+        hydrated_claims.append(replace(claim, evidence=tuple(new_evidence)) if changed else claim)
+
+    return hydrated_claims, tuple(retrieved), docs_capped
 
 
 # ---------------------------------------------------------------------------
