@@ -26,6 +26,10 @@ class CaseResult:
     grounding_reasons: tuple[str, ...] = ()
     reasoning_quality: int | None = None
     usefulness: int | None = None
+    # §12.6 amendment 3: judged completeness against the available evidence,
+    # plus the free deterministic proxy (distinct evidence documents cited).
+    evidence_use: int | None = None
+    distinct_docs_cited: int | None = None
     judge_notes: str = ""
     error: str | None = None
 
@@ -69,6 +73,8 @@ class Report:
                 grounding_reasons=tuple(r.get("grounding_reasons", ())),
                 reasoning_quality=r.get("reasoning_quality"),
                 usefulness=r.get("usefulness"),
+                evidence_use=r.get("evidence_use"),
+                distinct_docs_cited=r.get("distinct_docs_cited"),
                 judge_notes=r.get("judge_notes", ""),
                 error=r.get("error"),
             )
@@ -96,6 +102,8 @@ def aggregate(results: tuple[CaseResult, ...]) -> dict[str, Any]:
     grounding = [r.grounding_pass for r in active if r.grounding_pass is not None]
     quality = [r.reasoning_quality for r in active if r.reasoning_quality is not None]
     useful = [r.usefulness for r in active if r.usefulness is not None]
+    ev_use = [r.evidence_use for r in active if r.evidence_use is not None]
+    docs = [r.distinct_docs_cited for r in active if r.distinct_docs_cited is not None]
     return {
         "total_cases": len(results),
         "active_cases": len(active),
@@ -104,6 +112,8 @@ def aggregate(results: tuple[CaseResult, ...]) -> dict[str, Any]:
         "grounding_pass_rate": _mean([1.0 if p else 0.0 for p in grounding]),
         "mean_reasoning_quality": _mean([float(q) for q in quality]),
         "mean_usefulness": _mean([float(u) for u in useful]),
+        "mean_evidence_use": _mean([float(e) for e in ev_use]),
+        "mean_distinct_docs_cited": _mean([float(d) for d in docs]),
         "errors": sum(1 for r in active if r.error),
     }
 
@@ -113,7 +123,7 @@ def compare(baseline: Report, candidate: Report) -> dict[str, Any]:
     base_agg, cand_agg = aggregate(baseline.results), aggregate(candidate.results)
     dims = [
         "coverage", "correctness_pass_rate", "grounding_pass_rate",
-        "mean_reasoning_quality", "mean_usefulness",
+        "mean_reasoning_quality", "mean_usefulness", "mean_evidence_use",
     ]
     deltas: dict[str, Any] = {}
     for d in dims:

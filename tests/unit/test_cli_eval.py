@@ -23,7 +23,9 @@ class _BranchingFake:
 
     def complete(self, *, system: str, user: str) -> str:
         if system == JUDGE_SYSTEM_PROMPT:
-            return json.dumps({"reasoning_quality": 4, "usefulness": 4, "notes": "ok"})
+            return json.dumps(
+                {"reasoning_quality": 4, "usefulness": 4, "evidence_use": 4, "notes": "ok"}
+            )
         return json.dumps({
             "refused": False, "overall_confidence": "high",
             "findings": [{

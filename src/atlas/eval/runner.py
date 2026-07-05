@@ -130,12 +130,17 @@ def _run_case(case: EvalCase, runner: ReasoningRunner, judge: Judge | None) -> C
     grnd = score_grounding(result, context)
     quality: int | None = None
     usefulness: int | None = None
+    evidence_use: int | None = None
     notes = ""
-    if judge is not None and not result.refused:
+    # §12.6 amendment 4: refused answers are judged too — refusal quality is a
+    # product feature (G8/§8.8), and evidence_use catches the "lazy refusal"
+    # (declining although the evidence contains the answer).
+    if judge is not None:
         try:
-            verdict = judge.evaluate(case, answer)
-            quality, usefulness, notes = (
-                verdict.reasoning_quality, verdict.usefulness, verdict.notes,
+            verdict = judge.evaluate(case, answer, context)  # amendment 2: context
+            quality, usefulness, evidence_use, notes = (
+                verdict.reasoning_quality, verdict.usefulness,
+                verdict.evidence_use, verdict.notes,
             )
         except Exception as exc:  # noqa: BLE001 - a judge failure must not abort the case
             notes = f"judge error: {exc}"
@@ -145,7 +150,10 @@ def _run_case(case: EvalCase, runner: ReasoningRunner, judge: Judge | None) -> C
         refused=result.refused,
         correctness_pass=corr.passed, correctness_reasons=corr.reasons,
         grounding_pass=grnd.passed, grounding_reasons=grnd.reasons,
-        reasoning_quality=quality, usefulness=usefulness, judge_notes=notes,
+        reasoning_quality=quality, usefulness=usefulness,
+        evidence_use=evidence_use,
+        distinct_docs_cited=len(result.citations),
+        judge_notes=notes,
     )
 
 
