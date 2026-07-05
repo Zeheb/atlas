@@ -22,6 +22,12 @@ CAP_MULTI_NAME = "multi_name"  # M5
 CAP_CONVERSATION = "conversation"  # M5
 CAP_DRILLDOWN = "drilldown"  # M1
 CAP_DETERMINISM = "determinism"  # M4
+# M1.5 (ADR-M1.5): a runner-MODE switch, not a case gate — no case declares
+# this in `requires`, so including it in --capabilities never changes which
+# cases are attempted. It only tells LiveReasoningRunner to pass the case's
+# question into build_context(), activating question-conditioned retrieval so
+# `atlas eval compare` can measure its effect against the M1 baseline.
+CAP_QUESTION_RETRIEVAL = "question_retrieval"
 
 Behavior = Literal["answer", "refuse"]
 

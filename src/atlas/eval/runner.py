@@ -11,6 +11,14 @@ into to_answer() so citations carry retrieved excerpts — this is the wiring
 that lets `atlas eval run --capabilities ...,drilldown` actually exercise the
 existing t43 (drill-to-source) case. No new eval case was needed: t43 already
 declares requires=["drilldown"] and simply activates.
+
+M1.5 (ADR-M1.5): LiveReasoningRunner also accepts a `capabilities` set. When it
+contains "question_retrieval", the case's question is forwarded into
+build_context(), activating question-conditioned passage merging so
+`atlas eval compare` can measure its effect against the M1 baseline. This is a
+runner-mode switch, not a case gate — no case requires it, so no case's
+availability changes; capabilities defaults to frozenset() (question never
+passed), reproducing M1's LiveReasoningRunner behavior exactly.
 """
 from __future__ import annotations
 
@@ -21,7 +29,7 @@ from typing import Protocol
 
 from atlas.company.store import CompanyStore
 from atlas.config.settings import Settings
-from atlas.eval.cases import EvalCase
+from atlas.eval.cases import CAP_QUESTION_RETRIEVAL, EvalCase
 from atlas.eval.correctness import score_correctness
 from atlas.eval.grounding import score_grounding
 from atlas.eval.judge import Judge
@@ -52,11 +60,20 @@ class ReasoningRunner(Protocol):
 
 
 class LiveReasoningRunner:
-    """Production runner: loads the profile and drives the M0 reasoning pipeline."""
+    """Production runner: loads the profile and drives the M0 reasoning pipeline.
 
-    def __init__(self, settings: Settings, client: LLMClient) -> None:
+    ``capabilities`` — when it contains CAP_QUESTION_RETRIEVAL, the case's
+    question is forwarded into build_context(), activating M1.5's
+    question-conditioned passage merge (ADR-M1.5). Defaults to frozenset()
+    (question never passed), reproducing M1 behavior exactly.
+    """
+
+    def __init__(
+        self, settings: Settings, client: LLMClient, *, capabilities: frozenset[str] = frozenset(),
+    ) -> None:
         self._settings = settings
         self._client = client
+        self._capabilities = capabilities
 
     def run(self, case: EvalCase) -> tuple[ReasoningResult, Answer, GroundingContext]:
         repo_root = self._settings.repository_base_path / case.subject
@@ -66,7 +83,8 @@ class LiveReasoningRunner:
         profile = CompanyStore(profile_path, case.subject).load()
         subject = SubjectRef(subject_id=case.subject, display=case.subject)
         kb = KnowledgeBase(repo_root) if (repo_root / "knowledge.db").exists() else None
-        context = build_context(profile, subject, kb=kb)
+        question = case.question if CAP_QUESTION_RETRIEVAL in self._capabilities else None
+        context = build_context(profile, subject, kb=kb, question=question)
         result = ask(
             Question(raw_text=case.question, subject_ref=subject), context, self._client
         )

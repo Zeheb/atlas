@@ -377,7 +377,16 @@ def metrics_cmd(domain: str | None) -> None:
     "--show-evidence", is_flag=True, default=False,
     help="Print the retrieved source excerpt behind each citation (drill-to-source).",
 )
-def ask_cmd(ticker: str, question: str, show_evidence: bool) -> None:
+@click.option(
+    "--question-retrieval", "question_retrieval", is_flag=True, default=False,
+    help=(
+        "Merge additional passages relevant to the QUESTION itself (not just "
+        "existing claims) into the grounding context, at zero extra KB reads "
+        "beyond what --show-evidence hydration already fetches (M1.5, default off "
+        "pending eval-measured activation; see ADR-M1.5)."
+    ),
+)
+def ask_cmd(ticker: str, question: str, show_evidence: bool, question_retrieval: bool) -> None:
     """Answer a natural-language QUESTION about TICKER, grounded in its evidence.
 
     Reads the saved CompanyProfile (run 'atlas profile build TICKER' first) and
@@ -385,7 +394,8 @@ def ask_cmd(ticker: str, question: str, show_evidence: bool) -> None:
     Every claim is grounded in evidence Atlas already extracted; out-of-scope
     questions (e.g. valuation) are declined rather than guessed. When the
     company's KnowledgeBase is present, claim evidence is hydrated with
-    retrieved source excerpts (M1); pass --show-evidence to see them.
+    retrieved source excerpts (M1); pass --show-evidence to see them, and
+    --question-retrieval to also surface passages relevant to this question.
     """
     from atlas.company.store import CompanyStore
     from atlas.knowledge.base import KnowledgeBase
@@ -416,7 +426,11 @@ def ask_cmd(ticker: str, question: str, show_evidence: bool) -> None:
     # boundary — wiring it here could drop claims whose source documents predate
     # the KB, a behavior change beyond what M1 asked for.
     kb = KnowledgeBase(repo_root) if (repo_root / "knowledge.db").exists() else None
-    context = build_context(profile, subject, kb=kb)
+    # M1.5 (ADR-M1.5): question-conditioned passage merge, default OFF — the ADR
+    # gates activation on eval-measured lift, not on availability alone.
+    context = build_context(
+        profile, subject, kb=kb, question=question if question_retrieval else None,
+    )
     result = ask(Question(raw_text=question, subject_ref=subject), context, client)
     click.echo(format_answer(to_answer(result, context=context), show_evidence=show_evidence))
 
@@ -460,7 +474,11 @@ def eval_run_cmd(
     caps = [c.strip() for c in capabilities.split(",") if c.strip()]
     report = run_suite(
         cases,
-        LiveReasoningRunner(atlas.settings, client),
+        # M1.5: forwarding the same capability set lets --capabilities include
+        # "question_retrieval" to toggle the ADR-M1.5 pass for `eval compare`
+        # measurement, without gating any case's availability (no case
+        # requires it — it's a runner-mode switch, not a case gate).
+        LiveReasoningRunner(atlas.settings, client, capabilities=frozenset(caps)),
         None if no_judge else Judge(client),
         caps,
         milestone=milestone,
