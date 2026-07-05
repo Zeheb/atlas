@@ -1,9 +1,13 @@
-"""Prompt construction for M0 reasoning (commit 5).
+"""Prompt construction for M0 reasoning (commit 5); M1 commit 3 adds excerpts.
 
 The system prompt encodes the §8.4 guarantees the model must honor; the user
 prompt presents the closed-world GroundingContext (C5) and the question. The
 model must return STRUCTURED JSON so ``ask.py`` can map it onto Findings (C7)
 and validate every citation — prose is never parsed for claims.
+
+M1: when a claim's evidence carries a retrieved excerpt, it is rendered
+alongside the terse structured fact — the reasoner sees the actual source
+prose behind a conclusion, not only its "kind = value" summary.
 """
 from __future__ import annotations
 
@@ -61,6 +65,11 @@ def build_user_prompt(question: Question, context: GroundingContext) -> str:
     for claim in context.claims:
         ids = ",".join(sorted(claim.evidence_ids))
         lines.append(f"- [{ids}] {claim.statement}")
+        seen_excerpts: set[str] = set()
+        for ref in claim.evidence:
+            if ref.excerpt and ref.excerpt not in seen_excerpts:
+                seen_excerpts.add(ref.excerpt)
+                lines.append(f'    source text: "{ref.excerpt}"')
     if context.budget_note:
         lines.append(f"(note: {context.budget_note})")
     lines += [
