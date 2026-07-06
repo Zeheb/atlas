@@ -60,13 +60,60 @@ class Settings(BaseSettings):
     )
 
     # --- Reasoning / LLM (consumed by the reasoning subsystem, M0+) ---
+    #
+    # Provider fields name TRANSPORTS, not model families (architecture
+    # amendment: provider vs. model adapter vs. model identity).
+    # google_ai_studio and vertex_ai both serve Gemini models and may share
+    # one adapter; this Literal is duplicated (not imported) from
+    # atlas.reasoning.llm.base.LLMProvider deliberately — config is a
+    # foundational module and must not depend on a domain subsystem package.
+    # Keep the two literals' values in sync by hand.
+    llm_provider: Literal["anthropic", "google_ai_studio", "vertex_ai"] = Field(
+        default="anthropic",
+        description="Default transport for both the reasoning and judge roles.",
+    )
+    reasoning_provider: Literal["anthropic", "google_ai_studio", "vertex_ai"] | None = Field(
+        default=None,
+        description="Transport override for the reasoning role; falls back to llm_provider.",
+    )
+    judge_provider: Literal["anthropic", "google_ai_studio", "vertex_ai"] | None = Field(
+        default=None,
+        description=(
+            "Transport override for the judge role; falls back to llm_provider. "
+            "Independent of reasoning_provider so judge and reasoning can run on "
+            "genuinely different implementations (blueprint §12.6, amendment 1)."
+        ),
+    )
+
     anthropic_api_key: str | None = Field(
         default=None,
         description=(
-            "API key for the Anthropic reasoning client. Optional so non-reasoning "
+            "API key for the anthropic transport. Optional so non-reasoning "
             "commands run without it; the 'ask' command fails clearly when absent."
         ),
     )
+    gemini_api_key: str | None = Field(
+        default=None,
+        description=(
+            "API key for the google_ai_studio transport. Config surface only — "
+            "the Gemini adapter is designed but not yet implemented."
+        ),
+    )
+    vertex_project: str | None = Field(
+        default=None,
+        description=(
+            "GCP project id for the vertex_ai transport. Config surface only — "
+            "the Gemini adapter is designed but not yet implemented."
+        ),
+    )
+    vertex_region: str | None = Field(
+        default=None,
+        description=(
+            "GCP region for the vertex_ai transport. Config surface only — "
+            "the Gemini adapter is designed but not yet implemented."
+        ),
+    )
+
     reasoning_model: str = Field(
         default="claude-sonnet-5",
         description="Model id used by the reasoning subsystem.",
@@ -78,4 +125,15 @@ class Settings(BaseSettings):
             "reasoning_model so upgrading the system under test never changes "
             "the measuring instrument (blueprint §12.6, amendment 1)."
         ),
+    )
+
+    llm_max_tokens: int = Field(
+        default=4096,
+        gt=0,
+        description="Max output tokens for LLM completions.",
+    )
+    llm_temperature: float = Field(
+        default=0.0,
+        ge=0,
+        description="Sampling temperature for LLM completions (determinism floor; G7).",
     )
