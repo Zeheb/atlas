@@ -1,9 +1,9 @@
 {
   "milestone": "M1.5-baseline",
-  "created_at": "2026-07-06T04:28:49.535070+00:00",
-  "model": "claude-sonnet-5",
-  "judge_model": "claude-sonnet-5",
-  "git_commit": "8bcbd2feab5467eca0e0fd0a1c0f2ce38c73348a",
+  "created_at": "2026-07-06T10:01:29.767452+00:00",
+  "model": "gemini-2.5-flash",
+  "judge_model": "gemini-2.5-flash",
+  "git_commit": "618792bda0c7b9a47e9fa6610abbd8c793af57cc",
   "capabilities": [
     "drilldown",
     "single_name"
@@ -12,94 +12,96 @@
     "total_cases": 44,
     "active_cases": 31,
     "coverage": 0.705,
-    "correctness_pass_rate": null,
-    "grounding_pass_rate": null,
-    "mean_reasoning_quality": null,
-    "mean_usefulness": null,
-    "mean_evidence_use": null,
-    "mean_distinct_docs_cited": null,
-    "errors": 31
+    "correctness_pass_rate": 0.846,
+    "grounding_pass_rate": 0.923,
+    "mean_reasoning_quality": 2.222,
+    "mean_usefulness": 2.111,
+    "mean_evidence_use": 2.333,
+    "mean_distinct_docs_cited": 4.462,
+    "errors": 18
   },
   "results": [
     {
       "case_id": "t01",
       "category": "A",
       "status": "active",
-      "refused": null,
-      "correctness_pass": null,
+      "refused": false,
+      "correctness_pass": true,
       "correctness_reasons": [],
-      "grounding_pass": null,
+      "grounding_pass": true,
       "grounding_reasons": [],
-      "reasoning_quality": null,
-      "usefulness": null,
-      "evidence_use": null,
-      "distinct_docs_cited": null,
-      "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cck8fasTX6ihUxfZ26pNk'}"
+      "reasoning_quality": 1,
+      "usefulness": 1,
+      "evidence_use": 1,
+      "distinct_docs_cited": 7,
+      "judge_notes": "The assistant hallucinates nearly all of its answer. The available evidence consists solely of numerical financial and ESG data. It does not contain any textual statements from management regarding capital allocation strategy, dividend policy, buybacks, or investment priorities. The assistant invents specific percentages for FCF allocation to dividends, a buyback amount, margin targets, AI aspirations, energy savings, and gigawatt targets, none of which are present in the provided evidence. While some FCF numbers are correctly extracted, they are presented as 'what management said about capital allocation,' which is a misrepresentation. The assistant fails to identify the absence of the requested information and instead fabricates content with high confidence.",
+      "error": null
     },
     {
       "case_id": "t02",
       "category": "A",
       "status": "active",
-      "refused": null,
-      "correctness_pass": null,
+      "refused": false,
+      "correctness_pass": true,
       "correctness_reasons": [],
-      "grounding_pass": null,
+      "grounding_pass": true,
       "grounding_reasons": [],
-      "reasoning_quality": null,
-      "usefulness": null,
-      "evidence_use": null,
-      "distinct_docs_cited": null,
-      "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cck8irzu3fuYUzmGT4XtR'}"
+      "reasoning_quality": 1,
+      "usefulness": 1,
+      "evidence_use": 1,
+      "distinct_docs_cited": 11,
+      "judge_notes": "The assistant's answer is entirely based on evidence that was not provided in the 'AVAILABLE EVIDENCE' section of the prompt. The prompt explicitly states 'AVAILABLE EVIDENCE (everything the assistant had)'. The assistant cites multiple `bse-news` IDs (e.g., `bse-news-3d97b6d5-e16a-43a3-853d-d3dbd3fe649a`) that are not present in the provided list of evidence. This constitutes hallucination of sources and information.\n\nFurthermore, the assistant failed to identify an actual exceptional item present in the provided evidence. For the fiscal year ended March 31, 2026 (consolidated), the evidence shows `financial_profit_before_exceptional = 70013.0` and `financial_profit_before_tax = 65487.0`. The difference of 4526.0 represents an exceptional expense, which the assistant completely missed. Therefore, the assistant ignored relevant available evidence while fabricating other information.",
+      "error": null
     },
     {
       "case_id": "t03",
       "category": "A",
       "status": "active",
-      "refused": null,
-      "correctness_pass": null,
+      "refused": false,
+      "correctness_pass": true,
       "correctness_reasons": [],
-      "grounding_pass": null,
+      "grounding_pass": true,
       "grounding_reasons": [],
-      "reasoning_quality": null,
-      "usefulness": null,
-      "evidence_use": null,
-      "distinct_docs_cited": null,
-      "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cck8n95cnbXhnAWdzqiih'}"
+      "reasoning_quality": 1,
+      "usefulness": 1,
+      "evidence_use": 1,
+      "distinct_docs_cited": 5,
+      "judge_notes": "The assistant attempts to answer the question but hallucinates information. The provided evidence does not contain any information about the audit firms of record or any changes to them. The first 'fact' about B S R & Co. LLP cites evidence that is clearly about 'esg_workforce_attrition_pct', not auditors. This is a severe error in evidence interpretation and fact generation. The second 'fact' about KPMG refers to 'independent assurance for TCS's ESG parameters', which is not the same as being the 'audit firm of record' for financial statements, which is the typical meaning of the question. The assistant should have stated that the information is not available in the provided evidence.",
+      "error": null
     },
     {
       "case_id": "t04",
       "category": "A",
       "status": "active",
-      "refused": null,
-      "correctness_pass": null,
+      "refused": false,
+      "correctness_pass": true,
       "correctness_reasons": [],
-      "grounding_pass": null,
+      "grounding_pass": true,
       "grounding_reasons": [],
-      "reasoning_quality": null,
-      "usefulness": null,
-      "evidence_use": null,
-      "distinct_docs_cited": null,
-      "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cck8qUtp22mGBwdj41qDC'}"
+      "reasoning_quality": 1,
+      "usefulness": 1,
+      "evidence_use": 1,
+      "distinct_docs_cited": 2,
+      "judge_notes": "The assistant hallucinates segment names and revenue figures. The provided evidence contains only consolidated and standalone financial metrics, not a breakdown by segment. The assistant should have stated that the information is not available in the provided evidence.",
+      "error": null
     },
     {
       "case_id": "t05",
       "category": "A",
       "status": "active",
-      "refused": null,
-      "correctness_pass": null,
+      "refused": false,
+      "correctness_pass": true,
       "correctness_reasons": [],
-      "grounding_pass": null,
-      "grounding_reasons": [],
-      "reasoning_quality": null,
-      "usefulness": null,
-      "evidence_use": null,
-      "distinct_docs_cited": null,
-      "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cck8tp1Lzbs5Gqguif8sz'}"
+      "grounding_pass": false,
+      "grounding_reasons": [
+        "answered without any citation"
+      ],
+      "reasoning_quality": 4,
+      "usefulness": 4,
+      "evidence_use": 5,
+      "distinct_docs_cited": 0,
+      "judge_notes": "The assistant correctly identifies that the requested information about the company's debt maturity profile is not present in the provided evidence. The explanation of what is missing is clear and helpful. The 'confidence: low' for a negative finding is a reasonable and appropriate nuance.",
+      "error": null
     },
     {
       "case_id": "t06",
@@ -115,23 +117,23 @@
       "evidence_use": null,
       "distinct_docs_cited": null,
       "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cck8xBfRB4o5zB3yJsi31'}"
+      "error": "503 UNAVAILABLE. {'error': {'code': 503, 'message': 'The service is currently unavailable.', 'status': 'UNAVAILABLE'}}"
     },
     {
       "case_id": "t07",
       "category": "B",
       "status": "active",
-      "refused": null,
-      "correctness_pass": null,
+      "refused": false,
+      "correctness_pass": true,
       "correctness_reasons": [],
-      "grounding_pass": null,
+      "grounding_pass": true,
       "grounding_reasons": [],
-      "reasoning_quality": null,
-      "usefulness": null,
-      "evidence_use": null,
-      "distinct_docs_cited": null,
-      "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cck91ZqkH9VmApxBZtAtN'}"
+      "reasoning_quality": 5,
+      "usefulness": 4,
+      "evidence_use": 5,
+      "distinct_docs_cited": 1,
+      "judge_notes": "The assistant correctly identified the single piece of evidence related to promoter pledging and accurately stated its value and date. It also correctly inferred that no historical data or information on its first appearance was available from the provided evidence, which aligns with the intended good behavior of stating data absence when applicable. The confidence level is appropriate.",
+      "error": null
     },
     {
       "case_id": "t08",
@@ -147,55 +149,57 @@
       "evidence_use": null,
       "distinct_docs_cited": null,
       "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cck94yJxwobbtXyLCZsoB'}"
+      "error": "503 UNAVAILABLE. {'error': {'code': 503, 'message': 'The service is currently unavailable.', 'status': 'UNAVAILABLE'}}"
     },
     {
       "case_id": "t09",
       "category": "B",
       "status": "active",
-      "refused": null,
-      "correctness_pass": null,
+      "refused": false,
+      "correctness_pass": true,
       "correctness_reasons": [],
-      "grounding_pass": null,
+      "grounding_pass": true,
       "grounding_reasons": [],
-      "reasoning_quality": null,
-      "usefulness": null,
-      "evidence_use": null,
-      "distinct_docs_cited": null,
-      "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cck9AFJHdnti9vBVJ3CDL'}"
+      "reasoning_quality": 5,
+      "usefulness": 5,
+      "evidence_use": 5,
+      "distinct_docs_cited": 2,
+      "judge_notes": "The assistant correctly identifies the largest segment and its revenue share for the most recent period available. It then accurately states that historical data for a five-year trend is not available in the provided evidence, which is a correct and well-explained refusal for the full scope of the question. This demonstrates excellent reasoning and evidence use.",
+      "error": null
     },
     {
       "case_id": "t10",
       "category": "B",
       "status": "active",
-      "refused": null,
-      "correctness_pass": null,
-      "correctness_reasons": [],
-      "grounding_pass": null,
+      "refused": true,
+      "correctness_pass": false,
+      "correctness_reasons": [
+        "expected an answer but Atlas refused: The model returned output that could not be parsed."
+      ],
+      "grounding_pass": true,
       "grounding_reasons": [],
       "reasoning_quality": null,
       "usefulness": null,
       "evidence_use": null,
-      "distinct_docs_cited": null,
-      "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cck9DXC5z2oUMZLLigxB5'}"
+      "distinct_docs_cited": 0,
+      "judge_notes": "judge error: judge returned unparseable output",
+      "error": null
     },
     {
       "case_id": "t11",
       "category": "C",
       "status": "active",
-      "refused": null,
-      "correctness_pass": null,
+      "refused": false,
+      "correctness_pass": true,
       "correctness_reasons": [],
-      "grounding_pass": null,
+      "grounding_pass": true,
       "grounding_reasons": [],
-      "reasoning_quality": null,
-      "usefulness": null,
-      "evidence_use": null,
-      "distinct_docs_cited": null,
-      "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cck9GrotG77n3Euub123K'}"
+      "reasoning_quality": 1,
+      "usefulness": 1,
+      "evidence_use": 1,
+      "distinct_docs_cited": 10,
+      "judge_notes": "The assistant makes two critical errors:\n1.  **Factual Error**: It incorrectly identifies the latest quarterly consolidated operating margin as 24.1% for the period ended September 30, 2024. The actual latest quarterly consolidated operating margin in the provided evidence is 25.2% for the period ended September 30, 2025.\n2.  **Hallucination/External Knowledge**: The assistant states that 'TCS has an aspirational or guidance band for its operating margin of 26-28%.' This information is not present anywhere in the `AVAILABLE EVIDENCE`. The assistant has introduced external, unsourced information, which is a severe breach of evidence use.\n\nDue to these errors, the reasoning quality is poor as the core judgment is based on incorrect and unsourced information. The usefulness is low because the answer contains factual inaccuracies and misleading information. The evidence use is poor as it claims evidence that does not exist and fails to correctly identify the latest relevant data point from the provided evidence. It also missed the opportunity to use the company's own historical operating margins as a reference, which was part of the intended good behavior.",
+      "error": null
     },
     {
       "case_id": "t12",
@@ -217,17 +221,17 @@
       "case_id": "t13",
       "category": "C",
       "status": "active",
-      "refused": null,
-      "correctness_pass": null,
+      "refused": false,
+      "correctness_pass": true,
       "correctness_reasons": [],
-      "grounding_pass": null,
+      "grounding_pass": true,
       "grounding_reasons": [],
       "reasoning_quality": null,
       "usefulness": null,
       "evidence_use": null,
-      "distinct_docs_cited": null,
-      "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cck9Lf2KkmBiS1sMiziRR'}"
+      "distinct_docs_cited": 6,
+      "judge_notes": "judge error: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 21.068832458s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '21s'}]}}",
+      "error": null
     },
     {
       "case_id": "t14",
@@ -259,7 +263,7 @@
       "evidence_use": null,
       "distinct_docs_cited": null,
       "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cck9QtY3DXMU5w9p4QzkX'}"
+      "error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 58.997012277s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '58s'}]}}"
     },
     {
       "case_id": "t16",
@@ -275,7 +279,7 @@
       "evidence_use": null,
       "distinct_docs_cited": null,
       "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cck9VrJjFFssbGeg7XtFw'}"
+      "error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 36.342421594s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '36s'}]}}"
     },
     {
       "case_id": "t17",
@@ -291,7 +295,7 @@
       "evidence_use": null,
       "distinct_docs_cited": null,
       "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cck9achKSJPSf8eQtHjQ7'}"
+      "error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 13.047208168s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '13s'}]}}"
     },
     {
       "case_id": "t18",
@@ -307,23 +311,23 @@
       "evidence_use": null,
       "distinct_docs_cited": null,
       "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cck9fbkuTDPc2kr8DGpMe'}"
+      "error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 50.471638997s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '50s'}]}}"
     },
     {
       "case_id": "t19",
       "category": "D",
       "status": "active",
-      "refused": null,
-      "correctness_pass": null,
+      "refused": false,
+      "correctness_pass": true,
       "correctness_reasons": [],
-      "grounding_pass": null,
+      "grounding_pass": true,
       "grounding_reasons": [],
       "reasoning_quality": null,
       "usefulness": null,
       "evidence_use": null,
-      "distinct_docs_cited": null,
-      "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cck9kYu9UWLuxyz1ybxhV'}"
+      "distinct_docs_cited": 11,
+      "judge_notes": "judge error: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 12.254688562s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.5-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '12s'}]}}",
+      "error": null
     },
     {
       "case_id": "t20",
@@ -339,7 +343,7 @@
       "evidence_use": null,
       "distinct_docs_cited": null,
       "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cck9qLMDzoKYVXqP89gW6'}"
+      "error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 49.7341405s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.5-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '49s'}]}}"
     },
     {
       "case_id": "t21",
@@ -355,7 +359,7 @@
       "evidence_use": null,
       "distinct_docs_cited": null,
       "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011Cck9vKMqLhhVhcqTTKs5T'}"
+      "error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 16.861467764s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.5-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '16s'}]}}"
     },
     {
       "case_id": "t22",
@@ -409,17 +413,17 @@
       "case_id": "t25",
       "category": "E",
       "status": "active",
-      "refused": null,
-      "correctness_pass": null,
+      "refused": false,
+      "correctness_pass": true,
       "correctness_reasons": [],
-      "grounding_pass": null,
+      "grounding_pass": true,
       "grounding_reasons": [],
       "reasoning_quality": null,
       "usefulness": null,
       "evidence_use": null,
-      "distinct_docs_cited": null,
-      "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CckA1su4WZtbGoiZmmRxw'}"
+      "distinct_docs_cited": 3,
+      "judge_notes": "judge error: 429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 32.266828306s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.5-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '32s'}]}}",
+      "error": null
     },
     {
       "case_id": "t26",
@@ -467,7 +471,7 @@
       "evidence_use": null,
       "distinct_docs_cited": null,
       "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CckA6hLCyf5hxDF1SVsVk'}"
+      "error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 56.15350233s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.5-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '56s'}]}}"
     },
     {
       "case_id": "t29",
@@ -499,7 +503,7 @@
       "evidence_use": null,
       "distinct_docs_cited": null,
       "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CckABzLYLLaxPWJo8awAY'}"
+      "error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 17.227895385s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '17s'}]}}"
     },
     {
       "case_id": "t31",
@@ -521,17 +525,19 @@
       "case_id": "t32",
       "category": "F",
       "status": "active",
-      "refused": null,
-      "correctness_pass": null,
-      "correctness_reasons": [],
-      "grounding_pass": null,
+      "refused": true,
+      "correctness_pass": false,
+      "correctness_reasons": [
+        "expected an answer but Atlas refused: The model returned output that could not be parsed."
+      ],
+      "grounding_pass": true,
       "grounding_reasons": [],
-      "reasoning_quality": null,
-      "usefulness": null,
-      "evidence_use": null,
-      "distinct_docs_cited": null,
-      "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CckAHbAw4oE7qQppyFdjG'}"
+      "reasoning_quality": 1,
+      "usefulness": 1,
+      "evidence_use": 1,
+      "distinct_docs_cited": 0,
+      "judge_notes": "The assistant refused to answer due to a parsing error, providing no analysis or response to the question. This prevents any evaluation of its reasoning, usefulness, or evidence use. A key unanswered question from the evidence could relate to the meaning and unit of 'financial_tcv' given its small absolute values compared to revenue, or the significant volatility in 'esg_workforce_attrition_pct' over the years.",
+      "error": null
     },
     {
       "case_id": "t33",
@@ -595,7 +601,7 @@
       "evidence_use": null,
       "distinct_docs_cited": null,
       "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CckAP3en54232BX21D3s1'}"
+      "error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 33.921861876s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '33s'}]}}"
     },
     {
       "case_id": "t37",
@@ -611,7 +617,7 @@
       "evidence_use": null,
       "distinct_docs_cited": null,
       "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CckAUQmAZTwwhTp4zErB9'}"
+      "error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 51.661429143s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '51s'}]}}"
     },
     {
       "case_id": "t38",
@@ -627,7 +633,7 @@
       "evidence_use": null,
       "distinct_docs_cited": null,
       "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CckAZrwfAqcsSGmHERiCE'}"
+      "error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 23.284147228s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '23s'}]}}"
     },
     {
       "case_id": "t39",
@@ -643,7 +649,7 @@
       "evidence_use": null,
       "distinct_docs_cited": null,
       "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CckAf2uq2bG9JaS1LwfDG'}"
+      "error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 905.694495ms.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '0s'}]}}"
     },
     {
       "case_id": "t40",
@@ -659,7 +665,7 @@
       "evidence_use": null,
       "distinct_docs_cited": null,
       "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CckAk7ASy4RYchoRxMNV4'}"
+      "error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 38.384078761s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '38s'}]}}"
     },
     {
       "case_id": "t41",
@@ -675,7 +681,7 @@
       "evidence_use": null,
       "distinct_docs_cited": null,
       "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CckAq8g88NrJrNvSxi6A5'}"
+      "error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 15.850382007s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '15s'}]}}"
     },
     {
       "case_id": "t42",
@@ -707,7 +713,7 @@
       "evidence_use": null,
       "distinct_docs_cited": null,
       "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CckAvegoRENgVfwXa1J3q'}"
+      "error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 53.115519538s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'model': 'gemini-2.5-flash', 'location': 'global'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '53s'}]}}"
     },
     {
       "case_id": "t44",
@@ -723,7 +729,7 @@
       "evidence_use": null,
       "distinct_docs_cited": null,
       "judge_notes": "",
-      "error": "Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': 'Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.'}, 'request_id': 'req_011CckB1Pab9zSr9Jx1ERno6'}"
+      "error": "429 RESOURCE_EXHAUSTED. {'error': {'code': 429, 'message': 'You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit. \\n* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 20, model: gemini-2.5-flash\\nPlease retry in 30.785752325s.', 'status': 'RESOURCE_EXHAUSTED', 'details': [{'@type': 'type.googleapis.com/google.rpc.Help', 'links': [{'description': 'Learn more about Gemini API quotas', 'url': 'https://ai.google.dev/gemini-api/docs/rate-limits'}]}, {'@type': 'type.googleapis.com/google.rpc.QuotaFailure', 'violations': [{'quotaMetric': 'generativelanguage.googleapis.com/generate_content_free_tier_requests', 'quotaId': 'GenerateRequestsPerDayPerProjectPerModel-FreeTier', 'quotaDimensions': {'location': 'global', 'model': 'gemini-2.5-flash'}, 'quotaValue': '20'}]}, {'@type': 'type.googleapis.com/google.rpc.RetryInfo', 'retryDelay': '30s'}]}}"
     }
   ]
 }
