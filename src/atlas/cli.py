@@ -425,3 +425,171 @@ def research_cmd(ticker: str, out_path: str | None) -> None:
         click.echo(f"Report written to {out_path}")
     else:
         click.echo(markdown)
+
+
+@cli.command("ask")
+@click.argument("ticker")
+@click.argument("question")
+@click.option(
+    "--show-evidence", is_flag=True, default=False,
+    help="Print the retrieved source excerpt behind each citation (drill-to-source).",
+)
+@click.option(
+    "--question-retrieval", "question_retrieval", is_flag=True, default=False,
+    help=(
+        "Merge additional passages relevant to the QUESTION itself (not just "
+        "existing claims) into the grounding context, at zero extra KB reads "
+        "beyond what --show-evidence hydration already fetches (M1.5, default off "
+        "pending eval-measured activation; see ADR-M1.5)."
+    ),
+)
+def ask_cmd(ticker: str, question: str, show_evidence: bool, question_retrieval: bool) -> None:
+    """Answer a natural-language QUESTION about TICKER, grounded in its evidence.
+
+    Reads the saved CompanyProfile (run 'atlas profile build TICKER' first) and
+    reasons over it with the LLM configured via ATLAS_LLM_PROVIDER (default
+    "anthropic") and its credential (e.g. ATLAS_ANTHROPIC_API_KEY). Every claim
+    is grounded in evidence Atlas already extracted; out-of-scope questions
+    (e.g. valuation) are declined rather than guessed. When the company's
+    KnowledgeBase is present, claim evidence is hydrated with retrieved source
+    excerpts (M1); pass --show-evidence to see them, and --question-retrieval
+    to also surface passages relevant to this question.
+    """
+    from atlas.company.store import CompanyStore
+    from atlas.knowledge.base import KnowledgeBase
+    from atlas.reasoning.ask import ask
+    from atlas.reasoning.context import build_context
+    from atlas.reasoning.contracts import Question, SubjectRef
+    from atlas.reasoning.llm import MissingAPIKeyError, build_llm_client
+    from atlas.reasoning.render import format_answer, to_answer
+
+    ticker = ticker.upper()
+    atlas = Atlas.from_environment()
+    repo_root = atlas.settings.repository_base_path / ticker
+    profile_path = repo_root / "profile.json"
+    if not profile_path.exists():
+        click.echo(f"No profile for '{ticker}'. Run: atlas profile build {ticker}", err=True)
+        raise SystemExit(1)
+
+    try:
+        client = build_llm_client(atlas.settings, role="reasoning")
+    except MissingAPIKeyError as exc:
+        click.echo(str(exc), err=True)
+        raise SystemExit(1)
+
+    profile = CompanyStore(profile_path, ticker).load()
+    subject = SubjectRef(subject_id=ticker, display=ticker)
+    # M1: hydrate claim evidence with retrieved excerpts when a KnowledgeBase is
+    # present. The known_ids identity filter stays a deliberately separate scope
+    # boundary — wiring it here could drop claims whose source documents predate
+    # the KB, a behavior change beyond what M1 asked for.
+    kb = KnowledgeBase(repo_root) if (repo_root / "knowledge.db").exists() else None
+    # M1.5 (ADR-M1.5): question-conditioned passage merge, default OFF — the ADR
+    # gates activation on eval-measured lift, not on availability alone.
+    context = build_context(
+        profile, subject, kb=kb, question=question if question_retrieval else None,
+    )
+    result = ask(Question(raw_text=question, subject_ref=subject), context, client)
+    click.echo(format_answer(to_answer(result, context=context), show_evidence=show_evidence))
+
+
+@cli.group("eval")
+def eval_group() -> None:
+    """Evaluate Atlas against the V2.1 acceptance suite (§8)."""
+
+
+@eval_group.command("run")
+@click.option("--milestone", required=True, help="Label for this run, e.g. 'M0'.")
+@click.option("--suite", "suite_path", default=None,
+              type=click.Path(exists=True, dir_okay=False),
+              help="Custom suite JSON (defaults to the bundled §8.6 set).")
+@click.option("--capabilities", default="single_name",
+              help="Comma-separated capabilities available at this milestone.")
+@click.option("--no-judge", "no_judge", is_flag=True, default=False,
+              help="Skip the subjective LLM judge (deterministic dimensions only).")
+@click.option("--out", "out_path", default=None, type=click.Path(dir_okay=False),
+              help="Report path (defaults to eval_reports/<milestone>.json).")
+def eval_run_cmd(
+    milestone: str, suite_path: str | None, capabilities: str,
+    no_judge: bool, out_path: str | None,
+) -> None:
+    """Run the evaluation suite and write a machine-readable report."""
+    from pathlib import Path
+
+    from atlas.eval.cases import load_cases
+    from atlas.eval.judge import Judge
+    from atlas.eval.runner import LiveReasoningRunner, run_suite
+    from atlas.reasoning.llm import MissingAPIKeyError, build_llm_client
+
+    atlas = Atlas.from_environment()
+    try:
+        client = build_llm_client(atlas.settings, role="reasoning")
+    except MissingAPIKeyError as exc:
+        click.echo(str(exc), err=True)
+        raise SystemExit(1)
+
+    # §12.6 amendment 1: the judge gets its OWN, independently resolved client
+    # (provider AND model) — upgrading the reasoning model/provider never moves
+    # the instrument. Independent providers per role (goal 7) means judge
+    # construction can now fail on its own (e.g. an unimplemented transport),
+    # so it gets the same clean-error treatment as the reasoning client above.
+    judge = None
+    if not no_judge:
+        try:
+            judge_client = build_llm_client(atlas.settings, role="judge")
+        except MissingAPIKeyError as exc:
+            click.echo(str(exc), err=True)
+            raise SystemExit(1)
+        judge = Judge(judge_client)
+
+    cases = load_cases(Path(suite_path) if suite_path else None)
+    caps = [c.strip() for c in capabilities.split(",") if c.strip()]
+    report = run_suite(
+        cases,
+        # M1.5: forwarding the same capability set lets --capabilities include
+        # "question_retrieval" to toggle the ADR-M1.5 pass for `eval compare`
+        # measurement, without gating any case's availability (no case
+        # requires it — it's a runner-mode switch, not a case gate).
+        LiveReasoningRunner(atlas.settings, client, capabilities=frozenset(caps)),
+        judge,
+        caps,
+        milestone=milestone,
+        model=atlas.settings.reasoning_model,
+        judge_model=None if no_judge else atlas.settings.judge_model,
+    )
+
+    out = Path(out_path) if out_path else Path("eval_reports") / f"{milestone}.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(report.to_json(), encoding="utf-8")
+
+    agg = report.to_dict()["aggregates"]
+    click.echo(f"\nEvaluation: {milestone}")
+    click.echo(f"  coverage:              {agg['coverage']} ({agg['active_cases']}/{agg['total_cases']} active)")
+    click.echo(f"  correctness pass rate: {agg['correctness_pass_rate']}")
+    click.echo(f"  grounding pass rate:   {agg['grounding_pass_rate']}")
+    click.echo(f"  mean reasoning quality:{agg['mean_reasoning_quality']}")
+    click.echo(f"  mean usefulness:       {agg['mean_usefulness']}")
+    click.echo(f"  errors:                {agg['errors']}")
+    click.echo(f"\nReport written to {out}")
+
+
+@eval_group.command("compare")
+@click.argument("baseline", type=click.Path(exists=True, dir_okay=False))
+@click.argument("candidate", type=click.Path(exists=True, dir_okay=False))
+def eval_compare_cmd(baseline: str, candidate: str) -> None:
+    """Diff two evaluation reports (per-dimension deltas, regressions)."""
+    import json as _json
+    from pathlib import Path
+
+    from atlas.eval.report import Report, compare
+
+    b = Report.from_json(Path(baseline).read_text(encoding="utf-8"))
+    c = Report.from_json(Path(candidate).read_text(encoding="utf-8"))
+    diff = compare(b, c)
+
+    click.echo(f"\n{diff['baseline']} -> {diff['candidate']}")
+    for dim, vals in diff["dimensions"].items():
+        click.echo(f"  {dim:<24} {vals['baseline']} -> {vals['candidate']} (delta {vals['delta']})")
+    click.echo(f"  newly active: {diff['newly_active'] or 'none'}")
+    click.echo(f"  regressions:  {diff['regressions'] or 'none'}")
+    click.echo("\n" + _json.dumps(diff, indent=2))
