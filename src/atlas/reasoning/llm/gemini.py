@@ -1,17 +1,21 @@
-"""Gemini adapter — designed, not implemented.
+"""Google Gen AI adapter — implements ``LLMClient`` for the ``google_ai_studio``
+transport.
 
-One adapter class is expected to serve BOTH the ``google_ai_studio`` and
-``vertex_ai`` transports: the real ``google-genai`` SDK supports both backends
-behind one client, differing only in constructor kwargs (API key vs.
-project/region/ADC), per the provider-vs-adapter architecture amendment.
-Building the real implementation is out of scope for this refactor; this stub
-exists so the factory's dispatch table has a concrete, importable target, and
-so selecting a Gemini transport fails loudly and clearly rather than silently
-or with an import error.
+Uses the official Google Gen AI SDK (``google-genai``), the same SDK and the
+same ``genai.Client`` that supports BOTH the Gemini Developer API (Google AI
+Studio: ``api_key=``) and Vertex AI (``vertexai=True, project=, location=``)
+— per the provider-vs-adapter architecture amendment, one adapter class is
+meant to serve both transports. ``google_ai_studio`` is implemented here;
+``vertex_ai`` still raises ``NotImplementedError`` (it needs project/region/
+ADC wiring and verification against a live Vertex project, out of scope for
+this task) — ``from_settings`` already threads the ``provider`` distinction
+through, so building it later touches only this file, not the factory.
 """
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+
+from atlas.reasoning.llm.base import MissingAPIKeyError
 
 if TYPE_CHECKING:
     from atlas.config.settings import Settings
@@ -19,7 +23,24 @@ if TYPE_CHECKING:
 
 
 class GeminiClient:
-    """Not yet implemented. Will serve the google_ai_studio and vertex_ai transports."""
+    """``LLMClient`` adapter for the Google Gen AI SDK (google_ai_studio transport)."""
+
+    def __init__(
+        self,
+        *,
+        api_key: str,
+        model: str,
+        max_tokens: int = 4096,
+        temperature: float = 0.0,
+    ) -> None:
+        # Imported lazily so importing this module never requires the SDK to
+        # be present at call sites that only use FakeLLMClient.
+        from google import genai
+
+        self._client = genai.Client(api_key=api_key)
+        self._model = model
+        self._max_tokens = max_tokens
+        self._temperature = temperature
 
     @classmethod
     def from_settings(
@@ -29,21 +50,43 @@ class GeminiClient:
         provider: "LLMProvider",
         model: str | None = None,
     ) -> "GeminiClient":
-        """Always raises: the Gemini adapter is designed but not yet built.
+        """Build from Settings, failing clearly when no key is configured.
 
         ``provider`` distinguishes which transport (google_ai_studio vs.
-        vertex_ai) the caller wants, since one adapter class serves both.
+        vertex_ai) the caller wants, since one adapter class serves both;
+        only google_ai_studio is implemented today. ``max_tokens``/
+        ``temperature`` are read from the same Settings.llm_max_tokens/
+        llm_temperature knobs the Anthropic adapter uses — one determinism
+        policy (G7), shared across every provider, not reinvented per adapter.
         """
-        raise NotImplementedError(
-            f"The Gemini adapter ({provider!r} transport) is designed but not yet "
-            "implemented. See the architecture note on provider vs. model adapter "
-            "vs. model identity."
+        if provider == "vertex_ai":
+            raise NotImplementedError(
+                "The vertex_ai transport is designed but not yet implemented "
+                "(needs project/region/ADC wiring). Use google_ai_studio, "
+                "which is implemented."
+            )
+        if not settings.gemini_api_key:
+            raise MissingAPIKeyError(
+                "No Gemini API key configured. Set ATLAS_GEMINI_API_KEY "
+                "in your environment or .env file."
+            )
+        return cls(
+            api_key=settings.gemini_api_key,
+            model=model or settings.reasoning_model,
+            max_tokens=settings.llm_max_tokens,
+            temperature=settings.llm_temperature,
         )
 
     def complete(self, *, system: str, user: str) -> str:
-        """Never reachable: from_settings always raises before an instance exists.
+        from google.genai import types
 
-        Declared so GeminiClient genuinely satisfies the LLMClient Protocol at
-        the type level, not just in prose.
-        """
-        raise NotImplementedError("GeminiClient is not yet implemented.")
+        response = self._client.models.generate_content(
+            model=self._model,
+            contents=user,
+            config=types.GenerateContentConfig(
+                system_instruction=system,
+                temperature=self._temperature,
+                max_output_tokens=self._max_tokens,
+            ),
+        )
+        return response.text or ""

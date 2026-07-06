@@ -16,6 +16,7 @@ dependencies = [
     "tzdata>=2024",
     "pymupdf>=1.24",
     "anthropic>=0.40",
+    "google-genai>=1.0",
 ]
 
 [project.scripts]

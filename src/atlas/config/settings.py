@@ -95,8 +95,9 @@ class Settings(BaseSettings):
     gemini_api_key: str | None = Field(
         default=None,
         description=(
-            "API key for the google_ai_studio transport. Config surface only — "
-            "the Gemini adapter is designed but not yet implemented."
+            "API key for the google_ai_studio transport. Optional so non-Gemini "
+            "commands run without it; building a Gemini client fails clearly "
+            "when absent."
         ),
     )
     vertex_project: str | None = Field(
