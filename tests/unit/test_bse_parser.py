@@ -506,6 +506,19 @@ class TestParseAnnualReports:
         )
         assert result[0].kind == EvidenceKind.ANNUAL_REPORT
 
+    def test_report_period_is_year_string(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_annual_reports(
+            make_ar_response(AR_TABLE_RECORD), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].report_period == "2025"
+
+    def test_report_period_none_when_year_missing(self) -> None:
+        record = {k: v for k, v in AR_TABLE_RECORD.items() if k != "year"}
+        parser = BSEParser()
+        result = parser.parse_annual_reports(make_ar_response(record), COMPANY_ID, SCRIP_CODE)
+        assert result[0].report_period is None
+
     def test_source_is_bse(self) -> None:
         parser = BSEParser()
         result = parser.parse_annual_reports(
@@ -536,16 +549,22 @@ class TestParseAnnualReports:
         assert "\\" not in result[0].evidence_id
         assert "\\" not in (result[0].document_url or "")
 
-    def test_document_url_uses_annual_reports_cdn(self) -> None:
+    def test_uuid_filename_resolves_to_attach_his_with_single_pdf_extension(self) -> None:
+        # AR_TABLE_RECORD uses the ~2023+ UUID filename generation, which
+        # the old "/AnnualReports/{scrip}/{fname}" template silently
+        # resolved to BSE's Angular SPA shell (HTTP 200, HTML body) for
+        # every one of these — verified live against TCS, Tata Steel, and
+        # SBI. The real path is BSE's corpfiling archive (the same one used
+        # for every other announcement), reached only after trimming the
+        # API's own doubled ".pdf.pdf" down to a single ".pdf".
         parser = BSEParser()
         result = parser.parse_annual_reports(
             make_ar_response(AR_TABLE_RECORD), COMPANY_ID, SCRIP_CODE
         )
-        expected_url = (
-            f"https://www.bseindia.com/AnnualReports/{SCRIP_CODE}/"
-            f"{AR_TABLE_RECORD['file_name']}"
+        assert result[0].document_url == (
+            "https://www.bseindia.com/xml-data/corpfiling/AttachHis/"
+            "bb9f9e0a-e4ce-4a4e-997e-0b5de8c2bec0.pdf"
         )
-        assert result[0].document_url == expected_url
 
     def test_title_includes_year(self) -> None:
         parser = BSEParser()
@@ -577,13 +596,28 @@ class TestParseAnnualReports:
         )
         assert len(result) == 1
 
-    def test_legacy_filename_format_handled(self) -> None:
+    def test_legacy_filename_resolves_to_bseplus_path(self) -> None:
+        # Pre-~2023 filings use a short numeric/alphanumeric filename and
+        # live under BSE's "/bseplus/AnnualReport/" archive (singular,
+        # bseplus-prefixed) — a different, also-live path, distinct from
+        # both the dead "/AnnualReports/" template and the UUID-generation
+        # corpfiling path above. Verified live for TCS, Tata Steel, SBI.
         parser = BSEParser()
         result = parser.parse_annual_reports(
             make_ar_response(AR_TABLE_RECORD_LEGACY), COMPANY_ID, SCRIP_CODE
         )
         assert result[0].document_url == (
-            f"https://www.bseindia.com/AnnualReports/{SCRIP_CODE}/5325400310.pdf"
+            f"https://www.bseindia.com/bseplus/AnnualReport/{SCRIP_CODE}/5325400310.pdf"
+        )
+
+    def test_uuid_filename_with_backslash_and_single_pdf_still_resolves(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_annual_reports(
+            make_ar_response(AR_TABLE_RECORD_WITH_BACKSLASH), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].document_url == (
+            "https://www.bseindia.com/xml-data/corpfiling/AttachHis/"
+            "3837c1b7-abcd-1234-5678-abcdef012345.pdf"
         )
 
     def test_empty_table_returns_empty_list(self) -> None:
@@ -817,6 +851,13 @@ class TestParseShareholdingIndex:
         )
         assert result[0].kind == EvidenceKind.SHAREHOLDING_PATTERN
 
+    def test_report_period_is_qtr_label(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_shareholding_index(
+            make_shp_response(SHP_ROW_NEW), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].report_period == "March 2026"
+
     def test_source_is_bse(self) -> None:
         parser = BSEParser()
         result = parser.parse_shareholding_index(
@@ -986,6 +1027,13 @@ class TestParseCorporateGovernanceIndex:
             make_cg_response(CG_YEAR_PDF), COMPANY_ID, SCRIP_CODE
         )
         assert result[0].kind == EvidenceKind.CORPORATE_GOVERNANCE_REPORT
+
+    def test_report_period_combines_fin_year_and_quarter(self) -> None:
+        parser = BSEParser()
+        result = parser.parse_corporate_governance_index(
+            make_cg_response(CG_YEAR_PDF), COMPANY_ID, SCRIP_CODE
+        )
+        assert result[0].report_period == "2025-2026 Q1"
 
     def test_source_is_bse(self) -> None:
         parser = BSEParser()

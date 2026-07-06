@@ -799,6 +799,51 @@ class TestParsedDocumentFields:
         assert stored.ocr_attempted is True
 
 
+class TestDocumentLanguageDetection:
+    """document_language — deterministic script-ratio detection, not ML."""
+
+    def test_english_text_detected_as_en(self, tmp_path: Path) -> None:
+        path = _make_pdf(tmp_path, text="Revenue from operations increased significantly " * 10)
+        entry = _make_entry("bse-lang-001", "docs/doc.pdf")
+        kb = KnowledgeBase(tmp_path)
+        doc = kb.parse(entry)
+        assert doc.document_language == "en"
+
+    def test_devanagari_text_detected_as_other(self, tmp_path: Path) -> None:
+        from atlas.knowledge.base import _detect_language
+        hindi_text = "यह कंपनी की वार्षिक रिपोर्ट है और इसमें वित्तीय विवरण शामिल हैं " * 10
+        assert _detect_language(hindi_text) == "other"
+
+    def test_mostly_latin_with_few_non_latin_chars_still_en(self) -> None:
+        from atlas.knowledge.base import _detect_language
+        text = "Annual Report 2025-26 for the company operations and results " * 20 + "अ"
+        assert _detect_language(text) == "en"
+
+    def test_short_text_returns_none(self) -> None:
+        from atlas.knowledge.base import _detect_language
+        assert _detect_language("short") is None
+
+    def test_empty_text_returns_none(self) -> None:
+        from atlas.knowledge.base import _detect_language
+        assert _detect_language("") is None
+
+    def test_failed_parse_has_none_language(self, tmp_path: Path) -> None:
+        entry = _make_entry("bse-lang-fail", "docs/missing.pdf")
+        kb = KnowledgeBase(tmp_path)
+        doc = kb.parse(entry)
+        assert doc.status == "failed"
+        assert doc.document_language is None
+
+    def test_get_returns_document_language(self, tmp_path: Path) -> None:
+        path = _make_pdf(tmp_path, text="Revenue from operations increased significantly " * 10)
+        entry = _make_entry("bse-lang-002", "docs/doc.pdf")
+        kb = KnowledgeBase(tmp_path)
+        kb.parse(entry)
+        stored = kb.get("bse-lang-002")
+        assert stored is not None
+        assert stored.document_language == "en"
+
+
 # ---------------------------------------------------------------------------
 # Parser version filtering — ok_ids excludes v1.0 records after v2.0 bump
 # ---------------------------------------------------------------------------

@@ -170,4 +170,7 @@ class TestFormatValue:
         assert metrics.format_value(22631.0, FactUnit.TCO2E) == "22,631 tCO2e"
 
     def test_none_unit_falls_back_to_generic(self) -> None:
-        assert metrics.format_value(0.028, None) == "0.03"
+        # 3 decimals, not 2 — a small-magnitude ratio like LTIFR needs the
+        # extra precision to remain distinguishable from a neighboring
+        # period's value (0.025 vs 0.028 both round to "0.03" at 2dp).
+        assert metrics.format_value(0.028, None) == "0.028"

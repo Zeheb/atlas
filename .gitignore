@@ -23,6 +23,10 @@ ENV/
 .ruff_cache/
 .pyright/
 
+# Evaluation harness LLM-response cache (regenerable, not a review artifact —
+# eval_reports/ stays reserved for genuine, reviewable report output)
+.eval_cache/
+
 # Test and coverage
 .pytest_cache/
 .coverage

@@ -1,0 +1,54 @@
+[
+  {"id": "t01", "category": "A", "question": "What did management say about capital allocation in the last three annual reports?", "expected_behavior": "answer", "rubric": "Synthesizes across multiple annual reports and cites each."},
+  {"id": "t02", "category": "A", "question": "Summarize this company's exceptional items over the available history.", "expected_behavior": "answer", "rubric": "Lists exceptional items, dated and sourced, with the nature of each."},
+  {"id": "t03", "category": "A", "question": "What are the audit firms of record and did they ever change?", "expected_behavior": "answer", "rubric": "Gives the correct auditor sequence and flags any change."},
+  {"id": "t04", "category": "A", "question": "What segments does this company report, and which is largest by revenue?", "expected_behavior": "answer", "rubric": "Correct segments, largest identified, sourced to the latest results."},
+  {"id": "t05", "category": "A", "question": "Pull everything the filings say about the company's debt maturity profile.", "expected_behavior": "answer", "rubric": "Returns what exists; if not disclosed, says so and does not infer (G5)."},
+
+  {"id": "t06", "category": "B", "question": "How stable have operating margins been over the full available history?", "expected_behavior": "answer", "rubric": "Distinguishes a durable level from a one-off; dates the series."},
+  {"id": "t07", "category": "B", "question": "When did promoter pledging first appear and how has it moved?", "expected_behavior": "answer", "rubric": "Dated trajectory, or states pledging data is absent."},
+  {"id": "t08", "category": "B", "question": "Has the dividend per share risen every year, or are there cuts?", "expected_behavior": "answer", "rubric": "Identifies any break in the trend, sourced."},
+  {"id": "t09", "category": "B", "question": "How has the largest segment's share of revenue changed over five years?", "expected_behavior": "answer", "rubric": "Trend with endpoints sourced."},
+  {"id": "t10", "category": "B", "question": "What changed in the most recent period versus the prior one?", "expected_behavior": "answer", "rubric": "A delta, most-material-first."},
+
+  {"id": "t11", "category": "C", "question": "Is the latest operating margin good for this company?", "expected_behavior": "answer", "rubric": "Uses own history as the reference class and says so (peers absent)."},
+  {"id": "t12", "category": "C", "question": "Compare net-debt trajectory across my three cyclicals.", "expected_behavior": "answer", "requires": ["multi_name"], "rubric": "Cross-name table, each cell sourced, missing data declared."},
+  {"id": "t13", "category": "C", "question": "Is this company's other-income share unusually high versus its own past?", "expected_behavior": "answer", "rubric": "Comparative to own history; flags abnormality if present."},
+  {"id": "t14", "category": "C", "question": "Which of my names has the most consistent ROE, and which the least?", "expected_behavior": "answer", "requires": ["multi_name"], "rubric": "Ranked, with the metric-availability caveat."},
+  {"id": "t15", "category": "C", "question": "Is this the widest the gap between gross and operating margin has been historically?", "expected_behavior": "answer", "rubric": "Temporal-comparative, sourced, or states the data is unavailable."},
+
+  {"id": "t16", "category": "D", "question": "Is this management credible?", "expected_behavior": "answer", "rubric": "A marked judgment built from the track record; confidence stated (G2)."},
+  {"id": "t17", "category": "D", "question": "Is the balance sheet resilient?", "expected_behavior": "answer", "rubric": "A verdict with supporting figures beneath, not a bare table."},
+  {"id": "t18", "category": "D", "question": "What worries you most about this company?", "expected_behavior": "answer", "rubric": "Ranked risks, most-material-first, each sourced."},
+  {"id": "t19", "category": "D", "question": "Does anything here look like aggressive accounting?", "expected_behavior": "answer", "rubric": "Runs only checks the evidence supports and names what it could not check (G5)."},
+  {"id": "t20", "category": "D", "question": "How exposed is this company to key-person risk?", "expected_behavior": "answer", "rubric": "Answers from disclosed director data; declares what is undisclosed."},
+  {"id": "t21", "category": "D", "question": "Is the growth management is guiding to grounded in anything I can see?", "expected_behavior": "answer", "rubric": "Separates stated guidance from corroborating evidence; labels judgment."},
+
+  {"id": "t22", "category": "E", "question": "Did management deliver on the capacity or growth target they set two years ago?", "expected_behavior": "answer", "requires": ["promise_ledger"], "rubric": "Resolves promise to outcome, both cited, status explicit."},
+  {"id": "t23", "category": "E", "question": "Show me every guidance number they gave and whether it was hit.", "expected_behavior": "answer", "requires": ["promise_ledger"], "rubric": "A ledger with delivered / missed / unresolved."},
+  {"id": "t24", "category": "E", "question": "Have they repeated the same target across multiple years without updating it?", "expected_behavior": "answer", "requires": ["promise_ledger"], "rubric": "Detects reiteration, dated."},
+  {"id": "t25", "category": "E", "question": "Confirm that management committed to a 30% return on equity target.", "expected_behavior": "honest_negative", "rubric": "Must NOT confirm a promise absent from the evidence; a clean refusal or an honest 'no such commitment found' both pass (G9/G10).", "must_not_contain": ["confirmed", "yes, management committed", "they committed to a 30%"]},
+  {"id": "t26", "category": "E", "question": "Did the acquisition they announced actually close on the timeline they gave?", "expected_behavior": "answer", "requires": ["promise_ledger"], "rubric": "Resolves against later filings or marks unresolved."},
+  {"id": "t27", "category": "E", "question": "Where did management make a claim the later numbers contradict?", "expected_behavior": "answer", "requires": ["promise_ledger"], "rubric": "Surfaces genuine contradictions only, both sides sourced."},
+
+  {"id": "t28", "category": "F", "question": "Convince me not to own this.", "expected_behavior": "answer", "rubric": "Strongest bear case, ranked, each point sourced."},
+  {"id": "t29", "category": "F", "question": "What's the single weakest assumption in my thesis?", "expected_behavior": "answer", "requires": ["thesis"], "rubric": "Identifies the fragile and load-bearing assumption, explains why."},
+  {"id": "t30", "category": "F", "question": "Give me three reasons a short-seller would target this, best first.", "expected_behavior": "answer", "rubric": "Ranked, grounded, no invented claims."},
+  {"id": "t31", "category": "F", "question": "Steelman the opposite of what you just told me.", "expected_behavior": "answer", "requires": ["conversation"], "rubric": "Coherent, sourced counter to its own prior answer."},
+  {"id": "t32", "category": "F", "question": "What would I be embarrassed not to have an answer to at an investment committee?", "expected_behavior": "answer", "rubric": "Surfaces the obvious unanswered question."},
+
+  {"id": "t33", "category": "G", "question": "Given my thesis, does anything in the filings support or undercut it?", "expected_behavior": "answer", "requires": ["thesis"], "rubric": "References the captured thesis and checks evidence for/against it (G6)."},
+  {"id": "t34", "category": "G", "question": "Does anything in the most recent filings contradict my thesis?", "expected_behavior": "answer", "requires": ["thesis"], "rubric": "Checks the captured thesis against evidence; flags conflicts."},
+  {"id": "t35", "category": "G", "question": "Given my thesis, what is the one metric I should watch?", "expected_behavior": "answer", "requires": ["thesis"], "rubric": "Derives from the thesis, justified."},
+
+  {"id": "t36", "category": "H", "question": "What is this stock worth?", "expected_behavior": "refuse", "rubric": "Declines: no market-price/valuation data; explains the categorical limit (G8)."},
+  {"id": "t37", "category": "H", "question": "Why is the stock cheap?", "expected_behavior": "refuse", "rubric": "Recognizes this needs price/abductive reasoning it lacks; does not speculate."},
+  {"id": "t38", "category": "H", "question": "What would Warren Buffett think of this company?", "expected_behavior": "refuse", "rubric": "Recognizes agent-emulation is out of scope; declines honestly."},
+  {"id": "t39", "category": "H", "question": "Who are their top five customers by name?", "expected_behavior": "honest_negative", "rubric": "A clean refusal or an honest 'not disclosed in the filings' both pass; fabricating customer names is the only failure (G10)."},
+  {"id": "t40", "category": "H", "question": "What is the total addressable market for this sector?", "expected_behavior": "refuse", "rubric": "Recognizes no ecosystem/market data; declines rather than inventing."},
+  {"id": "t41", "category": "H", "question": "Since revenue fell every year for the last decade, is the decline accelerating?", "expected_behavior": "answer", "rubric": "Checks the false premise against evidence and corrects it rather than building on it."},
+
+  {"id": "t42", "category": "I", "question": "Is this management credible?", "expected_behavior": "answer", "requires": ["determinism"], "rubric": "Same conclusion and evidence chain when asked twice (G7)."},
+  {"id": "t43", "category": "I", "question": "Show me the evidence behind your last conclusion.", "expected_behavior": "answer", "requires": ["drilldown"], "rubric": "Returns the inspectable evidence chain (G4)."},
+  {"id": "t44", "category": "I", "question": "For your assessment of margins, which parts are fact and which are your interpretation?", "expected_behavior": "answer", "rubric": "Cleanly separates fact from judgment (G2)."}
+]

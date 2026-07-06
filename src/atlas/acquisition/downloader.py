@@ -1,3 +1,4 @@
+import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -24,6 +25,24 @@ _KIND_TO_SUBDIR: dict[EvidenceKind, str] = {
 
 _DEFAULT_SUBDIR = "other"
 
+# A "successful" (HTTP 200, no exception) download can still be wrong: BSE's
+# Angular front-end serves this exact HTML shell for any unmatched route
+# instead of a 404, which is precisely how the AnnualReport CDN URL bug
+# (dead "/AnnualReports/" path) went undetected — no request ever failed,
+# every download "succeeded" and wrote a mislabelled HTML page to a .pdf
+# path. Checked for any expected non-html/htm extension; a real HTML/HTM
+# document (file_extension == "html") is exempt since it's supposed to
+# start this way.
+_HTML_SHELL_MARKERS = (b"<!doctype html", b"<html")
+_HTML_EXTENSIONS = {"html", "htm"}
+
+
+def _looks_like_html_shell(content: bytes, file_extension: str) -> bool:
+    if file_extension.lower() in _HTML_EXTENSIONS:
+        return False
+    head = content[:256].lstrip().lower()
+    return any(head.startswith(marker) for marker in _HTML_SHELL_MARKERS)
+
 
 @dataclass
 class DownloadResult:
@@ -31,6 +50,7 @@ class DownloadResult:
     local_path: str | None
     file_size_bytes: int | None
     error: str | None
+    checksum: str | None = None
 
     @property
     def succeeded(self) -> bool:
@@ -68,12 +88,23 @@ def download_evidence(
     try:
         destination.parent.mkdir(parents=True, exist_ok=True)
         content = fetch(evidence.document_url)
+        if _looks_like_html_shell(content, evidence.file_extension):
+            return DownloadResult(
+                evidence=evidence,
+                local_path=None,
+                file_size_bytes=None,
+                error=(
+                    f"received an HTML page instead of a .{evidence.file_extension} "
+                    f"file — likely a dead or changed URL: {evidence.document_url}"
+                ),
+            )
         destination.write_bytes(content)
         return DownloadResult(
             evidence=evidence,
             local_path=relative_path,
             file_size_bytes=len(content),
             error=None,
+            checksum=hashlib.sha256(content).hexdigest(),
         )
     except Exception as exc:  # noqa: BLE001
         return DownloadResult(

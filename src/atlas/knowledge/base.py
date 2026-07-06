@@ -25,7 +25,9 @@ _CREATE_TABLES = """
         char_count        INTEGER,
         extraction_method TEXT,
         quality_score     REAL,
-        ocr_attempted     INTEGER NOT NULL DEFAULT 0
+        ocr_attempted     INTEGER NOT NULL DEFAULT 0,
+        page_count        INTEGER,
+        document_language TEXT
     );
     CREATE TABLE IF NOT EXISTS document_contents (
         evidence_id TEXT PRIMARY KEY,
@@ -40,6 +42,63 @@ _MIGRATE_V2 = [
     "ALTER TABLE parsed_documents ADD COLUMN quality_score REAL",
     "ALTER TABLE parsed_documents ADD COLUMN ocr_attempted INTEGER NOT NULL DEFAULT 0",
 ]
+
+# Column added in parser_version 3.0 — page_count was already computed by
+# extract_pdf() (needed for its own OCR-fallback quality scoring) but
+# discarded before reaching ParsedDocument, the same "computed then thrown
+# away" pattern found in bse_parser.py's fiscal-year/quarter handling.
+# Needed as a real, persisted signal for the document classifier (Stage 2):
+# a 1-2 page "document" is structurally very unlikely to be the investor
+# deck / transcript / annual report its title claims, regardless of what
+# the title says.
+_MIGRATE_V3 = [
+    "ALTER TABLE parsed_documents ADD COLUMN page_count INTEGER",
+]
+
+# Column added in parser_version 4.0 — the acquisition-hardening sprint's
+# metadata-completeness pass (Stage 2). Detected deterministically from
+# extracted text (see _detect_language()), not ML — a coarse Latin-vs-other
+# script ratio, sufficient to flag the (currently unobserved, but possible)
+# case of a vernacular-language filing without pretending to identify which
+# language it is.
+_MIGRATE_V4 = [
+    "ALTER TABLE parsed_documents ADD COLUMN document_language TEXT",
+]
+
+# Devanagari (Hindi/Marathi), Bengali, Tamil, Telugu, Gujarati unicode
+# blocks — the scripts most likely to appear in an Indian regulatory
+# filing that isn't in English. Not exhaustive of every Indian script;
+# covers the common ones without pretending to be a real language
+# detector.
+_NON_LATIN_SCRIPT_RANGES = (
+    (0x0900, 0x097F),  # Devanagari
+    (0x0980, 0x09FF),  # Bengali
+    (0x0B80, 0x0BFF),  # Tamil
+    (0x0C00, 0x0C7F),  # Telugu
+    (0x0A80, 0x0AFF),  # Gujarati
+)
+
+
+def _detect_language(text: str) -> str | None:
+    """Classify extracted text as "en" or "other" by script composition.
+
+    Deterministic character-range counting, not ML — counts alphabetic
+    characters falling in known non-Latin Indian-script Unicode blocks
+    against total alphabetic characters. Returns None if there isn't
+    enough alphabetic content to judge (e.g. a near-empty extraction).
+    """
+    non_latin = 0
+    total_alpha = 0
+    for ch in text:
+        if not ch.isalpha():
+            continue
+        total_alpha += 1
+        codepoint = ord(ch)
+        if any(lo <= codepoint <= hi for lo, hi in _NON_LATIN_SCRIPT_RANGES):
+            non_latin += 1
+    if total_alpha < 50:
+        return None
+    return "other" if (non_latin / total_alpha) > 0.3 else "en"
 
 
 @dataclass
@@ -57,6 +116,8 @@ class ParsedDocument:
     extraction_method: Literal["native", "ocr"] | None = None
     quality_score: float | None = None
     ocr_attempted: bool = False
+    page_count: int | None = None
+    document_language: str | None = None
 
 
 def _row_to_doc(row: sqlite3.Row) -> ParsedDocument:
@@ -75,6 +136,8 @@ def _row_to_doc(row: sqlite3.Row) -> ParsedDocument:
         extraction_method=row["extraction_method"] if "extraction_method" in keys else None,
         quality_score=row["quality_score"] if "quality_score" in keys else None,
         ocr_attempted=bool(row["ocr_attempted"]) if "ocr_attempted" in keys else False,
+        page_count=row["page_count"] if "page_count" in keys else None,
+        document_language=row["document_language"] if "document_language" in keys else None,
     )
 
 
@@ -108,8 +171,9 @@ class KnowledgeBase:
         conn = sqlite3.connect(str(self._db_path))
         try:
             conn.executescript(_CREATE_TABLES)
-            # Idempotent migration: add v2.0 columns to existing databases.
-            for stmt in _MIGRATE_V2:
+            # Idempotent migrations: add columns from later parser_versions
+            # to databases created by an earlier one.
+            for stmt in _MIGRATE_V2 + _MIGRATE_V3 + _MIGRATE_V4:
                 try:
                     conn.execute(stmt)
                     conn.commit()
@@ -201,6 +265,7 @@ class KnowledgeBase:
         extraction_method: Literal["native", "ocr"] | None = None
         quality_score: float | None = None
         ocr_attempted: bool = False
+        page_count: int | None = None
 
         if ext == "pdf":
             try:
@@ -210,6 +275,7 @@ class KnowledgeBase:
                 extraction_method = result.extraction_method
                 quality_score = result.quality_score
                 ocr_attempted = result.ocr_attempted
+                page_count = result.page_count
             except Exception as exc:  # noqa: BLE001
                 status = "failed"
                 error = str(exc)
@@ -241,6 +307,8 @@ class KnowledgeBase:
             extraction_method=extraction_method,
             quality_score=quality_score,
             ocr_attempted=ocr_attempted,
+            page_count=page_count,
+            document_language=_detect_language(content) if content else None,
         )
         self._upsert(doc, content)
         return doc
@@ -252,8 +320,9 @@ class KnowledgeBase:
                 INSERT OR REPLACE INTO parsed_documents
                     (evidence_id, kind, title, source_date, local_path,
                      parsed_at, parser_version, status, error, char_count,
-                     extraction_method, quality_score, ocr_attempted)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     extraction_method, quality_score, ocr_attempted, page_count,
+                     document_language)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     doc.evidence_id,
@@ -269,6 +338,8 @@ class KnowledgeBase:
                     doc.extraction_method,
                     doc.quality_score,
                     int(doc.ocr_attempted),
+                    doc.page_count,
+                    doc.document_language,
                 ),
             )
             conn.execute(

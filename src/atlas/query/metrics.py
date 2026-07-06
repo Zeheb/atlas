@@ -229,9 +229,18 @@ def snapshot_value(spec: MetricSpec, snap: object) -> float | None:
 
 
 def format_value(value: float, unit: FactUnit | None) -> str:
-    """Render one metric value with its natural unit, for table display."""
+    """Render one metric value with its natural unit, for table display.
+
+    unit=None (today: only safety_ltifr) uses 3 decimals, not 2 — found
+    during Atlas Research validation that two real, distinct LTIFR values
+    (0.025 and 0.028) both round to the same "0.03" at 2dp, making a
+    correctly-classified "deteriorated" trend claim look unsupported by its
+    own displayed numbers. A ratio this small needs a third decimal to be
+    legible at all; CRORE_INR/COUNT-style metrics don't have this problem
+    since their natural magnitude doesn't collapse at 2 decimals.
+    """
     if unit is None:
-        return f"{value:,.2f}"
+        return f"{value:,.3f}"
     if unit == FactUnit.CRORE_INR:
         return f"{value:,.0f} cr"
     if unit == FactUnit.PERCENT:

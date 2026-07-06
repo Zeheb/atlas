@@ -18,6 +18,8 @@ class CatalogEntry:
     local_path: str
     file_size_bytes: int | None
     acquired_at: str
+    checksum: str | None = None
+    report_period: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -30,6 +32,8 @@ class CatalogEntry:
             "local_path": self.local_path,
             "file_size_bytes": self.file_size_bytes,
             "acquired_at": self.acquired_at,
+            "checksum": self.checksum,
+            "report_period": self.report_period,
         }
 
     @classmethod
@@ -44,10 +48,17 @@ class CatalogEntry:
             local_path=d["local_path"],
             file_size_bytes=d.get("file_size_bytes"),
             acquired_at=d["acquired_at"],
+            checksum=d.get("checksum"),
+            report_period=d.get("report_period"),
         )
 
     @classmethod
-    def from_evidence(cls, evidence: Evidence, local_path: str) -> "CatalogEntry":
+    def from_evidence(
+        cls,
+        evidence: Evidence,
+        local_path: str,
+        checksum: str | None = None,
+    ) -> "CatalogEntry":
         return cls(
             evidence_id=evidence.evidence_id,
             source=evidence.source.value,
@@ -58,6 +69,8 @@ class CatalogEntry:
             local_path=local_path,
             file_size_bytes=evidence.file_size_bytes,
             acquired_at=datetime.now(timezone.utc).isoformat(),
+            checksum=checksum,
+            report_period=evidence.report_period,
         )
 
 

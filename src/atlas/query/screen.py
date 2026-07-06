@@ -16,6 +16,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Callable
 
+from atlas.acquisition.repository import Repository
+from atlas.citation import build_citation
 from atlas.company.model import CompanyProfile
 from atlas.company.store import CompanyStore
 from atlas.query import metrics
@@ -54,6 +56,19 @@ def discover_companies(repository_base_path: Path) -> dict[str, CompanyProfile]:
     return profiles
 
 
+def discover_repos(repository_base_path: Path) -> dict[str, Repository]:
+    """A Repository per company under repository_base_path, for citation
+    resolution in screen()'s Source column. Mirrors discover_companies()."""
+    repos: dict[str, Repository] = {}
+    if not repository_base_path.exists():
+        return repos
+    for child in sorted(repository_base_path.iterdir()):
+        if not child.is_dir() or not (child / "catalog.json").exists():
+            continue
+        repos[child.name] = Repository(child)
+    return repos
+
+
 def screen(
     profiles: dict[str, CompanyProfile],
     metric: str,
@@ -61,6 +76,7 @@ def screen(
     threshold: float | None = None,
     basis: str = "consolidated",
     period_type: str | None = None,
+    repos: dict[str, Repository] | None = None,
 ) -> QueryResult:
     """Rank every company's latest value of *metric*; optionally filter by op+threshold.
 
@@ -75,13 +91,18 @@ def screen(
     since "rank" implies an order and descending-by-value is the least
     surprising default.
 
+    repos is optional — when given, a Source column cites which document
+    supplied each company's value; when omitted, the column shows "-"
+    (screen() never showed a raw evidence_id either way, so this is new
+    provenance, not a UUID being hidden).
+
     Raises ValueError for an unregistered metric or unknown operator.
     """
     spec = metrics.get_metric(metric)
     if op is not None and op not in _OPS:
         raise ValueError(f"Unknown operator {op!r}. Available: {sorted(_OPS)}")
 
-    found: list[tuple[str, str, float]] = []
+    found: list[tuple[str, str, float, str]] = []
     for company_id, profile in sorted(profiles.items()):
         snaps = metrics.domain_snapshots(profile, spec.domain)
         if spec.domain == "financial":
@@ -93,17 +114,23 @@ def screen(
         for snap in reversed(snaps):
             value = metrics.snapshot_value(spec, snap)
             if value is not None:
-                found.append((company_id, snap.period, value))
+                source_citation = "-"
+                if repos is not None and snap.sources:
+                    repo = repos.get(company_id)
+                    entry = repo.get(snap.sources[0]) if repo else None
+                    if entry is not None:
+                        source_citation = build_citation(entry, company_id, profile).citation_short
+                found.append((company_id, snap.period, value, source_citation))
                 break
 
     matched = found
     if op is not None and threshold is not None:
-        matched = [(cid, period, v) for cid, period, v in found if _OPS[op](v, threshold)]
+        matched = [(cid, period, v, src) for cid, period, v, src in found if _OPS[op](v, threshold)]
 
     reverse = spec.higher_is_better is not False
     matched = sorted(matched, key=lambda r: r[2], reverse=reverse)
 
-    rows = [[cid, _fmt_date(period), metrics.format_value(v, spec.unit)] for cid, period, v in matched]
+    rows = [[cid, _fmt_date(period), metrics.format_value(v, spec.unit), src] for cid, period, v, src in matched]
 
     notes = [f"{len(found)}/{len(profiles)} companies had data for {spec.label!r}."]
     if op is not None:
@@ -119,7 +146,7 @@ def screen(
         title=title,
         sections=[TableSection(
             heading="Ranked Companies",
-            columns=["Company", "Latest Period", spec.label],
+            columns=["Company", "Latest Period", spec.label, "Source"],
             rows=rows,
         )],
         notes=notes,

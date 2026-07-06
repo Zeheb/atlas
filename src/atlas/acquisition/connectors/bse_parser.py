@@ -84,7 +84,29 @@ class BSEParser:
 
     _ATTACH_LIVE = "https://www.bseindia.com/xml-data/corpfiling/AttachLive/{}"
     _ATTACH_HIS = "https://www.bseindia.com/xml-data/corpfiling/AttachHis/{}"
-    _ANNUAL_REPORT_CDN = "https://www.bseindia.com/AnnualReports/{scrip_code}/{fname}"
+    # AnnualReport/w's file_name comes in two generations, discovered by
+    # investigating why every bse-ar-* download was silently resolving to
+    # BSE's Angular SPA shell (HTTP 200, but an HTML page, not a PDF — BSE
+    # serves that shell for any unmatched route rather than a 404, which is
+    # why this went undetected: no request ever failed).
+    #
+    # Filings up to ~2022 use a short legacy numeric/alphanumeric id
+    # ("5325400319.pdf") and live under a *different* base path than the
+    # one this template used to point at — "/AnnualReports/" (plural, no
+    # prefix) is dead; the real path is "/bseplus/AnnualReport/" (singular,
+    # under bseplus). Filings from ~2023 onward use a UUID id with a
+    # doubled ".pdf.pdf" extension in the API response itself, and are only
+    # reachable through the same corpfiling archive used for every other
+    # BSE announcement (_ATTACH_HIS) — not the annual-report-specific path
+    # at all — once the duplicate extension is trimmed to a single ".pdf".
+    # Verified against TCS, Tata Steel, and SBI (all three affected
+    # identically): both templates return real application/pdf bytes for
+    # every entry when matched to the right filename generation.
+    _ANNUAL_REPORT_LEGACY_CDN = "https://www.bseindia.com/bseplus/AnnualReport/{scrip_code}/{fname}"
+    _RE_UUID_FILENAME = re.compile(
+        r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.pdf",
+        re.IGNORECASE,
+    )
     _CG_REPORT_BASE = "https://www.bseindia.com"
 
     # ------------------------------------------------------------------ #
@@ -101,6 +123,19 @@ class BSEParser:
             for record in raw.get("Table", [])
             if (evidence := self._parse_record(record, company_id)) is not None
         ]
+
+    def _annual_report_url(self, scrip_code: int, fname: str) -> str:
+        """Resolve the real download URL for an AnnualReport/w file_name.
+
+        See the class-level comment above _ANNUAL_REPORT_LEGACY_CDN for how
+        this was determined and verified.
+        """
+        if self._RE_UUID_FILENAME.match(fname):
+            clean = fname
+            while clean.lower().endswith(".pdf.pdf"):
+                clean = clean[:-4]
+            return self._ATTACH_HIS.format(clean)
+        return self._ANNUAL_REPORT_LEGACY_CDN.format(scrip_code=scrip_code, fname=fname)
 
     def parse_annual_reports(
         self, raw: Any, company_id: str, scrip_code: int
@@ -127,10 +162,9 @@ class BSEParser:
                     kind=EvidenceKind.ANNUAL_REPORT,
                     title=f"Annual Report {year_str}",
                     source_date=self._parse_ar_date(dt_str, year_str),
-                    document_url=self._ANNUAL_REPORT_CDN.format(
-                        scrip_code=scrip_code, fname=fname
-                    ),
+                    document_url=self._annual_report_url(scrip_code, fname),
                     file_size_bytes=None,
+                    report_period=year_str or None,
                 )
             )
         return result
@@ -177,6 +211,7 @@ class BSEParser:
                     ),
                     file_size_bytes=None,
                     file_extension="xml",
+                    report_period=qtr_label or None,
                 )
             )
         return result
@@ -217,6 +252,7 @@ class BSEParser:
                         document_url=f"{self._CG_REPORT_BASE}{file_path}",
                         file_size_bytes=None,
                         file_extension=suffix,
+                        report_period=f"{fin_year} {qtr}".strip() or None,
                     )
                 )
         return result

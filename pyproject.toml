@@ -1,3 +1,7 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [project]
 name = "atlas"
 version = "0.1.0"
@@ -11,10 +15,15 @@ dependencies = [
     "requests>=2.32",
     "tzdata>=2024",
     "pymupdf>=1.24",
+    "anthropic>=0.40",
+    "google-genai>=1.0",
 ]
 
 [project.scripts]
 atlas = "atlas.cli:cli"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/atlas"]
 
 [dependency-groups]
 dev = [
