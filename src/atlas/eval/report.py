@@ -45,6 +45,11 @@ class Report:
     # Judge model recorded separately from the reasoning model: the instrument
     # is pinned independently of the system under test (§12.6 amendment 1).
     judge_model: str | None = None
+    # Free-tier operation: LLM-call cache hit/miss counts for this run, when
+    # caching was enabled. Optional and additive — absent in older reports,
+    # which from_dict() reads as None, so report compatibility is preserved.
+    cache_hits: int | None = None
+    cache_misses: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -54,6 +59,8 @@ class Report:
             "judge_model": self.judge_model,
             "git_commit": self.git_commit,
             "capabilities": list(self.capabilities),
+            "cache_hits": self.cache_hits,
+            "cache_misses": self.cache_misses,
             "aggregates": aggregate(self.results),
             "results": [asdict(r) for r in self.results],
         }
@@ -84,6 +91,7 @@ class Report:
             milestone=d["milestone"], created_at=d["created_at"], model=d["model"],
             capabilities=tuple(d.get("capabilities", ())), results=results,
             git_commit=d.get("git_commit"), judge_model=d.get("judge_model"),
+            cache_hits=d.get("cache_hits"), cache_misses=d.get("cache_misses"),
         )
 
     @classmethod

@@ -8,6 +8,7 @@ that lacks one marks the case *pending* instead of running it.
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -78,3 +79,45 @@ def load_cases(path: Path | None = None) -> list[EvalCase]:
     if len(ids) != len(set(ids)):
         raise ValueError("Duplicate case ids in evaluation suite")
     return cases
+
+
+# Free-tier "core" preset: a small, always-available sample (requires=())
+# spanning the functional breadth of the suite (retrieval-synthesis, temporal,
+# comparative, evaluative, dialectical), so a quick smoke run exercises
+# several distinct code paths without needing every milestone's capabilities.
+_CORE_IDS = ("t01", "t06", "t11", "t16", "t28")
+
+# "grounding" preset: category H is the evidence-integrity/refusal cluster —
+# the cases built specifically to catch fabrication, lazy refusal, and false
+# premises.
+_GROUNDING_CATEGORY = "H"
+
+SuiteName = Literal["core", "grounding", "refusals", "full"]
+SUITE_NAMES: tuple[str, ...] = ("core", "grounding", "refusals", "full")
+
+
+def _select_core(cases: list[EvalCase]) -> list[EvalCase]:
+    by_id = {c.id: c for c in cases}
+    return [by_id[i] for i in _CORE_IDS if i in by_id]
+
+
+_PRESETS: dict[str, Callable[[list[EvalCase]], list[EvalCase]]] = {
+    "full": lambda cases: list(cases),
+    "core": _select_core,
+    "grounding": lambda cases: [c for c in cases if c.category == _GROUNDING_CATEGORY],
+    "refusals": lambda cases: [c for c in cases if c.expected_behavior != "answer"],
+}
+
+
+def resolve_suite(value: str) -> list[EvalCase]:
+    """Resolve a ``--suite`` value to a list of cases.
+
+    Either a named preset (``core``/``grounding``/``refusals``/``full``),
+    applied over the bundled §8.6 set, or a path to a custom suite JSON file —
+    preserving the pre-existing "--suite <path>" behavior for anything that
+    isn't a preset name.
+    """
+    preset = _PRESETS.get(value.strip().lower())
+    if preset is not None:
+        return preset(load_cases())
+    return load_cases(Path(value))
