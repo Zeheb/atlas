@@ -17,7 +17,15 @@ def test_ids_are_unique() -> None:
 
 def test_every_case_has_valid_expected_behavior() -> None:
     for c in load_cases():
-        assert c.expected_behavior in ("answer", "refuse")
+        assert c.expected_behavior in ("answer", "refuse", "honest_negative")
+
+
+def test_t25_t39_are_honest_negative() -> None:
+    # §12.6 amendment 5: retires the refuse-vs-honest-negative scorer artifact.
+    by_id = {c.id: c for c in load_cases()}
+    assert by_id["t25"].expected_behavior == "honest_negative"
+    assert by_id["t39"].expected_behavior == "honest_negative"
+    assert by_id["t25"].must_not_contain  # the fabrication guards remain the teeth
 
 
 def test_availability_gates_on_capabilities() -> None:

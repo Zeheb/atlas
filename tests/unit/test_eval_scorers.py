@@ -91,3 +91,25 @@ def test_correctness_forbidden_substring_fails() -> None:
     score = score_correctness(case, _answered({"ev-1"}), ans)
     assert not score.passed
     assert any("forbidden" in r for r in score.reasons)
+
+
+# --- honest_negative (§12.6 amendment 5) --------------------------------------
+def test_honest_negative_passes_on_clean_refusal() -> None:
+    ans = Answer(prose="", citations=(), overall_confidence="low", refused=True,
+                 refusal_reason="no such promise in the evidence")
+    assert score_correctness(_case("honest_negative"), _refused(), ans).passed
+
+
+def test_honest_negative_passes_on_honest_denial_answer() -> None:
+    ans = Answer(prose="No such commitment appears anywhere in the evidence.",
+                 citations=(), overall_confidence="high")
+    assert score_correctness(_case("honest_negative"), _answered({"ev-1"}), ans).passed
+
+
+def test_honest_negative_fails_only_on_fabrication() -> None:
+    ans = Answer(prose="Yes — management committed to a 30% ROE target.",
+                 citations=(), overall_confidence="high")
+    case = _case("honest_negative", must_not_contain=("committed to a 30%",))
+    score = score_correctness(case, _answered({"ev-1"}), ans)
+    assert not score.passed
+    assert all("forbidden" in r for r in score.reasons)  # ONLY the guard fires

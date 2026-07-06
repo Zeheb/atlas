@@ -29,7 +29,12 @@ CAP_DETERMINISM = "determinism"  # M4
 # `atlas eval compare` can measure its effect against the M1 baseline.
 CAP_QUESTION_RETRIEVAL = "question_retrieval"
 
-Behavior = Literal["answer", "refuse"]
+# "honest_negative" (§12.6 amendment 5): the ideal response is EITHER a clean
+# refusal OR an answer that honestly denies/declares-absent (e.g. "no such
+# promise exists in the evidence", "customers are not disclosed"). Behavioral
+# refused-vs-answered never fails for this class; the fabrication guards
+# (must_not_contain) are the teeth.
+Behavior = Literal["answer", "refuse", "honest_negative"]
 
 
 @dataclass(frozen=True)

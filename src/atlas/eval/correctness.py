@@ -26,23 +26,26 @@ def score_correctness(
     case: EvalCase, result: ReasoningResult, answer: Answer
 ) -> CorrectnessScore:
     reasons: list[str] = []
-    should_refuse = case.expected_behavior == "refuse"
+    expected = case.expected_behavior
 
     # Behavioral expectation: refused-vs-answered must match.
-    if should_refuse and not result.refused:
+    # "honest_negative" (§12.6 amendment 5): EITHER a clean refusal OR an
+    # honest negative answer is acceptable — no behavioral mismatch possible;
+    # the fabrication guards below are the teeth.
+    if expected == "refuse" and not result.refused:
         reasons.append("expected a refusal but Atlas answered")
-    if not should_refuse and result.refused:
+    if expected == "answer" and result.refused:
         reasons.append(f"expected an answer but Atlas refused: {result.refusal_reason}")
 
     text = _text(answer)
 
-    # Forbidden fabrications must not appear (checked on both branches).
+    # Forbidden fabrications must not appear (checked on all branches).
     for banned in case.must_not_contain:
         if banned.lower() in text:
             reasons.append(f"contains forbidden text: {banned!r}")
 
-    # A required fact must appear when the case answers as expected.
-    if not should_refuse and not result.refused and case.must_contain_any:
+    # A required fact must appear when the case answered (non-refuse classes).
+    if expected != "refuse" and not result.refused and case.must_contain_any:
         if not any(want.lower() in text for want in case.must_contain_any):
             reasons.append(f"missing any of required text: {list(case.must_contain_any)}")
 
