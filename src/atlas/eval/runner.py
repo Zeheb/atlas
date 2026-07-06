@@ -22,6 +22,7 @@ passed), reproducing M1's LiveReasoningRunner behavior exactly.
 """
 from __future__ import annotations
 
+import hashlib
 import subprocess
 from collections.abc import Iterable, Sequence
 from datetime import datetime, timezone
@@ -29,6 +30,7 @@ from typing import Protocol
 
 from atlas.company.store import CompanyStore
 from atlas.config.settings import Settings
+from atlas.eval.cache import CachingLLMClient, EvalCache
 from atlas.eval.cases import CAP_QUESTION_RETRIEVAL, EvalCase
 from atlas.eval.correctness import score_correctness
 from atlas.eval.grounding import score_grounding
@@ -70,9 +72,17 @@ class LiveReasoningRunner:
 
     def __init__(
         self, settings: Settings, client: LLMClient, *, capabilities: frozenset[str] = frozenset(),
+        cache: EvalCache | None = None, fingerprint: str = "",
     ) -> None:
         self._settings = settings
-        self._client = client
+        # Free-tier operation: an unchanged (model, fingerprint, prompt,
+        # context) tuple never re-invokes the reasoning model across separate
+        # `atlas eval run` invocations. Wrapped once here, not per-case.
+        self._client: LLMClient = (
+            CachingLLMClient(client, cache, model=settings.reasoning_model, fingerprint=fingerprint)
+            if cache is not None
+            else client
+        )
         self._capabilities = capabilities
 
     def run(self, case: EvalCase) -> tuple[ReasoningResult, Answer, GroundingContext]:
@@ -91,6 +101,35 @@ class LiveReasoningRunner:
         return result, to_answer(result, context=context), context
 
 
+def resolve_judge_sample(
+    value: str | None, active_ids: Sequence[str]
+) -> frozenset[str] | None:
+    """Resolve a ``--judge-sample`` value to the exact set of case ids to judge.
+
+    ``None`` (the default, when the option is omitted) means "judge every
+    active case" — fully backward compatible with pre-existing behavior. A
+    comma-separated list of case ids judges exactly those cases.
+
+    A plain integer ``N`` judges ``N`` cases chosen by hash rank, not by
+    suite/file position: each active case id is ranked by sha256(case_id),
+    and the N lowest-ranked ids are selected. This is deterministic and
+    reproducible (same case ids always yield the same sample), but — unlike
+    "first N in file order" — it is not biased by the suite's category-block
+    layout (e.g. the acceptance suite's first N ids are all one category),
+    and it is largely stable as the suite grows (a case's rank depends only
+    on its own id, not on what else exists, so adding cases elsewhere
+    doesn't reshuffle the whole sample).
+    """
+    if value is None or not value.strip():
+        return None
+    value = value.strip()
+    if value.isdigit():
+        n = int(value)
+        ranked = sorted(active_ids, key=lambda cid: hashlib.sha256(cid.encode("utf-8")).hexdigest())
+        return frozenset(ranked[:n])
+    return frozenset(tok.strip() for tok in value.split(",") if tok.strip())
+
+
 def run_suite(
     cases: Sequence[EvalCase],
     runner: ReasoningRunner,
@@ -100,13 +139,22 @@ def run_suite(
     milestone: str,
     model: str,
     judge_model: str | None = None,
+    judge_sample: str | None = None,
 ) -> Report:
-    """Run every available case, mark the rest pending, and build a Report."""
+    """Run every available case, mark the rest pending, and build a Report.
+
+    ``judge_sample`` (see resolve_judge_sample) selectively skips the judge
+    for cases outside the sample — deterministic scoring (correctness/
+    grounding) always runs for every active case regardless; only the LLM
+    judge call is gated, minimizing LLM calls for free-tier operation.
+    """
     caps = frozenset(capabilities)
+    active_ids = [c.id for c in cases if c.is_available(caps)]
+    sample = resolve_judge_sample(judge_sample, active_ids)
     results = [
         CaseResult(case_id=c.id, category=c.category, status="pending")
         if not c.is_available(caps)
-        else _run_case(c, runner, judge)
+        else _run_case(c, runner, judge if (sample is None or c.id in sample) else None)
         for c in cases
     ]
     return Report(

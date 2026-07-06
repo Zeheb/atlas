@@ -24,6 +24,7 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
+from atlas.eval.cache import CachingLLMClient, EvalCache
 from atlas.eval.cases import EvalCase
 from atlas.reasoning.contracts import Answer, GroundingContext
 from atlas.reasoning.llm import LLMClient
@@ -72,8 +73,20 @@ Return ONLY JSON: {"reasoning_quality": <int>, "usefulness": <int>, \
 class Judge:
     """Scores an Answer's subjective quality via an injected LLM client."""
 
-    def __init__(self, client: LLMClient) -> None:
-        self._client = client
+    def __init__(
+        self, client: LLMClient, *, cache: EvalCache | None = None, model: str | None = None,
+        fingerprint: str = "",
+    ) -> None:
+        # Free-tier operation: an unchanged (case, answer, context) triple
+        # never re-invokes the judge model across separate `atlas eval run`
+        # invocations. Wrapped once here, not per-call — CachingLLMClient
+        # derives everything else (including a human-readable question
+        # label) from the system/user text it receives.
+        self._client = (
+            CachingLLMClient(client, cache, model=model or "unknown", fingerprint=fingerprint)
+            if cache is not None
+            else client
+        )
 
     def evaluate(
         self, case: EvalCase, answer: Answer, context: GroundingContext | None = None
