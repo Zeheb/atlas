@@ -14,7 +14,6 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from atlas.reasoning.client import LLMClient
 from atlas.reasoning.contracts import (
     Claim,
     ConfidenceLevel,
@@ -23,6 +22,7 @@ from atlas.reasoning.contracts import (
     Question,
     ReasoningResult,
 )
+from atlas.reasoning.llm import LLMClient
 from atlas.reasoning.prompt import SYSTEM_PROMPT, build_user_prompt
 
 _CONFIDENCE: frozenset[str] = frozenset({"high", "medium", "low"})

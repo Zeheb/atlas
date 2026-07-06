@@ -17,7 +17,7 @@ from atlas.cli import cli
 from atlas.company.model import CompanyProfile, FinancialSnapshot, FinancialTimeSeries
 from atlas.company.store import CompanyStore
 from atlas.knowledge.base import KnowledgeBase
-from atlas.reasoning.client import FakeLLMClient
+from atlas.reasoning.llm import FakeLLMClient
 
 _SOURCE_TEXT = """
 Financial Highlights
@@ -52,8 +52,8 @@ def _run(monkeypatch, tmp_path, response: str, args: list[str]):
     monkeypatch.setenv("ATLAS_REPOSITORY_BASE_PATH", str(tmp_path))
     monkeypatch.setenv("ATLAS_ANTHROPIC_API_KEY", "sk-test")
     monkeypatch.setattr(
-        "atlas.reasoning.client.AnthropicClient.from_settings",
-        classmethod(lambda cls, settings: FakeLLMClient(response=response)),
+        "atlas.reasoning.llm.build_llm_client",
+        lambda settings, *, role: FakeLLMClient(response=response),
     )
     _seed(tmp_path)
     return CliRunner().invoke(cli, args)

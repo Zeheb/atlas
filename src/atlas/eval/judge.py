@@ -25,8 +25,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from atlas.eval.cases import EvalCase
-from atlas.reasoning.client import LLMClient
 from atlas.reasoning.contracts import Answer, GroundingContext
+from atlas.reasoning.llm import LLMClient
 
 # Bound the evidence listing so a deep profile cannot blow the judge's context.
 _EVIDENCE_CHAR_BUDGET = 20_000

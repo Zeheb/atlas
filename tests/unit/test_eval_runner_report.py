@@ -5,9 +5,8 @@ import json
 
 from atlas.eval.cases import EvalCase
 from atlas.eval.judge import Judge
-from atlas.eval.report import CaseResult, Report, aggregate, compare
+from atlas.eval.report import Report, aggregate, compare
 from atlas.eval.runner import RunnerError, run_suite
-from atlas.reasoning.client import FakeLLMClient
 from atlas.reasoning.contracts import (
     Answer,
     Claim,
@@ -18,6 +17,7 @@ from atlas.reasoning.contracts import (
     ReasoningResult,
     SubjectRef,
 )
+from atlas.reasoning.llm import FakeLLMClient
 
 SUBJECT = SubjectRef(subject_id="TCS", display="TCS")
 

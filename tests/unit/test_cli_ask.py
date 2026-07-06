@@ -19,7 +19,7 @@ from atlas.company.model import (
     FinancialTimeSeries,
 )
 from atlas.company.store import CompanyStore
-from atlas.reasoning.client import FakeLLMClient
+from atlas.reasoning.llm import FakeLLMClient
 
 
 def _seed_profile(base: Path, ticker: str = "TCS") -> None:
@@ -38,10 +38,12 @@ def _seed_profile(base: Path, ticker: str = "TCS") -> None:
 
 def _run(monkeypatch, tmp_path, response: str, args: list[str]):
     monkeypatch.setenv("ATLAS_REPOSITORY_BASE_PATH", str(tmp_path))
-    monkeypatch.setenv("ATLAS_ANTHROPIC_API_KEY", "sk-test")  # from_settings needs a key
+    monkeypatch.setenv("ATLAS_ANTHROPIC_API_KEY", "sk-test")  # build_llm_client needs a key
+    # Patch the factory (the actual seam cli.py depends on), not a specific
+    # adapter's classmethod — robust to which provider is configured.
     monkeypatch.setattr(
-        "atlas.reasoning.client.AnthropicClient.from_settings",
-        classmethod(lambda cls, settings: FakeLLMClient(response=response)),
+        "atlas.reasoning.llm.build_llm_client",
+        lambda settings, *, role: FakeLLMClient(response=response),
     )
     _seed_profile(tmp_path)
     return CliRunner().invoke(cli, args)

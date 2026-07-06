@@ -12,9 +12,9 @@ import pytest
 from atlas.company.store import CompanyStore
 from atlas.config.settings import Settings
 from atlas.reasoning.ask import ask
-from atlas.reasoning.client import AnthropicClient
 from atlas.reasoning.context import build_context
 from atlas.reasoning.contracts import Question, SubjectRef
+from atlas.reasoning.llm import build_llm_client
 
 pytestmark = pytest.mark.integration
 
@@ -29,7 +29,7 @@ def test_ask_real_api_stays_within_closed_world() -> None:
     profile = CompanyStore(profile_path, "TCS").load()
     subject = SubjectRef(subject_id="TCS", display="Tata Consultancy Services")
     context = build_context(profile, subject)
-    client = AnthropicClient.from_settings(Settings())
+    client = build_llm_client(Settings(), role="reasoning")
 
     result = ask(
         Question(raw_text="How consistent has ROE been over the available history?",

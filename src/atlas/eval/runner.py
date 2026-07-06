@@ -36,7 +36,6 @@ from atlas.eval.judge import Judge
 from atlas.eval.report import CaseResult, Report
 from atlas.knowledge.base import KnowledgeBase
 from atlas.reasoning.ask import ask
-from atlas.reasoning.client import LLMClient
 from atlas.reasoning.context import build_context
 from atlas.reasoning.contracts import (
     Answer,
@@ -45,6 +44,7 @@ from atlas.reasoning.contracts import (
     ReasoningResult,
     SubjectRef,
 )
+from atlas.reasoning.llm import LLMClient
 from atlas.reasoning.render import to_answer
 
 

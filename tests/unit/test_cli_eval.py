@@ -1,8 +1,8 @@
 """`atlas eval run` / `atlas eval compare` CLI (eval commit 5).
 
-Offline: a branching fake stands in for the Anthropic client, returning
-reasoning JSON to the reasoning pass and score JSON to the judge (it branches on
-the system prompt). A synthetic TCS profile and a 1-case suite keep it fast.
+Offline: a branching fake stands in for the LLM client, returning reasoning
+JSON to the reasoning pass and score JSON to the judge (it branches on the
+system prompt). A synthetic TCS profile and a 1-case suite keep it fast.
 """
 from __future__ import annotations
 
@@ -58,11 +58,11 @@ def _suite(path: Path) -> Path:
 def test_eval_run_writes_report_and_prints_summary(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("ATLAS_REPOSITORY_BASE_PATH", str(tmp_path))
     monkeypatch.setenv("ATLAS_ANTHROPIC_API_KEY", "sk-test")
-    # from_settings is called twice: reasoning client (no kwargs) and judge
-    # client (model=judge_model) — the fake accepts both (§12.6 amendment 1).
+    # build_llm_client is called twice: reasoning role and judge role (§12.6
+    # amendment 1, goal 7) — the fake serves both, branching on system prompt.
     monkeypatch.setattr(
-        "atlas.reasoning.client.AnthropicClient.from_settings",
-        classmethod(lambda cls, settings, **kwargs: _BranchingFake()),
+        "atlas.reasoning.llm.build_llm_client",
+        lambda settings, *, role: _BranchingFake(),
     )
     _seed(tmp_path)
     suite = _suite(tmp_path / "suite.json")

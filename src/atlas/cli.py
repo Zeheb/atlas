@@ -390,19 +390,20 @@ def ask_cmd(ticker: str, question: str, show_evidence: bool, question_retrieval:
     """Answer a natural-language QUESTION about TICKER, grounded in its evidence.
 
     Reads the saved CompanyProfile (run 'atlas profile build TICKER' first) and
-    reasons over it with the Anthropic model configured via ATLAS_ANTHROPIC_API_KEY.
-    Every claim is grounded in evidence Atlas already extracted; out-of-scope
-    questions (e.g. valuation) are declined rather than guessed. When the
-    company's KnowledgeBase is present, claim evidence is hydrated with
-    retrieved source excerpts (M1); pass --show-evidence to see them, and
-    --question-retrieval to also surface passages relevant to this question.
+    reasons over it with the LLM configured via ATLAS_LLM_PROVIDER (default
+    "anthropic") and its credential (e.g. ATLAS_ANTHROPIC_API_KEY). Every claim
+    is grounded in evidence Atlas already extracted; out-of-scope questions
+    (e.g. valuation) are declined rather than guessed. When the company's
+    KnowledgeBase is present, claim evidence is hydrated with retrieved source
+    excerpts (M1); pass --show-evidence to see them, and --question-retrieval
+    to also surface passages relevant to this question.
     """
     from atlas.company.store import CompanyStore
     from atlas.knowledge.base import KnowledgeBase
     from atlas.reasoning.ask import ask
-    from atlas.reasoning.client import AnthropicClient, MissingAPIKeyError
     from atlas.reasoning.context import build_context
     from atlas.reasoning.contracts import Question, SubjectRef
+    from atlas.reasoning.llm import MissingAPIKeyError, build_llm_client
     from atlas.reasoning.render import format_answer, to_answer
 
     ticker = ticker.upper()
@@ -414,7 +415,7 @@ def ask_cmd(ticker: str, question: str, show_evidence: bool, question_retrieval:
         raise SystemExit(1)
 
     try:
-        client = AnthropicClient.from_settings(atlas.settings)
+        client = build_llm_client(atlas.settings, role="reasoning")
     except MissingAPIKeyError as exc:
         click.echo(str(exc), err=True)
         raise SystemExit(1)
@@ -461,22 +462,27 @@ def eval_run_cmd(
     from atlas.eval.cases import load_cases
     from atlas.eval.judge import Judge
     from atlas.eval.runner import LiveReasoningRunner, run_suite
-    from atlas.reasoning.client import AnthropicClient, MissingAPIKeyError
+    from atlas.reasoning.llm import MissingAPIKeyError, build_llm_client
 
     atlas = Atlas.from_environment()
     try:
-        client = AnthropicClient.from_settings(atlas.settings)
+        client = build_llm_client(atlas.settings, role="reasoning")
     except MissingAPIKeyError as exc:
         click.echo(str(exc), err=True)
         raise SystemExit(1)
 
-    # §12.6 amendment 1: the judge gets its OWN client on the separately-pinned
-    # judge_model — upgrading the reasoning model never moves the instrument.
+    # §12.6 amendment 1: the judge gets its OWN, independently resolved client
+    # (provider AND model) — upgrading the reasoning model/provider never moves
+    # the instrument. Independent providers per role (goal 7) means judge
+    # construction can now fail on its own (e.g. an unimplemented transport),
+    # so it gets the same clean-error treatment as the reasoning client above.
     judge = None
     if not no_judge:
-        judge_client = AnthropicClient.from_settings(
-            atlas.settings, model=atlas.settings.judge_model
-        )
+        try:
+            judge_client = build_llm_client(atlas.settings, role="judge")
+        except MissingAPIKeyError as exc:
+            click.echo(str(exc), err=True)
+            raise SystemExit(1)
         judge = Judge(judge_client)
 
     cases = load_cases(Path(suite_path) if suite_path else None)

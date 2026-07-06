@@ -1,10 +1,10 @@
-"""AnthropicClient at its canonical location (LLM-layer refactor, commit 1).
+"""AnthropicClient at its canonical location (LLM-layer refactor, commit 1/2).
 
 Covers the incremental new behavior — temperature/max_tokens now read from
-Settings rather than hardcoded — plus a light regression of from_settings'
-existing contract. The full from_settings test matrix already lives in
-tests/unit/test_reasoning_client.py (untouched, exercised via the shim);
-this file is not a full duplicate of it.
+Settings rather than hardcoded — plus from_settings' existing contract
+(previously covered by tests/unit/test_reasoning_client.py, deleted in
+commit 2 once the atlas.reasoning.client shim it exercised was removed;
+this file's coverage fully supersedes it).
 """
 from __future__ import annotations
 

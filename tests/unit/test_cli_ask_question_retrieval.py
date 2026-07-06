@@ -21,7 +21,7 @@ from atlas.cli import cli
 from atlas.company.model import CompanyProfile, FinancialSnapshot, FinancialTimeSeries
 from atlas.company.store import CompanyStore
 from atlas.knowledge.base import KnowledgeBase
-from atlas.reasoning.client import FakeLLMClient
+from atlas.reasoning.llm import FakeLLMClient
 
 # Same verified-experimentally content as test_reasoning_context_question.py:
 # the two anchors ("24.2" vs "bookings"/"pricing mix") produce distinct excerpts.
@@ -71,8 +71,8 @@ def _run_and_capture_fake(monkeypatch, tmp_path: Path, args: list[str]) -> tuple
     monkeypatch.setenv("ATLAS_ANTHROPIC_API_KEY", "sk-test")
     fake = FakeLLMClient(response=_RESPONSE)
     monkeypatch.setattr(
-        "atlas.reasoning.client.AnthropicClient.from_settings",
-        classmethod(lambda cls, settings: fake),
+        "atlas.reasoning.llm.build_llm_client",
+        lambda settings, *, role: fake,
     )
     _seed(tmp_path)
     result = CliRunner().invoke(cli, args)

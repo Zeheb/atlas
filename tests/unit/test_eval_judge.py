@@ -8,7 +8,6 @@ import pytest
 
 from atlas.eval.cases import EvalCase
 from atlas.eval.judge import Judge, JudgeParseError
-from atlas.reasoning.client import FakeLLMClient
 from atlas.reasoning.contracts import (
     Answer,
     Claim,
@@ -16,6 +15,7 @@ from atlas.reasoning.contracts import (
     GroundingContext,
     SubjectRef,
 )
+from atlas.reasoning.llm import FakeLLMClient
 
 CASE = EvalCase(id="c", category="D", question="Is management credible?",
                 subject="TCS", expected_behavior="answer", rubric="marked judgment")

@@ -1,7 +1,7 @@
 """Transport-agnostic seam at its canonical location (LLM-layer refactor,
-commit 1). This proves atlas.reasoning.llm works standalone, independent of
-the atlas.reasoning.client compatibility shim (which has its own,
-untouched, pre-existing test file proving backward compatibility).
+commit 1/2). The atlas.reasoning.client compatibility shim used during the
+migration (commit 1) has been fully removed (commit 2); atlas.reasoning.llm
+is now the only location for this seam.
 """
 from __future__ import annotations
 

@@ -9,7 +9,6 @@ from __future__ import annotations
 import json
 
 from atlas.reasoning.ask import ask
-from atlas.reasoning.client import FakeLLMClient
 from atlas.reasoning.contracts import (
     Claim,
     EvidenceReference,
@@ -17,6 +16,7 @@ from atlas.reasoning.contracts import (
     Question,
     SubjectRef,
 )
+from atlas.reasoning.llm import FakeLLMClient
 
 SUBJECT = SubjectRef(subject_id="TCS", display="Tata Consultancy Services")
 

@@ -13,7 +13,7 @@ import pytest
 from atlas.config.settings import Settings
 from atlas.eval.cases import load_cases
 from atlas.eval.runner import LiveReasoningRunner, run_suite
-from atlas.reasoning.client import AnthropicClient
+from atlas.reasoning.llm import build_llm_client
 
 pytestmark = pytest.mark.integration
 
@@ -25,7 +25,7 @@ def test_eval_suite_runs_against_real_tcs() -> None:
     if not Path("repositories/TCS/profile.json").exists():
         pytest.skip("no TCS profile on disk")
     settings = Settings()
-    client = AnthropicClient.from_settings(settings)
+    client = build_llm_client(settings, role="reasoning")
     # Only the always-available single-name cases; no judge (deterministic dims).
     cases = [c for c in load_cases() if c.is_available(frozenset({"single_name"}))]
     report = run_suite(

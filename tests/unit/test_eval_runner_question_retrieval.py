@@ -18,7 +18,7 @@ from atlas.config.settings import Settings
 from atlas.eval.cases import CAP_QUESTION_RETRIEVAL, EvalCase, load_cases
 from atlas.eval.runner import LiveReasoningRunner
 from atlas.knowledge.base import KnowledgeBase
-from atlas.reasoning.client import FakeLLMClient
+from atlas.reasoning.llm import FakeLLMClient
 
 _CONTENT = (
     "Operating margin stood at 24.2% in FY26, driven by continued cost discipline "

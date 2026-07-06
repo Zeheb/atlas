@@ -19,7 +19,7 @@ from atlas.company.store import CompanyStore
 from atlas.config.settings import Settings
 from atlas.eval.cases import CAP_DRILLDOWN, CAP_SINGLE_NAME, EvalCase
 from atlas.eval.runner import LiveReasoningRunner
-from atlas.reasoning.client import FakeLLMClient
+from atlas.reasoning.llm import FakeLLMClient
 
 _SOURCE_TEXT = """
 Financial Highlights
