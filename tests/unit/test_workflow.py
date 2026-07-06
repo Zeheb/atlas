@@ -504,3 +504,178 @@ class TestAcquisitionWarnings:
         messages: list[str] = []
         run_acquisition(root, connector, on_progress=messages.append)
         assert any("Company Update" in m for m in messages)
+
+
+# ---------------------------------------------------------------------------
+# Inline classification — Stage 1 of the acquisition-hardening sprint:
+# classification must happen automatically during acquisition, with no
+# separate repair pass. These use a real (if minimal) generated PDF, since
+# the classifier only sees text that KnowledgeBase.parse() actually extracts
+# — a fake b"PDF" placeholder (used by _mock_connector() elsewhere in this
+# file) never reaches classify() at all, because it fails to parse.
+# ---------------------------------------------------------------------------
+
+
+def _pdf_bytes(text: str) -> bytes:
+    import fitz
+    pdf = fitz.open()
+    page = pdf.new_page()
+    page.insert_text((72, 72), text)
+    data = pdf.tobytes()
+    pdf.close()
+    return data
+
+
+class TestInlineClassification:
+    def test_related_party_document_reclassified_with_no_repair_script(
+        self, tmp_path: Path
+    ) -> None:
+        root = _make_repo(tmp_path)
+        ev = _make_evidence("bse-news-rp1", kind=EvidenceKind.FINANCIAL_RESULTS)
+        connector = _mock_connector(evidence=[ev])
+        connector.fetch_bytes.return_value = _pdf_bytes(
+            "Sub: Disclosure of Related Party Transactions pursuant to "
+            "Regulation 23(9) of the SEBI (LODR) Regulations, 2015"
+        )
+
+        report = run_acquisition(root, connector)
+
+        assert report.reclassified == 1
+        from atlas.acquisition.catalog import RepositoryCatalog
+        catalog = RepositoryCatalog(root)
+        assert catalog.get_entry("bse-news-rp1").kind == "regulatory_filing"
+
+    def test_real_financial_results_not_reclassified(self, tmp_path: Path) -> None:
+        root = _make_repo(tmp_path)
+        ev = _make_evidence("bse-news-fr1", kind=EvidenceKind.FINANCIAL_RESULTS)
+        connector = _mock_connector(evidence=[ev])
+        connector.fetch_bytes.return_value = _pdf_bytes(
+            "Sub: Financial Results for the year ended March 31, 2026"
+        )
+
+        report = run_acquisition(root, connector)
+
+        assert report.classified == 1
+        assert report.reclassified == 0
+        from atlas.acquisition.catalog import RepositoryCatalog
+        catalog = RepositoryCatalog(root)
+        assert catalog.get_entry("bse-news-fr1").kind == "financial_results"
+
+    def test_classification_report_counts_reflect_document_outcomes(
+        self, tmp_path: Path
+    ) -> None:
+        root = _make_repo(tmp_path)
+        ev1 = _make_evidence("bse-news-rp2", kind=EvidenceKind.FINANCIAL_RESULTS)
+        ev2 = _make_evidence("bse-news-fr2", kind=EvidenceKind.FINANCIAL_RESULTS)
+        connector = _mock_connector(evidence=[ev1, ev2])
+
+        def _fetch(url: str) -> bytes:
+            if "rp2" in url:
+                return _pdf_bytes("Sub: Disclosure of Related Party Transactions pursuant to Regulation 23(9)")
+            return _pdf_bytes("Sub: Financial Results for the year ended March 31, 2026")
+
+        connector.fetch_bytes.side_effect = _fetch
+
+        report = run_acquisition(root, connector)
+
+        assert report.downloaded == 2
+        assert report.classified == 2
+        assert report.reclassified == 1
+
+    def test_parse_failure_keeps_original_kind_without_crashing(
+        self, tmp_path: Path
+    ) -> None:
+        # A download that succeeds but isn't a real parseable PDF (the
+        # existing _mock_connector default) must not crash the pipeline —
+        # classification simply has nothing to classify without text.
+        root = _make_repo(tmp_path)
+        ev = _make_evidence("bse-news-bad1", kind=EvidenceKind.FINANCIAL_RESULTS)
+        report = run_acquisition(root, _mock_connector(evidence=[ev]))
+
+        assert report.downloaded == 1
+        assert report.classified == 0
+        from atlas.acquisition.catalog import RepositoryCatalog
+        catalog = RepositoryCatalog(root)
+        assert catalog.get_entry("bse-news-bad1").kind == "financial_results"
+
+    def test_ocr_used_false_for_native_text_pdf(self, tmp_path: Path) -> None:
+        root = _make_repo(tmp_path)
+        ev = _make_evidence("bse-news-native1", kind=EvidenceKind.FINANCIAL_RESULTS)
+        connector = _mock_connector(evidence=[ev])
+        connector.fetch_bytes.return_value = _pdf_bytes(
+            "Sub: Financial Results for the year ended March 31, 2026"
+        )
+        report = run_acquisition(root, connector)
+        assert report.ocr_used == 0
+
+
+# ---------------------------------------------------------------------------
+# Multi-connector orchestration — Stage 4 of the acquisition-hardening
+# sprint: proves run_acquisition() itself (not just resolve_multi_source()
+# in isolation) genuinely orchestrates more than one connector, using a
+# second mock connector standing in for a future real second source (e.g.
+# NSE). No source-specific code is added to make this work — additional_
+# connectors is a plain list of anything satisfying the Connector protocol.
+# ---------------------------------------------------------------------------
+
+
+class TestMultiConnectorOrchestration:
+    def test_evidence_from_second_connector_is_downloaded(self, tmp_path: Path) -> None:
+        root = _make_repo(tmp_path)
+        primary = _mock_connector(evidence=[_make_evidence("bse-news-p1")])
+        second = _mock_connector(evidence=[
+            Evidence(
+                evidence_id="nse-news-s1",
+                company_id="cmp_test123",
+                source=EvidenceSource.NSE,
+                kind=EvidenceKind.FINANCIAL_RESULTS,
+                title="Financial Results from a second source",
+                source_date=datetime(2025, 6, 1, tzinfo=timezone.utc),
+                document_url="https://example.com/nse-news-s1.pdf",
+                file_size_bytes=2_000,
+            )
+        ])
+
+        report = run_acquisition(root, primary, additional_connectors=[second])
+
+        assert report.discovered == 2
+        assert report.downloaded == 2
+        second.fetch_bytes.assert_called()
+
+    def test_duplicate_across_connectors_is_suppressed(self, tmp_path: Path) -> None:
+        root = _make_repo(tmp_path)
+        same_date = datetime(2026, 4, 9, tzinfo=timezone.utc)
+        bse_copy = Evidence(
+            evidence_id="bse-news-dup", company_id="cmp_test123", source=EvidenceSource.BSE,
+            kind=EvidenceKind.FINANCIAL_RESULTS, title="Q4 Results",
+            source_date=same_date, document_url="https://bse.example.com/dup.pdf",
+            file_size_bytes=100,
+        )
+        nse_copy = Evidence(
+            evidence_id="nse-news-dup", company_id="cmp_test123", source=EvidenceSource.NSE,
+            kind=EvidenceKind.FINANCIAL_RESULTS, title="Q4 Results",
+            source_date=same_date, document_url="https://nse.example.com/dup.pdf",
+            file_size_bytes=500,  # larger -> preferred by the default tiebreak
+        )
+        primary = _mock_connector(evidence=[bse_copy])
+        second = _mock_connector(evidence=[nse_copy])
+
+        report = run_acquisition(root, primary, additional_connectors=[second])
+
+        # Only the NSE copy (larger file) should have been kept and downloaded;
+        # the BSE duplicate must never reach the download step at all.
+        assert report.downloaded == 1
+        assert report.results[0].evidence.evidence_id == "nse-news-dup"
+        primary.fetch_bytes.assert_not_called()
+        dedup_warnings = [w for w in report.warnings if w.code == "duplicate_across_exchanges"]
+        assert len(dedup_warnings) == 1
+
+    def test_no_additional_connectors_behaves_exactly_as_before(self, tmp_path: Path) -> None:
+        # The default (no additional_connectors) must be indistinguishable
+        # from every pre-multi-source-sprint acquisition run.
+        root = _make_repo(tmp_path)
+        evidence = [_make_evidence("bse-news-001"), _make_evidence("bse-news-002")]
+        connector = _mock_connector(evidence=evidence)
+        report = run_acquisition(root, connector)
+        assert report.discovered == 2
+        assert report.downloaded == 2

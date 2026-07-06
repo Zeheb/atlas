@@ -215,6 +215,49 @@ class TestCatalogEntryFromEvidence:
         )
         assert entry.acquired_at != ""
 
+    def test_checksum_propagated_when_given(self) -> None:
+        entry = CatalogEntry.from_evidence(
+            _make_evidence(), "annual_reports/ev-001.pdf", checksum="abc123"
+        )
+        assert entry.checksum == "abc123"
+
+    def test_checksum_none_by_default(self) -> None:
+        entry = CatalogEntry.from_evidence(
+            _make_evidence(), "annual_reports/ev-001.pdf"
+        )
+        assert entry.checksum is None
+
+    def test_report_period_propagated_from_evidence(self) -> None:
+        ev = _make_evidence()
+        ev.report_period = "2025-26"
+        entry = CatalogEntry.from_evidence(ev, "annual_reports/ev-001.pdf")
+        assert entry.report_period == "2025-26"
+
+    def test_report_period_none_when_evidence_has_none(self) -> None:
+        entry = CatalogEntry.from_evidence(
+            _make_evidence(), "annual_reports/ev-001.pdf"
+        )
+        assert entry.report_period is None
+
+    def test_checksum_and_report_period_survive_to_dict_from_dict_round_trip(self) -> None:
+        entry = CatalogEntry.from_evidence(
+            _make_evidence(), "annual_reports/ev-001.pdf", checksum="deadbeef"
+        )
+        entry.report_period = "2025-26"
+        restored = CatalogEntry.from_dict(entry.to_dict())
+        assert restored.checksum == "deadbeef"
+        assert restored.report_period == "2025-26"
+
+    def test_from_dict_defaults_missing_checksum_and_period_to_none(self) -> None:
+        # Backward compatibility: a catalog.json written before these fields
+        # existed has neither key.
+        legacy_dict = {**_SAMPLE_ITEM}
+        legacy_dict.pop("checksum", None)
+        legacy_dict.pop("report_period", None)
+        restored = CatalogEntry.from_dict(legacy_dict)
+        assert restored.checksum is None
+        assert restored.report_period is None
+
 
 # ---------------------------------------------------------------------------
 # NEWSID migration

@@ -54,6 +54,22 @@ class TestDownloadEvidenceSuccess:
         download_evidence(ev, tmp_path, lambda _: b"PDF")
         assert (tmp_path / "corporate_governance_reports" / "ev-001.pdf").exists()
 
+    def test_checksum_is_sha256_of_downloaded_bytes(self, tmp_path: Path) -> None:
+        import hashlib
+        content = b"real file content for checksum test"
+        result = download_evidence(_make_evidence(), tmp_path, lambda _: content)
+        assert result.checksum == hashlib.sha256(content).hexdigest()
+
+    def test_checksum_differs_for_different_content(self, tmp_path: Path) -> None:
+        r1 = download_evidence(_make_evidence("ev-001"), tmp_path, lambda _: b"content A")
+        r2 = download_evidence(_make_evidence("ev-002"), tmp_path, lambda _: b"content B")
+        assert r1.checksum != r2.checksum
+
+    def test_checksum_identical_for_identical_content(self, tmp_path: Path) -> None:
+        r1 = download_evidence(_make_evidence("ev-001"), tmp_path, lambda _: b"same content")
+        r2 = download_evidence(_make_evidence("ev-002"), tmp_path, lambda _: b"same content")
+        assert r1.checksum == r2.checksum
+
 
 class TestDownloadEvidenceNoUrl:
     def test_returns_error_result_when_no_url(self, tmp_path: Path) -> None:
@@ -79,6 +95,58 @@ class TestDownloadEvidenceFailure:
 
         download_evidence(_make_evidence(), tmp_path, boom)
         assert not (tmp_path / "annual_reports" / "ev-001.pdf").exists()
+
+
+class TestDownloadEvidenceHtmlShellDetection:
+    """Regression coverage for the actual failure mode found while
+    investigating the annual-report CDN bug: a dead/changed BSE URL
+    doesn't raise an exception or return a non-2xx status — it returns
+    HTTP 200 with BSE's Angular SPA shell page instead of the requested
+    file, which the old code silently wrote to disk as a .pdf.
+    """
+
+    _SHELL_HTML = (
+        b'<!DOCTYPE html><html lang="en" data-critters-container="">'
+        b"<head><title>LIVE Stock/Share Market</title></head></html>"
+    )
+
+    def test_html_shell_response_is_treated_as_failure(self, tmp_path: Path) -> None:
+        result = download_evidence(_make_evidence(), tmp_path, lambda _: self._SHELL_HTML)
+        assert result.succeeded is False
+        assert "HTML page" in (result.error or "")
+
+    def test_html_shell_response_does_not_write_file(self, tmp_path: Path) -> None:
+        download_evidence(_make_evidence(), tmp_path, lambda _: self._SHELL_HTML)
+        assert not (tmp_path / "annual_reports" / "ev-001.pdf").exists()
+
+    def test_uppercase_doctype_also_detected(self, tmp_path: Path) -> None:
+        content = b"<!DOCTYPE HTML><html><body>Not found</body></html>"
+        result = download_evidence(_make_evidence(), tmp_path, lambda _: content)
+        assert result.succeeded is False
+
+    def test_leading_whitespace_before_doctype_still_detected(self, tmp_path: Path) -> None:
+        content = b"\r\n\r\n  <!DOCTYPE html><html></html>"
+        result = download_evidence(_make_evidence(), tmp_path, lambda _: content)
+        assert result.succeeded is False
+
+    def test_real_pdf_content_unaffected(self, tmp_path: Path) -> None:
+        result = download_evidence(_make_evidence(), tmp_path, lambda _: b"%PDF-1.4 real content")
+        assert result.succeeded is True
+
+    def test_html_extension_exempt_from_check(self, tmp_path: Path) -> None:
+        ev = Evidence(
+            evidence_id="ev-html",
+            company_id="cmp_abc",
+            source=EvidenceSource.BSE,
+            kind=EvidenceKind.OTHER,
+            title="A real HTML document",
+            source_date=datetime(2024, 1, 1, tzinfo=timezone.utc),
+            document_url="https://example.com/page.html",
+            file_size_bytes=None,
+            file_extension="html",
+        )
+        result = download_evidence(ev, tmp_path, lambda _: self._SHELL_HTML)
+        assert result.succeeded is True
 
 
 class TestKindToSubdir:

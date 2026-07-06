@@ -323,14 +323,18 @@ class TestGetAnnualReports:
         result = BSEConnector(http=http)._get_annual_reports(COMPANY_ID, SCRIP_CODE)
         assert result[0].company_id == COMPANY_ID
 
-    def test_document_url_uses_annual_reports_cdn(self) -> None:
+    def test_document_url_uses_bseplus_annual_report_cdn_for_legacy_filenames(self) -> None:
+        # "report2025.pdf" isn't the ~2023+ UUID generation, so it resolves
+        # via the legacy "/bseplus/AnnualReport/" path — see bse_parser.py's
+        # _annual_report_url() and its class-level comment for why this
+        # (not the dead "/AnnualReports/" path) is the real one.
         http = MagicMock()
         http.get_json.return_value = make_ar_response(
             make_ar_record("2025", "report2025.pdf")
         )
         result = BSEConnector(http=http)._get_annual_reports(COMPANY_ID, SCRIP_CODE)
         assert result[0].document_url == (
-            f"https://www.bseindia.com/AnnualReports/{SCRIP_CODE}/report2025.pdf"
+            f"https://www.bseindia.com/bseplus/AnnualReport/{SCRIP_CODE}/report2025.pdf"
         )
 
     def test_multiple_records_all_returned(self) -> None:

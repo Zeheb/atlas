@@ -1,6 +1,6 @@
 import json
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -9,7 +9,7 @@ from atlas.acquisition.connectors.connector import DiscoveryWarning
 from atlas.acquisition.downloader import DownloadResult
 
 if TYPE_CHECKING:
-    pass
+    from atlas.acquisition.workflow import DocumentOutcome
 
 
 @dataclass
@@ -18,6 +18,11 @@ class AcquisitionReport:
 
     Holds rich objects (DownloadResult, DiscoveryWarning) for direct use by
     callers. Not responsible for serialisation or persistence.
+
+    document_outcomes carries the per-document parse/OCR/classification
+    detail the acquisition-hardening sprint made inline — it's what makes
+    ocr_rate/classified/reclassified measurable from a single run's report,
+    not from a separate audit pass over the finished repository.
     """
 
     ticker: str
@@ -30,6 +35,7 @@ class AcquisitionReport:
     already_acquired: int
     results: list[DownloadResult]
     warnings: list[DiscoveryWarning]
+    document_outcomes: "list[DocumentOutcome]" = field(default_factory=list)
 
     @property
     def new(self) -> int:
@@ -42,6 +48,18 @@ class AcquisitionReport:
     @property
     def failed(self) -> int:
         return sum(1 for r in self.results if not r.succeeded)
+
+    @property
+    def ocr_used(self) -> int:
+        return sum(1 for o in self.document_outcomes if o.ocr_used)
+
+    @property
+    def classified(self) -> int:
+        return sum(1 for o in self.document_outcomes if o.classification is not None)
+
+    @property
+    def reclassified(self) -> int:
+        return sum(1 for o in self.document_outcomes if o.classification is not None and o.classification.was_reclassified)
 
     @property
     def duration_seconds(self) -> float:
@@ -67,8 +85,12 @@ class AcquisitionRun:
     already_acquired: int
     downloaded: int
     failed: int
+    ocr_used: int
+    classified: int
+    reclassified: int
     warnings: list[dict[str, Any]]
     failures: list[dict[str, Any]]
+    reclassifications: list[dict[str, Any]]
     record_path: Path
 
     @property
@@ -96,9 +118,13 @@ class AcquisitionRun:
                 "new": self.new,
                 "downloaded": self.downloaded,
                 "failed": self.failed,
+                "ocr_used": self.ocr_used,
+                "classified": self.classified,
+                "reclassified": self.reclassified,
             },
             "warnings": self.warnings,
             "failures": self.failures,
+            "reclassifications": self.reclassifications,
         }
 
 
@@ -127,6 +153,9 @@ def save_acquisition_run(report: AcquisitionReport, repo_root: Path) -> Acquisit
         already_acquired=report.already_acquired,
         downloaded=report.downloaded,
         failed=report.failed,
+        ocr_used=report.ocr_used,
+        classified=report.classified,
+        reclassified=report.reclassified,
         warnings=[
             {
                 "source": w.source.value,
@@ -144,6 +173,16 @@ def save_acquisition_run(report: AcquisitionReport, repo_root: Path) -> Acquisit
             }
             for r in report.results
             if not r.succeeded
+        ],
+        reclassifications=[
+            {
+                "evidence_id": o.download.evidence.evidence_id,
+                "from_kind": o.classification.original_kind,
+                "to_kind": o.classification.resolved_kind,
+                "reason": o.classification.reason,
+            }
+            for o in report.document_outcomes
+            if o.classification is not None and o.classification.was_reclassified
         ],
         record_path=path,
     )

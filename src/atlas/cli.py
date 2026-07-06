@@ -76,6 +76,10 @@ def acquire(ticker: str, profile_name: str) -> None:
     click.echo(f"  New:             {report.new}")
     click.echo(f"  Downloaded:      {report.downloaded}")
     click.echo(f"  Failed:          {report.failed}")
+    if report.classified:
+        click.echo(f"  Classified:      {report.classified}  ({report.reclassified} reclassified)")
+    if report.ocr_used:
+        click.echo(f"  OCR used:        {report.ocr_used}")
     click.echo(f"  Duration:        {report.duration_seconds:.1f}s")
     click.echo(f"  Record:          {run.record_path.name}")
 
@@ -244,6 +248,7 @@ def query_cmd(
     """
     from pathlib import Path
 
+    from atlas.acquisition.repository import Repository
     from atlas.company.store import CompanyStore
 
     ticker = ticker.upper()
@@ -260,6 +265,7 @@ def query_cmd(
 
     store = CompanyStore(profile_path, ticker)
     prof = store.load()
+    repo = Repository(repo_root)
 
     kwargs: dict[str, object] = {}
     if query_name in ("revenue", "leverage"):
@@ -278,11 +284,15 @@ def query_cmd(
             kwargs["period_type"] = period_type
         if query_name == "compare":
             kwargs["n"] = compare_n
+        kwargs["repo"] = repo
     if query_name == "drilldown":
         if not query_arg:
             click.echo("'drilldown' requires an evidence_id argument.", err=True)
             raise SystemExit(1)
         kwargs["evidence_id"] = query_arg
+        kwargs["repo"] = repo
+    if query_name == "summary":
+        kwargs["repo"] = repo
 
     try:
         result = run_query(query_name, prof, **kwargs)
@@ -340,6 +350,7 @@ def screen_cmd(
         kwargs["op"] = op
     if threshold is not None:
         kwargs["threshold"] = threshold
+    kwargs["repos"] = screen_mod.discover_repos(atlas.settings.repository_base_path)
 
     try:
         result = screen_mod.screen(profiles, metric, **kwargs)
@@ -368,3 +379,49 @@ def metrics_cmd(domain: str | None) -> None:
         for spec in specs:
             unit_label = spec.unit.value if spec.unit else "-"
             click.echo(f"  {spec.key:<28} {spec.label:<45} [{unit_label}]")
+
+
+@cli.command("research")
+@click.argument("ticker")
+@click.option(
+    "--out", "out_path", default=None, type=click.Path(dir_okay=False, path_type=None),
+    help="Write the report to this file instead of stdout.",
+)
+def research_cmd(ticker: str, out_path: str | None) -> None:
+    """Generate a deterministic, evidence-first research briefing for TICKER.
+
+    Reads the saved CompanyProfile (run 'atlas profile build TICKER' first)
+    and every other company's profile under the same repository base (used
+    for the Competitive Position section). No LLM, no network access — pure
+    assembly of facts and citations Atlas already extracted.
+    """
+    from pathlib import Path
+
+    from atlas.acquisition.repository import Repository
+    from atlas.company.store import CompanyStore
+    from atlas.query import screen as screen_mod
+    from atlas.research.report import generate_report_markdown
+
+    ticker = ticker.upper()
+    atlas = Atlas.from_environment()
+    repo_root = atlas.settings.repository_base_path / ticker
+    profile_path = repo_root / "profile.json"
+
+    if not profile_path.exists():
+        click.echo(
+            f"No profile for '{ticker}'. Run: atlas profile build {ticker}",
+            err=True,
+        )
+        raise SystemExit(1)
+
+    profile = CompanyStore(profile_path, ticker).load()
+    repo = Repository(repo_root) if (repo_root / "catalog.json").exists() else None
+    peer_profiles = screen_mod.discover_companies(atlas.settings.repository_base_path)
+
+    markdown = generate_report_markdown(ticker, profile, repo, peer_profiles=peer_profiles)
+
+    if out_path:
+        Path(out_path).write_text(markdown, encoding="utf-8")
+        click.echo(f"Report written to {out_path}")
+    else:
+        click.echo(markdown)

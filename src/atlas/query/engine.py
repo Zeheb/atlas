@@ -2,7 +2,12 @@
 
 All query functions are pure: they accept a CompanyProfile and return a
 QueryResult containing pre-formatted tabular data.  No KB access, no raw
-documents, no LLM calls.
+documents, no LLM calls. An optional `repo` (catalog metadata only, never a
+raw document body) lets timeline/compare/summary/drilldown resolve
+human-readable citations instead of raw evidence_ids — when omitted (e.g.
+in unit tests that construct a synthetic CompanyProfile with no backing
+repository), those functions fall back to showing the raw evidence_id, so
+every existing caller and test keeps working unchanged.
 
 Each QueryResult is a list of TableSections; the CLI render layer (render.py)
 turns them into text tables.  Test code can inspect rows directly.
@@ -13,7 +18,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Callable
 
+from atlas.acquisition.repository import Repository
 from atlas.analysis.base import FactKind, FactUnit
+from atlas.citation import build_citation
 from atlas.company import derived
 from atlas.company.model import (
     AcquisitionEvent,
@@ -236,7 +243,7 @@ def revenue(
     if not snaps:
         notes.append(f"No {period_type} {basis} snapshots found.")
     elif basis == "consolidated" and not snaps:
-        notes.append("Falling back to standalone — no consolidated data available.")
+        notes.append("Falling back to standalone - no consolidated data available.")
 
     section = TableSection(
         heading=f"{basis.title()} {period_type.title()} P&L",
@@ -689,6 +696,7 @@ def timeline(
     metric: str,
     basis: str = "consolidated",
     period_type: str | None = None,
+    repo: Repository | None = None,
 ) -> QueryResult:
     """Time series for any metric registered in query.metrics.
 
@@ -722,7 +730,7 @@ def timeline(
             _fmt_date(snap.period),
             metrics.format_value(value, spec.unit),
             delta,
-            _fmt_sources(snap.sources),
+            _cite_sources(snap.sources, profile, repo),
         ])
         prev_value = value
 
@@ -754,6 +762,7 @@ def compare(
     n: int = 2,
     basis: str = "consolidated",
     period_type: str | None = None,
+    repo: Repository | None = None,
 ) -> QueryResult:
     """Last *n* periods of one metric side-by-side, each vs. its predecessor.
 
@@ -781,13 +790,13 @@ def compare(
     for i, (period, value, sources) in enumerate(points):
         prior_value = points[i - 1][1] if i > 0 else None
         delta = _pp_delta(value, prior_value) if spec.unit == FactUnit.PERCENT else _yoy_delta(value, prior_value)
-        rows.append([_fmt_date(period), metrics.format_value(value, spec.unit), delta, _fmt_sources(sources)])
+        rows.append([_fmt_date(period), metrics.format_value(value, spec.unit), delta, _cite_sources(sources, profile, repo)])
 
     notes = []
     if not points:
         notes.append(f"No data found for metric {metric!r} ({spec.label}).")
     elif len(points) < 2:
-        notes.append("Only one period with data — nothing to compare against yet.")
+        notes.append("Only one period with data - nothing to compare against yet.")
 
     return QueryResult(
         query="compare",
@@ -803,14 +812,23 @@ def compare(
 # ---------------------------------------------------------------------------
 
 
-def summary(profile: CompanyProfile) -> QueryResult:
+def summary(profile: CompanyProfile, repo: Repository | None = None) -> QueryResult:
     """One-page overview: latest financials, ownership, ratings, guidance,
     recent capital events, ESG headline, and recent board changes.
 
     Pure aggregation of data already in CompanyProfile — no new extraction,
     every section reuses logic already validated by an existing query.
+    Guidance and capital events get a Source column (a citation when repo
+    is given, "-" otherwise) — this is new capability, not a UUID being
+    hidden, since summary() never showed a raw evidence_id before.
     """
     sections: list[TableSection] = []
+
+    def _cite_one(evidence_id: str) -> str:
+        if repo is None:
+            return "-"
+        entry = repo.get(evidence_id)
+        return build_citation(entry, profile.company_id, profile).citation_short if entry else "-"
 
     fin_snaps = sorted(
         [s for s in profile.financial.snapshots if s.basis == "consolidated" and s.period_type == "annual"],
@@ -856,26 +874,26 @@ def summary(profile: CompanyProfile) -> QueryResult:
         key=lambda e: e.source_date, reverse=True,
     )[:3]
     if guidance:
-        rows = [[_fmt_source_date(e.source_date), e.text] for e in guidance]
-        sections.append(TableSection(heading="Recent Guidance", columns=["Date", "Statement"], rows=rows))
+        rows = [[_fmt_source_date(e.source_date), e.text, _cite_one(e.evidence_id)] for e in guidance]
+        sections.append(TableSection(heading="Recent Guidance", columns=["Date", "Statement", "Source"], rows=rows))
 
-    events: list[tuple[datetime, str]] = []
+    events: list[tuple[datetime, str, str]] = []
     ce = profile.capital_events
     for e in ce.dividends:
-        events.append((e.source_date, f"Dividend: {e.dividend_type} {e.per_share:.2f}/share"))
+        events.append((e.source_date, f"Dividend: {e.dividend_type} {e.per_share:.2f}/share", e.evidence_id))
     for e in ce.buybacks:
         amt = f" ({e.amount:,.0f} cr)" if e.amount else ""
-        events.append((e.source_date, f"Buyback: {e.sub_type}{amt}"))
+        events.append((e.source_date, f"Buyback: {e.sub_type}{amt}", e.evidence_id))
     for e in ce.acquisitions:
-        events.append((e.source_date, f"Acquisition: {_oneline(e.target_name)}"))
+        events.append((e.source_date, f"Acquisition: {_oneline(e.target_name)}", e.evidence_id))
     for e in ce.investments:
-        events.append((e.source_date, f"Investment: {_oneline(e.target_name)}"))
+        events.append((e.source_date, f"Investment: {_oneline(e.target_name)}", e.evidence_id))
     for e in ce.fundraises:
-        events.append((e.source_date, f"Fundraise: {e.fundraise_type}"))
+        events.append((e.source_date, f"Fundraise: {e.fundraise_type}", e.evidence_id))
     events.sort(key=lambda t: t[0], reverse=True)
     if events:
-        rows = [[_fmt_source_date(d), text] for d, text in events[:5]]
-        sections.append(TableSection(heading="Recent Capital Events", columns=["Date", "Event"], rows=rows))
+        rows = [[_fmt_source_date(d), text, _cite_one(eid)] for d, text, eid in events[:5]]
+        sections.append(TableSection(heading="Recent Capital Events", columns=["Date", "Event", "Source"], rows=rows))
 
     # SBTi commitment facts (ESG_CLIMATE_SBTI_SCOPE12/3_REDUCTION_PCT) are
     # stored with period = target year, not report year (a company's 2050
@@ -937,12 +955,18 @@ def summary(profile: CompanyProfile) -> QueryResult:
 # ---------------------------------------------------------------------------
 
 
-def drilldown(profile: CompanyProfile, evidence_id: str) -> QueryResult:
+def drilldown(profile: CompanyProfile, evidence_id: str, repo: Repository | None = None) -> QueryResult:
     """Every fact and event in the profile traced back to one evidence_id.
 
     Snapshots and events already track their source evidence_ids (sources /
     .evidence_id) — this was assembled during ingestion but never read by
     any query until now. Scans every container in CompanyProfile.
+
+    The evidence_id argument itself is unchanged (drilldown is still looked
+    up by the same immutable internal identifier) — repo only changes how
+    the result is *titled*: a human-readable citation when available,
+    falling back to the raw evidence_id when repo is omitted or the id
+    isn't in the catalog.
     """
     sections: list[TableSection] = []
 
@@ -1008,10 +1032,18 @@ def drilldown(profile: CompanyProfile, evidence_id: str) -> QueryResult:
     if not sections:
         notes.append(f"No facts found for evidence_id {evidence_id!r} in this profile.")
 
+    title = f"Drilldown: {evidence_id}"
+    if repo is not None:
+        entry = repo.get(evidence_id)
+        if entry is not None:
+            citation = build_citation(entry, profile.company_id, profile)
+            title = f"Drilldown: {citation.citation_standard}"
+            notes.append(f"evidence_id: {evidence_id}")
+
     return QueryResult(
         query="drilldown",
         company_id=profile.company_id,
-        title=f"Drilldown: {evidence_id}",
+        title=title,
         sections=sections,
         notes=notes,
     )
@@ -1036,6 +1068,30 @@ def _fmt_sources(sources: list[str]) -> str:
     if len(sources) == 1:
         return sources[0]
     return f"{sources[0]} (+{len(sources) - 1} more)"
+
+
+def _cite_sources(sources: list[str], profile: CompanyProfile, repo: Repository | None) -> str:
+    """Human-readable citation(s) for a Sources column, or the raw
+    evidence_id fallback when no repo is available to resolve one.
+
+    Never exposes a raw evidence_id when repo is given and the lookup
+    succeeds — this is the one behavioral difference from _fmt_sources,
+    which always shows the bare ID. repo is optional so every existing
+    caller (including every test constructing a synthetic CompanyProfile
+    with no backing catalog) keeps working exactly as before.
+    """
+    if repo is None or not sources:
+        return _fmt_sources(sources)
+    labels = []
+    for eid in sources:
+        entry = repo.get(eid)
+        if entry is None:
+            labels.append(eid)
+        else:
+            labels.append(build_citation(entry, profile.company_id, profile).citation_short)
+    if len(labels) == 1:
+        return labels[0]
+    return f"{labels[0]} (+{len(labels) - 1} more)"
 
 
 # ---------------------------------------------------------------------------
