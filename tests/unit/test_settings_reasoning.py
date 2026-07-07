@@ -70,6 +70,28 @@ def test_new_credential_and_transport_fields_default_to_none() -> None:
     assert settings.vertex_region is None
 
 
+# --- ollama transport: local, keyless, its own model identity ----------------
+def test_ollama_host_has_a_local_default_but_model_does_not() -> None:
+    settings = Settings(_env_file=None)
+    assert settings.ollama_host == "http://localhost:11434"
+    # No default model on purpose: the right local model is machine-specific,
+    # so it's required config rather than a tag the user may not have pulled.
+    assert settings.ollama_model is None
+
+
+def test_ollama_host_and_model_are_overridable(monkeypatch) -> None:
+    monkeypatch.setenv("ATLAS_OLLAMA_HOST", "http://gpu-box:11434")
+    monkeypatch.setenv("ATLAS_OLLAMA_MODEL", "qwen2.5:14b")
+    settings = Settings(_env_file=None)
+    assert settings.ollama_host == "http://gpu-box:11434"
+    assert settings.ollama_model == "qwen2.5:14b"
+
+
+def test_ollama_is_a_valid_provider_value(monkeypatch) -> None:
+    monkeypatch.setenv("ATLAS_LLM_PROVIDER", "ollama")
+    assert Settings(_env_file=None).llm_provider == "ollama"
+
+
 def test_llm_max_tokens_and_temperature_defaults_match_prior_hardcoded_values() -> None:
     # These were previously hardcoded inside AnthropicClient; the defaults here
     # must reproduce that exact behavior (no functionality change).

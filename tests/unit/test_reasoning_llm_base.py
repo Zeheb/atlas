@@ -34,4 +34,7 @@ def test_llm_provider_names_transports_not_model_families() -> None:
     # Provider vs. model adapter vs. model identity: values must be transport
     # names. google_ai_studio and vertex_ai are two transports for one model
     # family (Gemini) — the exact gap the flat "gemini" name couldn't express.
-    assert set(get_args(LLMProvider)) == {"anthropic", "google_ai_studio", "vertex_ai"}
+    # ollama is a local, keyless transport with its own model identity setting.
+    assert set(get_args(LLMProvider)) == {
+        "anthropic", "google_ai_studio", "vertex_ai", "ollama",
+    }

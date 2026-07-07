@@ -460,7 +460,11 @@ def ask_cmd(ticker: str, question: str, show_evidence: bool, question_retrieval:
     from atlas.reasoning.ask import ask
     from atlas.reasoning.context import build_context
     from atlas.reasoning.contracts import Question, SubjectRef
-    from atlas.reasoning.llm import MissingAPIKeyError, build_llm_client
+    from atlas.reasoning.llm import (
+        LLMConfigurationError,
+        OllamaUnavailableError,
+        build_llm_client,
+    )
     from atlas.reasoning.render import format_answer, to_answer
 
     ticker = ticker.upper()
@@ -473,7 +477,8 @@ def ask_cmd(ticker: str, question: str, show_evidence: bool, question_retrieval:
 
     try:
         client = build_llm_client(atlas.settings, role="reasoning")
-    except MissingAPIKeyError as exc:
+    except LLMConfigurationError as exc:
+        # Any build-time config gap (missing API key, missing Ollama model, ...).
         click.echo(str(exc), err=True)
         raise SystemExit(1)
 
@@ -489,7 +494,13 @@ def ask_cmd(ticker: str, question: str, show_evidence: bool, question_retrieval:
     context = build_context(
         profile, subject, kb=kb, question=question if question_retrieval else None,
     )
-    result = ask(Question(raw_text=question, subject_ref=subject), context, client)
+    try:
+        result = ask(Question(raw_text=question, subject_ref=subject), context, client)
+    except OllamaUnavailableError as exc:
+        # Local Ollama server unreachable — a friendly "is it running?" beats a
+        # raw ConnectionError traceback.
+        click.echo(str(exc), err=True)
+        raise SystemExit(1)
     click.echo(format_answer(to_answer(result, context=context), show_evidence=show_evidence))
 
 
@@ -532,12 +543,12 @@ def eval_run_cmd(
     from atlas.eval.cases import resolve_suite
     from atlas.eval.judge import Judge
     from atlas.eval.runner import LiveReasoningRunner, run_suite
-    from atlas.reasoning.llm import MissingAPIKeyError, build_llm_client
+    from atlas.reasoning.llm import LLMConfigurationError, build_llm_client
 
     atlas = Atlas.from_environment()
     try:
         client = build_llm_client(atlas.settings, role="reasoning")
-    except MissingAPIKeyError as exc:
+    except LLMConfigurationError as exc:
         click.echo(str(exc), err=True)
         raise SystemExit(1)
 
@@ -569,7 +580,7 @@ def eval_run_cmd(
     if not no_judge:
         try:
             judge_client = build_llm_client(atlas.settings, role="judge")
-        except MissingAPIKeyError as exc:
+        except LLMConfigurationError as exc:
             click.echo(str(exc), err=True)
             raise SystemExit(1)
         judge = Judge(
