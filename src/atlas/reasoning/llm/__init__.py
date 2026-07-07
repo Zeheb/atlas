@@ -12,15 +12,20 @@ from __future__ import annotations
 from atlas.reasoning.llm.base import (
     FakeLLMClient,
     LLMClient,
+    LLMConfigurationError,
     LLMProvider,
     MissingAPIKeyError,
 )
 from atlas.reasoning.llm.factory import build_llm_client
+from atlas.reasoning.llm.ollama import MissingOllamaModelError, OllamaUnavailableError
 
 __all__ = [
     "FakeLLMClient",
     "LLMClient",
+    "LLMConfigurationError",
     "LLMProvider",
     "MissingAPIKeyError",
+    "MissingOllamaModelError",
+    "OllamaUnavailableError",
     "build_llm_client",
 ]

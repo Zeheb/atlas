@@ -10,6 +10,7 @@ from atlas.reasoning.llm.anthropic import AnthropicClient
 from atlas.reasoning.llm.base import MissingAPIKeyError
 from atlas.reasoning.llm.factory import build_llm_client
 from atlas.reasoning.llm.gemini import GeminiClient
+from atlas.reasoning.llm.ollama import OllamaClient
 
 
 @pytest.fixture(autouse=True)
@@ -90,4 +91,38 @@ def test_unknown_provider_raises_clear_value_error() -> None:
     settings = _settings()
     settings.llm_provider = "not-a-real-provider"  # type: ignore[assignment]
     with pytest.raises(ValueError, match="Unknown LLM provider"):
+        build_llm_client(settings, role="reasoning")
+
+
+def test_provider_ollama_dispatches_to_ollama_client_for_both_roles() -> None:
+    # Keyless: no credential needed to build (only a configured model).
+    # Switching ATLAS_LLM_PROVIDER=ollama requires no code change beyond the
+    # factory, for both roles.
+    settings = _settings(llm_provider="ollama", ollama_model="qwen3:8b")
+    assert isinstance(build_llm_client(settings, role="reasoning"), OllamaClient)
+    assert isinstance(build_llm_client(settings, role="judge"), OllamaClient)
+
+
+def test_ollama_dispatch_uses_ollama_model_not_cloud_role_model() -> None:
+    # The factory must not thread reasoning_model/judge_model (cloud ids) into
+    # the ollama transport — it reads ATLAS_OLLAMA_MODEL instead.
+    settings = _settings(
+        llm_provider="ollama", reasoning_model="claude-sonnet-5",
+        judge_model="claude-judge", ollama_model="llama3.2",
+    )
+    assert build_llm_client(settings, role="reasoning")._model == "llama3.2"  # type: ignore[attr-defined]
+    assert build_llm_client(settings, role="judge")._model == "llama3.2"  # type: ignore[attr-defined]
+
+
+def test_reasoning_provider_override_to_ollama_leaves_judge_on_anthropic() -> None:
+    settings = _settings(reasoning_provider="ollama", ollama_model="qwen3:8b")
+    assert isinstance(build_llm_client(settings, role="reasoning"), OllamaClient)
+    assert isinstance(build_llm_client(settings, role="judge"), AnthropicClient)
+
+
+def test_ollama_without_model_raises_missing_model_at_build() -> None:
+    from atlas.reasoning.llm.ollama import MissingOllamaModelError
+
+    settings = _settings(llm_provider="ollama")  # no ollama_model
+    with pytest.raises(MissingOllamaModelError, match="ATLAS_OLLAMA_MODEL"):
         build_llm_client(settings, role="reasoning")
