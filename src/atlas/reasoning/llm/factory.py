@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Literal
 from atlas.reasoning.llm.anthropic import AnthropicClient
 from atlas.reasoning.llm.base import LLMClient, LLMProvider
 from atlas.reasoning.llm.gemini import GeminiClient
+from atlas.reasoning.llm.ollama import OllamaClient
 
 if TYPE_CHECKING:
     from atlas.config.settings import Settings
@@ -39,5 +40,11 @@ def build_llm_client(settings: "Settings", *, role: Role) -> LLMClient:
         return AnthropicClient.from_settings(settings, model=model)
     if provider in ("google_ai_studio", "vertex_ai"):
         return GeminiClient.from_settings(settings, provider=provider, model=model)
+    if provider == "ollama":
+        # Deliberately not threading the cloud role model (reasoning_model/
+        # judge_model): those default to cloud ids like "claude-sonnet-5",
+        # which are meaningless as Ollama tags. This transport reads its own
+        # ATLAS_OLLAMA_MODEL instead (see OllamaClient.from_settings).
+        return OllamaClient.from_settings(settings)
 
     raise ValueError(f"Unknown LLM provider: {provider!r}")

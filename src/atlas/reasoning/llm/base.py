@@ -8,18 +8,29 @@ out. No module above this package imports a concrete adapter directly — see
 provider vs. model adapter vs. model identity). ``google_ai_studio`` and
 ``vertex_ai`` both serve Gemini models and may share one adapter class;
 aggregator transports (e.g. a future ``openrouter``/``groq``) serve many
-unrelated model identities through one shared wire protocol. Model identity
-itself is a free-form string (``Settings.reasoning_model`` / ``judge_model``),
-orthogonal to this axis.
+unrelated model identities through one shared wire protocol. ``ollama`` is a
+local, keyless transport whose model identity is its own setting
+(``Settings.ollama_model``). Model identity for the cloud transports is a
+free-form string (``Settings.reasoning_model`` / ``judge_model``), orthogonal
+to this axis.
 """
 from __future__ import annotations
 
 from typing import Literal, Protocol, runtime_checkable
 
-LLMProvider = Literal["anthropic", "google_ai_studio", "vertex_ai"]
+LLMProvider = Literal["anthropic", "google_ai_studio", "vertex_ai", "ollama"]
 
 
-class MissingAPIKeyError(RuntimeError):
+class LLMConfigurationError(RuntimeError):
+    """An LLM client cannot be built from the current configuration.
+
+    The base for every *build-time* failure (missing credential, missing
+    model, etc.) so a composition root can catch the whole class in one clause
+    and print the message, without enumerating each transport's specifics.
+    """
+
+
+class MissingAPIKeyError(LLMConfigurationError):
     """Raised when a role's LLM client is built without its required credential."""
 
 

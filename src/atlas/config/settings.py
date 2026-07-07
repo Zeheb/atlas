@@ -68,15 +68,15 @@ class Settings(BaseSettings):
     # atlas.reasoning.llm.base.LLMProvider deliberately — config is a
     # foundational module and must not depend on a domain subsystem package.
     # Keep the two literals' values in sync by hand.
-    llm_provider: Literal["anthropic", "google_ai_studio", "vertex_ai"] = Field(
+    llm_provider: Literal["anthropic", "google_ai_studio", "vertex_ai", "ollama"] = Field(
         default="anthropic",
         description="Default transport for both the reasoning and judge roles.",
     )
-    reasoning_provider: Literal["anthropic", "google_ai_studio", "vertex_ai"] | None = Field(
+    reasoning_provider: Literal["anthropic", "google_ai_studio", "vertex_ai", "ollama"] | None = Field(
         default=None,
         description="Transport override for the reasoning role; falls back to llm_provider.",
     )
-    judge_provider: Literal["anthropic", "google_ai_studio", "vertex_ai"] | None = Field(
+    judge_provider: Literal["anthropic", "google_ai_studio", "vertex_ai", "ollama"] | None = Field(
         default=None,
         description=(
             "Transport override for the judge role; falls back to llm_provider. "
@@ -112,6 +112,25 @@ class Settings(BaseSettings):
         description=(
             "GCP region for the vertex_ai transport. Config surface only — "
             "the Gemini adapter is designed but not yet implemented."
+        ),
+    )
+
+    # The ollama transport is local and keyless: the host URL is its
+    # connection config (no API key), and its model identity is its own
+    # setting rather than reasoning_model/judge_model — local Ollama tags
+    # (e.g. "llama3.2") are a distinct namespace from cloud model ids.
+    ollama_host: str = Field(
+        default="http://localhost:11434",
+        description="Base URL of the Ollama server for the ollama transport.",
+    )
+    ollama_model: str | None = Field(
+        default=None,
+        description=(
+            "Model tag for the ollama transport (e.g. 'qwen3:8b'). No default: "
+            "the right local model is task- and machine-specific, so building "
+            "the ollama client fails clearly when it's unset rather than "
+            "defaulting to a tag the user may not have pulled. Distinct from "
+            "reasoning_model/judge_model, which name cloud model ids."
         ),
     )
 
