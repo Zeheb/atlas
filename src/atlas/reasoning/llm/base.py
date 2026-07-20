@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import Literal, Protocol, runtime_checkable
 
-LLMProvider = Literal["anthropic", "google_ai_studio", "vertex_ai", "ollama"]
+LLMProvider = Literal["anthropic", "google_ai_studio", "vertex_ai", "ollama", "omniroute"]
 
 
 class LLMConfigurationError(RuntimeError):
