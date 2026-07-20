@@ -72,7 +72,7 @@ class OmniRouteClient:
 
         try:
             response = requests.post(
-                f"{self._base_url}/messages",
+                f"{self._base_url}/v1/messages",
                 json={
                     "model": self._model,
                     "max_tokens": self._max_tokens,

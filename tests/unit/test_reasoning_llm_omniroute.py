@@ -143,7 +143,7 @@ def test_complete_posts_to_messages_endpoint_with_correct_shape(monkeypatch) -> 
     assert result == "OmniRoute response."
     assert len(recorder.calls) == 1
     call = recorder.calls[0]
-    assert call["url"] == "http://localhost:20128/messages"
+    assert call["url"] == "http://localhost:20128/v1/messages"
     assert call["timeout"] == 59.0
     assert call["headers"] == {"X-API-Key": "test-key"}
     body = call["json"]
