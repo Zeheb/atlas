@@ -14,18 +14,22 @@ from atlas.reasoning.llm.base import (
     LLMClient,
     LLMConfigurationError,
     LLMProvider,
+    LLMTransportError,
     MissingAPIKeyError,
 )
 from atlas.reasoning.llm.factory import build_llm_client
 from atlas.reasoning.llm.ollama import MissingOllamaModelError, OllamaUnavailableError
+from atlas.reasoning.llm.omniroute import OmniRouteUnavailableError
 
 __all__ = [
     "FakeLLMClient",
     "LLMClient",
     "LLMConfigurationError",
     "LLMProvider",
+    "LLMTransportError",
     "MissingAPIKeyError",
     "MissingOllamaModelError",
     "OllamaUnavailableError",
+    "OmniRouteUnavailableError",
     "build_llm_client",
 ]

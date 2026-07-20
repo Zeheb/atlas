@@ -34,6 +34,17 @@ class MissingAPIKeyError(LLMConfigurationError):
     """Raised when a role's LLM client is built without its required credential."""
 
 
+class LLMTransportError(RuntimeError):
+    """A configured LLM transport could not be reached at call time.
+
+    The runtime counterpart to LLMConfigurationError: the configuration is valid
+    but the server isn't answering (not started, wrong host/port, network down).
+    A composition root can catch this one class to print a friendly "is it
+    running?" message for any transport — instead of a raw ConnectionError
+    traceback — without enumerating each provider's specific error type.
+    """
+
+
 @runtime_checkable
 class LLMClient(Protocol):
     """Text-in, text-out completion. The only LLM surface reasoning depends on."""

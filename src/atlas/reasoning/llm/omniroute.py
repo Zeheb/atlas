@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING
 
 import requests
 
+from atlas.reasoning.llm.base import LLMTransportError
+
 if TYPE_CHECKING:
     from atlas.config.settings import Settings
 
@@ -20,7 +22,7 @@ if TYPE_CHECKING:
 _DEFAULT_TIMEOUT_SECONDS = 60.0
 
 
-class OmniRouteUnavailableError(RuntimeError):
+class OmniRouteUnavailableError(LLMTransportError):
     """Raised when the OmniRoute server can't be reached at ``complete()`` time."""
 
 

@@ -30,7 +30,7 @@ from typing import TYPE_CHECKING
 
 import requests
 
-from atlas.reasoning.llm.base import LLMConfigurationError
+from atlas.reasoning.llm.base import LLMConfigurationError, LLMTransportError
 
 if TYPE_CHECKING:
     from atlas.config.settings import Settings
@@ -52,7 +52,7 @@ class MissingOllamaModelError(LLMConfigurationError):
     """
 
 
-class OllamaUnavailableError(RuntimeError):
+class OllamaUnavailableError(LLMTransportError):
     """Raised when the Ollama server can't be reached at ``complete()`` time.
 
     A *runtime* error, not a configuration one: the host is validly configured

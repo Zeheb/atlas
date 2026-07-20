@@ -1,3 +1,5 @@
+import sys
+
 import click
 
 from atlas.acquisition.acquisitions import save_acquisition_run
@@ -15,9 +17,26 @@ from atlas.query.engine import available_queries, run_query
 from atlas.query.render import render_result
 
 
+def _force_utf8_output() -> None:
+    """Make stdout/stderr encode UTF-8 so output never dies on a character.
+
+    Windows consoles default to a legacy code page (cp1252) that can't encode
+    ₹, €, £, ✓, α, CJK, etc. Any answer containing one would otherwise crash at
+    ``click.echo`` time with a UnicodeEncodeError — a provider-independent
+    failure any evidence set could trigger. ``errors="replace"`` is a last-resort
+    guard for a stream that still can't render a glyph. Streams that predate
+    ``reconfigure`` (or test doubles without it) are left untouched.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            reconfigure(encoding="utf-8", errors="replace")
+
+
 @click.group()
 def cli() -> None:
     """Atlas — investment research platform."""
+    _force_utf8_output()
 
 
 @cli.group()
@@ -462,7 +481,7 @@ def ask_cmd(ticker: str, question: str, show_evidence: bool, question_retrieval:
     from atlas.reasoning.contracts import Question, SubjectRef
     from atlas.reasoning.llm import (
         LLMConfigurationError,
-        OllamaUnavailableError,
+        LLMTransportError,
         build_llm_client,
     )
     from atlas.reasoning.render import format_answer, to_answer
@@ -496,10 +515,10 @@ def ask_cmd(ticker: str, question: str, show_evidence: bool, question_retrieval:
     )
     try:
         result = ask(Question(raw_text=question, subject_ref=subject), context, client)
-    except OllamaUnavailableError as exc:
-        # Local Ollama server unreachable — a friendly "is it running?" beats a
-        # raw ConnectionError traceback.
-        click.echo(str(exc), err=True)
+    except LLMTransportError as exc:
+        # Any transport unreachable at call time (Ollama, OmniRoute, ...) — a
+        # friendly "is it running?" beats a raw ConnectionError traceback.
+        click.echo(f"Error: {exc}", err=True)
         raise SystemExit(1)
     click.echo(format_answer(to_answer(result, context=context), show_evidence=show_evidence))
 
