@@ -64,6 +64,27 @@ class CaseLike(Protocol):
     difficulty: str | None
 
 
+class DecisionLike(Protocol):
+    """The audit-trail shape both planners emit (rule/input/output)."""
+
+    rule: str
+
+
+class ResearchPlanLike(Protocol):
+    """The minimal shape ``analyze_research_plans`` needs from a research plan.
+
+    Structural (PEP 544), for the same reason ``CaseLike`` is: ``benchmark``
+    analyzes the research planner without importing its concrete types, so
+    the dependency stays one-directional.
+    """
+
+    intent: str
+    decisions: tuple[DecisionLike, ...]
+
+    @property
+    def dimensions(self) -> tuple[str, ...]: ...
+
+
 @dataclass(frozen=True)
 class DimensionCoverage:
     """Coverage of one categorical dimension (intent, rule, or scenario)
@@ -125,6 +146,51 @@ class BenchmarkCoverage:
     corpus: CorpusCoverage | None = None
 
 
+@dataclass(frozen=True)
+class ResearchPlanCoverage:
+    """Does the research planner exercise judgment, or run a checklist?
+    (M2.2.5, the milestone's hard architectural gate.)
+
+    Measured across a SET of questions, because the failure mode is only
+    visible in aggregate: a planner that emits the same dimensions for every
+    question passes every single-plan test and is still worthless. This is the
+    direct analogue of ADR-0004's dead-rule detection -- a rule that never
+    fires and a plan that never varies are the same category of defect.
+
+    ``is_checklist`` is the gate itself and catches BOTH degenerate modes:
+
+    - *no variation* -- every question yields an identical dimension set, so
+      the planner is a constant function wearing a planner's interface;
+    - *maximal width* -- plans routinely name (nearly) every dimension, so
+      "planning" adds latency without excluding anything.
+
+    Note deliberately what is NOT used as the gate: per-dimension entropy.
+    A planner emitting all nine dimensions for every question produces a
+    perfectly UNIFORM dimension distribution and therefore near-maximal
+    entropy -- the checklist would score as maximally diverse. Entropy over
+    dimension-SET identity (``set_entropy``) is reported as a descriptive
+    evenness statistic, but the pass/fail decision rests on the two
+    structural checks above.
+    """
+
+    plans_analyzed: int
+    distinct_dimension_sets: int
+    mean_plan_width: float
+    max_plan_width: int
+    vocabulary_size: int
+    set_entropy: float
+    dimension_counts: tuple[tuple[str, int], ...]
+    intent_counts: tuple[tuple[str, int], ...]
+    dead_rules: tuple[str, ...]
+    is_checklist: bool
+    checklist_reasons: tuple[str, ...]
+
+
+# A plan whose mean width reaches this share of the whole vocabulary is
+# naming almost everything, which is a checklist however varied its ordering.
+_CHECKLIST_WIDTH_SHARE = 0.9
+
+
 def _normalized_entropy(counts: dict[str, int], vocab_size: int) -> float:
     total = sum(counts.values())
     if total == 0 or vocab_size <= 1:
@@ -169,6 +235,80 @@ def _redundancy(cases: Sequence[CaseLike]) -> RedundancyReport:
             if jaccard > _REDUNDANCY_THRESHOLD:
                 pairs.append((a, b, round(jaccard, 3)))
     return RedundancyReport(near_duplicate_pairs=tuple(pairs), threshold=_REDUNDANCY_THRESHOLD)
+
+
+def analyze_research_plans(plans: Sequence["ResearchPlanLike"]) -> ResearchPlanCoverage:
+    """The M2.2.5 anti-checklist gate: does the research planner actually
+    discriminate between questions?
+
+    Pure, no I/O, no LLM -- the caller supplies plans already built (in
+    practice by ``research.planner.plan_research`` over a set of questions).
+    Structural (PEP 544) input, so ``benchmark`` needs no concrete dependency
+    on the research planner's types, matching how ``CaseLike`` keeps ``eval``
+    and ``benchmark`` decoupled.
+    """
+    from atlas.research.plan import ResearchDimension
+    from atlas.research.planner import ALL_RESEARCH_RULE_IDS
+
+    vocabulary = frozenset(get_args(ResearchDimension))
+
+    if not plans:
+        return ResearchPlanCoverage(
+            plans_analyzed=0, distinct_dimension_sets=0, mean_plan_width=0.0,
+            max_plan_width=0, vocabulary_size=len(vocabulary), set_entropy=0.0,
+            dimension_counts=(), intent_counts=(), dead_rules=tuple(sorted(ALL_RESEARCH_RULE_IDS)),
+            is_checklist=True,
+            checklist_reasons=("no plans analyzed -- diversity is unmeasured, not proven",),
+        )
+
+    dimension_sets = Counter(tuple(p.dimensions) for p in plans)
+    dimension_counts: Counter[str] = Counter()
+    intent_counts: Counter[str] = Counter()
+    fired_rules: set[str] = set()
+    widths: list[int] = []
+
+    for plan in plans:
+        dims = tuple(plan.dimensions)
+        widths.append(len(dims))
+        dimension_counts.update(dims)
+        intent_counts[plan.intent] += 1
+        fired_rules.update(d.rule for d in plan.decisions)
+
+    distinct = len(dimension_sets)
+    mean_width = round(sum(widths) / len(widths), 3)
+    max_width = max(widths)
+
+    reasons: list[str] = []
+    if distinct <= 1:
+        reasons.append(
+            f"all {len(plans)} plans emit an identical dimension set -- the planner "
+            "is a constant function, not a judgment"
+        )
+    width_ceiling = len(vocabulary) * _CHECKLIST_WIDTH_SHARE
+    if mean_width >= width_ceiling:
+        reasons.append(
+            f"mean plan width {mean_width} of {len(vocabulary)} dimensions exceeds "
+            f"{_CHECKLIST_WIDTH_SHARE:.0%} of the vocabulary -- plans name nearly "
+            "everything, so planning excludes nothing"
+        )
+
+    return ResearchPlanCoverage(
+        plans_analyzed=len(plans),
+        distinct_dimension_sets=distinct,
+        mean_plan_width=mean_width,
+        max_plan_width=max_width,
+        vocabulary_size=len(vocabulary),
+        # Evenness across the distinct sets actually used -- descriptive only;
+        # see ResearchPlanCoverage's docstring for why this is not the gate.
+        set_entropy=_normalized_entropy(
+            {str(k): v for k, v in dimension_sets.items()}, distinct,
+        ),
+        dimension_counts=tuple(sorted(dimension_counts.items())),
+        intent_counts=tuple(sorted(intent_counts.items())),
+        dead_rules=tuple(sorted(ALL_RESEARCH_RULE_IDS - fired_rules)),
+        is_checklist=bool(reasons),
+        checklist_reasons=tuple(reasons),
+    )
 
 
 def analyze_suite(cases: Sequence[CaseLike]) -> SuiteCoverage:
