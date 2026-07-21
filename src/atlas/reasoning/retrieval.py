@@ -261,17 +261,53 @@ def retrieve_passages(
 # M1.7: plan-conditioned retrieval
 # ---------------------------------------------------------------------------
 @dataclass(frozen=True)
+class ScoreBreakdown:
+    """One selected candidate's score, decomposed into its additive parts
+    (M1.8 / ADR-0004). Observability only: ``_rank_and_select`` already
+    computes every one of these values to produce ``total`` — this dataclass
+    records what it already computed, changing no scoring logic. ``total``
+    always equals ``base * 100 + doc_type + date_window + period + recency +
+    numeric``, the exact formula ``_rank_and_select`` sorts by; a regression
+    test pins this so "observability only" is enforced, not just claimed.
+
+    ``char_offset`` matches the corresponding ``RetrievalMatch.char_offset``
+    in ``RetrievalResult.matches``, at the same list position, so a caller can
+    join a match to its breakdown by position or by ``(doc_id, char_offset)``.
+
+    ``kind`` is the document's resolved ``EvidenceKind`` value from
+    ``KnowledgeBase.get_many()`` metadata, or ``None`` when no metadata row
+    existed — carried here (rather than requiring a second lookup) so the eval
+    harness's doc-type-distribution metric doesn't need its own KB access.
+    """
+
+    doc_id: str
+    char_offset: int
+    base: int
+    doc_type: int
+    date_window: int
+    period: int
+    recency: int
+    numeric: int
+    total: int
+    kind: str | None = None
+
+
+@dataclass(frozen=True)
 class RetrievalResult:
     """Matches plus the diagnostics needed to verify how they were chosen.
 
-    Internal, like ``RetrievalMatch`` — not a §10 contract type. Capped at
-    these four fields on purpose: an observability seam, not a scratch pad.
+    Internal, like ``RetrievalMatch`` — not a §10 contract type. Deliberately
+    capped: an observability seam, not a scratch pad — new fields are added
+    only for a concrete metric the eval harness needs (ADR-0004), never
+    speculatively.
     """
 
     matches: tuple[tuple[str, RetrievalMatch], ...]
     plan: SearchPlan
     candidates_considered: int
     docs_missing_metadata: tuple[str, ...]
+    breakdowns: tuple[ScoreBreakdown, ...] = ()
+    docs_searched: int = 0
 
 
 @dataclass(frozen=True)
@@ -380,44 +416,69 @@ def _period_boost(text: str, plan: SearchPlan) -> int:
     return 0
 
 
+@dataclass(frozen=True)
+class _ScoredCandidate:
+    """A candidate plus every additive term that produced its score
+    (M1.8 / ADR-0004) — everything ``ScoreBreakdown`` needs except the final
+    ``char_offset``, which only exists after ``_finalize_match`` runs.
+    """
+
+    candidate: _Candidate
+    base: int
+    doc_type: int
+    date_window: int
+    period: int
+    recency: int
+    numeric: int
+    total: int
+    kind: str | None
+
+
 def _rank_and_select(
     candidates: list[_Candidate],
     plan: SearchPlan,
     metadata: dict[str, ParsedDocument],
-) -> list[_Candidate]:
+) -> list[_ScoredCandidate]:
     """Score every candidate with plan-derived boosts, then dedup/truncate to
     ``plan.top_k`` — the same same-document-overlap dedup ``retrieve_passages``
     uses, plus ``rerank.max_per_document`` when the plan sets it.
 
     Purely additive on top of the unchanged base score: ranking can reorder
     and truncate ``candidates`` but never grows or shrinks the set it was
-    given (that already happened in ``_generate_candidates``).
+    given (that already happened in ``_generate_candidates``). Returns the
+    full per-candidate boost breakdown alongside each selection (M1.8) —
+    recording what was already computed to reach ``total``, not a second
+    computation that could drift from it.
     """
     recency_ranks = _recency_ranks((c.doc_id for c in candidates), metadata) if plan.rerank.prefer_recent else {}
 
-    scored: list[tuple[int, str, int, _Candidate]] = []
+    scored: list[_ScoredCandidate] = []
     for cand in candidates:
         doc = metadata.get(cand.doc_id)
         base = cand.matched_words + 2 * cand.matched_numbers
-        score = base * 100
-        score += _doc_type_boost(doc, plan)
-        score += _date_window_boost(doc, plan)
-        score += _period_boost(cand.text, plan)
+        doc_type = _doc_type_boost(doc, plan)
+        date_window = _date_window_boost(doc, plan)
+        period = _period_boost(cand.text, plan)
+        recency = 0
         if plan.rerank.prefer_recent:
             rank = recency_ranks.get(cand.doc_id, len(recency_ranks))
-            score += max(0, 30 - 3 * rank)
-        if plan.rerank.prefer_numeric and cand.matched_numbers > 0:
-            score += 20
-        scored.append((score, cand.doc_id, cand.start, cand))
+            recency = max(0, 30 - 3 * rank)
+        numeric = 20 if (plan.rerank.prefer_numeric and cand.matched_numbers > 0) else 0
+        total = base * 100 + doc_type + date_window + period + recency + numeric
+        kind = doc.kind if doc is not None else None
+        scored.append(_ScoredCandidate(cand, base, doc_type, date_window, period, recency, numeric, total, kind))
 
-    scored.sort(key=lambda s: (-s[0], s[1], s[2]))
+    scored.sort(key=lambda s: (-s.total, s.candidate.doc_id, s.candidate.start))
 
     per_doc_count: dict[str, int] = {}
-    selected: list[_Candidate] = []
-    for _score, doc_id, start, cand in scored:
+    selected: list[_ScoredCandidate] = []
+    for sc in scored:
+        cand = sc.candidate
+        start, doc_id = cand.start, cand.doc_id
         end = start + len(cand.text)
         overlaps = any(
-            s.doc_id == doc_id and not (end <= s.start or start >= s.start + len(s.text))
+            s.candidate.doc_id == doc_id
+            and not (end <= s.candidate.start or start >= s.candidate.start + len(s.candidate.text))
             for s in selected
         )
         if overlaps:
@@ -425,7 +486,7 @@ def _rank_and_select(
         if plan.rerank.max_per_document is not None:
             if per_doc_count.get(doc_id, 0) >= plan.rerank.max_per_document:
                 continue
-        selected.append(cand)
+        selected.append(sc)
         per_doc_count[doc_id] = per_doc_count.get(doc_id, 0) + 1
         if len(selected) >= plan.top_k:
             break
@@ -460,22 +521,33 @@ def retrieve_with_plan(
     docs_missing_metadata = tuple(d for d in unique_doc_ids if d not in metadata)
 
     if not query_terms and not numeric_terms:
-        return RetrievalResult((), plan, 0, docs_missing_metadata)
+        return RetrievalResult((), plan, 0, docs_missing_metadata, docs_searched=len(unique_doc_ids))
 
     candidates = _generate_candidates(kb, unique_doc_ids, query_terms, numeric_terms, cache)
     selected = _rank_and_select(candidates, plan, metadata)
 
     all_keywords = query_terms | numeric_terms
     results: list[tuple[str, RetrievalMatch]] = []
-    for cand in selected:
+    breakdowns: list[ScoreBreakdown] = []
+    for sc in selected:
+        cand = sc.candidate
         content = cache[cand.doc_id]
         assert content is not None  # guaranteed: doc_id only entered candidates if content is set
         match = _finalize_match(
             content, cand.start, cand.text, all_keywords, window_chars, cand.matched_numbers > 0,
         )
         results.append((cand.doc_id, match))
+        breakdowns.append(ScoreBreakdown(
+            doc_id=cand.doc_id, char_offset=match.char_offset,
+            base=sc.base, doc_type=sc.doc_type, date_window=sc.date_window,
+            period=sc.period, recency=sc.recency, numeric=sc.numeric, total=sc.total,
+            kind=sc.kind,
+        ))
 
-    return RetrievalResult(tuple(results), plan, len(candidates), docs_missing_metadata)
+    return RetrievalResult(
+        tuple(results), plan, len(candidates), docs_missing_metadata, tuple(breakdowns),
+        docs_searched=len(unique_doc_ids),
+    )
 
 
 def fetch_and_match(
