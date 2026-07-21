@@ -68,15 +68,15 @@ class Settings(BaseSettings):
     # atlas.reasoning.llm.base.LLMProvider deliberately — config is a
     # foundational module and must not depend on a domain subsystem package.
     # Keep the two literals' values in sync by hand.
-    llm_provider: Literal["anthropic", "google_ai_studio", "vertex_ai", "ollama"] = Field(
+    llm_provider: Literal["anthropic", "google_ai_studio", "vertex_ai", "ollama", "omniroute"] = Field(
         default="anthropic",
         description="Default transport for both the reasoning and judge roles.",
     )
-    reasoning_provider: Literal["anthropic", "google_ai_studio", "vertex_ai", "ollama"] | None = Field(
+    reasoning_provider: Literal["anthropic", "google_ai_studio", "vertex_ai", "ollama", "omniroute"] | None = Field(
         default=None,
         description="Transport override for the reasoning role; falls back to llm_provider.",
     )
-    judge_provider: Literal["anthropic", "google_ai_studio", "vertex_ai", "ollama"] | None = Field(
+    judge_provider: Literal["anthropic", "google_ai_studio", "vertex_ai", "ollama", "omniroute"] | None = Field(
         default=None,
         description=(
             "Transport override for the judge role; falls back to llm_provider. "
@@ -132,6 +132,21 @@ class Settings(BaseSettings):
             "defaulting to a tag the user may not have pulled. Distinct from "
             "reasoning_model/judge_model, which name cloud model ids."
         ),
+    )
+
+    # The omniroute transport is a cloud-style aggregator gateway: connection
+    # config only, no model namespace of its own. Its model identity is the
+    # shared reasoning_model/judge_model (a free-form string that, for this
+    # transport, holds an OmniRoute model/combo name like "test_cc") — the same
+    # way the anthropic transport reads reasoning_model. Contrast ollama, whose
+    # local tags are a genuinely distinct namespace and so carry ollama_model.
+    omniroute_base_url: str = Field(
+        default="http://localhost:20128",
+        description="Base URL of the OmniRoute gateway for the omniroute transport.",
+    )
+    omniroute_api_key: str | None = Field(
+        default=None,
+        description="API key for the omniroute transport. Optional so local development doesn't require it.",
     )
 
     reasoning_model: str = Field(

@@ -14,6 +14,7 @@ from atlas.reasoning.llm.anthropic import AnthropicClient
 from atlas.reasoning.llm.base import LLMClient, LLMProvider
 from atlas.reasoning.llm.gemini import GeminiClient
 from atlas.reasoning.llm.ollama import OllamaClient
+from atlas.reasoning.llm.omniroute import OmniRouteClient
 
 if TYPE_CHECKING:
     from atlas.config.settings import Settings
@@ -46,5 +47,9 @@ def build_llm_client(settings: "Settings", *, role: Role) -> LLMClient:
         # which are meaningless as Ollama tags. This transport reads its own
         # ATLAS_OLLAMA_MODEL instead (see OllamaClient.from_settings).
         return OllamaClient.from_settings(settings)
+    if provider == "omniroute":
+        # Cloud-style aggregator: reuses the shared reasoning_model/judge_model
+        # identity (unlike ollama above), so thread the role model through.
+        return OmniRouteClient.from_settings(settings, model=model)
 
     raise ValueError(f"Unknown LLM provider: {provider!r}")

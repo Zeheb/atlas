@@ -35,6 +35,8 @@ def test_llm_provider_names_transports_not_model_families() -> None:
     # names. google_ai_studio and vertex_ai are two transports for one model
     # family (Gemini) — the exact gap the flat "gemini" name couldn't express.
     # ollama is a local, keyless transport with its own model identity setting.
+    # omniroute is a cloud-style aggregator gateway that reuses the shared
+    # reasoning_model/judge_model identity (no model namespace of its own).
     assert set(get_args(LLMProvider)) == {
-        "anthropic", "google_ai_studio", "vertex_ai", "ollama",
+        "anthropic", "google_ai_studio", "vertex_ai", "ollama", "omniroute",
     }

@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from typing import Literal, Protocol, runtime_checkable
 
-LLMProvider = Literal["anthropic", "google_ai_studio", "vertex_ai", "ollama"]
+LLMProvider = Literal["anthropic", "google_ai_studio", "vertex_ai", "ollama", "omniroute"]
 
 
 class LLMConfigurationError(RuntimeError):
@@ -32,6 +32,17 @@ class LLMConfigurationError(RuntimeError):
 
 class MissingAPIKeyError(LLMConfigurationError):
     """Raised when a role's LLM client is built without its required credential."""
+
+
+class LLMTransportError(RuntimeError):
+    """A configured LLM transport could not be reached at call time.
+
+    The runtime counterpart to LLMConfigurationError: the configuration is valid
+    but the server isn't answering (not started, wrong host/port, network down).
+    A composition root can catch this one class to print a friendly "is it
+    running?" message for any transport — instead of a raw ConnectionError
+    traceback — without enumerating each provider's specific error type.
+    """
 
 
 @runtime_checkable

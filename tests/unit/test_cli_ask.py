@@ -112,3 +112,22 @@ def test_ask_with_ollama_server_down_exits_cleanly(monkeypatch, tmp_path) -> Non
     assert result.exit_code == 1
     assert "Is Ollama running?" in result.output  # friendly, not a traceback
     assert result.exception is None or isinstance(result.exception, SystemExit)
+
+
+# --- OmniRoute transport: same friendly connection error via the shared base --
+def test_ask_with_omniroute_server_down_exits_cleanly(monkeypatch, tmp_path) -> None:
+    import requests
+
+    monkeypatch.setenv("ATLAS_REPOSITORY_BASE_PATH", str(tmp_path))
+    monkeypatch.setenv("ATLAS_LLM_PROVIDER", "omniroute")
+    monkeypatch.setenv("ATLAS_REASONING_MODEL", "test_cc")
+
+    def _connection_refused(url, *, json, headers, timeout):  # noqa: ANN001, ANN202 - test double
+        raise requests.exceptions.ConnectionError("refused")
+
+    monkeypatch.setattr("atlas.reasoning.llm.omniroute.requests.post", _connection_refused)
+    _seed_profile(tmp_path)
+    result = CliRunner().invoke(cli, ["ask", "TCS", "How are margins?"])
+    assert result.exit_code == 1
+    assert "Is OmniRoute running?" in result.output  # friendly, not a traceback
+    assert result.exception is None or isinstance(result.exception, SystemExit)
