@@ -65,6 +65,7 @@ from atlas.eval.report import (
     build_planner_metrics,
     build_retrieval_metrics,
 )
+from atlas.eval.retrieval_quality import score_retrieval_quality
 from atlas.eval.strategies import RetrievalStrategy
 from atlas.knowledge.base import KnowledgeBase
 from atlas.reasoning.ask import ask
@@ -278,9 +279,12 @@ def _run_case(case: EvalCase, runner: ReasoningRunner, judge: Judge | None) -> C
 
     # M1.8 (ADR-0004): retrieval/planner metrics need no LLM, so they are
     # computed unconditionally from RunOutcome -- present even in
-    # --retrieval-only mode, where result/answer are None.
+    # --retrieval-only mode, where result/answer are None. M1.8.5 (ADR-0005):
+    # retrieval_quality needs no LLM either -- scored against the case's own
+    # gold label (None for the vast majority of cases, which have none).
     retrieval_metrics = build_retrieval_metrics(outcome.retrieval)
     planner_metrics = build_planner_metrics(outcome.plan)
+    retrieval_quality = score_retrieval_quality(retrieval_metrics, case.retrieval_label)
 
     result, answer, context = outcome.result, outcome.answer, outcome.context
     if result is None or answer is None:
@@ -289,6 +293,7 @@ def _run_case(case: EvalCase, runner: ReasoningRunner, judge: Judge | None) -> C
         return CaseResult(
             case_id=case.id, category=case.category, status="active",
             retrieval_metrics=retrieval_metrics, planner_metrics=planner_metrics,
+            retrieval_quality=retrieval_quality,
         )
 
     # M1.8 (ADR-0004): kept only for the comparison engine's human
@@ -325,7 +330,7 @@ def _run_case(case: EvalCase, runner: ReasoningRunner, judge: Judge | None) -> C
         distinct_docs_cited=len(result.citations),
         judge_notes=notes,
         retrieval_metrics=retrieval_metrics, planner_metrics=planner_metrics,
-        answer_prose=answer_prose,
+        answer_prose=answer_prose, retrieval_quality=retrieval_quality,
     )
 
 

@@ -109,6 +109,24 @@ def retrieval_deltas(baseline: Report, candidate: Report) -> dict[str, Any]:
     }
 
 
+def retrieval_quality_deltas(baseline: Report, candidate: Report) -> dict[str, Any]:
+    """Suite-level precision@k/recall@k/MRR deltas against gold labels
+    (M1.8.5 / ADR-0005) -- what upgrades ``ranking_change``'s "the selection
+    changed" into "the selection got better." Composes aggregate()'s
+    "retrieval_quality" sub-dict; ``None`` on both sides when no case in
+    either report carries a gold label.
+    """
+    base_agg = aggregate(baseline.results)["retrieval_quality"]
+    cand_agg = aggregate(candidate.results)["retrieval_quality"]
+    return {
+        "baseline": base_agg,
+        "candidate": cand_agg,
+        "delta_mean_precision_at_k": _delta(base_agg, cand_agg, "mean_precision_at_k"),
+        "delta_mean_recall_at_k": _delta(base_agg, cand_agg, "mean_recall_at_k"),
+        "delta_mean_mrr": _delta(base_agg, cand_agg, "mean_mrr"),
+    }
+
+
 def _mean(values: list[float]) -> float | None:
     return round(sum(values) / len(values), 3) if values else None
 
@@ -203,10 +221,11 @@ def side_by_side(baseline: Report, candidate: Report) -> tuple[CaseSideBySide, .
 
 
 def compare_retrieval(baseline: Report, candidate: Report) -> dict[str, Any]:
-    """The full M1.8 comparison: end-to-end deltas (via report.compare()),
-    ranking change, retrieval deltas, planner attribution, and the per-case
-    side-by-side -- everything the design's verification read-through needs,
-    in one call.
+    """The full M1.8/M1.8.5 comparison: end-to-end deltas (via
+    report.compare()), ranking change, retrieval deltas, retrieval-quality
+    deltas (gold-label precision@k/recall@k/MRR, ADR-0005), planner
+    attribution, and the per-case side-by-side -- everything the design's
+    verification read-through needs, in one call.
     """
     return {
         "baseline": baseline.milestone,
@@ -214,6 +233,7 @@ def compare_retrieval(baseline: Report, candidate: Report) -> dict[str, Any]:
         "end_to_end": compare(baseline, candidate),
         "ranking_change": ranking_change(baseline, candidate),
         "retrieval_deltas": retrieval_deltas(baseline, candidate),
+        "retrieval_quality_deltas": retrieval_quality_deltas(baseline, candidate),
         "planner_attribution": planner_attribution(baseline, candidate),
         "side_by_side": side_by_side(baseline, candidate),
     }

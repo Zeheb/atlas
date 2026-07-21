@@ -21,6 +21,16 @@ coverage -- ``atlas eval coverage`` computes the identical thing via the
 identical function, so a report never carries a second, possibly-diverging
 notion of "coverage." Also defaults to ``None`` and reads via ``.get()``, so
 an M1.8-era report without it still loads.
+
+M1.8.5 also adds ``CaseResult.retrieval_quality`` -- precision@k/recall@k/MRR/
+forbidden-retrieved, computed by ``eval.retrieval_quality.score_retrieval_
+quality()`` from a case's ``RetrievalCaseMetrics`` and its ``EvalCase.
+retrieval_label`` (the gold target). ``RetrievalQualityScore`` is defined
+HERE rather than in ``retrieval_quality.py`` specifically to avoid a cycle:
+that module needs ``RetrievalCaseMetrics`` from this one, so the type it
+returns lives here instead of the reverse. None when a case has no gold
+label -- most cases don't, and that's fine; these metrics are additive
+precision on TOP OF M1.8's ranking_change, not a replacement for it.
 """
 from __future__ import annotations
 
@@ -217,6 +227,33 @@ def _coverage_snapshot_from_dict(d: dict[str, Any] | None) -> CoverageSnapshot |
 
 
 @dataclass(frozen=True)
+class RetrievalQualityScore:
+    """Precision@k/recall@k/MRR against a case's gold RetrievalLabel (M1.8.5
+    / ADR-0005). ``None`` on every field the label can't support: a
+    kinds-only label (no ``relevant_evidence_ids``) has no doc_id ground
+    truth for precision/recall/MRR to check against -- only
+    ``forbidden_retrieved`` is always computable, since ``must_not_retrieve``
+    is itself a set of ids.
+    """
+
+    precision_at_k: float | None
+    recall_at_k: float | None
+    mrr: float | None
+    forbidden_retrieved: tuple[str, ...]
+
+
+def _retrieval_quality_from_dict(d: dict[str, Any] | None) -> RetrievalQualityScore | None:
+    if d is None:
+        return None
+    return RetrievalQualityScore(
+        precision_at_k=d.get("precision_at_k"),
+        recall_at_k=d.get("recall_at_k"),
+        mrr=d.get("mrr"),
+        forbidden_retrieved=tuple(d.get("forbidden_retrieved", ())),
+    )
+
+
+@dataclass(frozen=True)
 class CaseResult:
     case_id: str
     category: str
@@ -244,6 +281,10 @@ class CaseResult:
     # engine's human side-by-side read-through -- no dimension is scored from
     # it. None when no answer was produced (--retrieval-only mode, or error).
     answer_prose: str | None = None
+    # M1.8.5 (ADR-0005): None unless the case carries a gold RetrievalLabel.
+    # Computed once, at run time, by eval.retrieval_quality.score_retrieval_
+    # quality() -- needs no LLM, works in --retrieval-only mode too.
+    retrieval_quality: RetrievalQualityScore | None = None
 
 
 @dataclass(frozen=True)
@@ -305,6 +346,7 @@ class Report:
                 retrieval_metrics=_retrieval_metrics_from_dict(r.get("retrieval_metrics")),
                 planner_metrics=_planner_metrics_from_dict(r.get("planner_metrics")),
                 answer_prose=r.get("answer_prose"),
+                retrieval_quality=_retrieval_quality_from_dict(r.get("retrieval_quality")),
             )
             for r in d["results"]
         )
@@ -383,6 +425,29 @@ def _aggregate_retrieval(active: list[CaseResult]) -> dict[str, Any] | None:
     }
 
 
+def _aggregate_retrieval_quality(active: list[CaseResult]) -> dict[str, Any] | None:
+    """Suite-level precision@k/recall@k/MRR against gold labels (M1.8.5 /
+    ADR-0005). None when no case in this report carries a
+    ``RetrievalQualityScore`` -- i.e. no case in the suite had a gold label.
+    """
+    scored = [r.retrieval_quality for r in active if r.retrieval_quality is not None]
+    if not scored:
+        return None
+
+    precision = [s.precision_at_k for s in scored if s.precision_at_k is not None]
+    recall = [s.recall_at_k for s in scored if s.recall_at_k is not None]
+    mrr = [s.mrr for s in scored if s.mrr is not None]
+    cases_with_forbidden = sum(1 for s in scored if s.forbidden_retrieved)
+
+    return {
+        "labelled_cases": len(scored),
+        "mean_precision_at_k": _mean(precision),
+        "mean_recall_at_k": _mean(recall),
+        "mean_mrr": _mean(mrr),
+        "cases_with_forbidden_retrieval": cases_with_forbidden,
+    }
+
+
 def aggregate(results: tuple[CaseResult, ...]) -> dict[str, Any]:
     """Per-dimension aggregates. Pending cases count only toward coverage."""
     active = [r for r in results if r.status == "active"]
@@ -410,6 +475,7 @@ def aggregate(results: tuple[CaseResult, ...]) -> dict[str, Any]:
         "errors": sum(1 for r in active if r.error),
         "planner": _aggregate_planner(active),
         "retrieval": _aggregate_retrieval(active),
+        "retrieval_quality": _aggregate_retrieval_quality(active),
     }
 
 

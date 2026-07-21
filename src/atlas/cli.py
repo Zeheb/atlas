@@ -785,6 +785,11 @@ def eval_compare_retrieval_cmd(baseline: str, candidate: str, out_path: str | No
     click.echo(f"  candidates considered Δ: {rd['delta_mean_candidates_considered']}")
     click.echo(f"  metadata coverage Δ:     {rd['delta_mean_metadata_coverage']}")
     click.echo(f"  boost share Δ:           {rd['delta_mean_boost_share']}")
+    rqd = result["retrieval_quality_deltas"]
+    if rqd["baseline"] is not None or rqd["candidate"] is not None:
+        click.echo(f"  precision@k Δ (labelled):{rqd['delta_mean_precision_at_k']}")
+        click.echo(f"  recall@k Δ (labelled):   {rqd['delta_mean_recall_at_k']}")
+        click.echo(f"  MRR Δ (labelled):        {rqd['delta_mean_mrr']}")
 
     click.echo(f"\n  recommendation: {rec.verdict}")
     for reason in rec.reasons:
@@ -796,6 +801,7 @@ def eval_compare_retrieval_cmd(baseline: str, candidate: str, out_path: str | No
             "end_to_end": result["end_to_end"],
             "ranking_change": result["ranking_change"],
             "retrieval_deltas": result["retrieval_deltas"],
+            "retrieval_quality_deltas": result["retrieval_quality_deltas"],
             "planner_attribution": result["planner_attribution"],
             "side_by_side": [dataclasses.asdict(row) for row in result["side_by_side"]],
             "recommendation": {
