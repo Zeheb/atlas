@@ -555,6 +555,118 @@ def ask_cmd(
     click.echo(format_answer(to_answer(result, context=context), show_evidence=show_evidence))
 
 
+@cli.command("investigate")
+@click.argument("ticker")
+@click.argument("question")
+@click.option(
+    "--also", "also", multiple=True,
+    help="Additional TICKER to investigate alongside the first (repeatable). "
+         "Two or more subjects make the plan comparative (M2.2.5).",
+)
+@click.option(
+    "--dry-run", "dry_run", is_flag=True, default=False,
+    help="Print the research plan and stop. Builds NO LLM client at all and "
+         "runs no retrieval -- the plan is a pure function of the question.",
+)
+@click.option(
+    "--out", "out_path", default=None, type=click.Path(dir_okay=False),
+    help="Write the plan (and, unless --dry-run, its findings) as JSON here.",
+)
+def investigate_cmd(
+    ticker: str, question: str, also: tuple[str, ...],
+    dry_run: bool, out_path: str | None,
+) -> None:
+    """Plan and run a multi-dimension investigation of QUESTION about TICKER.
+
+    Where `atlas ask` answers one question directly and `atlas research`
+    assembles a fixed-shape briefing from already-extracted facts, this
+    decomposes an open-ended research question ("Should I invest in TCS?")
+    into the specific dimensions that must be investigated before a view can
+    be formed, then grounds each one through the normal retrieval pipeline.
+
+    Every finding carries at least one citation; an investigation that cannot
+    be grounded is reported as unresolved rather than answered without
+    evidence. Forming the actual investment view from these findings is a
+    later milestone -- this command gathers, it does not conclude.
+    """
+    import dataclasses
+    import json as _json
+    from pathlib import Path
+
+    from atlas.research.planner import plan_research
+
+    subjects = tuple(t.upper() for t in (ticker, *also))
+    atlas = Atlas.from_environment()
+
+    plan = plan_research(question, subjects)
+
+    click.echo(f"\nResearch plan: {plan.intent}  ({', '.join(plan.subjects)})")
+    click.echo(f"  question: {plan.raw_question}")
+    click.echo(f"  investigations: {len(plan.investigations)}")
+    for inv in plan.ordered_investigations():
+        click.echo(f"\n  [{inv.priority}] {inv.dimension}")
+        click.echo(f"      {inv.question}")
+        click.echo(f"      why: {inv.rationale}")
+    click.echo("\n  decisions:")
+    for decision in plan.decisions:
+        click.echo(f"    - [{decision.rule}] {decision.input!r} -> {decision.output!r}")
+
+    if dry_run:
+        # M2.2.5: the plan is a pure function of the question -- no LLM client
+        # is constructed here, not merely left unused. Asserted by test with an
+        # exploding build_llm_client stub, the same way --retrieval-only is.
+        if out_path:
+            Path(out_path).write_text(_json.dumps(plan.to_dict(), indent=2), encoding="utf-8")
+            click.echo(f"\nPlan written to {out_path}")
+        return
+
+    from atlas.reasoning.llm import (
+        LLMConfigurationError,
+        LLMTransportError,
+        build_llm_client,
+    )
+    from atlas.research.investigate import run_plan
+
+    try:
+        client = build_llm_client(atlas.settings, role="reasoning")
+    except LLMConfigurationError as exc:
+        click.echo(str(exc), err=True)
+        raise SystemExit(1)
+
+    try:
+        run = run_plan(plan, atlas.settings.repository_base_path, client)
+    except LLMTransportError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        raise SystemExit(1)
+
+    click.echo(f"\n{'=' * 60}")
+    click.echo(f"Findings ({len(run.findings)}/{len(run.results)} investigations grounded)")
+    for result in run.results:
+        click.echo(f"\n  {result.investigation.dimension}:")
+        if result.finding is not None:
+            click.echo(f"    {result.finding.text}")
+            click.echo(f"    evidence: {', '.join(result.finding.evidence_ids)}")
+        else:
+            click.echo(f"    UNRESOLVED -- {result.unresolved_reason}")
+
+    if out_path:
+        payload = {
+            "plan": plan.to_dict(),
+            "resolution_rate": run.resolution_rate,
+            "results": [
+                {
+                    "dimension": r.investigation.dimension,
+                    "question": r.investigation.question,
+                    "finding": dataclasses.asdict(r.finding) if r.finding else None,
+                    "unresolved_reason": r.unresolved_reason,
+                }
+                for r in run.results
+            ],
+        }
+        Path(out_path).write_text(_json.dumps(payload, indent=2), encoding="utf-8")
+        click.echo(f"\nInvestigation written to {out_path}")
+
+
 @cli.group("eval")
 def eval_group() -> None:
     """Evaluate Atlas against the V2.1 acceptance suite (§8)."""
