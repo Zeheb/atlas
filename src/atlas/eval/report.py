@@ -11,17 +11,35 @@ runner produced a ``RetrievalResult``/``SearchPlan`` (see ``eval/runner.py``'s
 ``RunOutcome``). Both default to ``None``, and ``Report.from_dict`` reads them
 via ``.get()``, so an M1.7-era report with neither field still loads exactly
 as before (backward compatible by construction, not by special-casing).
+
+M1.8.5 (ADR-0005) adds one more OPTIONAL field to ``Report`` itself:
+``coverage_snapshot``, a ``CoverageSnapshot`` -- exactly
+``benchmark.coverage.analyze_suite()``'s output for the suite this run used,
+plus a fingerprint of which case ids produced it. This is BENCHMARK coverage
+(does the suite exercise every planner intent/rule/scenario), not run-result
+coverage -- ``atlas eval coverage`` computes the identical thing via the
+identical function, so a report never carries a second, possibly-diverging
+notion of "coverage." Also defaults to ``None`` and reads via ``.get()``, so
+an M1.8-era report without it still loads.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
+from atlas.benchmark.coverage import (
+    DimensionCoverage,
+    RedundancyReport,
+    SuiteCoverage,
+    analyze_suite,
+)
 from atlas.reasoning.planner import ALL_RULE_IDS
 
 if TYPE_CHECKING:
+    from atlas.benchmark.coverage import CaseLike
     from atlas.reasoning.plan import SearchPlan
     from atlas.reasoning.retrieval import RetrievalResult
 
@@ -137,6 +155,68 @@ def _planner_metrics_from_dict(d: dict[str, Any] | None) -> PlannerCaseMetrics |
 
 
 @dataclass(frozen=True)
+class CoverageSnapshot:
+    """Benchmark coverage AT THE TIME OF THIS RUN (M1.8.5 / ADR-0005) --
+    exactly ``analyze_suite()``'s output for the suite this run used, plus a
+    fingerprint of which case ids produced it. Embedded in ``Report`` so a
+    run's provenance includes not just the model/git commit but also which
+    benchmark gaps existed when it ran.
+    """
+
+    suite_fingerprint: str
+    suite: SuiteCoverage
+
+
+def build_coverage_snapshot(cases: Sequence["CaseLike"]) -> CoverageSnapshot:
+    """The ONE place a Report acquires its coverage snapshot -- calls
+    ``analyze_suite`` directly, never a second implementation (ADR-0005).
+    """
+    fingerprint = hashlib.sha256(
+        ",".join(sorted(c.id for c in cases)).encode("utf-8")
+    ).hexdigest()
+    return CoverageSnapshot(suite_fingerprint=fingerprint, suite=analyze_suite(cases))
+
+
+def _dimension_coverage_from_dict(d: dict[str, Any]) -> DimensionCoverage:
+    return DimensionCoverage(
+        counts=tuple(tuple(x) for x in d["counts"]),
+        missing=tuple(d["missing"]),
+        underrepresented=tuple(d["underrepresented"]),
+        entropy=d["entropy"],
+    )
+
+
+def _redundancy_report_from_dict(d: dict[str, Any]) -> RedundancyReport:
+    return RedundancyReport(
+        near_duplicate_pairs=tuple(tuple(x) for x in d["near_duplicate_pairs"]),
+        threshold=d["threshold"],
+    )
+
+
+def _suite_coverage_from_dict(d: dict[str, Any]) -> SuiteCoverage:
+    return SuiteCoverage(
+        total_cases=d["total_cases"],
+        intent=_dimension_coverage_from_dict(d["intent"]),
+        rule=_dimension_coverage_from_dict(d["rule"]),
+        scenario=_dimension_coverage_from_dict(d["scenario"]),
+        subject_counts=tuple(tuple(x) for x in d["subject_counts"]),
+        difficulty_counts=tuple(tuple(x) for x in d["difficulty_counts"]),
+        general_intent_share=d["general_intent_share"],
+        max_subject_share=d["max_subject_share"],
+        redundancy=_redundancy_report_from_dict(d["redundancy"]),
+    )
+
+
+def _coverage_snapshot_from_dict(d: dict[str, Any] | None) -> CoverageSnapshot | None:
+    if d is None:
+        return None
+    return CoverageSnapshot(
+        suite_fingerprint=d["suite_fingerprint"],
+        suite=_suite_coverage_from_dict(d["suite"]),
+    )
+
+
+@dataclass(frozen=True)
 class CaseResult:
     case_id: str
     category: str
@@ -182,6 +262,11 @@ class Report:
     # which from_dict() reads as None, so report compatibility is preserved.
     cache_hits: int | None = None
     cache_misses: int | None = None
+    # M1.8.5 (ADR-0005): benchmark coverage AT THE TIME OF THIS RUN. None for
+    # any report built before this field existed, or if the caller chose not
+    # to compute one -- from_dict() reads it via .get(), so an M1.8-era
+    # report still loads exactly as before.
+    coverage_snapshot: CoverageSnapshot | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -193,6 +278,7 @@ class Report:
             "capabilities": list(self.capabilities),
             "cache_hits": self.cache_hits,
             "cache_misses": self.cache_misses,
+            "coverage_snapshot": asdict(self.coverage_snapshot) if self.coverage_snapshot else None,
             "aggregates": aggregate(self.results),
             "results": [asdict(r) for r in self.results],
         }
@@ -227,6 +313,7 @@ class Report:
             capabilities=tuple(d.get("capabilities", ())), results=results,
             git_commit=d.get("git_commit"), judge_model=d.get("judge_model"),
             cache_hits=d.get("cache_hits"), cache_misses=d.get("cache_misses"),
+            coverage_snapshot=_coverage_snapshot_from_dict(d.get("coverage_snapshot")),
         )
 
     @classmethod

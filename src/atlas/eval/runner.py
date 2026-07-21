@@ -61,6 +61,7 @@ from atlas.eval.judge import Judge
 from atlas.eval.report import (
     CaseResult,
     Report,
+    build_coverage_snapshot,
     build_planner_metrics,
     build_retrieval_metrics,
 )
@@ -262,6 +263,10 @@ def run_suite(
         results=tuple(results),
         git_commit=_git_commit(),
         judge_model=judge_model,
+        # M1.8.5 (ADR-0005): the FULL suite (not just active cases) -- coverage
+        # measures what the benchmark contains, independent of which
+        # capabilities this particular run happened to activate.
+        coverage_snapshot=build_coverage_snapshot(cases),
     )
 
 
