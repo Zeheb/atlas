@@ -462,7 +462,23 @@ def research_cmd(ticker: str, out_path: str | None) -> None:
         "pending eval-measured activation; see ADR-M1.5)."
     ),
 )
-def ask_cmd(ticker: str, question: str, show_evidence: bool, question_retrieval: bool) -> None:
+@click.option(
+    "--retrieval-plan", "retrieval_plan", is_flag=True, default=False,
+    help=(
+        "Plan retrieval before running it: classify the question's intent and "
+        "bias passage ranking by doc-type/date/period preferences (M1.7). "
+        "Requires --question-retrieval; default off pending eval-measured lift "
+        "over the M1.5 baseline — see ADR-M1.7."
+    ),
+)
+@click.option(
+    "--explain-plan", "explain_plan", is_flag=True, default=False,
+    help="Print the retrieval plan's decision trace (requires --retrieval-plan).",
+)
+def ask_cmd(
+    ticker: str, question: str, show_evidence: bool,
+    question_retrieval: bool, retrieval_plan: bool, explain_plan: bool,
+) -> None:
     """Answer a natural-language QUESTION about TICKER, grounded in its evidence.
 
     Reads the saved CompanyProfile (run 'atlas profile build TICKER' first) and
@@ -472,7 +488,9 @@ def ask_cmd(ticker: str, question: str, show_evidence: bool, question_retrieval:
     (e.g. valuation) are declined rather than guessed. When the company's
     KnowledgeBase is present, claim evidence is hydrated with retrieved source
     excerpts (M1); pass --show-evidence to see them, and --question-retrieval
-    to also surface passages relevant to this question.
+    to also surface passages relevant to this question. --retrieval-plan (M1.7)
+    additionally plans that retrieval — classifying intent and biasing ranking
+    by doc type/date/period — before it runs.
     """
     from atlas.company.store import CompanyStore
     from atlas.knowledge.base import KnowledgeBase
@@ -484,6 +502,7 @@ def ask_cmd(ticker: str, question: str, show_evidence: bool, question_retrieval:
         LLMTransportError,
         build_llm_client,
     )
+    from atlas.reasoning.planner import plan_retrieval
     from atlas.reasoning.render import format_answer, to_answer
 
     ticker = ticker.upper()
@@ -510,9 +529,22 @@ def ask_cmd(ticker: str, question: str, show_evidence: bool, question_retrieval:
     kb = KnowledgeBase(repo_root) if (repo_root / "knowledge.db").exists() else None
     # M1.5 (ADR-M1.5): question-conditioned passage merge, default OFF — the ADR
     # gates activation on eval-measured lift, not on availability alone.
+    # M1.7 (ADR-M1.7): --retrieval-plan additionally plans that merge, default
+    # OFF for the same reason. Planning without question-retrieval is a no-op
+    # (nothing would consume the plan), so it's silently ignored rather than
+    # erroring — a flag ordering slip shouldn't fail the whole command.
+    plan = plan_retrieval(question) if (question_retrieval and retrieval_plan) else None
     context = build_context(
-        profile, subject, kb=kb, question=question if question_retrieval else None,
+        profile, subject, kb=kb,
+        question=question if question_retrieval else None,
+        plan=plan,
     )
+    if explain_plan and plan is not None:
+        click.echo("Retrieval plan:")
+        click.echo(f"  intent: {plan.intent}")
+        click.echo(f"  top_k: {plan.top_k}")
+        for decision in plan.decisions:
+            click.echo(f"  - [{decision.rule}] {decision.input!r} -> {decision.output!r}")
     try:
         result = ask(Question(raw_text=question, subject_ref=subject), context, client)
     except LLMTransportError as exc:

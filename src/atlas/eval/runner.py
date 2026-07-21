@@ -19,6 +19,14 @@ build_context(), activating question-conditioned passage merging so
 runner-mode switch, not a case gate — no case requires it, so no case's
 availability changes; capabilities defaults to frozenset() (question never
 passed), reproducing M1's LiveReasoningRunner behavior exactly.
+
+M1.7 (ADR-M1.7): a second runner-mode switch, CAP_RETRIEVAL_PLAN, layered on
+top of CAP_QUESTION_RETRIEVAL. When both are active, the case's question is
+also run through plan_retrieval() (HeuristicPlanner) and the resulting
+SearchPlan is forwarded into build_context() alongside the question, so
+`atlas eval compare` can measure the plan's effect against the M1.5 baseline.
+CAP_RETRIEVAL_PLAN alone (without CAP_QUESTION_RETRIEVAL) is a no-op, matching
+the CLI's --retrieval-plan-without---question-retrieval behavior.
 """
 from __future__ import annotations
 
@@ -31,7 +39,7 @@ from typing import Protocol
 from atlas.company.store import CompanyStore
 from atlas.config.settings import Settings
 from atlas.eval.cache import CachingLLMClient, EvalCache
-from atlas.eval.cases import CAP_QUESTION_RETRIEVAL, EvalCase
+from atlas.eval.cases import CAP_QUESTION_RETRIEVAL, CAP_RETRIEVAL_PLAN, EvalCase
 from atlas.eval.correctness import score_correctness
 from atlas.eval.grounding import score_grounding
 from atlas.eval.judge import Judge
@@ -47,6 +55,7 @@ from atlas.reasoning.contracts import (
     SubjectRef,
 )
 from atlas.reasoning.llm import LLMClient
+from atlas.reasoning.planner import plan_retrieval
 from atlas.reasoning.render import to_answer
 
 
@@ -94,7 +103,15 @@ class LiveReasoningRunner:
         subject = SubjectRef(subject_id=case.subject, display=case.subject)
         kb = KnowledgeBase(repo_root) if (repo_root / "knowledge.db").exists() else None
         question = case.question if CAP_QUESTION_RETRIEVAL in self._capabilities else None
-        context = build_context(profile, subject, kb=kb, question=question)
+        # M1.7: planning is a no-op unless question-conditioned retrieval is
+        # ALSO active -- a plan with nothing to merge it into would never be
+        # consumed by build_context().
+        plan = (
+            plan_retrieval(case.question)
+            if question is not None and CAP_RETRIEVAL_PLAN in self._capabilities
+            else None
+        )
+        context = build_context(profile, subject, kb=kb, question=question, plan=plan)
         result = ask(
             Question(raw_text=case.question, subject_ref=subject), context, self._client
         )

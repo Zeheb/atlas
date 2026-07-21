@@ -29,6 +29,14 @@ CAP_DETERMINISM = "determinism"  # M4
 # question into build_context(), activating question-conditioned retrieval so
 # `atlas eval compare` can measure its effect against the M1 baseline.
 CAP_QUESTION_RETRIEVAL = "question_retrieval"
+# M1.7 (ADR-M1.7): another runner-mode switch, layered on top of
+# CAP_QUESTION_RETRIEVAL rather than replacing it. No case declares this in
+# `requires` either -- it tells LiveReasoningRunner to additionally plan that
+# retrieval (HeuristicPlanner) before running it, so `atlas eval compare` can
+# measure the plan's effect against the M1.5 baseline. Has no effect unless
+# CAP_QUESTION_RETRIEVAL is ALSO active (planning without question-retrieval
+# is a no-op -- nothing would consume the plan).
+CAP_RETRIEVAL_PLAN = "retrieval_plan"
 
 # "honest_negative" (§12.6 amendment 5): the ideal response is EITHER a clean
 # refusal OR an answer that honestly denies/declares-absent (e.g. "no such
