@@ -142,6 +142,41 @@ def test_comparison_question_names_every_subject_once() -> None:
         assert inv.subjects == ("TATASTEEL", "JSWSTEEL")
 
 
+def test_multi_subject_questions_use_plural_agreement() -> None:
+    """These questions are read by a user AND consumed verbatim by
+    plan_retrieval() -- "How does X and Y describe its position" is wrong on
+    both verb and pronoun, and a research product should not emit it.
+    """
+    plan = _plan("Compare Tata Steel with JSW Steel.", ("TATASTEEL", "JSWSTEEL"))
+    questions = [i.question for i in plan.investigations]
+
+    competitive = next(q for q in questions if "competitive" in q)
+    assert "How do " in competitive
+    assert "their competitive positions" in competitive
+    assert " its " not in competitive
+
+    for q in questions:
+        assert "has TATASTEEL and JSWSTEEL" not in q  # singular verb, plural subject
+
+
+def test_single_subject_questions_use_singular_agreement() -> None:
+    for inv in _plan("Should I invest in TCS?").investigations:
+        assert " have TCS " not in inv.question
+        assert " do TCS " not in inv.question
+
+
+def test_every_dimension_has_both_question_forms() -> None:
+    from atlas.research.plan import _VALID_DIMENSIONS
+    from atlas.research.planner import _DIMENSION_QUESTIONS
+
+    assert set(_DIMENSION_QUESTIONS) == set(_VALID_DIMENSIONS)
+    for dimension, forms in _DIMENSION_QUESTIONS.items():
+        assert len(forms) == 2, dimension
+        singular, plural = forms
+        assert singular != plural, f"{dimension} has identical singular/plural forms"
+        assert "{subject}" in singular and "{subject}" in plural
+
+
 def test_competitive_position_dropped_for_single_subject() -> None:
     """It compares against peers; with one subject it cannot be answered, so
     it is dropped with an audited decision rather than emitted unanswerable.

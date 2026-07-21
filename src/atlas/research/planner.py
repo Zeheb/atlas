@@ -135,21 +135,54 @@ _INTENT_DIMENSIONS: dict[ResearchIntent, tuple[tuple[ResearchDimension, int], ..
     ),
 }
 
-# The sub-question each dimension asks. "{subject}" is substituted per
-# subject; comparison intents render a single question naming every subject
-# so the retrieval layer sees one comparative question, not N isolated ones.
-# These are real, self-contained questions -- not topic labels -- because
-# plan_retrieval() consumes them verbatim.
-_DIMENSION_QUESTIONS: dict[ResearchDimension, str] = {
-    "what_changed": "What material developments has {subject} disclosed most recently?",
-    "business_quality": "What do {subject}'s revenue growth and operating margins show about business quality?",
-    "management_credibility": "What has {subject}'s management said about performance, and what was delivered?",
-    "balance_sheet": "What do {subject}'s debt, leverage and cash position show about balance sheet strength?",
-    "valuation": "What valuation multiples or earnings figures has {subject} disclosed?",
-    "risks": "What risk factors and exposures has {subject} disclosed?",
-    "catalysts": "What forward-looking guidance or outlook has {subject} provided?",
-    "competitive_position": "How does {subject} describe its competitive position and market share?",
-    "esg_governance": "What ESG and governance disclosures has {subject} made?",
+# The sub-question each dimension asks, in singular and plural forms.
+# "{subject}" is substituted with one ticker or with "X and Y"; comparison
+# intents render a SINGLE question naming every subject, so the retrieval
+# layer sees one comparative question rather than N isolated ones.
+#
+# Two forms rather than one because these are real questions, not labels:
+# plan_retrieval() consumes them verbatim and a user reads them in the
+# terminal. A single template forced "How does X and Y describe ITS
+# competitive position" -- wrong on both verb and pronoun. String surgery on
+# a singular template (patching does/do, its/their) would be fragile and
+# invisible; two explicit forms are checkable by eye.
+_DIMENSION_QUESTIONS: dict[ResearchDimension, tuple[str, str]] = {
+    "what_changed": (
+        "What material developments has {subject} disclosed most recently?",
+        "What material developments have {subject} disclosed most recently?",
+    ),
+    "business_quality": (
+        "What do {subject}'s revenue growth and operating margins show about business quality?",
+        "What do the revenue growth and operating margins of {subject} show about business quality?",
+    ),
+    "management_credibility": (
+        "What has {subject}'s management said about performance, and what was delivered?",
+        "What has the management of {subject} said about performance, and what was delivered?",
+    ),
+    "balance_sheet": (
+        "What do {subject}'s debt, leverage and cash position show about balance sheet strength?",
+        "What do the debt, leverage and cash positions of {subject} show about balance sheet strength?",
+    ),
+    "valuation": (
+        "What valuation multiples or earnings figures has {subject} disclosed?",
+        "What valuation multiples or earnings figures have {subject} disclosed?",
+    ),
+    "risks": (
+        "What risk factors and exposures has {subject} disclosed?",
+        "What risk factors and exposures have {subject} disclosed?",
+    ),
+    "catalysts": (
+        "What forward-looking guidance or outlook has {subject} provided?",
+        "What forward-looking guidance or outlook have {subject} provided?",
+    ),
+    "competitive_position": (
+        "How does {subject} describe its competitive position and market share?",
+        "How do {subject} describe their competitive positions and market share?",
+    ),
+    "esg_governance": (
+        "What ESG and governance disclosures has {subject} made?",
+        "What ESG and governance disclosures have {subject} made?",
+    ),
 }
 
 # Why each dimension belongs in a plan, in words. Required by
@@ -265,9 +298,11 @@ class HeuristicResearchPlanner:
                     output="dropped: needs >=2 subjects to be answerable",
                 ))
                 continue
+            singular, plural = _DIMENSION_QUESTIONS[dimension]
+            template = singular if len(subjects) == 1 else plural
             investigations.append(Investigation(
                 dimension=dimension,
-                question=_DIMENSION_QUESTIONS[dimension].format(subject=subject_label),
+                question=template.format(subject=subject_label),
                 subjects=subjects,
                 rationale=_DIMENSION_RATIONALES[dimension],
                 priority=priority,
