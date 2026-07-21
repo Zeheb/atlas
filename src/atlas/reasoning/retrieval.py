@@ -20,6 +20,28 @@ across several candidate documents — it answers "which passages, across what
 Atlas already holds, actually bear on what's being asked?" Same deterministic
 scoring floor; different query source and cardinality (one best match vs top-K
 across documents).
+
+M1.7 (retrieval planning): ``retrieve_with_plan`` adds a THIRD mode, plan-
+conditioned — query terms, doc-type preferences, and period/date hints all
+come from a ``SearchPlan`` (``plan.py``) rather than a bare question string.
+``retrieve_passages`` is untouched (same function, same behavior, same
+tests) — it stays the M1.5 code path for callers that never build a plan.
+
+``retrieve_with_plan`` is split into two stages on purpose:
+
+  * ``_generate_candidates`` applies the UNCHANGED accept bar
+    (``_clears_accept_bar``) and never looks at ``preferred_doc_types`` or
+    ``date_window`` — its output set is provably identical to what
+    ``retrieve_passages`` would consider for the same doc_ids/query terms.
+    This is what makes the M1.7 fallback guarantee ("a plan can never return
+    fewer results than an unplanned query") structural rather than a relax
+    pass: ranking cannot remove a candidate, only reorder and truncate.
+  * ``_rank_and_select`` applies every plan-derived boost (doc-type, recency,
+    period, date-window, numeric) purely additively on top of the same
+    ``matched_words + 2*matched_numbers`` base score, then dedups/truncates
+    to ``top_k`` exactly as ``retrieve_passages`` already does.
+
+Swapping in a real reranking model later replaces ``_rank_and_select`` alone.
 """
 from __future__ import annotations
 
@@ -27,8 +49,9 @@ import re
 from collections.abc import Iterable
 from dataclasses import dataclass
 
-from atlas.knowledge.base import KnowledgeBase
+from atlas.knowledge.base import KnowledgeBase, ParsedDocument
 from atlas.reasoning.contracts import ConfidenceLevel
+from atlas.reasoning.plan import SearchPlan
 from atlas.reasoning.text import _TOKEN_RE, keywords as _keywords, tokenize as _tokenize
 
 # Defensive bound: skip retrieval entirely for pathologically large documents
@@ -232,6 +255,227 @@ def retrieve_passages(
         match = _finalize_match(content, start, text, all_keywords, window_chars, has_numeric)
         results.append((doc_id, match))
     return results
+
+
+# ---------------------------------------------------------------------------
+# M1.7: plan-conditioned retrieval
+# ---------------------------------------------------------------------------
+@dataclass(frozen=True)
+class RetrievalResult:
+    """Matches plus the diagnostics needed to verify how they were chosen.
+
+    Internal, like ``RetrievalMatch`` — not a §10 contract type. Capped at
+    these four fields on purpose: an observability seam, not a scratch pad.
+    """
+
+    matches: tuple[tuple[str, RetrievalMatch], ...]
+    plan: SearchPlan
+    candidates_considered: int
+    docs_missing_metadata: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class _Candidate:
+    """One window that cleared the accept bar. Plan-independent — the same
+    shape whether or not a SearchPlan is in play.
+    """
+
+    doc_id: str
+    start: int
+    text: str
+    matched_words: int
+    matched_numbers: int
+
+
+def _generate_candidates(
+    kb: KnowledgeBase,
+    doc_ids: Iterable[str],
+    query_terms: frozenset[str],
+    numeric_terms: frozenset[str],
+    content_cache: dict[str, str | None],
+) -> list[_Candidate]:
+    """Apply the UNCHANGED accept bar across every window of every doc_id.
+
+    Deliberately consults nothing from a SearchPlan beyond its query/numeric
+    terms — see the module docstring for why that is what makes the fallback
+    guarantee structural rather than a relax pass.
+    """
+    candidates: list[_Candidate] = []
+    for doc_id in sorted(set(doc_ids)):
+        if doc_id not in content_cache:
+            content_cache[doc_id] = kb.get_content(doc_id)
+        content = content_cache[doc_id]
+        if not content or len(content) > _MAX_CONTENT_CHARS:
+            continue
+        for start, text in _windows(content):
+            w_words, w_numbers = _keywords(text)
+            matched_words = len(query_terms & w_words)
+            matched_numbers = len(numeric_terms & w_numbers)
+            if not _clears_accept_bar(matched_words, matched_numbers):
+                continue
+            candidates.append(_Candidate(doc_id, start, text, matched_words, matched_numbers))
+    return candidates
+
+
+def _doc_type_boost(doc: ParsedDocument | None, plan: SearchPlan) -> int:
+    if doc is None:
+        return 0
+    for pref in plan.preferred_doc_types:
+        if pref.kind == doc.kind:
+            return pref.weight
+    return 0
+
+
+def _date_prefix(source_date: str) -> str | None:
+    """Best-effort YYYY-MM-DD prefix, lexically comparable to a DateWindow
+    bound. Returns None rather than raising on a malformed/short string —
+    a date-based boost simply doesn't fire, it never crashes retrieval.
+    """
+    return source_date[:10] if source_date and len(source_date) >= 10 else None
+
+
+def _recency_ranks(doc_ids: Iterable[str], metadata: dict[str, ParsedDocument]) -> dict[str, int]:
+    """Rank *doc_ids* by source_date descending (0 = most recent).
+
+    Docs with no metadata or an unparseable date sort last — a missing
+    signal degrades to "no boost," never to an error or a crash.
+    """
+    dated: list[tuple[str, str]] = []
+    undated: list[str] = []
+    for doc_id in doc_ids:
+        doc = metadata.get(doc_id)
+        prefix = _date_prefix(doc.source_date) if doc is not None else None
+        (dated.append((doc_id, prefix)) if prefix is not None else undated.append(doc_id))
+    dated.sort(key=lambda pair: pair[1], reverse=True)
+    ranks: dict[str, int] = {doc_id: rank for rank, (doc_id, _date) in enumerate(dated)}
+    base = len(dated)
+    for offset, doc_id in enumerate(undated):
+        ranks[doc_id] = base + offset
+    return ranks
+
+
+def _date_window_boost(doc: ParsedDocument | None, plan: SearchPlan) -> int:
+    if plan.date_window is None or doc is None:
+        return 0
+    prefix = _date_prefix(doc.source_date)
+    if prefix is None:
+        return 0
+    if plan.date_window.start is not None and prefix < plan.date_window.start:
+        return 0
+    if plan.date_window.end is not None and prefix > plan.date_window.end:
+        return 0
+    return 25
+
+
+def _period_boost(text: str, plan: SearchPlan) -> int:
+    if not plan.periods:
+        return 0
+    # Whitespace-insensitive substring match: a plan period like "Q3FY2024"
+    # should still hit prose rendered as "Q3 FY2024" or "Q3-FY2024". A bonus
+    # signal only (additive), so a miss here never excludes a candidate.
+    normalized_text = re.sub(r"\s+", "", text).lower()
+    for period in plan.periods:
+        if re.sub(r"\s+", "", period).lower() in normalized_text:
+            return 40
+    return 0
+
+
+def _rank_and_select(
+    candidates: list[_Candidate],
+    plan: SearchPlan,
+    metadata: dict[str, ParsedDocument],
+) -> list[_Candidate]:
+    """Score every candidate with plan-derived boosts, then dedup/truncate to
+    ``plan.top_k`` — the same same-document-overlap dedup ``retrieve_passages``
+    uses, plus ``rerank.max_per_document`` when the plan sets it.
+
+    Purely additive on top of the unchanged base score: ranking can reorder
+    and truncate ``candidates`` but never grows or shrinks the set it was
+    given (that already happened in ``_generate_candidates``).
+    """
+    recency_ranks = _recency_ranks((c.doc_id for c in candidates), metadata) if plan.rerank.prefer_recent else {}
+
+    scored: list[tuple[int, str, int, _Candidate]] = []
+    for cand in candidates:
+        doc = metadata.get(cand.doc_id)
+        base = cand.matched_words + 2 * cand.matched_numbers
+        score = base * 100
+        score += _doc_type_boost(doc, plan)
+        score += _date_window_boost(doc, plan)
+        score += _period_boost(cand.text, plan)
+        if plan.rerank.prefer_recent:
+            rank = recency_ranks.get(cand.doc_id, len(recency_ranks))
+            score += max(0, 30 - 3 * rank)
+        if plan.rerank.prefer_numeric and cand.matched_numbers > 0:
+            score += 20
+        scored.append((score, cand.doc_id, cand.start, cand))
+
+    scored.sort(key=lambda s: (-s[0], s[1], s[2]))
+
+    per_doc_count: dict[str, int] = {}
+    selected: list[_Candidate] = []
+    for _score, doc_id, start, cand in scored:
+        end = start + len(cand.text)
+        overlaps = any(
+            s.doc_id == doc_id and not (end <= s.start or start >= s.start + len(s.text))
+            for s in selected
+        )
+        if overlaps:
+            continue
+        if plan.rerank.max_per_document is not None:
+            if per_doc_count.get(doc_id, 0) >= plan.rerank.max_per_document:
+                continue
+        selected.append(cand)
+        per_doc_count[doc_id] = per_doc_count.get(doc_id, 0) + 1
+        if len(selected) >= plan.top_k:
+            break
+    return selected
+
+
+def retrieve_with_plan(
+    kb: KnowledgeBase,
+    doc_ids: Iterable[str],
+    plan: SearchPlan,
+    *,
+    content_cache: dict[str, str | None] | None = None,
+    window_chars: int = _WINDOW_CHARS_DEFAULT,
+) -> RetrievalResult:
+    """Plan-conditioned counterpart to ``retrieve_passages`` (M1.7).
+
+    Candidate generation applies the identical accept bar ``retrieve_passages``
+    uses — see the module docstring for why that makes this call's result set
+    a superset-or-equal of ``retrieve_passages``'s for the same ``top_k``.
+    Only ranking differs, driven by ``plan``'s doc-type/date/period/rerank
+    hints, all additive boosts.
+
+    One ``KnowledgeBase.get_many()`` call fetches metadata for every distinct
+    doc_id — a single round trip regardless of how many boosts consult it.
+    """
+    cache: dict[str, str | None] = content_cache if content_cache is not None else {}
+    query_terms = frozenset(plan.query_terms)
+    numeric_terms = frozenset(plan.numeric_terms)
+
+    unique_doc_ids = sorted(set(doc_ids))
+    metadata = kb.get_many(unique_doc_ids)
+    docs_missing_metadata = tuple(d for d in unique_doc_ids if d not in metadata)
+
+    if not query_terms and not numeric_terms:
+        return RetrievalResult((), plan, 0, docs_missing_metadata)
+
+    candidates = _generate_candidates(kb, unique_doc_ids, query_terms, numeric_terms, cache)
+    selected = _rank_and_select(candidates, plan, metadata)
+
+    all_keywords = query_terms | numeric_terms
+    results: list[tuple[str, RetrievalMatch]] = []
+    for cand in selected:
+        content = cache[cand.doc_id]
+        assert content is not None  # guaranteed: doc_id only entered candidates if content is set
+        match = _finalize_match(
+            content, cand.start, cand.text, all_keywords, window_chars, cand.matched_numbers > 0,
+        )
+        results.append((cand.doc_id, match))
+
+    return RetrievalResult(tuple(results), plan, len(candidates), docs_missing_metadata)
 
 
 def fetch_and_match(
