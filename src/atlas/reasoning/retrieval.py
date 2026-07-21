@@ -29,6 +29,7 @@ from dataclasses import dataclass
 
 from atlas.knowledge.base import KnowledgeBase
 from atlas.reasoning.contracts import ConfidenceLevel
+from atlas.reasoning.text import _TOKEN_RE, keywords as _keywords, tokenize as _tokenize
 
 # Defensive bound: skip retrieval entirely for pathologically large documents
 # rather than risk slow tokenization/scanning.
@@ -39,34 +40,6 @@ _WINDOW_CHARS_DEFAULT = 240
 # single match doesn't drag in an entire mega-section.
 _MAX_PARAGRAPH_CHARS = 900
 _SLIDE_STRIDE = 450
-
-_TOKEN_RE = re.compile(r"[A-Za-z]+(?:'[A-Za-z]+)?|\d+(?:\.\d+)?")
-
-_STOPWORDS = frozenset({
-    "the", "a", "an", "of", "in", "on", "at", "to", "for", "and", "or", "is",
-    "are", "was", "were", "be", "been", "being", "has", "have", "had", "this",
-    "that", "these", "those", "with", "as", "by", "from", "it", "its", "their",
-    "they", "which", "what", "how", "does", "do", "did", "will", "would",
-    "can", "could", "about", "over", "under", "than", "then", "if", "not",
-    "no", "yes", "you", "your", "we", "our", "i", "he", "she", "them", "his",
-    "her", "there", "here", "such", "any", "all", "so", "but", "also",
-})
-
-
-def _tokenize(text: str) -> list[str]:
-    return [t.lower() for t in _TOKEN_RE.findall(text)]
-
-
-def _keywords(text: str) -> tuple[set[str], set[str]]:
-    """Return (word_keywords, numeric_keywords) from *text*, stopwords dropped."""
-    words: set[str] = set()
-    numbers: set[str] = set()
-    for tok in _tokenize(text):
-        if tok[0].isdigit():
-            numbers.add(tok)
-        elif tok not in _STOPWORDS and len(tok) >= 3:
-            words.add(tok)
-    return words, numbers
 
 
 @dataclass(frozen=True)
