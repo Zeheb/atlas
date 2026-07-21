@@ -55,14 +55,16 @@ def test_second_run_of_unchanged_case_does_not_call_the_llm(tmp_path: Path) -> N
 
     client1 = _fake_client()
     runner1 = LiveReasoningRunner(settings, client1, cache=cache)
-    result1, answer1, _ctx1 = runner1.run(_case())
+    outcome1 = runner1.run(_case())
+    result1, answer1 = outcome1.result, outcome1.answer
     assert len(client1.calls) == 1
 
     # A fresh runner + fresh client, sharing the SAME cache — mirrors a
     # second `atlas eval run` invocation for an unchanged case.
     client2 = _fake_client()
     runner2 = LiveReasoningRunner(settings, client2, cache=cache)
-    result2, answer2, _ctx2 = runner2.run(_case())
+    outcome2 = runner2.run(_case())
+    result2, answer2 = outcome2.result, outcome2.answer
 
     assert len(client2.calls) == 0  # cache hit: the LLM was never touched
     assert answer2.prose == answer1.prose

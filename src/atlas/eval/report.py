@@ -4,14 +4,136 @@ A Report captures per-case results across the four dimensions plus provenance
 (milestone, model, git commit), and computes per-dimension aggregates. compare()
 diffs two reports so we can answer, after each milestone: did the dimensions
 improve, did coverage grow, and did anything regress?
+
+M1.8 (ADR-0004) adds two OPTIONAL nested metric objects to CaseResult --
+``retrieval_metrics`` and ``planner_metrics`` -- populated whenever the
+runner produced a ``RetrievalResult``/``SearchPlan`` (see ``eval/runner.py``'s
+``RunOutcome``). Both default to ``None``, and ``Report.from_dict`` reads them
+via ``.get()``, so an M1.7-era report with neither field still loads exactly
+as before (backward compatible by construction, not by special-casing).
 """
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
+
+from atlas.reasoning.planner import ALL_RULE_IDS
+
+if TYPE_CHECKING:
+    from atlas.reasoning.plan import SearchPlan
+    from atlas.reasoning.retrieval import RetrievalResult
 
 Status = Literal["active", "pending"]
+
+
+@dataclass(frozen=True)
+class RetrievalCaseMetrics:
+    """One case's retrieval diagnostics (M1.8 / ADR-0004) -- built from a
+    ``RetrievalResult`` by ``build_retrieval_metrics``, never constructed by
+    hand in production code. No LLM involved in producing any of these.
+    """
+
+    candidates_considered: int
+    docs_searched: int
+    selected: tuple[tuple[str, int, int], ...]  # (doc_id, char_offset, total_score)
+    doc_type_counts: tuple[tuple[str, int], ...]  # (kind, count) over selected, sorted by kind
+    metadata_coverage: float | None  # 1 - missing/searched; None when docs_searched == 0
+    boost_totals: tuple[tuple[str, int], ...]  # (boost_name, summed value) over selected
+    boost_share: float | None  # fraction of summed score from boosts; None when nothing selected
+
+
+@dataclass(frozen=True)
+class PlannerCaseMetrics:
+    """One case's planner diagnostics (M1.8 / ADR-0004) -- built from a
+    ``SearchPlan`` by ``build_planner_metrics``.
+    """
+
+    intent: str
+    preferred_kinds: tuple[str, ...]
+    top_k: int
+    periods_found: tuple[str, ...]
+    rules_fired: tuple[str, ...]
+
+
+def build_retrieval_metrics(retrieval: "RetrievalResult | None") -> RetrievalCaseMetrics | None:
+    """Derive per-case retrieval metrics from a RetrievalResult. Pure, no LLM,
+    no I/O -- every input is already in memory on the RunOutcome.
+    """
+    if retrieval is None:
+        return None
+
+    selected = tuple((b.doc_id, b.char_offset, b.total) for b in retrieval.breakdowns)
+
+    doc_type_counter: dict[str, int] = {}
+    boost_totals_acc = {"doc_type": 0, "date_window": 0, "period": 0, "recency": 0, "numeric": 0}
+    boost_sum = 0
+    total_sum = 0
+    for b in retrieval.breakdowns:
+        doc_type_counter[b.kind or "unknown"] = doc_type_counter.get(b.kind or "unknown", 0) + 1
+        boost_totals_acc["doc_type"] += b.doc_type
+        boost_totals_acc["date_window"] += b.date_window
+        boost_totals_acc["period"] += b.period
+        boost_totals_acc["recency"] += b.recency
+        boost_totals_acc["numeric"] += b.numeric
+        boost_sum += b.doc_type + b.date_window + b.period + b.recency + b.numeric
+        total_sum += b.total
+
+    metadata_coverage = (
+        1.0 - (len(retrieval.docs_missing_metadata) / retrieval.docs_searched)
+        if retrieval.docs_searched > 0 else None
+    )
+    boost_share = round(boost_sum / total_sum, 3) if total_sum > 0 else None
+
+    return RetrievalCaseMetrics(
+        candidates_considered=retrieval.candidates_considered,
+        docs_searched=retrieval.docs_searched,
+        selected=selected,
+        doc_type_counts=tuple(sorted(doc_type_counter.items())),
+        metadata_coverage=(round(metadata_coverage, 3) if metadata_coverage is not None else None),
+        boost_totals=tuple(sorted(boost_totals_acc.items())),
+        boost_share=boost_share,
+    )
+
+
+def build_planner_metrics(plan: "SearchPlan | None") -> PlannerCaseMetrics | None:
+    """Derive per-case planner metrics from a SearchPlan. Pure, no LLM."""
+    if plan is None:
+        return None
+    return PlannerCaseMetrics(
+        intent=plan.intent,
+        preferred_kinds=tuple(p.kind for p in plan.preferred_doc_types),
+        top_k=plan.top_k,
+        periods_found=plan.periods,
+        rules_fired=tuple(d.rule for d in plan.decisions),
+    )
+
+
+def _retrieval_metrics_from_dict(d: dict[str, Any] | None) -> RetrievalCaseMetrics | None:
+    if d is None:
+        return None
+    return RetrievalCaseMetrics(
+        candidates_considered=d["candidates_considered"],
+        docs_searched=d.get("docs_searched", 0),
+        selected=tuple(tuple(x) for x in d.get("selected", ())),
+        doc_type_counts=tuple(tuple(x) for x in d.get("doc_type_counts", ())),
+        metadata_coverage=d.get("metadata_coverage"),
+        boost_totals=tuple(tuple(x) for x in d.get("boost_totals", ())),
+        boost_share=d.get("boost_share"),
+    )
+
+
+def _planner_metrics_from_dict(d: dict[str, Any] | None) -> PlannerCaseMetrics | None:
+    if d is None:
+        return None
+    return PlannerCaseMetrics(
+        intent=d["intent"],
+        preferred_kinds=tuple(d.get("preferred_kinds", ())),
+        top_k=d["top_k"],
+        periods_found=tuple(d.get("periods_found", ())),
+        rules_fired=tuple(d.get("rules_fired", ())),
+    )
 
 
 @dataclass(frozen=True)
@@ -32,6 +154,16 @@ class CaseResult:
     distinct_docs_cited: int | None = None
     judge_notes: str = ""
     error: str | None = None
+    # M1.8 (ADR-0004): both None unless the runner produced retrieval/planner
+    # diagnostics (RunOutcome.retrieval / .plan). Retrieval-only mode
+    # populates these with no LLM involved at all.
+    retrieval_metrics: RetrievalCaseMetrics | None = None
+    planner_metrics: PlannerCaseMetrics | None = None
+    # M1.8 (ADR-0004): the answer's prose (or "[REFUSED] <reason>", matching
+    # judge.py's own formatting convention), kept ONLY for the comparison
+    # engine's human side-by-side read-through -- no dimension is scored from
+    # it. None when no answer was produced (--retrieval-only mode, or error).
+    answer_prose: str | None = None
 
 
 @dataclass(frozen=True)
@@ -84,6 +216,9 @@ class Report:
                 distinct_docs_cited=r.get("distinct_docs_cited"),
                 judge_notes=r.get("judge_notes", ""),
                 error=r.get("error"),
+                retrieval_metrics=_retrieval_metrics_from_dict(r.get("retrieval_metrics")),
+                planner_metrics=_planner_metrics_from_dict(r.get("planner_metrics")),
+                answer_prose=r.get("answer_prose"),
             )
             for r in d["results"]
         )
@@ -103,6 +238,64 @@ def _mean(values: list[float]) -> float | None:
     return round(sum(values) / len(values), 3) if values else None
 
 
+def _aggregate_planner(active: list[CaseResult]) -> dict[str, Any] | None:
+    """Suite-level planner aggregates (M1.8 / ADR-0004): intent distribution,
+    rule firing counts, top_k distribution, and DEAD RULES -- declared
+    PlanningDecision rules that never fired across the suite. Dead rules are
+    the highest-value signal for "which planner decisions create value": a
+    rule that never fires cannot have created any effect worth keeping.
+    Returns None when no case in this report carries planner metrics at all
+    (e.g. an older report, or a run with no strategy/capability active).
+    """
+    with_planner = [r.planner_metrics for r in active if r.planner_metrics is not None]
+    if not with_planner:
+        return None
+
+    intent_counts: dict[str, int] = {}
+    rule_counts: dict[str, int] = {}
+    top_k_counts: dict[str, int] = {}
+    for pm in with_planner:
+        intent_counts[pm.intent] = intent_counts.get(pm.intent, 0) + 1
+        key = str(pm.top_k)
+        top_k_counts[key] = top_k_counts.get(key, 0) + 1
+        for rule in pm.rules_fired:
+            rule_counts[rule] = rule_counts.get(rule, 0) + 1
+
+    dead_rules = sorted(ALL_RULE_IDS - frozenset(rule_counts))
+    return {
+        "cases_with_plan": len(with_planner),
+        "intent_distribution": dict(sorted(intent_counts.items())),
+        "rule_fire_counts": dict(sorted(rule_counts.items())),
+        "top_k_distribution": dict(sorted(top_k_counts.items())),
+        "dead_rules": dead_rules,
+    }
+
+
+def _aggregate_retrieval(active: list[CaseResult]) -> dict[str, Any] | None:
+    """Suite-level retrieval aggregates (M1.8 / ADR-0004). None when no case
+    in this report carries retrieval metrics.
+    """
+    with_retrieval = [r.retrieval_metrics for r in active if r.retrieval_metrics is not None]
+    if not with_retrieval:
+        return None
+
+    candidates = [float(m.candidates_considered) for m in with_retrieval]
+    coverage = [m.metadata_coverage for m in with_retrieval if m.metadata_coverage is not None]
+    boost_share = [m.boost_share for m in with_retrieval if m.boost_share is not None]
+    doc_type_totals: dict[str, int] = {}
+    for m in with_retrieval:
+        for kind, count in m.doc_type_counts:
+            doc_type_totals[kind] = doc_type_totals.get(kind, 0) + count
+
+    return {
+        "cases_with_retrieval": len(with_retrieval),
+        "mean_candidates_considered": _mean(candidates),
+        "mean_metadata_coverage": _mean(coverage),
+        "mean_boost_share": _mean(boost_share),
+        "doc_type_distribution": dict(sorted(doc_type_totals.items())),
+    }
+
+
 def aggregate(results: tuple[CaseResult, ...]) -> dict[str, Any]:
     """Per-dimension aggregates. Pending cases count only toward coverage."""
     active = [r for r in results if r.status == "active"]
@@ -112,6 +305,7 @@ def aggregate(results: tuple[CaseResult, ...]) -> dict[str, Any]:
     useful = [r.usefulness for r in active if r.usefulness is not None]
     ev_use = [r.evidence_use for r in active if r.evidence_use is not None]
     docs = [r.distinct_docs_cited for r in active if r.distinct_docs_cited is not None]
+    refused = [r.refused for r in active if r.refused is not None]
     return {
         "total_cases": len(results),
         "active_cases": len(active),
@@ -122,7 +316,13 @@ def aggregate(results: tuple[CaseResult, ...]) -> dict[str, Any]:
         "mean_usefulness": _mean([float(u) for u in useful]),
         "mean_evidence_use": _mean([float(e) for e in ev_use]),
         "mean_distinct_docs_cited": _mean([float(d) for d in docs]),
+        # M1.8 (ADR-0004): None when no case has a definite refused/answered
+        # outcome yet (e.g. every case errored) -- consistent with every
+        # other rate above, which is also None rather than 0.0 when empty.
+        "refusal_rate": _mean([1.0 if r else 0.0 for r in refused]),
         "errors": sum(1 for r in active if r.error),
+        "planner": _aggregate_planner(active),
+        "retrieval": _aggregate_retrieval(active),
     }
 
 
@@ -132,6 +332,7 @@ def compare(baseline: Report, candidate: Report) -> dict[str, Any]:
     dims = [
         "coverage", "correctness_pass_rate", "grounding_pass_rate",
         "mean_reasoning_quality", "mean_usefulness", "mean_evidence_use",
+        "refusal_rate",  # M1.8 (ADR-0004)
     ]
     deltas: dict[str, Any] = {}
     for d in dims:

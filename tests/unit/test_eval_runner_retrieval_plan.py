@@ -75,7 +75,7 @@ def test_both_capabilities_present_plans_and_merges(tmp_path: Path) -> None:
         settings, _fake_client(),
         capabilities=frozenset({CAP_QUESTION_RETRIEVAL, CAP_RETRIEVAL_PLAN}),
     )
-    _result, _answer, context = runner.run(_case())
+    context = runner.run(_case()).context
     passage_claims = [c for c in context.claims if c.statement.startswith('Source passage:')]
     assert len(passage_claims) == 1
 
@@ -86,7 +86,7 @@ def test_retrieval_plan_without_question_retrieval_is_a_no_op(tmp_path: Path) ->
     runner = LiveReasoningRunner(
         settings, _fake_client(), capabilities=frozenset({CAP_RETRIEVAL_PLAN}),
     )
-    _result, _answer, context = runner.run(_case())
+    context = runner.run(_case()).context
     assert not any(c.statement.startswith('Source passage:') for c in context.claims)
 
 
@@ -96,13 +96,13 @@ def test_capability_absent_by_default_matches_m15(tmp_path: Path) -> None:
     runner = LiveReasoningRunner(
         settings, _fake_client(), capabilities=frozenset({CAP_QUESTION_RETRIEVAL}),
     )
-    _result_a, _answer_a, context_with_plan_off = runner.run(_case())
+    context_with_plan_off = runner.run(_case()).context
 
     runner_plan = LiveReasoningRunner(
         settings, _fake_client(),
         capabilities=frozenset({CAP_QUESTION_RETRIEVAL, CAP_RETRIEVAL_PLAN}),
     )
-    _result_b, _answer_b, context_with_plan_on = runner_plan.run(_case())
+    context_with_plan_on = runner_plan.run(_case()).context
     # Both merge a passage here (single-document fixture); the point of this
     # test is that neither configuration crashes and both produce a valid,
     # closed-world context -- full behavioral divergence is covered in

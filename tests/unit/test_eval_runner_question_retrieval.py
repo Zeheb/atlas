@@ -75,7 +75,7 @@ def test_capability_present_forwards_question(tmp_path: Path) -> None:
     runner = LiveReasoningRunner(
         settings, _fake_client(), capabilities=frozenset({CAP_QUESTION_RETRIEVAL}),
     )
-    _result, _answer, context = runner.run(_case())
+    context = runner.run(_case()).context
     passage_claims = [c for c in context.claims if c.statement.startswith('Source passage:')]
     assert len(passage_claims) == 1
     assert "bookings" in passage_claims[0].statement.lower()
@@ -85,7 +85,7 @@ def test_capability_absent_by_default_matches_m1(tmp_path: Path) -> None:
     _seed(tmp_path)
     settings = Settings(_env_file=None, repository_base_path=tmp_path)
     runner = LiveReasoningRunner(settings, _fake_client())  # no capabilities kwarg
-    _result, _answer, context = runner.run(_case())
+    context = runner.run(_case()).context
     assert not any(c.statement.startswith('Source passage:') for c in context.claims)
 
 
@@ -95,7 +95,7 @@ def test_other_capabilities_present_without_question_retrieval_no_effect(tmp_pat
     runner = LiveReasoningRunner(
         settings, _fake_client(), capabilities=frozenset({"single_name", "drilldown"}),
     )
-    _result, _answer, context = runner.run(_case())
+    context = runner.run(_case()).context
     assert not any(c.statement.startswith('Source passage:') for c in context.claims)
 
 

@@ -75,7 +75,8 @@ def test_live_runner_hydrates_excerpt_when_kb_present(tmp_path: Path) -> None:
     _seed(tmp_path)
     settings = Settings(_env_file=None, repository_base_path=tmp_path)
     runner = LiveReasoningRunner(settings, _fake_client())
-    result, answer, context = runner.run(_case())
+    outcome = runner.run(_case())
+    result, answer, context = outcome.result, outcome.answer, outcome.context
 
     assert not result.refused
     assert context.claims[0].evidence[0].excerpt is not None  # M1 hydration ran
@@ -101,6 +102,7 @@ def test_live_runner_falls_back_to_none_without_kb(tmp_path: Path) -> None:
     CompanyStore(tmp_path / "TCS" / "profile.json", "TCS").save(profile)
     settings = Settings(_env_file=None, repository_base_path=tmp_path)
     runner = LiveReasoningRunner(settings, _fake_client())
-    _result, answer, context = runner.run(_case())
+    outcome = runner.run(_case())
+    answer, context = outcome.answer, outcome.context
     assert context.claims[0].evidence[0].excerpt is None
     assert answer.citations[0].excerpt is None

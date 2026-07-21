@@ -35,6 +35,22 @@ from atlas.reasoning.plan import (
 )
 from atlas.reasoning.text import keywords as _keywords
 
+# Every PlanningDecision.rule identifier HeuristicPlanner can emit (M1.8 /
+# ADR-0004). The eval harness's suite-level aggregate diffs this against
+# which rules actually fired across a suite to surface "dead rules" --
+# declared decisions that never created any measurable effect. Kept here,
+# next to the rules themselves, so it cannot silently drift out of sync with
+# what the planner actually does.
+ALL_RULE_IDS: frozenset[str] = frozenset({
+    "intent_keyword_match",
+    "intent_fallback",
+    "doc_type_boost_from_intent",
+    "period_extraction",
+    "top_k_broaden_list_query",
+    "top_k_narrow_specific_metric",
+    "top_k_default",
+})
+
 # ---------------------------------------------------------------------------
 # Intent classification
 # ---------------------------------------------------------------------------

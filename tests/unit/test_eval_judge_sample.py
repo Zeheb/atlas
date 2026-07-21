@@ -18,7 +18,7 @@ import json
 from atlas.eval.cases import EvalCase
 from atlas.eval.judge import Judge
 from atlas.eval.report import CaseResult
-from atlas.eval.runner import resolve_judge_sample, run_suite
+from atlas.eval.runner import RunOutcome, resolve_judge_sample, run_suite
 from atlas.reasoning.contracts import (
     Answer,
     Claim,
@@ -34,7 +34,7 @@ from atlas.reasoning.llm import FakeLLMClient
 SUBJECT = SubjectRef(subject_id="TCS", display="TCS")
 
 
-def _grounded() -> tuple[ReasoningResult, Answer, GroundingContext]:
+def _grounded() -> RunOutcome:
     ref = EvidenceReference(evidence_id="ev-1")
     claim = Claim(subject_ref=SUBJECT, statement="op margin 24%", assertability="fact",
                   confidence="high", evidence=[ref])
@@ -46,11 +46,11 @@ def _grounded() -> tuple[ReasoningResult, Answer, GroundingContext]:
     context = GroundingContext(subject_ref=SUBJECT, claims=[claim],
                                evidence_index=frozenset({"ev-1"}))
     answer = Answer(prose="Durable margins [ev-1]", citations=(ref,), overall_confidence="high")
-    return result, answer, context
+    return RunOutcome(context=context, result=result, answer=answer)
 
 
 class _FakeRunner:
-    def run(self, case: EvalCase):  # noqa: ANN201 - test double
+    def run(self, case: EvalCase) -> RunOutcome:
         return _grounded()
 
 

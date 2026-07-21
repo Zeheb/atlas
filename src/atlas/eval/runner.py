@@ -58,7 +58,12 @@ from atlas.eval.cases import CAP_QUESTION_RETRIEVAL, CAP_RETRIEVAL_PLAN, EvalCas
 from atlas.eval.correctness import score_correctness
 from atlas.eval.grounding import score_grounding
 from atlas.eval.judge import Judge
-from atlas.eval.report import CaseResult, Report
+from atlas.eval.report import (
+    CaseResult,
+    Report,
+    build_planner_metrics,
+    build_retrieval_metrics,
+)
 from atlas.eval.strategies import RetrievalStrategy
 from atlas.knowledge.base import KnowledgeBase
 from atlas.reasoning.ask import ask
@@ -266,12 +271,25 @@ def _run_case(case: EvalCase, runner: ReasoningRunner, judge: Judge | None) -> C
     except Exception as exc:  # noqa: BLE001 - batch robustness: one case must not abort the suite
         return CaseResult(case_id=case.id, category=case.category, status="active", error=str(exc))
 
+    # M1.8 (ADR-0004): retrieval/planner metrics need no LLM, so they are
+    # computed unconditionally from RunOutcome -- present even in
+    # --retrieval-only mode, where result/answer are None.
+    retrieval_metrics = build_retrieval_metrics(outcome.retrieval)
+    planner_metrics = build_planner_metrics(outcome.plan)
+
     result, answer, context = outcome.result, outcome.answer, outcome.context
     if result is None or answer is None:
         # --retrieval-only mode: no LLM call was made, so no answer-dependent
-        # dimension can be scored (retrieval/planner metrics are wired in the
-        # next commit).
-        return CaseResult(case_id=case.id, category=case.category, status="active")
+        # dimension can be scored -- but retrieval/planner metrics still are.
+        return CaseResult(
+            case_id=case.id, category=case.category, status="active",
+            retrieval_metrics=retrieval_metrics, planner_metrics=planner_metrics,
+        )
+
+    # M1.8 (ADR-0004): kept only for the comparison engine's human
+    # side-by-side read-through, matching judge.py's own refusal formatting
+    # convention exactly (judge.py's Judge._prompt uses the identical shape).
+    answer_prose = answer.prose if not answer.refused else f"[REFUSED] {answer.refusal_reason}"
 
     corr = score_correctness(case, result, answer)
     grnd = score_grounding(result, context)
@@ -301,6 +319,8 @@ def _run_case(case: EvalCase, runner: ReasoningRunner, judge: Judge | None) -> C
         evidence_use=evidence_use,
         distinct_docs_cited=len(result.citations),
         judge_notes=notes,
+        retrieval_metrics=retrieval_metrics, planner_metrics=planner_metrics,
+        answer_prose=answer_prose,
     )
 
 

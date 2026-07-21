@@ -102,6 +102,19 @@ def test_candidates_considered_matches_generate_candidates_count(tmp_path: Path)
     assert result.candidates_considered == len(candidates)
 
 
+def test_docs_searched_counts_distinct_doc_ids(tmp_path: Path) -> None:
+    kb = _kb_with_docs(tmp_path, {"ev-1": _MARGIN_TEXT, "ev-2": _RISK_TEXT})
+    result = retrieve_with_plan(kb, ["ev-1", "ev-2", "ev-1"], _plan())  # duplicate on purpose
+    assert result.docs_searched == 2
+
+
+def test_docs_searched_zero_when_no_query_terms(tmp_path: Path) -> None:
+    kb = _kb_with_docs(tmp_path, {"ev-1": _MARGIN_TEXT})
+    plan = _plan(query_terms=(), numeric_terms=())
+    result = retrieve_with_plan(kb, ["ev-1"], plan)
+    assert result.docs_searched == 1  # still counted, even though nothing matched
+
+
 # --- Doc-type boost ------------------------------------------------------------
 def test_preferred_doc_type_ranks_above_unpreferred_of_equal_score(tmp_path: Path) -> None:
     # Two docs, IDENTICAL scoring text, different kinds -- doc-type boost

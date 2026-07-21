@@ -6,7 +6,7 @@ import json
 from atlas.eval.cases import EvalCase
 from atlas.eval.judge import Judge
 from atlas.eval.report import Report, aggregate, compare
-from atlas.eval.runner import RunnerError, run_suite
+from atlas.eval.runner import RunnerError, RunOutcome, run_suite
 from atlas.reasoning.contracts import (
     Answer,
     Claim,
@@ -22,7 +22,7 @@ from atlas.reasoning.llm import FakeLLMClient
 SUBJECT = SubjectRef(subject_id="TCS", display="TCS")
 
 
-def _grounded() -> tuple[ReasoningResult, Answer, GroundingContext]:
+def _grounded() -> RunOutcome:
     ref = EvidenceReference(evidence_id="ev-1")
     claim = Claim(subject_ref=SUBJECT, statement="op margin 24%", assertability="fact",
                   confidence="high", evidence=[ref])
@@ -34,16 +34,16 @@ def _grounded() -> tuple[ReasoningResult, Answer, GroundingContext]:
     context = GroundingContext(subject_ref=SUBJECT, claims=[claim],
                                evidence_index=frozenset({"ev-1"}))
     answer = Answer(prose="Durable margins [ev-1]", citations=(ref,), overall_confidence="high")
-    return result, answer, context
+    return RunOutcome(context=context, result=result, answer=answer)
 
 
 class _FakeRunner:
-    def run(self, case: EvalCase):  # noqa: ANN201 - test double
+    def run(self, case: EvalCase) -> RunOutcome:
         return _grounded()
 
 
 class _BrokenRunner:
-    def run(self, case: EvalCase):  # noqa: ANN201 - test double
+    def run(self, case: EvalCase) -> RunOutcome:
         raise RunnerError("no profile")
 
 
@@ -62,7 +62,7 @@ def _judge() -> Judge:
 
 
 class _RefusingRunner:
-    def run(self, case: EvalCase):  # noqa: ANN201 - test double
+    def run(self, case: EvalCase) -> RunOutcome:
         result = ReasoningResult(
             question=Question(raw_text=case.question, subject_ref=SUBJECT),
             findings=(), overall_confidence="low", citations=frozenset(),
@@ -72,7 +72,7 @@ class _RefusingRunner:
                         refused=True, refusal_reason="no market data")
         context = GroundingContext(subject_ref=SUBJECT, claims=(),
                                    evidence_index=frozenset())
-        return result, answer, context
+        return RunOutcome(context=context, result=result, answer=answer)
 
 
 def test_run_suite_scores_active_and_marks_pending() -> None:
