@@ -27,12 +27,23 @@ SearchPlan is forwarded into build_context() alongside the question, so
 `atlas eval compare` can measure the plan's effect against the M1.5 baseline.
 CAP_RETRIEVAL_PLAN alone (without CAP_QUESTION_RETRIEVAL) is a no-op, matching
 the CLI's --retrieval-plan-without---question-retrieval behavior.
+
+M1.8 (ADR-0004): ``ReasoningRunner.run()`` returns a frozen ``RunOutcome``
+instead of a bare ``(result, answer, context)`` 3-tuple. This is a mechanical
+change (commit 1 of M1.8) — every field ``RunOutcome`` adds beyond the three
+existing values (``plan``, ``retrieval``) is ``None`` until later M1.8 commits
+wire them in; this commit only gives them a place to live. The 3-tuple was
+already at capacity — a 4th positional value (the plan) would have been
+ambiguous to unpack correctly — and a named, frozen object is the same pattern
+``ContextBuildResult``/``RetrievalResult`` already use elsewhere in this
+codebase rather than a new idiom introduced just for the runner.
 """
 from __future__ import annotations
 
 import hashlib
 import subprocess
 from collections.abc import Iterable, Sequence
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Protocol
 
@@ -63,10 +74,28 @@ class RunnerError(RuntimeError):
     """A case could not be executed (e.g. missing profile)."""
 
 
+@dataclass(frozen=True)
+class RunOutcome:
+    """One case's full execution outcome (M1.8). Internal to the eval
+    harness — not a §10 contract type, the same category as
+    ``ContextBuildResult``/``RetrievalResult`` in the reasoning package.
+
+    ``plan``/``retrieval`` are ``None`` until a later M1.8 commit wires the
+    planner/retrieval diagnostics through; this commit only gives every field
+    a place to live.
+    """
+
+    context: GroundingContext
+    result: ReasoningResult
+    answer: Answer
+    plan: object | None = None
+    retrieval: object | None = None
+
+
 class ReasoningRunner(Protocol):
     """Runs one case through the system under test."""
 
-    def run(self, case: EvalCase) -> tuple[ReasoningResult, Answer, GroundingContext]:
+    def run(self, case: EvalCase) -> RunOutcome:
         ...
 
 
@@ -94,7 +123,7 @@ class LiveReasoningRunner:
         )
         self._capabilities = capabilities
 
-    def run(self, case: EvalCase) -> tuple[ReasoningResult, Answer, GroundingContext]:
+    def run(self, case: EvalCase) -> RunOutcome:
         repo_root = self._settings.repository_base_path / case.subject
         profile_path = repo_root / "profile.json"
         if not profile_path.exists():
@@ -115,7 +144,8 @@ class LiveReasoningRunner:
         result = ask(
             Question(raw_text=case.question, subject_ref=subject), context, self._client
         )
-        return result, to_answer(result, context=context), context
+        answer = to_answer(result, context=context)
+        return RunOutcome(context=context, result=result, answer=answer, plan=plan)
 
 
 def resolve_judge_sample(
@@ -187,9 +217,11 @@ def run_suite(
 
 def _run_case(case: EvalCase, runner: ReasoningRunner, judge: Judge | None) -> CaseResult:
     try:
-        result, answer, context = runner.run(case)
+        outcome = runner.run(case)
     except Exception as exc:  # noqa: BLE001 - batch robustness: one case must not abort the suite
         return CaseResult(case_id=case.id, category=case.category, status="active", error=str(exc))
+
+    result, answer, context = outcome.result, outcome.answer, outcome.context
 
     corr = score_correctness(case, result, answer)
     grnd = score_grounding(result, context)
