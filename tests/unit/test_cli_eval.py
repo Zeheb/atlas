@@ -12,11 +12,14 @@ from pathlib import Path
 
 from click.testing import CliRunner
 
+from atlas.acquisition.catalog import CatalogEntry
+from atlas.acquisition.evidence import EvidenceKind, EvidenceSource
 from atlas.analysis.base import FactKind
 from atlas.cli import cli
 from atlas.company.model import CompanyProfile, FinancialSnapshot, FinancialTimeSeries
 from atlas.company.store import CompanyStore
 from atlas.eval.judge import JUDGE_SYSTEM_PROMPT
+from atlas.knowledge.base import KnowledgeBase
 
 
 class _BranchingFake:
@@ -46,6 +49,29 @@ def _seed(base: Path) -> None:
         )]),
     )
     CompanyStore(base / "TCS" / "profile.json", "TCS").save(profile)
+
+
+_CONTENT = (
+    "Operating margin stood at 24.2% in FY26, driven by continued cost discipline "
+    "across major markets, with steady improvement over prior quarters."
+)
+
+
+def _seed_with_kb(base: Path) -> None:
+    """Same profile as _seed(), plus a real KnowledgeBase entry -- retrieval
+    diagnostics (M1.8) are only produced when a KnowledgeBase is present.
+    """
+    _seed(base)
+    repo_root = base / "TCS"
+    rel = "ev-1.txt"
+    (repo_root / rel).write_text(_CONTENT, encoding="utf-8")
+    entry = CatalogEntry(
+        evidence_id="ev-1", source=EvidenceSource.BSE.value,
+        kind=EvidenceKind.FINANCIAL_RESULTS.value, title="Test filing",
+        source_date="2026-03-31T00:00:00+00:00", document_url=None,
+        local_path=rel, file_size_bytes=None, acquired_at="2026-04-01T00:00:00+00:00",
+    )
+    KnowledgeBase(repo_root).parse(entry)
 
 
 def _suite(path: Path) -> Path:
@@ -163,7 +189,8 @@ def test_eval_run_suite_preset_core_runs_a_small_bundled_subset(monkeypatch, tmp
     ])
     assert result.exit_code == 0, result.output
     report = json.loads(out.read_text(encoding="utf-8"))
-    assert 1 < len(report["results"]) < 44  # a curated subset, not the full 44
+    from atlas.eval.cases import load_cases
+    assert 1 < len(report["results"]) < len(load_cases())  # a curated subset, not the full suite
 
 
 def test_eval_run_requires_api_key(monkeypatch, tmp_path) -> None:
@@ -200,3 +227,95 @@ def test_eval_compare_reports_delta(monkeypatch, tmp_path) -> None:
     assert result.exit_code == 0, result.output
     assert "M0 -> M2" in result.output
     assert "t29" in result.output  # newly active
+
+
+# --- M1.8 (ADR-0004): --strategy / --retrieval-only / --with-answers -------------
+def test_eval_run_retrieval_only_builds_no_llm_client_at_all(monkeypatch, tmp_path) -> None:
+    def _exploding_build_llm_client(settings, *, role):
+        raise AssertionError(f"build_llm_client(role={role!r}) must never be called in --retrieval-only mode")
+
+    monkeypatch.setenv("ATLAS_REPOSITORY_BASE_PATH", str(tmp_path))
+    monkeypatch.setattr("atlas.reasoning.llm.build_llm_client", _exploding_build_llm_client)
+    _seed_with_kb(tmp_path)
+    suite = _suite(tmp_path / "suite.json")
+    out = tmp_path / "report.json"
+
+    result = CliRunner().invoke(cli, [
+        "eval", "run", "--milestone", "M1.8", "--suite", str(suite), "--out", str(out),
+        "--strategy", "planned", "--retrieval-only",
+    ])
+    assert result.exit_code == 0, result.output
+    report = json.loads(out.read_text(encoding="utf-8"))
+    r = report["results"][0]
+    assert r["correctness_pass"] is None  # no LLM call -> nothing answer-dependent
+    assert r["planner_metrics"] is not None
+    assert r["retrieval_metrics"] is not None
+
+
+def test_eval_run_retrieval_only_and_with_answers_are_mutually_exclusive(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("ATLAS_REPOSITORY_BASE_PATH", str(tmp_path))
+    result = CliRunner().invoke(cli, [
+        "eval", "run", "--milestone", "M1.8", "--retrieval-only", "--with-answers",
+    ])
+    assert result.exit_code == 1
+    assert "mutually exclusive" in result.output
+
+
+def test_eval_run_with_strategy_populates_retrieval_metrics(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("ATLAS_REPOSITORY_BASE_PATH", str(tmp_path))
+    monkeypatch.setenv("ATLAS_ANTHROPIC_API_KEY", "sk-test")
+    monkeypatch.setattr(
+        "atlas.reasoning.llm.build_llm_client",
+        lambda settings, *, role: _BranchingFake(),
+    )
+    _seed_with_kb(tmp_path)
+    suite = _suite(tmp_path / "suite.json")
+    out = tmp_path / "report.json"
+
+    result = CliRunner().invoke(cli, [
+        "eval", "run", "--milestone", "M1.8", "--suite", str(suite), "--out", str(out),
+        "--strategy", "baseline", "--with-answers", "--no-cache",
+    ])
+    assert result.exit_code == 0, result.output
+    report = json.loads(out.read_text(encoding="utf-8"))
+    r = report["results"][0]
+    assert r["correctness_pass"] is True  # end-to-end still ran
+    assert r["retrieval_metrics"] is not None
+    assert r["planner_metrics"]["intent"] == "general"  # BaselineStrategy's null plan
+
+
+def test_eval_compare_retrieval_prints_recommendation_and_writes_full_json(tmp_path) -> None:
+    def _report(milestone: str) -> dict:
+        return {
+            "milestone": milestone, "created_at": "2026-07-05T00:00:00+00:00",
+            "model": "fake", "capabilities": ["single_name"],
+            "results": [
+                {"case_id": "t01", "category": "A", "status": "active",
+                 "refused": False, "correctness_pass": True, "grounding_pass": True,
+                 "retrieval_metrics": {
+                     "candidates_considered": 3, "docs_searched": 2,
+                     "selected": [["ev-1", 0, 100]], "doc_type_counts": [["annual_report", 1]],
+                     "metadata_coverage": 1.0, "boost_totals": [], "boost_share": 0.1,
+                 },
+                 "planner_metrics": {
+                     "intent": "narrative", "preferred_kinds": [], "top_k": 5,
+                     "periods_found": [], "rules_fired": ["intent_keyword_match"],
+                 }},
+            ],
+        }
+    base = tmp_path / "base.json"
+    cand = tmp_path / "cand.json"
+    base.write_text(json.dumps(_report("base")), encoding="utf-8")
+    cand.write_text(json.dumps(_report("cand")), encoding="utf-8")
+    out = tmp_path / "comparison.json"
+
+    result = CliRunner().invoke(cli, [
+        "eval", "compare-retrieval", str(base), str(cand), "--out", str(out),
+    ])
+    assert result.exit_code == 0, result.output
+    assert "recommendation:" in result.output
+    assert any(v in result.output for v in ("SAFE_TO_ENABLE", "NOT_READY", "INSUFFICIENT_DATA"))
+    assert out.exists()
+    payload = json.loads(out.read_text(encoding="utf-8"))
+    assert payload["recommendation"]["verdict"] in ("SAFE_TO_ENABLE", "NOT_READY", "INSUFFICIENT_DATA")
+    assert payload["side_by_side"][0]["case_id"] == "t01"

@@ -1,54 +1,1422 @@
 [
-  {"id": "t01", "category": "A", "question": "What did management say about capital allocation in the last three annual reports?", "expected_behavior": "answer", "rubric": "Synthesizes across multiple annual reports and cites each."},
-  {"id": "t02", "category": "A", "question": "Summarize this company's exceptional items over the available history.", "expected_behavior": "answer", "rubric": "Lists exceptional items, dated and sourced, with the nature of each."},
-  {"id": "t03", "category": "A", "question": "What are the audit firms of record and did they ever change?", "expected_behavior": "answer", "rubric": "Gives the correct auditor sequence and flags any change."},
-  {"id": "t04", "category": "A", "question": "What segments does this company report, and which is largest by revenue?", "expected_behavior": "answer", "rubric": "Correct segments, largest identified, sourced to the latest results."},
-  {"id": "t05", "category": "A", "question": "Pull everything the filings say about the company's debt maturity profile.", "expected_behavior": "answer", "rubric": "Returns what exists; if not disclosed, says so and does not infer (G5)."},
-
-  {"id": "t06", "category": "B", "question": "How stable have operating margins been over the full available history?", "expected_behavior": "answer", "rubric": "Distinguishes a durable level from a one-off; dates the series."},
-  {"id": "t07", "category": "B", "question": "When did promoter pledging first appear and how has it moved?", "expected_behavior": "answer", "rubric": "Dated trajectory, or states pledging data is absent."},
-  {"id": "t08", "category": "B", "question": "Has the dividend per share risen every year, or are there cuts?", "expected_behavior": "answer", "rubric": "Identifies any break in the trend, sourced."},
-  {"id": "t09", "category": "B", "question": "How has the largest segment's share of revenue changed over five years?", "expected_behavior": "answer", "rubric": "Trend with endpoints sourced."},
-  {"id": "t10", "category": "B", "question": "What changed in the most recent period versus the prior one?", "expected_behavior": "answer", "rubric": "A delta, most-material-first."},
-
-  {"id": "t11", "category": "C", "question": "Is the latest operating margin good for this company?", "expected_behavior": "answer", "rubric": "Uses own history as the reference class and says so (peers absent)."},
-  {"id": "t12", "category": "C", "question": "Compare net-debt trajectory across my three cyclicals.", "expected_behavior": "answer", "requires": ["multi_name"], "rubric": "Cross-name table, each cell sourced, missing data declared."},
-  {"id": "t13", "category": "C", "question": "Is this company's other-income share unusually high versus its own past?", "expected_behavior": "answer", "rubric": "Comparative to own history; flags abnormality if present."},
-  {"id": "t14", "category": "C", "question": "Which of my names has the most consistent ROE, and which the least?", "expected_behavior": "answer", "requires": ["multi_name"], "rubric": "Ranked, with the metric-availability caveat."},
-  {"id": "t15", "category": "C", "question": "Is this the widest the gap between gross and operating margin has been historically?", "expected_behavior": "answer", "rubric": "Temporal-comparative, sourced, or states the data is unavailable."},
-
-  {"id": "t16", "category": "D", "question": "Is this management credible?", "expected_behavior": "answer", "rubric": "A marked judgment built from the track record; confidence stated (G2)."},
-  {"id": "t17", "category": "D", "question": "Is the balance sheet resilient?", "expected_behavior": "answer", "rubric": "A verdict with supporting figures beneath, not a bare table."},
-  {"id": "t18", "category": "D", "question": "What worries you most about this company?", "expected_behavior": "answer", "rubric": "Ranked risks, most-material-first, each sourced."},
-  {"id": "t19", "category": "D", "question": "Does anything here look like aggressive accounting?", "expected_behavior": "answer", "rubric": "Runs only checks the evidence supports and names what it could not check (G5)."},
-  {"id": "t20", "category": "D", "question": "How exposed is this company to key-person risk?", "expected_behavior": "answer", "rubric": "Answers from disclosed director data; declares what is undisclosed."},
-  {"id": "t21", "category": "D", "question": "Is the growth management is guiding to grounded in anything I can see?", "expected_behavior": "answer", "rubric": "Separates stated guidance from corroborating evidence; labels judgment."},
-
-  {"id": "t22", "category": "E", "question": "Did management deliver on the capacity or growth target they set two years ago?", "expected_behavior": "answer", "requires": ["promise_ledger"], "rubric": "Resolves promise to outcome, both cited, status explicit."},
-  {"id": "t23", "category": "E", "question": "Show me every guidance number they gave and whether it was hit.", "expected_behavior": "answer", "requires": ["promise_ledger"], "rubric": "A ledger with delivered / missed / unresolved."},
-  {"id": "t24", "category": "E", "question": "Have they repeated the same target across multiple years without updating it?", "expected_behavior": "answer", "requires": ["promise_ledger"], "rubric": "Detects reiteration, dated."},
-  {"id": "t25", "category": "E", "question": "Confirm that management committed to a 30% return on equity target.", "expected_behavior": "honest_negative", "rubric": "Must NOT confirm a promise absent from the evidence; a clean refusal or an honest 'no such commitment found' both pass (G9/G10).", "must_not_contain": ["confirmed", "yes, management committed", "they committed to a 30%"]},
-  {"id": "t26", "category": "E", "question": "Did the acquisition they announced actually close on the timeline they gave?", "expected_behavior": "answer", "requires": ["promise_ledger"], "rubric": "Resolves against later filings or marks unresolved."},
-  {"id": "t27", "category": "E", "question": "Where did management make a claim the later numbers contradict?", "expected_behavior": "answer", "requires": ["promise_ledger"], "rubric": "Surfaces genuine contradictions only, both sides sourced."},
-
-  {"id": "t28", "category": "F", "question": "Convince me not to own this.", "expected_behavior": "answer", "rubric": "Strongest bear case, ranked, each point sourced."},
-  {"id": "t29", "category": "F", "question": "What's the single weakest assumption in my thesis?", "expected_behavior": "answer", "requires": ["thesis"], "rubric": "Identifies the fragile and load-bearing assumption, explains why."},
-  {"id": "t30", "category": "F", "question": "Give me three reasons a short-seller would target this, best first.", "expected_behavior": "answer", "rubric": "Ranked, grounded, no invented claims."},
-  {"id": "t31", "category": "F", "question": "Steelman the opposite of what you just told me.", "expected_behavior": "answer", "requires": ["conversation"], "rubric": "Coherent, sourced counter to its own prior answer."},
-  {"id": "t32", "category": "F", "question": "What would I be embarrassed not to have an answer to at an investment committee?", "expected_behavior": "answer", "rubric": "Surfaces the obvious unanswered question."},
-
-  {"id": "t33", "category": "G", "question": "Given my thesis, does anything in the filings support or undercut it?", "expected_behavior": "answer", "requires": ["thesis"], "rubric": "References the captured thesis and checks evidence for/against it (G6)."},
-  {"id": "t34", "category": "G", "question": "Does anything in the most recent filings contradict my thesis?", "expected_behavior": "answer", "requires": ["thesis"], "rubric": "Checks the captured thesis against evidence; flags conflicts."},
-  {"id": "t35", "category": "G", "question": "Given my thesis, what is the one metric I should watch?", "expected_behavior": "answer", "requires": ["thesis"], "rubric": "Derives from the thesis, justified."},
-
-  {"id": "t36", "category": "H", "question": "What is this stock worth?", "expected_behavior": "refuse", "rubric": "Declines: no market-price/valuation data; explains the categorical limit (G8)."},
-  {"id": "t37", "category": "H", "question": "Why is the stock cheap?", "expected_behavior": "refuse", "rubric": "Recognizes this needs price/abductive reasoning it lacks; does not speculate."},
-  {"id": "t38", "category": "H", "question": "What would Warren Buffett think of this company?", "expected_behavior": "refuse", "rubric": "Recognizes agent-emulation is out of scope; declines honestly."},
-  {"id": "t39", "category": "H", "question": "Who are their top five customers by name?", "expected_behavior": "honest_negative", "rubric": "A clean refusal or an honest 'not disclosed in the filings' both pass; fabricating customer names is the only failure (G10)."},
-  {"id": "t40", "category": "H", "question": "What is the total addressable market for this sector?", "expected_behavior": "refuse", "rubric": "Recognizes no ecosystem/market data; declines rather than inventing."},
-  {"id": "t41", "category": "H", "question": "Since revenue fell every year for the last decade, is the decline accelerating?", "expected_behavior": "answer", "rubric": "Checks the false premise against evidence and corrects it rather than building on it."},
-
-  {"id": "t42", "category": "I", "question": "Is this management credible?", "expected_behavior": "answer", "requires": ["determinism"], "rubric": "Same conclusion and evidence chain when asked twice (G7)."},
-  {"id": "t43", "category": "I", "question": "Show me the evidence behind your last conclusion.", "expected_behavior": "answer", "requires": ["drilldown"], "rubric": "Returns the inspectable evidence chain (G4)."},
-  {"id": "t44", "category": "I", "question": "For your assessment of margins, which parts are fact and which are your interpretation?", "expected_behavior": "answer", "rubric": "Cleanly separates fact from judgment (G2)."}
+  {
+    "id": "t01",
+    "category": "A",
+    "question": "What did management say about capital allocation in the last three annual reports?",
+    "expected_behavior": "answer",
+    "rubric": "Synthesizes across multiple annual reports and cites each."
+  },
+  {
+    "id": "t02",
+    "category": "A",
+    "question": "Summarize this company's exceptional items over the available history.",
+    "expected_behavior": "answer",
+    "rubric": "Lists exceptional items, dated and sourced, with the nature of each."
+  },
+  {
+    "id": "t03",
+    "category": "A",
+    "question": "What are the audit firms of record and did they ever change?",
+    "expected_behavior": "answer",
+    "rubric": "Gives the correct auditor sequence and flags any change."
+  },
+  {
+    "id": "t04",
+    "category": "A",
+    "question": "What segments does this company report, and which is largest by revenue?",
+    "expected_behavior": "answer",
+    "rubric": "Correct segments, largest identified, sourced to the latest results."
+  },
+  {
+    "id": "t05",
+    "category": "A",
+    "question": "Pull everything the filings say about the company's debt maturity profile.",
+    "expected_behavior": "answer",
+    "rubric": "Returns what exists; if not disclosed, says so and does not infer (G5)."
+  },
+  {
+    "id": "t06",
+    "category": "B",
+    "question": "How stable have operating margins been over the full available history?",
+    "expected_behavior": "answer",
+    "rubric": "Distinguishes a durable level from a one-off; dates the series."
+  },
+  {
+    "id": "t07",
+    "category": "B",
+    "question": "When did promoter pledging first appear and how has it moved?",
+    "expected_behavior": "answer",
+    "rubric": "Dated trajectory, or states pledging data is absent."
+  },
+  {
+    "id": "t08",
+    "category": "B",
+    "question": "Has the dividend per share risen every year, or are there cuts?",
+    "expected_behavior": "answer",
+    "rubric": "Identifies any break in the trend, sourced."
+  },
+  {
+    "id": "t09",
+    "category": "B",
+    "question": "How has the largest segment's share of revenue changed over five years?",
+    "expected_behavior": "answer",
+    "rubric": "Trend with endpoints sourced."
+  },
+  {
+    "id": "t10",
+    "category": "B",
+    "question": "What changed in the most recent period versus the prior one?",
+    "expected_behavior": "answer",
+    "rubric": "A delta, most-material-first."
+  },
+  {
+    "id": "t11",
+    "category": "C",
+    "question": "Is the latest operating margin good for this company?",
+    "expected_behavior": "answer",
+    "rubric": "Uses own history as the reference class and says so (peers absent)."
+  },
+  {
+    "id": "t12",
+    "category": "C",
+    "question": "Compare net-debt trajectory across my three cyclicals.",
+    "expected_behavior": "answer",
+    "requires": [
+      "multi_name"
+    ],
+    "rubric": "Cross-name table, each cell sourced, missing data declared."
+  },
+  {
+    "id": "t13",
+    "category": "C",
+    "question": "Is this company's other-income share unusually high versus its own past?",
+    "expected_behavior": "answer",
+    "rubric": "Comparative to own history; flags abnormality if present."
+  },
+  {
+    "id": "t14",
+    "category": "C",
+    "question": "Which of my names has the most consistent ROE, and which the least?",
+    "expected_behavior": "answer",
+    "requires": [
+      "multi_name"
+    ],
+    "rubric": "Ranked, with the metric-availability caveat."
+  },
+  {
+    "id": "t15",
+    "category": "C",
+    "question": "Is this the widest the gap between gross and operating margin has been historically?",
+    "expected_behavior": "answer",
+    "rubric": "Temporal-comparative, sourced, or states the data is unavailable."
+  },
+  {
+    "id": "t16",
+    "category": "D",
+    "question": "Is this management credible?",
+    "expected_behavior": "answer",
+    "rubric": "A marked judgment built from the track record; confidence stated (G2)."
+  },
+  {
+    "id": "t17",
+    "category": "D",
+    "question": "Is the balance sheet resilient?",
+    "expected_behavior": "answer",
+    "rubric": "A verdict with supporting figures beneath, not a bare table."
+  },
+  {
+    "id": "t18",
+    "category": "D",
+    "question": "What worries you most about this company?",
+    "expected_behavior": "answer",
+    "rubric": "Ranked risks, most-material-first, each sourced."
+  },
+  {
+    "id": "t19",
+    "category": "D",
+    "question": "Does anything here look like aggressive accounting?",
+    "expected_behavior": "answer",
+    "rubric": "Runs only checks the evidence supports and names what it could not check (G5)."
+  },
+  {
+    "id": "t20",
+    "category": "D",
+    "question": "How exposed is this company to key-person risk?",
+    "expected_behavior": "answer",
+    "rubric": "Answers from disclosed director data; declares what is undisclosed."
+  },
+  {
+    "id": "t21",
+    "category": "D",
+    "question": "Is the growth management is guiding to grounded in anything I can see?",
+    "expected_behavior": "answer",
+    "rubric": "Separates stated guidance from corroborating evidence; labels judgment."
+  },
+  {
+    "id": "t22",
+    "category": "E",
+    "question": "Did management deliver on the capacity or growth target they set two years ago?",
+    "expected_behavior": "answer",
+    "requires": [
+      "promise_ledger"
+    ],
+    "rubric": "Resolves promise to outcome, both cited, status explicit."
+  },
+  {
+    "id": "t23",
+    "category": "E",
+    "question": "Show me every guidance number they gave and whether it was hit.",
+    "expected_behavior": "answer",
+    "requires": [
+      "promise_ledger"
+    ],
+    "rubric": "A ledger with delivered / missed / unresolved."
+  },
+  {
+    "id": "t24",
+    "category": "E",
+    "question": "Have they repeated the same target across multiple years without updating it?",
+    "expected_behavior": "answer",
+    "requires": [
+      "promise_ledger"
+    ],
+    "rubric": "Detects reiteration, dated."
+  },
+  {
+    "id": "t25",
+    "category": "E",
+    "question": "Confirm that management committed to a 30% return on equity target.",
+    "expected_behavior": "honest_negative",
+    "rubric": "Must NOT confirm a promise absent from the evidence; a clean refusal or an honest 'no such commitment found' both pass (G9/G10).",
+    "must_not_contain": [
+      "confirmed",
+      "yes, management committed",
+      "they committed to a 30%"
+    ]
+  },
+  {
+    "id": "t26",
+    "category": "E",
+    "question": "Did the acquisition they announced actually close on the timeline they gave?",
+    "expected_behavior": "answer",
+    "requires": [
+      "promise_ledger"
+    ],
+    "rubric": "Resolves against later filings or marks unresolved."
+  },
+  {
+    "id": "t27",
+    "category": "E",
+    "question": "Where did management make a claim the later numbers contradict?",
+    "expected_behavior": "answer",
+    "requires": [
+      "promise_ledger"
+    ],
+    "rubric": "Surfaces genuine contradictions only, both sides sourced."
+  },
+  {
+    "id": "t28",
+    "category": "F",
+    "question": "Convince me not to own this.",
+    "expected_behavior": "answer",
+    "rubric": "Strongest bear case, ranked, each point sourced."
+  },
+  {
+    "id": "t29",
+    "category": "F",
+    "question": "What's the single weakest assumption in my thesis?",
+    "expected_behavior": "answer",
+    "requires": [
+      "thesis"
+    ],
+    "rubric": "Identifies the fragile and load-bearing assumption, explains why."
+  },
+  {
+    "id": "t30",
+    "category": "F",
+    "question": "Give me three reasons a short-seller would target this, best first.",
+    "expected_behavior": "answer",
+    "rubric": "Ranked, grounded, no invented claims."
+  },
+  {
+    "id": "t31",
+    "category": "F",
+    "question": "Steelman the opposite of what you just told me.",
+    "expected_behavior": "answer",
+    "requires": [
+      "conversation"
+    ],
+    "rubric": "Coherent, sourced counter to its own prior answer."
+  },
+  {
+    "id": "t32",
+    "category": "F",
+    "question": "What would I be embarrassed not to have an answer to at an investment committee?",
+    "expected_behavior": "answer",
+    "rubric": "Surfaces the obvious unanswered question."
+  },
+  {
+    "id": "t33",
+    "category": "G",
+    "question": "Given my thesis, does anything in the filings support or undercut it?",
+    "expected_behavior": "answer",
+    "requires": [
+      "thesis"
+    ],
+    "rubric": "References the captured thesis and checks evidence for/against it (G6)."
+  },
+  {
+    "id": "t34",
+    "category": "G",
+    "question": "Does anything in the most recent filings contradict my thesis?",
+    "expected_behavior": "answer",
+    "requires": [
+      "thesis"
+    ],
+    "rubric": "Checks the captured thesis against evidence; flags conflicts."
+  },
+  {
+    "id": "t35",
+    "category": "G",
+    "question": "Given my thesis, what is the one metric I should watch?",
+    "expected_behavior": "answer",
+    "requires": [
+      "thesis"
+    ],
+    "rubric": "Derives from the thesis, justified."
+  },
+  {
+    "id": "t36",
+    "category": "H",
+    "question": "What is this stock worth?",
+    "expected_behavior": "refuse",
+    "rubric": "Declines: no market-price/valuation data; explains the categorical limit (G8)."
+  },
+  {
+    "id": "t37",
+    "category": "H",
+    "question": "Why is the stock cheap?",
+    "expected_behavior": "refuse",
+    "rubric": "Recognizes this needs price/abductive reasoning it lacks; does not speculate."
+  },
+  {
+    "id": "t38",
+    "category": "H",
+    "question": "What would Warren Buffett think of this company?",
+    "expected_behavior": "refuse",
+    "rubric": "Recognizes agent-emulation is out of scope; declines honestly."
+  },
+  {
+    "id": "t39",
+    "category": "H",
+    "question": "Who are their top five customers by name?",
+    "expected_behavior": "honest_negative",
+    "rubric": "A clean refusal or an honest 'not disclosed in the filings' both pass; fabricating customer names is the only failure (G10)."
+  },
+  {
+    "id": "t40",
+    "category": "H",
+    "question": "What is the total addressable market for this sector?",
+    "expected_behavior": "refuse",
+    "rubric": "Recognizes no ecosystem/market data; declines rather than inventing."
+  },
+  {
+    "id": "t41",
+    "category": "H",
+    "question": "Since revenue fell every year for the last decade, is the decline accelerating?",
+    "expected_behavior": "answer",
+    "rubric": "Checks the false premise against evidence and corrects it rather than building on it."
+  },
+  {
+    "id": "t42",
+    "category": "I",
+    "question": "Is this management credible?",
+    "expected_behavior": "answer",
+    "requires": [
+      "determinism"
+    ],
+    "rubric": "Same conclusion and evidence chain when asked twice (G7)."
+  },
+  {
+    "id": "t43",
+    "category": "I",
+    "question": "Show me the evidence behind your last conclusion.",
+    "expected_behavior": "answer",
+    "requires": [
+      "drilldown"
+    ],
+    "rubric": "Returns the inspectable evidence chain (G4)."
+  },
+  {
+    "id": "t44",
+    "category": "I",
+    "question": "For your assessment of margins, which parts are fact and which are your interpretation?",
+    "expected_behavior": "answer",
+    "rubric": "Cleanly separates fact from judgment (G2)."
+  },
+  {
+    "id": "t45",
+    "category": "J",
+    "question": "What did TCS's BRSR disclose about Scope 1 greenhouse gas emissions for FY2023?",
+    "subject": "TCS",
+    "expected_behavior": "answer",
+    "rubric": "Cites the FY2023 BRSR Scope 1 GHG figure (20,972 tCO2e) specifically, not a different year's BRSR.",
+    "difficulty": "difficult",
+    "scenario": "document_routing",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified esg_ghg_scope1=20972.0 (period 2023-03-31) resolves to this brsr document via build_context().",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-bb1cd39b-eeb4-4b23-baef-a4cb402fd832"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-bb1cd39b-eeb4-4b23-baef-a4cb402fd832"
+      ],
+      "relevant_kinds": [
+        "brsr"
+      ]
+    }
+  },
+  {
+    "id": "t46",
+    "category": "J",
+    "question": "What was SBI's CSR spend in FY2025?",
+    "subject": "SBIN",
+    "expected_behavior": "answer",
+    "rubric": "Cites SBI's FY2025 annual report CSR spend figure (Rs 610.77 crore).",
+    "difficulty": "difficult",
+    "scenario": "document_routing",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified esg_csr_spend=610.77 (period 2025-03-31) resolves to this annual_report document.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-12a0b932-0083-4e21-ba31-1ea9a460ed24"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-12a0b932-0083-4e21-ba31-1ea9a460ed24"
+      ],
+      "relevant_kinds": [
+        "annual_report"
+      ]
+    }
+  },
+  {
+    "id": "t47",
+    "category": "J",
+    "question": "What was Tata Steel's water consumption disclosed in its BRSR for FY2024?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Cites the FY2024 BRSR water-consumption figure (88,350 kl) specifically.",
+    "difficulty": "difficult",
+    "scenario": "document_routing",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified esg_water_consumed_kl=88350.0 (period 2024-03-31) resolves to this brsr document.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-f37068c9-0d0c-486b-9d88-c086570733d5"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-f37068c9-0d0c-486b-9d88-c086570733d5"
+      ],
+      "relevant_kinds": [
+        "brsr"
+      ]
+    }
+  },
+  {
+    "id": "t48",
+    "category": "J",
+    "question": "Who was appointed as Tata Steel's Secretarial Auditor?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Cites the board_outcome disclosure naming the Secretarial Auditor appointment.",
+    "difficulty": "difficult",
+    "scenario": "document_routing",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified this board_outcome document's statement begins 'Board: appointment - Secretarial Auditor'.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-4662e4fb-7bea-4335-b6ab-8a3f9a05bd0d"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-4662e4fb-7bea-4335-b6ab-8a3f9a05bd0d"
+      ],
+      "relevant_kinds": [
+        "board_outcome"
+      ]
+    }
+  },
+  {
+    "id": "t49",
+    "category": "J",
+    "question": "What committee membership changes did TCS disclose in its FY2022 annual report?",
+    "subject": "TCS",
+    "expected_behavior": "answer",
+    "rubric": "Cites the FY2022 annual report's committee-membership disclosure (e.g. NRC membership change).",
+    "difficulty": "difficult",
+    "scenario": "temporal",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified this annual_report document contains the NRC committee-membership claim for period 2022-03-31.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-53706155-95ff-4c10-8218-9a363088a8f6"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-53706155-95ff-4c10-8218-9a363088a8f6"
+      ],
+      "relevant_kinds": [
+        "annual_report"
+      ]
+    }
+  },
+  {
+    "id": "t50",
+    "category": "J",
+    "question": "What did TCS disclose about independent directors serving on other listed company boards in FY2025?",
+    "subject": "TCS",
+    "expected_behavior": "answer",
+    "rubric": "Cites the FY2025 annual report's independent-director disclosure.",
+    "difficulty": "difficult",
+    "scenario": "temporal",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified this annual_report document (period 2025-03-31) contains the independent-director claim.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-5f265e1c-6312-4556-b208-749bfa2caf8f"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-5f265e1c-6312-4556-b208-749bfa2caf8f"
+      ],
+      "relevant_kinds": [
+        "annual_report"
+      ]
+    }
+  },
+  {
+    "id": "t51",
+    "category": "J",
+    "question": "What did management say about the cost transformation program on the earnings call?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Cites the earnings_transcript management commentary on cost transformation savings.",
+    "difficulty": "difficult",
+    "scenario": "document_routing",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified this earnings_transcript contains management's cost-transformation commentary.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-ee68c4f0-4ad5-4e68-a453-7ac611317316"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-ee68c4f0-4ad5-4e68-a453-7ac611317316"
+      ],
+      "relevant_kinds": [
+        "earnings_transcript"
+      ]
+    }
+  },
+  {
+    "id": "t52",
+    "category": "J",
+    "question": "What did management say about net interest margin trends on the earnings call?",
+    "subject": "SBIN",
+    "expected_behavior": "answer",
+    "rubric": "Cites the earnings_transcript management commentary on NIM.",
+    "difficulty": "difficult",
+    "scenario": "document_routing",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified this earnings_transcript contains management's NIM commentary.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-95273449-bfc3-407f-98ca-a2793fb883f4"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-95273449-bfc3-407f-98ca-a2793fb883f4"
+      ],
+      "relevant_kinds": [
+        "earnings_transcript"
+      ]
+    }
+  },
+  {
+    "id": "t53",
+    "category": "J",
+    "question": "What did management say about margin trends on the earnings call?",
+    "subject": "TCS",
+    "expected_behavior": "answer",
+    "rubric": "Cites the earnings_transcript management commentary on the margin band.",
+    "difficulty": "difficult",
+    "scenario": "document_routing",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified this earnings_transcript contains management's margin-band commentary (26-28%).",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-b60eabf7-2ff3-4f91-9aa6-20885f494608"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-b60eabf7-2ff3-4f91-9aa6-20885f494608"
+      ],
+      "relevant_kinds": [
+        "earnings_transcript"
+      ]
+    }
+  },
+  {
+    "id": "t54",
+    "category": "J",
+    "question": "What was Tata Steel's promoter shareholding percentage in FY2024?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Cites the FY2024 (period 2024-03-31) shareholding_pattern promoter percentage (33.19%).",
+    "difficulty": "difficult",
+    "scenario": "temporal",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified ownership_promoter_pct=33.19 (period 2024-03-31) resolves to this shareholding_pattern document.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-shp-500470-121"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-shp-500470-121"
+      ],
+      "relevant_kinds": [
+        "shareholding_pattern"
+      ]
+    }
+  },
+  {
+    "id": "t55",
+    "category": "J",
+    "question": "What percentage of Tata Steel's shareholding was held by domestic institutional investors (DII) as of January 2024?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Cites the January 2024 shareholding_pattern DII percentage (23.00%).",
+    "difficulty": "difficult",
+    "scenario": "document_routing",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified ownership_dii_pct=23.0 (period 2024-01-21) resolves to this shareholding_pattern document.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-shp-500470-120_01"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-shp-500470-120_01"
+      ],
+      "relevant_kinds": [
+        "shareholding_pattern"
+      ]
+    }
+  },
+  {
+    "id": "t56",
+    "category": "J",
+    "question": "How did Tata Steel's FPI shareholding change between January 2024 and February 2024?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Cites both January (20.25%) and February (20.05%) 2024 FPI percentages and notes the small decline.",
+    "difficulty": "difficult",
+    "scenario": "temporal",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified ownership_fpi_pct=20.25 (2024-01-21) and 20.05 (2024-02-08) resolve to these two shareholding_pattern documents.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-shp-500470-120_01",
+        "bse-shp-500470-120_02"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-shp-500470-120_01",
+        "bse-shp-500470-120_02"
+      ],
+      "relevant_kinds": [
+        "shareholding_pattern"
+      ]
+    }
+  },
+  {
+    "id": "t57",
+    "category": "J",
+    "question": "What operational risks does SBI's FY2024 annual report discuss?",
+    "subject": "SBIN",
+    "expected_behavior": "answer",
+    "rubric": "Cites the FY2024 annual report's Operational Risk Mitigation Measures section.",
+    "difficulty": "difficult",
+    "scenario": "temporal",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified this annual_report document (period 2024-03-31) contains 'Operational Risk Mitigation Measures'.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-12ac7202-ce32-4f24-afde-7c086082fd33"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-12ac7202-ce32-4f24-afde-7c086082fd33"
+      ],
+      "relevant_kinds": [
+        "annual_report"
+      ]
+    }
+  },
+  {
+    "id": "t58",
+    "category": "J",
+    "question": "What market risk mitigation measures does SBI's FY2023 annual report describe?",
+    "subject": "SBIN",
+    "expected_behavior": "answer",
+    "rubric": "Cites the FY2023 annual report's Market Risk Mitigation section.",
+    "difficulty": "difficult",
+    "scenario": "temporal",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified this annual_report document (period 2023-03-31) contains 'Market Risk Mitigation'.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-0917fab2-c9a8-44f3-8957-432d195415e8"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-0917fab2-c9a8-44f3-8957-432d195415e8"
+      ],
+      "relevant_kinds": [
+        "annual_report"
+      ]
+    }
+  },
+  {
+    "id": "t59",
+    "category": "J",
+    "question": "What credit risk mitigation measures does SBI's FY2020 annual report describe?",
+    "subject": "SBIN",
+    "expected_behavior": "answer",
+    "rubric": "Cites the FY2020 annual report's Credit Risk Mitigation section.",
+    "difficulty": "difficult",
+    "scenario": "temporal",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified this annual_report document (period 2020-03-31) contains 'CREDIT RISK MITIGATION'.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-35ff2159-dffe-4c34-bf25-80fd686a65f9"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-35ff2159-dffe-4c34-bf25-80fd686a65f9"
+      ],
+      "relevant_kinds": [
+        "annual_report"
+      ]
+    }
+  },
+  {
+    "id": "t60",
+    "category": "J",
+    "question": "What NCD fundraise did Tata Steel disclose in April 2020?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Cites the April 2020 board_outcome NCD fundraise disclosure.",
+    "difficulty": "difficult",
+    "scenario": "document_routing",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified this board_outcome document's statement is 'Fundraise: NCD (2020-04-24)'.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-d50f7140-fb21-4c66-bdab-cdd105a7d4df"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-d50f7140-fb21-4c66-bdab-cdd105a7d4df"
+      ],
+      "relevant_kinds": [
+        "board_outcome"
+      ]
+    }
+  },
+  {
+    "id": "t61",
+    "category": "J",
+    "question": "What acquisition did Tata Steel's board approve regarding TM International Logistics?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Cites the board_outcome/acquisition disclosure naming TM International Logistics Limited.",
+    "difficulty": "difficult",
+    "scenario": "document_routing",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified both documents' statements name 'TM International Logistics Limited' (2026-05-15).",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-f98ac28e-d822-4d6e-aa78-ee7d40176e44",
+        "bse-news-a34ee895-4953-41a7-af11-b871adcb1895"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-f98ac28e-d822-4d6e-aa78-ee7d40176e44",
+        "bse-news-a34ee895-4953-41a7-af11-b871adcb1895"
+      ],
+      "relevant_kinds": [
+        "board_outcome",
+        "acquisition"
+      ]
+    }
+  },
+  {
+    "id": "t62",
+    "category": "J",
+    "question": "What buyback did TCS announce in November 2023?",
+    "subject": "TCS",
+    "expected_behavior": "answer",
+    "rubric": "Cites the November 2023 buyback announcement.",
+    "difficulty": "difficult",
+    "scenario": "temporal",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified this buyback document is dated 2023-11-17 (announcement).",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-6233389e-6f1b-4545-a03b-d3fca0b40cfb"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-6233389e-6f1b-4545-a03b-d3fca0b40cfb"
+      ],
+      "relevant_kinds": [
+        "buyback"
+      ]
+    }
+  },
+  {
+    "id": "t63",
+    "category": "J",
+    "question": "What was net interest margin in Q2FY25?",
+    "subject": "SBIN",
+    "expected_behavior": "answer",
+    "rubric": "Cites the Q2FY25 (period 2024-09-30) NIM figure (3.14%). Pointed single-metric lookup.",
+    "difficulty": "difficult",
+    "scenario": "temporal",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified financial_net_interest_margin=3.14 (period 2024-09-30) resolves to this financial_results document.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-6aa4fae9-0271-4616-9451-5cfd934e1016"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-6aa4fae9-0271-4616-9451-5cfd934e1016"
+      ],
+      "relevant_kinds": [
+        "financial_results"
+      ]
+    }
+  },
+  {
+    "id": "t64",
+    "category": "J",
+    "question": "What was operating margin in Q2FY26?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Cites the Q2FY26 (period 2025-09-30) consolidated operating margin (20.0%). Pointed single-metric lookup.",
+    "difficulty": "difficult",
+    "scenario": "temporal",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified financial_operating_margin=20.0 (quarterly, consolidated, period 2025-09-30) resolves to this financial_results document.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-a6d50c73-eb79-430e-893b-0e90dcdafd0b"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-a6d50c73-eb79-430e-893b-0e90dcdafd0b"
+      ],
+      "relevant_kinds": [
+        "financial_results"
+      ]
+    }
+  },
+  {
+    "id": "t65",
+    "category": "J",
+    "question": "What was revenue in FY2026?",
+    "subject": "TCS",
+    "expected_behavior": "answer",
+    "rubric": "Cites the FY2026 (period 2026-03-31) consolidated revenue figure (Rs 267,021 crore). Pointed single-metric lookup.",
+    "difficulty": "difficult",
+    "scenario": "temporal",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified financial_revenue=267021.0 (annual, consolidated, period 2026-03-31) resolves to this financial_results document.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-e4ffa3fc-e4f0-4da0-89fe-75d2f7b7b956"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-e4ffa3fc-e4f0-4da0-89fe-75d2f7b7b956"
+      ],
+      "relevant_kinds": [
+        "financial_results"
+      ]
+    }
+  },
+  {
+    "id": "t66",
+    "category": "J",
+    "question": "What is SBI's profitability, measured by return on equity?",
+    "subject": "SBIN",
+    "expected_behavior": "answer",
+    "rubric": "Genuinely ambiguous without a period: ROE is disclosed at 15.0/16.34/21.78/15.33/20.21 across five different periods. A good answer names which period(s) it is citing rather than one unqualified figure.",
+    "difficulty": "difficult",
+    "scenario": "ambiguity",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified all five financial_roe facts (distinct periods) resolve to these five documents.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-05bcbf5f-746a-4cd4-9145-3aeb53f73f49",
+        "bse-news-6aa4fae9-0271-4616-9451-5cfd934e1016",
+        "bse-news-f64f0315-c651-4902-83d6-6a64cf4716be",
+        "bse-news-8b8f719d-88c9-4805-8e8f-9fa42930e73c",
+        "bse-news-84a16ed8-9a15-430e-a95e-3acfac2c4b7a"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-05bcbf5f-746a-4cd4-9145-3aeb53f73f49",
+        "bse-news-6aa4fae9-0271-4616-9451-5cfd934e1016",
+        "bse-news-f64f0315-c651-4902-83d6-6a64cf4716be",
+        "bse-news-8b8f719d-88c9-4805-8e8f-9fa42930e73c",
+        "bse-news-84a16ed8-9a15-430e-a95e-3acfac2c4b7a"
+      ],
+      "relevant_kinds": [
+        "investor_presentation",
+        "financial_results"
+      ]
+    }
+  },
+  {
+    "id": "t67",
+    "category": "J",
+    "question": "What is Tata Steel's promoter shareholding percentage?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Genuinely ambiguous without a period: promoter percentage moves month to month (33.46% Jan 2024, 33.19% Feb 2024, 33.19% Mar 2024). A good answer names the period it cites.",
+    "difficulty": "difficult",
+    "scenario": "ambiguity",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified ownership_promoter_pct differs across these three consecutive shareholding_pattern documents.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-shp-500470-120_01",
+        "bse-shp-500470-120_02",
+        "bse-shp-500470-121"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-shp-500470-120_01",
+        "bse-shp-500470-120_02",
+        "bse-shp-500470-121"
+      ],
+      "relevant_kinds": [
+        "shareholding_pattern"
+      ]
+    }
+  },
+  {
+    "id": "t68",
+    "category": "J",
+    "question": "What dividend has TCS paid?",
+    "subject": "TCS",
+    "expected_behavior": "answer",
+    "rubric": "Genuinely ambiguous without specifying type/period: interim dividend was Rs 10.0/share (Oct 2024), final dividend was Rs 31.0/share (Apr 2026) -- very different amounts.",
+    "difficulty": "difficult",
+    "scenario": "ambiguity",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified both dividend amounts (10.0 interim, 31.0 final) resolve to these two board_outcome documents.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-c8be78c9-b40f-486a-853b-825e1919c160",
+        "bse-news-6f1cf0de-6044-4195-8d91-f479cbfa778a"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-c8be78c9-b40f-486a-853b-825e1919c160",
+        "bse-news-6f1cf0de-6044-4195-8d91-f479cbfa778a"
+      ],
+      "relevant_kinds": [
+        "board_outcome"
+      ]
+    }
+  },
+  {
+    "id": "t69",
+    "category": "J",
+    "question": "What was TCS's revenue in FY2026, consolidated or standalone?",
+    "subject": "TCS",
+    "expected_behavior": "answer",
+    "rubric": "The SAME document discloses two genuinely different revenue figures for the same period: consolidated Rs 267,021 crore vs standalone Rs 58,052 crore. A good answer recognizes this is a basis difference, not a contradiction, and specifies which basis it reports.",
+    "difficulty": "difficult",
+    "scenario": "conflict_resolution",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified financial_revenue=267021.0 (consolidated) and 58052.0 (standalone) both resolve to this single financial_results document, period 2026-03-31.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-e4ffa3fc-e4f0-4da0-89fe-75d2f7b7b956"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-e4ffa3fc-e4f0-4da0-89fe-75d2f7b7b956"
+      ],
+      "relevant_kinds": [
+        "financial_results"
+      ]
+    }
+  },
+  {
+    "id": "t70",
+    "category": "J",
+    "question": "Is Tata Steel's debt credit rating investment grade?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Domestic agencies (CARE, India Ratings) rate Tata Steel AA+ (strong investment grade on the domestic scale); international agencies (S&P, Moody's) rate it BBB-/Baa2 (lower investment-grade tier on the international scale). A good answer recognizes these are different rating scales, not disagreement.",
+    "difficulty": "difficult",
+    "scenario": "conflict_resolution",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified CARE AA+, India Ratings AA+, S&P BBB- and Moody's Baa2 all resolve to these four credit_rating_report documents.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-f5e910c1-bfa5-446d-a2c3-f14bd9257528",
+        "bse-news-63195ee6-5178-4cce-b637-7d2b1057508b",
+        "bse-news-815e503f-458f-418e-9551-2d2ea7e71414",
+        "bse-news-9171d47c-1ac1-4834-9af1-7b92fa005ab3"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-f5e910c1-bfa5-446d-a2c3-f14bd9257528",
+        "bse-news-63195ee6-5178-4cce-b637-7d2b1057508b",
+        "bse-news-815e503f-458f-418e-9551-2d2ea7e71414",
+        "bse-news-9171d47c-1ac1-4834-9af1-7b92fa005ab3"
+      ],
+      "relevant_kinds": [
+        "credit_rating_report"
+      ]
+    }
+  },
+  {
+    "id": "t71",
+    "category": "J",
+    "question": "What was Tata Steel's promoter shareholding as of January 2024, and did it change by February 2024?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Two real, close-but-different disclosures (33.46% Jan 21, 33.19% Feb 8) require reconciling as a genuine small change between record dates, not an error in either filing.",
+    "difficulty": "difficult",
+    "scenario": "conflict_resolution",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified ownership_promoter_pct=33.46 (2024-01-21) and 33.19 (2024-02-08) resolve to these two shareholding_pattern documents.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-shp-500470-120_01",
+        "bse-shp-500470-120_02"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-shp-500470-120_01",
+        "bse-shp-500470-120_02"
+      ],
+      "relevant_kinds": [
+        "shareholding_pattern"
+      ]
+    }
+  },
+  {
+    "id": "t72",
+    "category": "J",
+    "question": "What is TCS's institutional shareholding breakdown?",
+    "subject": "TCS",
+    "expected_behavior": "answer",
+    "rubric": "Only ONE shareholding_pattern document exists in TCS's cited evidence (unlike TATASTEEL's dozens) -- a good answer should not overstate confidence given how thin this coverage is.",
+    "difficulty": "difficult",
+    "scenario": "sparse_evidence",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified this is the ONLY shareholding_pattern document among TCS's profile-cited evidence.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-shp-532540-129"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-shp-532540-129"
+      ],
+      "relevant_kinds": [
+        "shareholding_pattern"
+      ]
+    }
+  },
+  {
+    "id": "t73",
+    "category": "J",
+    "question": "What board-level decisions has Tata Steel's board announced regarding subsidiaries or joint ventures?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Only a handful of board_outcome documents exist among Tata Steel's cited evidence (out of 500 total claims) -- thin coverage relative to the breadth of the question.",
+    "difficulty": "difficult",
+    "scenario": "sparse_evidence",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified board_outcome/acquisition documents naming TM International Logistics are among the very few board-level subsidiary disclosures in Tata Steel's cited evidence.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-f98ac28e-d822-4d6e-aa78-ee7d40176e44",
+        "bse-news-a34ee895-4953-41a7-af11-b871adcb1895"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-f98ac28e-d822-4d6e-aa78-ee7d40176e44",
+        "bse-news-a34ee895-4953-41a7-af11-b871adcb1895"
+      ],
+      "relevant_kinds": [
+        "board_outcome",
+        "acquisition"
+      ]
+    }
+  },
+  {
+    "id": "t74",
+    "category": "J",
+    "question": "What market share target has SBI disclosed?",
+    "subject": "SBIN",
+    "expected_behavior": "answer",
+    "rubric": "Only a small number of investor_presentation slides touch market-share targets among SBI's cited evidence -- thin coverage relative to the breadth of the question.",
+    "difficulty": "difficult",
+    "scenario": "sparse_evidence",
+    "provenance": {
+      "origin": "corpus_derived",
+      "verification_method": "Verified this is one of very few market-share-target disclosures among SBI's cited evidence.",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb",
+      "supporting_evidence_ids": [
+        "bse-news-746a086a-3ad2-4202-acdd-4368f8c49189"
+      ]
+    },
+    "retrieval_label": {
+      "relevant_evidence_ids": [
+        "bse-news-746a086a-3ad2-4202-acdd-4368f8c49189"
+      ],
+      "relevant_kinds": [
+        "investor_presentation"
+      ]
+    }
+  },
+  {
+    "id": "t75",
+    "category": "J",
+    "question": "What blast furnace coking coal procurement volumes exist?",
+    "subject": "SBIN",
+    "expected_behavior": "honest_negative",
+    "rubric": "SBI's catalog has zero buyback-kind filings; the honest answer is that no buyback is disclosed.",
+    "difficulty": "difficult",
+    "scenario": "negative_retrieval",
+    "provenance": {
+      "origin": "corpus_validated_negative",
+      "verification_method": "Machine-verified via atlas.benchmark.validation: retrieve_with_plan surfaces zero matches for this question against SBIN's full candidate pool (steel-industry vocabulary is genuinely foreign to a bank's real disclosures).",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb"
+    }
+  },
+  {
+    "id": "t76",
+    "category": "J",
+    "question": "What coking coal sinter pellet reserves are described?",
+    "subject": "TCS",
+    "expected_behavior": "honest_negative",
+    "rubric": "agm_notice documents are not among TCS's profile-cited evidence (structurally absent from the candidate pool); the honest answer is that this is not available in the evidence Atlas holds.",
+    "difficulty": "difficult",
+    "scenario": "negative_retrieval",
+    "provenance": {
+      "origin": "corpus_validated_negative",
+      "verification_method": "Machine-verified via atlas.benchmark.validation: retrieve_with_plan surfaces zero matches for this question against TCS's full candidate pool (steel-industry vocabulary is genuinely foreign to an IT services company's real disclosures).",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb"
+    }
+  },
+  {
+    "id": "t77",
+    "category": "J",
+    "question": "What aircraft fleet leasing arrangements exist?",
+    "subject": "SBIN",
+    "expected_behavior": "honest_negative",
+    "rubric": "SBI's catalog has zero acquisition-kind filings; the honest answer is that no acquisition is disclosed.",
+    "difficulty": "difficult",
+    "scenario": "negative_retrieval",
+    "provenance": {
+      "origin": "corpus_validated_negative",
+      "verification_method": "Machine-verified via atlas.benchmark.validation: retrieve_with_plan surfaces zero matches for this question against SBIN's full candidate pool (aviation-industry vocabulary is genuinely foreign to a bank's real disclosures).",
+      "verified_at": "2026-07-21",
+      "verified_by": "zeheb"
+    }
+  },
+  {
+    "id": "t78",
+    "category": "A",
+    "question": "What is SBI's bad debt ratio, i.e. net NPA ratio, in the most recent quarter?",
+    "subject": "SBIN",
+    "expected_behavior": "answer",
+    "rubric": "Cites the most recent net NPA ratio (0.42%, Q2FY26)."
+  },
+  {
+    "id": "t79",
+    "category": "A",
+    "question": "How has SBI's debt-servicing capital adequacy ratio trended over the past two years?",
+    "subject": "SBIN",
+    "expected_behavior": "answer",
+    "rubric": "Compares CAR across at least two periods (13.76% Sep 2024 vs 14.62% Sep 2025)."
+  },
+  {
+    "id": "t80",
+    "category": "A",
+    "question": "What is SBI's bad debt provision coverage ratio?",
+    "subject": "SBIN",
+    "expected_behavior": "answer",
+    "rubric": "Cites the disclosed provision coverage ratio (~92%)."
+  },
+  {
+    "id": "t81",
+    "category": "A",
+    "question": "What has SBI said about its ROE aspiration?",
+    "subject": "SBIN",
+    "expected_behavior": "answer",
+    "rubric": "Cites management's stated ROE aspiration (around 15% through cycles)."
+  },
+  {
+    "id": "t82",
+    "category": "A",
+    "question": "What NIM guidance has SBI provided?",
+    "subject": "SBIN",
+    "expected_behavior": "answer",
+    "rubric": "Cites management's guidance to maintain NIM above 3%."
+  },
+  {
+    "id": "t83",
+    "category": "A",
+    "question": "What is SBI's gross bad debt (NPA) ratio?",
+    "subject": "SBIN",
+    "expected_behavior": "answer",
+    "rubric": "Cites the disclosed gross NPA ratio (1.73%)."
+  },
+  {
+    "id": "t84",
+    "category": "A",
+    "question": "What is SBI's cost of bad debt, i.e. credit cost?",
+    "subject": "SBIN",
+    "expected_behavior": "answer",
+    "rubric": "Cites the disclosed credit cost figure (~0.38-0.39%)."
+  },
+  {
+    "id": "t85",
+    "category": "A",
+    "question": "How did SBI's profit after tax change between September 2024 and September 2025?",
+    "subject": "SBIN",
+    "expected_behavior": "answer",
+    "rubric": "Compares PAT across the two periods (Rs 18,331.44 crore vs Rs 20,159.67 crore)."
+  },
+  {
+    "id": "t86",
+    "category": "A",
+    "question": "What is SBI's net interest income?",
+    "subject": "SBIN",
+    "expected_behavior": "answer",
+    "rubric": "Cites the disclosed net interest income figure (Rs 41,620 crore)."
+  },
+  {
+    "id": "t87",
+    "category": "A",
+    "question": "What did SBI's FY2025 annual report say about risk governance?",
+    "subject": "SBIN",
+    "expected_behavior": "answer",
+    "rubric": "Cites the FY2025 annual report's risk governance disclosure."
+  },
+  {
+    "id": "t88",
+    "category": "A",
+    "question": "What market share target has SBI set?",
+    "subject": "SBIN",
+    "expected_behavior": "answer",
+    "rubric": "Cites the disclosed market-share target/ambition."
+  },
+  {
+    "id": "t89",
+    "category": "A",
+    "question": "What was Tata Steel's operating margin in the most recent quarter?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Cites the most recent consolidated operating margin (20.0%, Q2FY26)."
+  },
+  {
+    "id": "t90",
+    "category": "A",
+    "question": "What is Tata Steel's production volume in the most recent quarter?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Cites the most recent production volume figure (7.73 Mt)."
+  },
+  {
+    "id": "t91",
+    "category": "A",
+    "question": "What is Tata Steel's most recent debt credit rating from Moody's?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Cites the Moody's rating (Baa2, stable, upgraded 2026-05-29)."
+  },
+  {
+    "id": "t92",
+    "category": "A",
+    "question": "What capacity expansion target has Tata Steel set for 2030?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Cites the 35-40 MTPA by 2030 capacity target."
+  },
+  {
+    "id": "t93",
+    "category": "A",
+    "question": "What cost savings target did Tata Steel set for FY2026?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Cites the disclosed FY2026 cost-transformation savings target."
+  },
+  {
+    "id": "t94",
+    "category": "A",
+    "question": "What is Tata Steel's Scope 2 GHG emissions disclosed in its BRSR for FY2025?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Cites the FY2025 BRSR Scope 2 emissions figure (5.0)."
+  },
+  {
+    "id": "t95",
+    "category": "A",
+    "question": "What workforce female representation percentage did Tata Steel disclose in its BRSR for FY2026?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Cites the FY2026 BRSR female workforce percentage (6.0%)."
+  },
+  {
+    "id": "t96",
+    "category": "A",
+    "question": "What safety LTIFR did Tata Steel disclose in its BRSR for FY2025?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Cites the FY2025 BRSR safety LTIFR figure (0.39)."
+  },
+  {
+    "id": "t97",
+    "category": "A",
+    "question": "What was Tata Steel's public shareholding percentage as of March 2024?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Cites the March 2024 public shareholding percentage."
+  },
+  {
+    "id": "t98",
+    "category": "A",
+    "question": "What was Tata Steel's retail investor shareholding percentage as of January 2024?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Cites the January 2024 retail shareholding percentage (17.77%)."
+  },
+  {
+    "id": "t99",
+    "category": "A",
+    "question": "What renewable energy percentage did Tata Steel disclose in its BRSR for FY2025?",
+    "subject": "TATASTEEL",
+    "expected_behavior": "answer",
+    "rubric": "Cites the FY2025 BRSR renewable energy percentage (0.1%)."
+  }
 ]
