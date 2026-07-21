@@ -4,6 +4,15 @@ Each §8.6 task is one declarative ``EvalCase``. Cases are data, loaded from
 ``data/acceptance_v2_1.json``, so the acceptance tests are executable rather
 than prose. A case's ``requires`` lists the capabilities it needs; a milestone
 that lacks one marks the case *pending* instead of running it.
+
+M1.8.5 (ADR-0005) adds four OPTIONAL benchmark fields -- ``scenario``,
+``difficulty``, ``provenance``, ``retrieval_label`` -- all ``None`` by
+default, so every case in the bundled suite that predates them still parses
+unchanged. Structural validity (a real ``RetrievalScenario``/difficulty
+value) is checked here at load time; whether a case's scenario/provenance
+CLAIM actually holds against the real corpus is machine-checked by
+``atlas.benchmark.validation``, which needs a ``KnowledgeBase`` this module
+deliberately does not depend on.
 """
 from __future__ import annotations
 
@@ -13,7 +22,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
 
+from atlas.benchmark.provenance import CaseProvenance, RetrievalLabel
+from atlas.benchmark.taxonomy import ALL_SCENARIO_IDS, DifficultyClass
+
 _SUITE_PATH = Path(__file__).parent / "data" / "acceptance_v2_1.json"
+
+_VALID_DIFFICULTIES = frozenset({"routine", "difficult"})
 
 # Capability tags a milestone may provide. M0/M1 provide only single-name pull.
 CAP_SINGLE_NAME = "single_name"
@@ -59,10 +73,47 @@ class EvalCase:
     requires: tuple[str, ...] = ()
     must_not_contain: tuple[str, ...] = ()
     must_contain_any: tuple[str, ...] = ()
+    # M1.8.5 (ADR-0005): the benchmark taxonomy this case exercises. All
+    # optional/None -- absent for every pre-M1.8.5 case, and for any case
+    # that isn't claiming to test a specific retrieval scenario.
+    scenario: str | None = None
+    difficulty: DifficultyClass | None = None
+    provenance: CaseProvenance | None = None
+    retrieval_label: RetrievalLabel | None = None
+
+    def __post_init__(self) -> None:
+        if self.scenario is not None and self.scenario not in ALL_SCENARIO_IDS:
+            raise ValueError(f"EvalCase.scenario {self.scenario!r} is not a valid RetrievalScenario")
+        if self.difficulty is not None and self.difficulty not in _VALID_DIFFICULTIES:
+            raise ValueError(
+                f"EvalCase.difficulty {self.difficulty!r} must be one of {sorted(_VALID_DIFFICULTIES)}"
+            )
 
     def is_available(self, capabilities: frozenset[str]) -> bool:
         """True when every required capability is present in *capabilities*."""
         return set(self.requires) <= capabilities
+
+
+def _provenance_from_dict(d: dict[str, Any] | None) -> CaseProvenance | None:
+    if d is None:
+        return None
+    return CaseProvenance(
+        origin=d["origin"],
+        supporting_evidence_ids=tuple(d.get("supporting_evidence_ids", ())),
+        verification_method=d.get("verification_method", ""),
+        verified_at=d.get("verified_at", ""),
+        verified_by=d.get("verified_by", ""),
+    )
+
+
+def _retrieval_label_from_dict(d: dict[str, Any] | None) -> RetrievalLabel | None:
+    if d is None:
+        return None
+    return RetrievalLabel(
+        relevant_evidence_ids=tuple(d.get("relevant_evidence_ids", ())),
+        relevant_kinds=tuple(d.get("relevant_kinds", ())),
+        must_not_retrieve=tuple(d.get("must_not_retrieve", ())),
+    )
 
 
 def _case(d: dict[str, Any]) -> EvalCase:
@@ -76,6 +127,10 @@ def _case(d: dict[str, Any]) -> EvalCase:
         requires=tuple(d.get("requires", ())),
         must_not_contain=tuple(d.get("must_not_contain", ())),
         must_contain_any=tuple(d.get("must_contain_any", ())),
+        scenario=d.get("scenario"),
+        difficulty=d.get("difficulty"),
+        provenance=_provenance_from_dict(d.get("provenance")),
+        retrieval_label=_retrieval_label_from_dict(d.get("retrieval_label")),
     )
 
 

@@ -5,9 +5,14 @@ from atlas.eval.cases import CAP_SINGLE_NAME, CAP_THESIS, EvalCase, load_cases
 
 
 def test_loads_all_44_acceptance_tests() -> None:
+    # M1.8.5 (ADR-0005) expanded the bundled suite beyond the original 44 --
+    # this asserts the original §8.6 acceptance tests are all still present
+    # (t01..t44), not that the suite's total size is frozen at 44.
     cases = load_cases()
-    assert len(cases) == 44
+    assert len(cases) >= 44
     assert all(isinstance(c, EvalCase) for c in cases)
+    ids = {c.id for c in cases}
+    assert {f"t{i:02d}" for i in range(1, 45)} <= ids
 
 
 def test_ids_are_unique() -> None:
