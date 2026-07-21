@@ -29,14 +29,18 @@ CAP_RETRIEVAL_PLAN alone (without CAP_QUESTION_RETRIEVAL) is a no-op, matching
 the CLI's --retrieval-plan-without---question-retrieval behavior.
 
 M1.8 (ADR-0004): ``ReasoningRunner.run()`` returns a frozen ``RunOutcome``
-instead of a bare ``(result, answer, context)`` 3-tuple. This is a mechanical
-change (commit 1 of M1.8) — every field ``RunOutcome`` adds beyond the three
-existing values (``plan``, ``retrieval``) is ``None`` until later M1.8 commits
-wire them in; this commit only gives them a place to live. The 3-tuple was
-already at capacity — a 4th positional value (the plan) would have been
-ambiguous to unpack correctly — and a named, frozen object is the same pattern
-``ContextBuildResult``/``RetrievalResult`` already use elsewhere in this
-codebase rather than a new idiom introduced just for the runner.
+instead of a bare ``(result, answer, context)`` 3-tuple (commit 1/9). Commit
+2/9 switched context assembly to ``build_context_with_diagnostics``, and this
+commit (5/9) adds two independent runner-mode switches:
+
+- ``strategy`` (a ``RetrievalStrategy``) OVERRIDES the capability-based
+  question/plan gating above: the case's question is always forwarded, and
+  ``strategy.plan_for(question)`` supplies the SearchPlan. ``None`` (the
+  default) reproduces the pre-M1.8 capability-gated behavior exactly.
+- ``retrieval_only``, when ``True``, returns immediately after context
+  assembly and never calls ``ask()`` -- ``RunOutcome.result``/``.answer`` are
+  ``None``, and ``client`` becomes optional (``None`` is valid) since the CLI
+  builds no LLM client at all for a retrieval-only run.
 """
 from __future__ import annotations
 
@@ -55,9 +59,10 @@ from atlas.eval.correctness import score_correctness
 from atlas.eval.grounding import score_grounding
 from atlas.eval.judge import Judge
 from atlas.eval.report import CaseResult, Report
+from atlas.eval.strategies import RetrievalStrategy
 from atlas.knowledge.base import KnowledgeBase
 from atlas.reasoning.ask import ask
-from atlas.reasoning.context import build_context
+from atlas.reasoning.context import build_context_with_diagnostics
 from atlas.reasoning.contracts import (
     Answer,
     GroundingContext,
@@ -66,8 +71,10 @@ from atlas.reasoning.contracts import (
     SubjectRef,
 )
 from atlas.reasoning.llm import LLMClient
+from atlas.reasoning.plan import SearchPlan
 from atlas.reasoning.planner import plan_retrieval
 from atlas.reasoning.render import to_answer
+from atlas.reasoning.retrieval import RetrievalResult
 
 
 class RunnerError(RuntimeError):
@@ -80,16 +87,17 @@ class RunOutcome:
     harness — not a §10 contract type, the same category as
     ``ContextBuildResult``/``RetrievalResult`` in the reasoning package.
 
-    ``plan``/``retrieval`` are ``None`` until a later M1.8 commit wires the
-    planner/retrieval diagnostics through; this commit only gives every field
-    a place to live.
+    ``result``/``answer`` are ``None`` only in ``--retrieval-only`` mode,
+    where no LLM call is made at all. ``plan``/``retrieval`` are ``None``
+    whenever the strategy in play built no SearchPlan (e.g. M1.7's
+    pre-strategy behavior with no capabilities active).
     """
 
     context: GroundingContext
-    result: ReasoningResult
-    answer: Answer
-    plan: object | None = None
-    retrieval: object | None = None
+    result: ReasoningResult | None = None
+    answer: Answer | None = None
+    plan: SearchPlan | None = None
+    retrieval: RetrievalResult | None = None
 
 
 class ReasoningRunner(Protocol):
@@ -106,22 +114,41 @@ class LiveReasoningRunner:
     question is forwarded into build_context(), activating M1.5's
     question-conditioned passage merge (ADR-M1.5). Defaults to frozenset()
     (question never passed), reproducing M1 behavior exactly.
+
+    ``strategy`` (M1.8 / ADR-0004) — when given, OVERRIDES the capability-based
+    gating above: the case's question is always forwarded, and ``strategy.
+    plan_for(question)`` supplies the SearchPlan (baseline strategies build a
+    null plan; see ``eval/strategies.py``). Defaults to ``None``, reproducing
+    the pre-M1.8 capability-gated behavior exactly — M1.7's wiring and tests
+    are untouched.
+
+    ``retrieval_only`` (M1.8 / ADR-0004) — when ``True``, ``run()`` returns
+    after ``build_context_with_diagnostics`` and never calls ``ask()``:
+    ``RunOutcome.result``/``.answer`` are ``None``, ``self._client`` is never
+    touched. ``client`` becomes optional in this mode (``None`` is valid) —
+    the CLI builds no LLM client at all for a retrieval-only run (see
+    ``cli.py``'s ``eval_run_cmd``), so there is nothing to pass regardless.
     """
 
     def __init__(
-        self, settings: Settings, client: LLMClient, *, capabilities: frozenset[str] = frozenset(),
+        self, settings: Settings, client: LLMClient | None, *, capabilities: frozenset[str] = frozenset(),
         cache: EvalCache | None = None, fingerprint: str = "",
+        strategy: RetrievalStrategy | None = None, retrieval_only: bool = False,
     ) -> None:
         self._settings = settings
         # Free-tier operation: an unchanged (model, fingerprint, prompt,
         # context) tuple never re-invokes the reasoning model across separate
         # `atlas eval run` invocations. Wrapped once here, not per-case.
-        self._client: LLMClient = (
+        # A None client (retrieval-only mode) is never wrapped -- there is
+        # nothing to cache calls to.
+        self._client: LLMClient | None = (
             CachingLLMClient(client, cache, model=settings.reasoning_model, fingerprint=fingerprint)
-            if cache is not None
+            if (cache is not None and client is not None)
             else client
         )
         self._capabilities = capabilities
+        self._strategy = strategy
+        self._retrieval_only = retrieval_only
 
     def run(self, case: EvalCase) -> RunOutcome:
         repo_root = self._settings.repository_base_path / case.subject
@@ -131,21 +158,39 @@ class LiveReasoningRunner:
         profile = CompanyStore(profile_path, case.subject).load()
         subject = SubjectRef(subject_id=case.subject, display=case.subject)
         kb = KnowledgeBase(repo_root) if (repo_root / "knowledge.db").exists() else None
-        question = case.question if CAP_QUESTION_RETRIEVAL in self._capabilities else None
-        # M1.7: planning is a no-op unless question-conditioned retrieval is
-        # ALSO active -- a plan with nothing to merge it into would never be
-        # consumed by build_context().
-        plan = (
-            plan_retrieval(case.question)
-            if question is not None and CAP_RETRIEVAL_PLAN in self._capabilities
-            else None
+
+        if self._strategy is not None:
+            question: str | None = case.question
+            plan = self._strategy.plan_for(case.question)
+        else:
+            question = case.question if CAP_QUESTION_RETRIEVAL in self._capabilities else None
+            # M1.7: planning is a no-op unless question-conditioned retrieval is
+            # ALSO active -- a plan with nothing to merge it into would never be
+            # consumed by build_context().
+            plan = (
+                plan_retrieval(case.question)
+                if question is not None and CAP_RETRIEVAL_PLAN in self._capabilities
+                else None
+            )
+
+        build_result = build_context_with_diagnostics(
+            profile, subject, kb=kb, question=question, plan=plan,
         )
-        context = build_context(profile, subject, kb=kb, question=question, plan=plan)
+        context = build_result.context
+
+        if self._retrieval_only:
+            # No LLM call at all -- retrieval/planner metrics need none.
+            return RunOutcome(context=context, plan=plan, retrieval=build_result.retrieval)
+
+        assert self._client is not None  # only None is valid in retrieval_only mode
         result = ask(
             Question(raw_text=case.question, subject_ref=subject), context, self._client
         )
         answer = to_answer(result, context=context)
-        return RunOutcome(context=context, result=result, answer=answer, plan=plan)
+        return RunOutcome(
+            context=context, result=result, answer=answer,
+            plan=plan, retrieval=build_result.retrieval,
+        )
 
 
 def resolve_judge_sample(
@@ -222,6 +267,11 @@ def _run_case(case: EvalCase, runner: ReasoningRunner, judge: Judge | None) -> C
         return CaseResult(case_id=case.id, category=case.category, status="active", error=str(exc))
 
     result, answer, context = outcome.result, outcome.answer, outcome.context
+    if result is None or answer is None:
+        # --retrieval-only mode: no LLM call was made, so no answer-dependent
+        # dimension can be scored (retrieval/planner metrics are wired in the
+        # next commit).
+        return CaseResult(case_id=case.id, category=case.category, status="active")
 
     corr = score_correctness(case, result, answer)
     grnd = score_grounding(result, context)
