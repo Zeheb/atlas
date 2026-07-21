@@ -43,11 +43,25 @@ milestone, not this one's job.
 Passing ``known_ids`` (e.g. ``KnowledgeBase.known_ids()``) enforces C2's identity
 invariant at assembly: any evidence_id not resolvable in the KB is dropped, and
 a claim left with no evidence is dropped with it — nothing unbacked survives.
+
+M1.8 (ADR-0004) adds ``build_context_with_diagnostics``, which does the actual
+assembly work and additionally returns the ``RetrievalResult`` the M1.7 plan-
+aware merge produced (candidate counts, score breakdowns, etc.) — needed by
+the eval harness to measure retrieval, not by production reasoning. ``build_
+context`` itself is unchanged in signature AND return type: it is now a thin
+delegate (``build_context_with_diagnostics(...).context``), so none of its
+39 existing call sites needed to change. ``ContextBuildResult`` is internal —
+not a §10 contract type, the same category as ``RetrievalMatch``/
+``RetrievalResult`` in ``retrieval.py``. This was chosen over a mutable
+``retrieval_sink`` out-parameter: everything else in this layer is frozen
+(see ``contracts.py``), and ``content_cache``'s mutability is a memo table
+threaded *downward* between hydration passes, not a channel for carrying a
+result back *out* to the caller — the two are not the same shape of problem.
 """
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator, Sequence
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
 from atlas.company.model import CompanyProfile
 from atlas.knowledge.base import KnowledgeBase
@@ -60,6 +74,7 @@ from atlas.reasoning.contracts import (
     SubjectRef,
 )
 from atlas.reasoning.plan import SearchPlan
+from atlas.reasoning.retrieval import RetrievalResult
 
 # Compactness guard so a very deep profile cannot blow the context budget.
 _MAX_CLAIMS = 500
@@ -68,6 +83,18 @@ _MAX_CLAIMS = 500
 # build_context() call — bounds DB reads, not the (cheap, cached) per-claim
 # excerpt search against already-fetched content.
 _MAX_HYDRATED_DOCS = 60
+
+
+@dataclass(frozen=True)
+class ContextBuildResult:
+    """``build_context_with_diagnostics``'s own output. Internal — not a §10
+    contract type, the same category as ``RetrievalMatch``/``RetrievalResult``
+    in ``retrieval.py``. ``retrieval`` is ``None`` unless a ``plan`` was given
+    AND at least one candidate document existed to search (M1.8 / ADR-0004).
+    """
+
+    context: GroundingContext
+    retrieval: RetrievalResult | None = None
 
 
 def build_context(
@@ -96,6 +123,28 @@ def build_context(
     May be given without ``question`` (the plan carries its own
     ``raw_question``); if both are given they must agree, or ``ValueError``.
     Omit for M1.5-equivalent behavior.
+
+    A thin delegate over ``build_context_with_diagnostics`` (M1.8); every
+    caller that only needs the ``GroundingContext`` itself keeps calling this,
+    unchanged.
+    """
+    return build_context_with_diagnostics(
+        profile, subject_ref, known_ids=known_ids, kb=kb, question=question, plan=plan,
+    ).context
+
+
+def build_context_with_diagnostics(
+    profile: CompanyProfile,
+    subject_ref: SubjectRef,
+    *,
+    known_ids: Iterable[str] | None = None,
+    kb: KnowledgeBase | None = None,
+    question: str | None = None,
+    plan: SearchPlan | None = None,
+) -> ContextBuildResult:
+    """Assemble the GroundingContext AND surface the retrieval diagnostics
+    (M1.8 / ADR-0004) that produced it — same arguments and behavior as
+    ``build_context``, which is now defined in terms of this function.
     """
     if question is not None and plan is not None and plan.raw_question != question:
         raise ValueError(
@@ -115,6 +164,7 @@ def build_context(
         notes.append(f"Truncated to {_MAX_CLAIMS} claims; {dropped} older claims omitted.")
 
     retrieved: tuple[RetrievedEvidence, ...] = ()
+    retrieval_result: RetrievalResult | None = None
     if kb is not None:
         content_cache: dict[str, str | None] = {}
         claims, hydrated_retrieved, docs_capped = _hydrate_with_excerpts(claims, kb, content_cache)
@@ -128,19 +178,20 @@ def build_context(
             plan.raw_question if plan is not None else None
         )
         if effective_question is not None:
-            claims, passage_retrieved = _merge_question_passages(
+            claims, passage_retrieved, retrieval_result = _merge_question_passages(
                 claims, subject_ref, kb, effective_question, content_cache, plan=plan,
             )
         retrieved = hydrated_retrieved + passage_retrieved
 
     evidence_index = frozenset(eid for c in claims for eid in c.evidence_ids)
-    return GroundingContext(
+    context = GroundingContext(
         subject_ref=subject_ref,
         claims=tuple(claims),
         evidence_index=evidence_index,
         retrieved=retrieved,
         budget_note="; ".join(notes) if notes else None,
     )
+    return ContextBuildResult(context=context, retrieval=retrieval_result)
 
 
 # ---------------------------------------------------------------------------
@@ -204,7 +255,7 @@ def _merge_question_passages(
     content_cache: dict[str, str | None],
     *,
     plan: SearchPlan | None = None,
-) -> tuple[list[Claim], tuple[RetrievedEvidence, ...]]:
+) -> tuple[list[Claim], tuple[RetrievedEvidence, ...], RetrievalResult | None]:
     """Merge additional passages relevant to *question* as fact-Claims.
 
     Candidate documents are restricted to evidence_ids ALREADY backing a claim
@@ -220,16 +271,26 @@ def _merge_question_passages(
     is unchanged either way. ``KnowledgeBase.get_many()`` (one extra call,
     metadata only — no additional content reads) resolves doc-type/date
     boosts inside that call, not here.
+
+    Returns the raw ``RetrievalResult`` too (M1.8 / ADR-0004, third tuple
+    element) — ``None`` when ``plan`` is ``None`` (``retrieve_passages`` has
+    no such diagnostics object) or when there were no candidates to search.
+    Production reasoning never looks at it; only the eval harness does, via
+    ``build_context_with_diagnostics``.
     """
     candidate_ids = frozenset(eid for c in claims for eid in c.evidence_ids) & frozenset(content_cache)
     if not candidate_ids:
-        return claims, ()
+        return claims, (), None
 
     seen_spans = {
         (ref.evidence_id, ref.excerpt) for c in claims for ref in c.evidence if ref.excerpt
     }
+    retrieval_result: RetrievalResult | None = None
     if plan is not None:
-        matches = _retrieval.retrieve_with_plan(kb, candidate_ids, plan, content_cache=content_cache).matches
+        retrieval_result = _retrieval.retrieve_with_plan(
+            kb, candidate_ids, plan, content_cache=content_cache,
+        )
+        matches = retrieval_result.matches
     else:
         matches = _retrieval.retrieve_passages(kb, candidate_ids, question, content_cache=content_cache)
 
@@ -255,7 +316,7 @@ def _merge_question_passages(
             evidence_ref=ref, content_span=match.excerpt, relevance=match.relevance,
         ))
 
-    return claims + new_claims, tuple(retrieved)
+    return claims + new_claims, tuple(retrieved), retrieval_result
 
 
 # ---------------------------------------------------------------------------
