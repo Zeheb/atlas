@@ -167,7 +167,7 @@ confirmed absent by actually running retrieval.
 Atlas has two planners today — the `RetrievalPlanner` (*how* to retrieve) and
 the `ResearchPlanner` (*what* to investigate) — and will gain more. Both
 independently satisfy the same six invariants, which any future planner must
-also satisfy.
+also satisfy. Full rationale and the anti-checklist measurement rule: ADR-0007.
 
 **1. Inspectable.** Every plan carries the audit trail of the rules that built
 it (`PlanningDecision` / `ResearchDecision`: rule, input, output). "Why did it
@@ -280,6 +280,9 @@ CompanyProfile
 | [0004](adr/0004-retrieval-evaluation.md) | Retrieval evaluation: strategies, comparison, advisory gate |
 | [0005](adr/0005-benchmark-framework.md) | Benchmark framework: coverage, machine-checked provenance |
 | [0006](adr/0006-research-planning.md) | Research planning: decomposition, the anti-checklist gate |
+| [0007](adr/0007-planner-invariants.md) | Planner invariants: the six properties every Atlas planner satisfies |
+| [0008](adr/0008-thesis-generation.md) | Thesis generation (M2.3) — **proposed, not yet built** |
+| [0009](adr/0009-orthogonal-concerns.md) | Orthogonal concerns: contracts stay consumer-agnostic |
 
 New decisions go in `docs/adr/` using [the template](adr/0000-adr-template.md).
 This document is updated to describe the resulting system; it does not record
