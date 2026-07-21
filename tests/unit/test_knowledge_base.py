@@ -171,6 +171,61 @@ class TestKnowledgeBaseGet:
 
 
 # ---------------------------------------------------------------------------
+# get_many (M1.7: batch metadata read for plan-aware retrieval)
+# ---------------------------------------------------------------------------
+
+
+class TestKnowledgeBaseGetMany:
+    def test_empty_input_returns_empty_dict(self, tmp_path: Path) -> None:
+        assert KnowledgeBase(tmp_path).get_many([]) == {}
+
+    def test_all_missing_ids_returns_empty_dict(self, tmp_path: Path) -> None:
+        assert KnowledgeBase(tmp_path).get_many(["bse-k-missing-1", "bse-k-missing-2"]) == {}
+
+    def test_returns_metadata_for_known_ids(self, tmp_path: Path) -> None:
+        _write(tmp_path, "docs/a.txt")
+        _write(tmp_path, "docs/b.txt")
+        kb = KnowledgeBase(tmp_path)
+        kb.parse(_make_entry("bse-k-a", "docs/a.txt"))
+        kb.parse(_make_entry("bse-k-b", "docs/b.txt"))
+        result = kb.get_many(["bse-k-a", "bse-k-b"])
+        assert set(result) == {"bse-k-a", "bse-k-b"}
+        assert all(isinstance(doc, ParsedDocument) for doc in result.values())
+
+    def test_missing_ids_are_simply_absent_not_keyerror(self, tmp_path: Path) -> None:
+        _write(tmp_path, "docs/a.txt")
+        kb = KnowledgeBase(tmp_path)
+        kb.parse(_make_entry("bse-k-a", "docs/a.txt"))
+        result = kb.get_many(["bse-k-a", "bse-k-nonexistent"])
+        assert set(result) == {"bse-k-a"}
+
+    def test_duplicate_input_ids_collapse(self, tmp_path: Path) -> None:
+        _write(tmp_path, "docs/a.txt")
+        kb = KnowledgeBase(tmp_path)
+        kb.parse(_make_entry("bse-k-a", "docs/a.txt"))
+        result = kb.get_many(["bse-k-a", "bse-k-a", "bse-k-a"])
+        assert set(result) == {"bse-k-a"}
+
+    def test_parity_with_per_id_get(self, tmp_path: Path) -> None:
+        _write(tmp_path, "docs/a.txt")
+        kb = KnowledgeBase(tmp_path)
+        kb.parse(_make_entry("bse-k-a", "docs/a.txt", kind=EvidenceKind.EARNINGS_TRANSCRIPT))
+        many = kb.get_many(["bse-k-a"])["bse-k-a"]
+        single = kb.get("bse-k-a")
+        assert single is not None
+        assert many == single
+
+    def test_chunks_beyond_sqlite_variable_limit(self, tmp_path: Path) -> None:
+        # 500-id chunk boundary: exercise >500 ids in one call, only some real.
+        kb = KnowledgeBase(tmp_path)
+        _write(tmp_path, "docs/real.txt")
+        kb.parse(_make_entry("bse-k-real", "docs/real.txt"))
+        ids = [f"bse-k-missing-{i}" for i in range(600)] + ["bse-k-real"]
+        result = kb.get_many(ids)
+        assert set(result) == {"bse-k-real"}
+
+
+# ---------------------------------------------------------------------------
 # get_content
 # ---------------------------------------------------------------------------
 

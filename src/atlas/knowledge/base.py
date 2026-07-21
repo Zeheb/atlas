@@ -1,5 +1,5 @@
 import sqlite3
-from collections.abc import Generator
+from collections.abc import Generator, Iterable
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -227,6 +227,40 @@ class KnowledgeBase:
                 (evidence_id,),
             ).fetchone()
         return _row_to_doc(row) if row is not None else None
+
+    def get_many(self, evidence_ids: Iterable[str]) -> dict[str, ParsedDocument]:
+        """Return parsing metadata for many evidence IDs in one round trip.
+
+        Added for M1.7 (retrieval planning): scoring a SearchPlan's doc-type
+        boosts needs every candidate document's ``kind``/``source_date``, and
+        doing that via N calls to ``get()`` would be N DB round trips per
+        ``build_context()`` call. This is the batch equivalent — one query
+        (chunked at SQLite's ~999 host-parameter limit; 500 is a safe margin),
+        reusing the same ``_row_to_doc`` row mapping as ``get()``.
+
+        IDs with no parsing record are simply absent from the returned dict —
+        not an error, and not a KeyError; callers already treat "no metadata"
+        as a valid, boost-free case (see retrieval.py's plan-aware scoring).
+        Duplicate input ids collapse naturally (a dict keyed by evidence_id).
+        """
+        ids = list(dict.fromkeys(evidence_ids))  # de-dupe, preserve order (irrelevant to output but deterministic)
+        if not ids:
+            return {}
+
+        out: dict[str, ParsedDocument] = {}
+        chunk_size = 500
+        with self._db_conn() as conn:
+            for start in range(0, len(ids), chunk_size):
+                chunk = ids[start : start + chunk_size]
+                placeholders = ",".join("?" for _ in chunk)
+                rows = conn.execute(
+                    f"SELECT * FROM parsed_documents WHERE evidence_id IN ({placeholders})",
+                    chunk,
+                ).fetchall()
+                for row in rows:
+                    doc = _row_to_doc(row)
+                    out[doc.evidence_id] = doc
+        return out
 
     def get_content(self, evidence_id: str) -> str | None:
         """Return extracted content for an evidence ID.
