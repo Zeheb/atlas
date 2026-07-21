@@ -8,10 +8,21 @@ Citation validation is a HARD code path, not a hope: any evidence id the model
 emits that is not in ``context.evidence_index`` is dropped (G10). A judgment
 finding left with no valid support is dropped (G3/G4). If nothing grounded
 survives, the result is a refusal rather than an empty answer (G8).
+
+M2.3: the two prompts are injectable (``system_prompt``/``build_prompt``),
+defaulting to the M0 question-answering pair. Everything AFTER the model call
+-- the closed-world citation filter, the ungrounded-judgment drop, the refusal
+fallback, the ReasoningResult assembly -- is prompt-independent and is the
+reason this seam exists. Thesis synthesis (``research/thesis.py``) is a
+different question posed to the same validated machinery, not a second
+implementation of it: a synthesizer that bypassed ``ask()`` would have to
+re-derive G1/G3/G4/G8/G10, which is precisely the duplication ADR-0009 warns
+against.
 """
 from __future__ import annotations
 
 import json
+from collections.abc import Callable
 from typing import Any
 
 from atlas.reasoning.contracts import (
@@ -27,12 +38,29 @@ from atlas.reasoning.prompt import SYSTEM_PROMPT, build_user_prompt
 
 _CONFIDENCE: frozenset[str] = frozenset({"high", "medium", "low"})
 
+PromptBuilder = Callable[[Question, GroundingContext], str]
 
-def ask(question: Question, context: GroundingContext, client: LLMClient) -> ReasoningResult:
-    """Answer *question* over the closed-world *context* using *client*."""
+
+def ask(
+    question: Question,
+    context: GroundingContext,
+    client: LLMClient,
+    *,
+    system_prompt: str = SYSTEM_PROMPT,
+    build_prompt: PromptBuilder = build_user_prompt,
+) -> ReasoningResult:
+    """Answer *question* over the closed-world *context* using *client*.
+
+    ``system_prompt``/``build_prompt`` default to the M0 question-answering
+    pair, so every existing call site is unchanged. A caller supplying its own
+    pair (M2.3's synthesis) changes only what the model is ASKED; every
+    grounding guarantee below the model call applies identically, because
+    those guarantees are enforced against ``context``, never against the
+    prompt text.
+    """
     raw = client.complete(
-        system=SYSTEM_PROMPT,
-        user=build_user_prompt(question, context),
+        system=system_prompt,
+        user=build_prompt(question, context),
     )
     payload = _parse_json(raw)
     if payload is None:
