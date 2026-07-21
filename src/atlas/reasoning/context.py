@@ -22,6 +22,16 @@ existing claim's statement. Each accepted passage becomes an ordinary
 fact-``Claim`` merged into ``claims``. ``question=None`` (the default)
 reproduces M0/M1 behavior exactly.
 
+M1.7 (retrieval planning) adds an optional ``plan`` (a ``SearchPlan``, see
+``plan.py``/``planner.py``): when supplied, the question-conditioned merge
+calls ``retrieval.retrieve_with_plan`` instead of ``retrieve_passages``, so
+doc-type/date/period preferences bias *ranking* of the same candidate pool —
+never its membership (see retrieval.py's module docstring on why that keeps
+this a strict superset-or-equal of the M1.5 result). ``plan=None`` (the
+default) reproduces M1.5 behavior exactly, byte-identical. A ``plan`` may be
+passed without ``question`` (the plan already carries its own
+``raw_question``); passing both requires them to agree.
+
 Retrieval — both M1's hydration and M1.5's question-conditioned merge — is
 deliberately scoped to evidence_ids *already* present in the profile-derived
 claims. This keeps the closed-world invariant trivially true (no new ids ever
@@ -49,6 +59,7 @@ from atlas.reasoning.contracts import (
     RetrievedEvidence,
     SubjectRef,
 )
+from atlas.reasoning.plan import SearchPlan
 
 # Compactness guard so a very deep profile cannot blow the context budget.
 _MAX_CLAIMS = 500
@@ -66,6 +77,7 @@ def build_context(
     known_ids: Iterable[str] | None = None,
     kb: KnowledgeBase | None = None,
     question: str | None = None,
+    plan: SearchPlan | None = None,
 ) -> GroundingContext:
     """Assemble the GroundingContext for one company from its profile.
 
@@ -78,7 +90,18 @@ def build_context(
     passage retrieval merges additional relevant passages as fact-Claims
     (M1.5 / ADR-M1.5), at zero extra KB reads beyond what ``kb`` already
     fetched for hydration. Omit for M0/M1-equivalent behavior.
+    ``plan`` — when ALSO supplied (requires ``kb``), a ``SearchPlan`` (M1.7)
+    replaces ``retrieve_passages`` with ``retrieve_with_plan`` for the merge
+    above, biasing ranking by the plan's doc-type/date/period preferences.
+    May be given without ``question`` (the plan carries its own
+    ``raw_question``); if both are given they must agree, or ``ValueError``.
+    Omit for M1.5-equivalent behavior.
     """
+    if question is not None and plan is not None and plan.raw_question != question:
+        raise ValueError(
+            "build_context(): question and plan.raw_question disagree "
+            f"({question!r} != {plan.raw_question!r})"
+        )
     allowed: frozenset[str] | None = frozenset(known_ids) if known_ids is not None else None
 
     claims: list[Claim] = list(_iter_claims(profile, subject_ref, allowed))
@@ -101,9 +124,12 @@ def build_context(
                 "documents; remaining citations kept without a verbatim excerpt."
             )
         passage_retrieved: tuple[RetrievedEvidence, ...] = ()
-        if question is not None:
+        effective_question = question if question is not None else (
+            plan.raw_question if plan is not None else None
+        )
+        if effective_question is not None:
             claims, passage_retrieved = _merge_question_passages(
-                claims, subject_ref, kb, question, content_cache,
+                claims, subject_ref, kb, effective_question, content_cache, plan=plan,
             )
         retrieved = hydrated_retrieved + passage_retrieved
 
@@ -176,6 +202,8 @@ def _merge_question_passages(
     kb: KnowledgeBase,
     question: str,
     content_cache: dict[str, str | None],
+    *,
+    plan: SearchPlan | None = None,
 ) -> tuple[list[Claim], tuple[RetrievedEvidence, ...]]:
     """Merge additional passages relevant to *question* as fact-Claims.
 
@@ -185,6 +213,13 @@ def _merge_question_passages(
     reads from cache only and never issues a new KB call. This is what keeps
     the closed-world invariant trivially true: every passage cites an
     evidence_id the caller already resolved and already trusts.
+
+    ``plan`` (M1.7) — when supplied, ranking comes from
+    ``retrieval.retrieve_with_plan`` instead of ``retrieve_passages``; the
+    candidate pool and everything downstream (claim construction, span dedup)
+    is unchanged either way. ``KnowledgeBase.get_many()`` (one extra call,
+    metadata only — no additional content reads) resolves doc-type/date
+    boosts inside that call, not here.
     """
     candidate_ids = frozenset(eid for c in claims for eid in c.evidence_ids) & frozenset(content_cache)
     if not candidate_ids:
@@ -193,7 +228,10 @@ def _merge_question_passages(
     seen_spans = {
         (ref.evidence_id, ref.excerpt) for c in claims for ref in c.evidence if ref.excerpt
     }
-    matches = _retrieval.retrieve_passages(kb, candidate_ids, question, content_cache=content_cache)
+    if plan is not None:
+        matches = _retrieval.retrieve_with_plan(kb, candidate_ids, plan, content_cache=content_cache).matches
+    else:
+        matches = _retrieval.retrieve_passages(kb, candidate_ids, question, content_cache=content_cache)
 
     new_claims: list[Claim] = []
     retrieved: list[RetrievedEvidence] = []
