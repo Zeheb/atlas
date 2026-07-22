@@ -16,10 +16,18 @@ through ``ask()``'s injectable prompt seam, so the closed-world citation
 filter, the ungrounded-judgment drop, and the refusal fallback apply
 identically to both. Only what the model is ASKED differs; what it is ALLOWED
 to cite never does.
+
+M2.4: ``build_user_prompt`` renders ``GroundingContext.thesis`` (the C6
+RecalledView) as an additional block, present only when a view was supplied
+to the context. When absent, the rendered prompt is BYTE-IDENTICAL to before
+this milestone -- asserted by test, not assumed. The block is reference
+only: recalled evidence ids are shown but explicitly labelled not citable,
+since the closed world is never widened by memory (a stale view cannot
+resurrect withdrawn evidence).
 """
 from __future__ import annotations
 
-from atlas.reasoning.contracts import GroundingContext, Question
+from atlas.reasoning.contracts import GroundingContext, Question, RecalledView
 
 SYSTEM_PROMPT = """\
 You are Atlas, an equity research analyst. You answer questions about a company \
@@ -154,6 +162,39 @@ def build_synthesis_prompt(question: Question, context: GroundingContext) -> str
     return "\n".join(lines)
 
 
+def _render_recalled_view(view: RecalledView) -> list[str]:
+    """The recalled-view block (M2.4 commit 5), rendered only when
+    ``context.thesis`` is present.
+
+    Reference only: recalled evidence ids are shown, labelled explicitly as
+    not currently citable, so the model understands what a prior conclusion
+    rested on without being able to smuggle a withdrawn id into a new
+    finding. Whatever this renders, ``GroundingContext.evidence_index`` is
+    unaffected -- the closed world is built once, upstream of the prompt, and
+    a recalled view never widens it (enforced at context assembly, not here).
+
+    Deliberately informational only in this commit: no instruction here asks
+    the model to flag support/contradiction, because there is no schema field
+    yet for it to answer into. That instruction and the corresponding output
+    field arrive together in the next commit, as one coherent unit rather
+    than a prompt asking a question the parser cannot yet hear the answer to.
+    """
+    lines = [
+        "",
+        f"RECALLED VIEW (from {view.as_of}, {view.origin}) -- for reference only, "
+        "NOT current evidence:",
+        f'  question asked: "{view.question}"',
+    ]
+    for claim in view.claims:
+        ids = ", ".join(sorted(claim.evidence_ids)) or "no evidence recorded"
+        lines.append(
+            f"  - (confidence was {claim.confidence}) {claim.statement} "
+            f"[originally rested on: {ids} -- NOT citable now unless it also "
+            f"appears in VALID EVIDENCE IDS below]"
+        )
+    return lines
+
+
 def build_user_prompt(question: Question, context: GroundingContext) -> str:
     """Render the closed-world evidence and the question for the model."""
     lines: list[str] = [
@@ -171,6 +212,8 @@ def build_user_prompt(question: Question, context: GroundingContext) -> str:
                 lines.append(f'    source text: "{ref.excerpt}"')
     if context.budget_note:
         lines.append(f"(note: {context.budget_note})")
+    if context.thesis is not None:
+        lines += _render_recalled_view(context.thesis)
     lines += [
         "",
         f"VALID EVIDENCE IDS: {', '.join(sorted(context.evidence_index))}",

@@ -70,6 +70,7 @@ from atlas.reasoning.contracts import (
     Claim,
     EvidenceReference,
     GroundingContext,
+    RecalledView,
     RetrievedEvidence,
     SubjectRef,
 )
@@ -105,6 +106,7 @@ def build_context(
     kb: KnowledgeBase | None = None,
     question: str | None = None,
     plan: SearchPlan | None = None,
+    thesis: RecalledView | None = None,
 ) -> GroundingContext:
     """Assemble the GroundingContext for one company from its profile.
 
@@ -123,6 +125,11 @@ def build_context(
     May be given without ``question`` (the plan carries its own
     ``raw_question``); if both are given they must agree, or ``ValueError``.
     Omit for M1.5-equivalent behavior.
+    ``thesis`` — when supplied (M2.4), a ``RecalledView`` (C6) shown to the
+    model for support/contradiction checking. Never widens
+    ``evidence_index``: passed straight through to ``GroundingContext``,
+    which is the only place this parameter has any effect. Omit for
+    M2.3-equivalent behavior.
 
     A thin delegate over ``build_context_with_diagnostics`` (M1.8); every
     caller that only needs the ``GroundingContext`` itself keeps calling this,
@@ -130,6 +137,7 @@ def build_context(
     """
     return build_context_with_diagnostics(
         profile, subject_ref, known_ids=known_ids, kb=kb, question=question, plan=plan,
+        thesis=thesis,
     ).context
 
 
@@ -141,6 +149,7 @@ def build_context_with_diagnostics(
     kb: KnowledgeBase | None = None,
     question: str | None = None,
     plan: SearchPlan | None = None,
+    thesis: RecalledView | None = None,
 ) -> ContextBuildResult:
     """Assemble the GroundingContext AND surface the retrieval diagnostics
     (M1.8 / ADR-0004) that produced it — same arguments and behavior as
@@ -189,6 +198,7 @@ def build_context_with_diagnostics(
         claims=tuple(claims),
         evidence_index=evidence_index,
         retrieved=retrieved,
+        thesis=thesis,
         budget_note="; ".join(notes) if notes else None,
     )
     return ContextBuildResult(context=context, retrieval=retrieval_result)
