@@ -1,10 +1,16 @@
 """Internal contract types for the reasoning subsystem (blueprint §10).
 
 These are the *stable interfaces* between subsystems. Implementation behind each
-may change freely; these shapes may not, without a contract-version bump. Only
-the contracts M0 actually touches are defined here — C6 Thesis (M2) and C10
-ConversationState (M5) are intentionally deferred (blueprint: "do not optimize
-for future milestones beyond stable extension points").
+may change freely; these shapes may not, without a contract-version bump.
+C10 ConversationState (M5) remains intentionally deferred (blueprint: "do not
+optimize for future milestones beyond stable extension points").
+
+CONTRACT VERSION 2 (M2.4): C6 ``RecalledView``/``RecalledClaim`` defined, and
+``GroundingContext.thesis`` retyped from ``None`` to ``RecalledView | None``.
+The field name is unchanged -- only the reserved slot's type widened. This is
+the first contract-version bump since M0; every existing construction site
+(reasoning, research, eval, tests) is source-compatible because the field
+already defaulted to ``None``.
 
 Every class carries its contract id (C1..C9). Invariants from §10 are enforced
 in ``__post_init__`` and raise ``ValueError`` — the guarantees (§8.4) are thereby
@@ -178,6 +184,79 @@ class RetrievedEvidence:
     relevance: ConfidenceLevel = "medium"
 
 
+# --- C6 RecalledView (M2.4) ---------------------------------------------------
+@dataclass(frozen=True)
+class RecalledClaim:
+    """One proposition of a RecalledView -- what Atlas (or a user) concluded at
+    a past time, not what is true now.
+
+    Deliberately NOT a ``Claim`` (C3): a Claim asserts something CURRENTLY true
+    and requires >=1 EvidenceReference (G10), enforced in its own
+    __post_init__. A recalled claim records a past conclusion and must survive
+    its evidence being withdrawn or superseded -- it cannot satisfy G10 by
+    construction, and it must not be placed in ``GroundingContext.claims``,
+    where the model would read it as current evidence rather than as a prior
+    judgment to check against.
+
+    Trimmed to exactly what M2.4 consumes: the contradiction/support check is
+    LLM-level and reads prose, so ``statement`` is sufficient. No ``period``/
+    ``value``/``unit``/``assertability`` -- an earlier draft carried them
+    speculatively to pre-empt a future contract change, which is the reasoning
+    this design's own falsification pass rejects elsewhere. Add them in the
+    milestone that actually needs claim-level comparison, mirroring Claim's
+    shape at that point rather than guessing it now.
+    """
+
+    statement: str
+    evidence_ids: frozenset[str]
+    confidence: ConfidenceLevel
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "evidence_ids", frozenset(self.evidence_ids))
+        if not self.statement.strip():
+            raise ValueError("RecalledClaim.statement must be non-empty")
+
+
+@dataclass(frozen=True)
+class RecalledView:
+    """C6 -- what Atlas (or a user) recalls having concluded about a question,
+    at a past time. Fulfils the ``GroundingContext.thesis`` seam reserved since
+    M0.
+
+    Named generally rather than after theses: the same shape holds an
+    Atlas-synthesized thesis (``research.Thesis.to_view()``), a user-registered
+    view, or a recalled prior answer -- ``origin`` records which. Consumed
+    identically by Conversation, Research and Attention, so it carries none of
+    ``research.Thesis``'s dimensions, dispositions or run fingerprints; those
+    stay in ``research/thesis.py``, which projects INTO this type rather than
+    this type absorbing them (the orthogonal-concerns rule this codebase
+    applies elsewhere -- see ADR-0009).
+
+    Reference only, never evidence: nothing in ``claims`` widens
+    ``evidence_index`` (enforced at ``GroundingContext`` construction, not
+    here -- a RecalledView has no evidence_index of its own to violate). A
+    stale view can be shown to the model; it can never be cited.
+    """
+
+    view_id: str
+    subject_ref: SubjectRef
+    question: str
+    claims: tuple[RecalledClaim, ...]
+    as_of: str
+    origin: Literal["atlas", "user"] = "atlas"
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "claims", _tuple(self.claims))
+        if not self.view_id.strip():
+            raise ValueError("RecalledView.view_id must be non-empty")
+        if not self.question.strip():
+            raise ValueError("RecalledView.question must be non-empty")
+        if not self.claims:
+            raise ValueError("RecalledView.claims must not be empty")
+        if not self.as_of.strip():
+            raise ValueError("RecalledView.as_of must be non-empty")
+
+
 @dataclass(frozen=True)
 class GroundingContext:
     """C5 — the CLOSED WORLD a ReasoningResult may cite.
@@ -186,13 +265,18 @@ class GroundingContext:
     evidence_id referenced by a contained Claim is in the index — the base of the
     grounding chain (index ⊇ result.citations ⊇ answer.citations). Nothing
     outside the index may be cited downstream (G1/G10).
+
+    ``thesis`` (C6, M2.4) is a recalled view under examination, shown to the
+    model for support/contradiction checking -- never added to
+    ``evidence_index``. Field name preserved from the M0 reservation
+    (``thesis: None = None  # C6, deferred to M2``); only the type widened.
     """
 
     subject_ref: SubjectRef
     claims: tuple[Claim, ...]
     evidence_index: frozenset[str]
     retrieved: tuple[RetrievedEvidence, ...] = ()
-    thesis: None = None  # C6, deferred to M2
+    thesis: RecalledView | None = None  # C6
     budget_note: str | None = None
 
     def __post_init__(self) -> None:
