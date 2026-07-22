@@ -304,3 +304,67 @@ def test_no_thesis_result_is_ever_refused(tmp_path) -> None:
     store = ThesisStore(tmp_path / "theses.json", "TCS")
     store.save(thesis)
     assert store.load(thesis.view_id).result.refused is False
+
+
+# --- contradicts_thesis / counter_case round-trip (M2.4.1 item 5) --------------------
+# _serialize_finding/_deserialize_finding have persisted these two fields since
+# M2.4 commit 3, but nothing asserted they actually survive save -> load. The
+# fields M2.4 exists to revive are the ones whose persistence was unverified.
+class _ContradictingFake:
+    def complete(self, *, system: str, user: str) -> str:
+        return json.dumps({
+            "refused": False, "overall_confidence": "medium",
+            "findings": [
+                {
+                    "statement": "Durable business, fairly priced.",
+                    "assertability": "judgment", "confidence": "medium",
+                    "supporting_evidence_ids": ["ev-1"], "known_unknowns": [],
+                    "contradicts_thesis": True,
+                    "counter_case": "Contradicts the recalled decline.",
+                },
+                {
+                    "statement": "Revenue is in line with expectations.",
+                    "assertability": "fact", "confidence": "high",
+                    "supporting_evidence_ids": ["ev-1"], "known_unknowns": [],
+                },
+            ],
+        })
+
+
+def test_round_trip_preserves_a_flagged_contradiction(tmp_path) -> None:
+    run = _run(_resolved("business_quality", "ev-1"))
+    thesis = synthesize(run, _ContradictingFake())
+    store = ThesisStore(tmp_path / "theses.json", "TCS")
+    store.save(thesis)
+    loaded = store.load(thesis.view_id)
+
+    finding = loaded.result.findings[0]
+    assert finding.contradicts_thesis is True
+    assert finding.counter_case == "Contradicts the recalled decline."
+
+
+def test_round_trip_preserves_a_non_contradicting_sibling(tmp_path) -> None:
+    """Per-finding, not per-thesis: the second finding in the same synthesis
+    must round-trip its OWN false/None, not inherit the first's True."""
+    run = _run(_resolved("business_quality", "ev-1"))
+    thesis = synthesize(run, _ContradictingFake())
+    store = ThesisStore(tmp_path / "theses.json", "TCS")
+    store.save(thesis)
+    loaded = store.load(thesis.view_id)
+
+    finding = loaded.result.findings[1]
+    assert finding.contradicts_thesis is False
+    assert finding.counter_case is None
+
+
+def test_round_trip_defaults_when_no_contradiction_was_flagged(tmp_path) -> None:
+    """Covers pre-M2.4 store files too: a stored finding predating these keys
+    deserializes to Finding's own defaults, not a KeyError."""
+    thesis = _thesis()
+    store = ThesisStore(tmp_path / "theses.json", "TCS")
+    store.save(thesis)
+    loaded = store.load(thesis.view_id)
+
+    finding = loaded.result.findings[0]
+    assert finding.contradicts_thesis is False
+    assert finding.counter_case is None
