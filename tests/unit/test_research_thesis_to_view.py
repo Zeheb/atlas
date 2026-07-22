@@ -192,3 +192,60 @@ def test_to_dict_includes_view_id_and_as_of() -> None:
 def test_to_dict_is_still_json_serializable() -> None:
     run = _run(_resolved("business_quality", "ev-1"))
     json.dumps(synthesize(run, _Fake()).to_dict())
+
+
+# --- to_dict field parity with memory.py's persistence shape (M2.4.1 item 4) ----------
+class _ContradictingFake:
+    """A synthesis whose finding flags a contradiction -- to_dict() must not
+    drop it, matching what ThesisStore already persisted since M2.4."""
+
+    def complete(self, *, system: str, user: str) -> str:
+        return json.dumps({
+            "refused": False, "overall_confidence": "medium",
+            "findings": [{
+                "statement": "Durable business, fairly priced.",
+                "assertability": "judgment", "confidence": "medium",
+                "supporting_evidence_ids": ["ev-1"], "known_unknowns": [],
+                "contradicts_thesis": True,
+                "counter_case": "Contradicts the recalled decline.",
+            }],
+        })
+
+
+def test_to_dict_includes_contradicts_thesis_and_counter_case() -> None:
+    """Bug fixed in M2.4.1: to_dict() (the `atlas thesis --out` export) used
+    to silently drop these two fields while ThesisStore.save() (--remember)
+    kept them -- the same thesis exported two different ways disagreed on
+    whether a contradiction happened at all."""
+    run = _run(_resolved("business_quality", "ev-1"))
+    thesis = synthesize(run, _ContradictingFake())
+
+    finding_dict = thesis.to_dict()["findings"][0]
+    assert finding_dict["contradicts_thesis"] is True
+    assert finding_dict["counter_case"] == "Contradicts the recalled decline."
+
+
+def test_to_dict_defaults_match_the_finding_when_no_contradiction_was_flagged() -> None:
+    run = _run(_resolved("business_quality", "ev-1"))
+    thesis = synthesize(run, _Fake())
+
+    finding_dict = thesis.to_dict()["findings"][0]
+    assert finding_dict["contradicts_thesis"] is False
+    assert finding_dict["counter_case"] is None
+
+
+def test_to_dict_finding_keys_are_a_subset_of_the_persistence_shape() -> None:
+    """Pins the intended relationship between the two serializers: to_dict()
+    (export) may show LESS than memory.py's _serialize_finding (persistence,
+    which additionally keeps salience_rank to reconstruct claim ordering on
+    load), but never something persistence doesn't also have. If a future
+    field is added to one and not the other, this fails loudly rather than
+    letting the two silently diverge again."""
+    from atlas.research.memory import _serialize_finding
+
+    run = _run(_resolved("business_quality", "ev-1"))
+    thesis = synthesize(run, _ContradictingFake())
+
+    export_keys = set(thesis.to_dict()["findings"][0])
+    persistence_keys = set(_serialize_finding(thesis.result.findings[0]))
+    assert export_keys <= persistence_keys

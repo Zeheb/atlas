@@ -212,6 +212,16 @@ class Thesis:
         """JSON-ready snapshot. ``result`` is projected field-by-field rather
         than via ``dataclasses.asdict`` because ReasoningResult holds a
         frozenset (``citations``) and nested Claims, neither JSON-native.
+
+        Per-finding keys are a deliberate SUBSET of ``memory.py``'s
+        persistence shape, not an independent list: this is a user-facing
+        export (``atlas thesis --out``), while the store additionally keeps
+        ``salience_rank`` to reconstruct claim ordering on load, which has no
+        reader here. ``contradicts_thesis``/``counter_case`` (M2.4.1) are
+        included in both, though -- a contradiction the model flagged is
+        exactly the kind of fact this export exists to report, and omitting
+        it here while the store kept it was a bug (M2.4.1), not a scope
+        difference.
         """
         return {
             "question": self.question,
@@ -229,6 +239,8 @@ class Thesis:
                     "confidence": f.confidence,
                     "evidence_ids": sorted(f.evidence_ids),
                     "known_unknowns": list(f.known_unknowns),
+                    "contradicts_thesis": f.contradicts_thesis,
+                    "counter_case": f.counter_case,
                 }
                 for f in self.result.findings
             ],
