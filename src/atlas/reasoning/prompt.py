@@ -24,6 +24,14 @@ this milestone -- asserted by test, not assumed. The block is reference
 only: recalled evidence ids are shown but explicitly labelled not citable,
 since the closed world is never widened by memory (a stale view cannot
 resurrect withdrawn evidence).
+
+Rule 7 (M2.4) and the ``contradicts_thesis``/``counter_case`` output fields
+finally populate two C7 ``Finding`` fields that have been declared, unused,
+since M0 -- revived here rather than in an earlier milestone because there
+was previously nothing to check a finding against. Both are optional in the
+JSON schema and default to false/null in ``ask.py``'s parser, so every
+existing fake-LLM response in this codebase's test suite (none of which
+emit these keys) is unaffected.
 """
 from __future__ import annotations
 
@@ -51,6 +59,14 @@ with a "refusal_reason" when the question requires data Atlas does not have: \
 market price or valuation, causal/mechanistic explanation not in the evidence, \
 emulating a specific person's opinion, or news/sentiment/industry data. \
 Refusing correctly is success, not failure.
+7. If a RECALLED VIEW is provided below the evidence, check each finding you \
+produce against every recalled statement. Set "contradicts_thesis": true ONLY \
+if the finding genuinely conflicts with a recalled statement, and use \
+"counter_case" to name which recalled statement and why. If there is no \
+recalled view, or a finding does not conflict with it, leave \
+"contradicts_thesis" false and "counter_case" null. Do not force a \
+contradiction where none exists -- most findings will not contradict \
+anything.
 
 Return ONLY a JSON object, no prose, of exactly this shape:
 {
@@ -63,11 +79,15 @@ Return ONLY a JSON object, no prose, of exactly this shape:
       "assertability": "fact" | "judgment",
       "confidence": "high" | "medium" | "low",
       "supporting_evidence_ids": [<evidence id>, ...],
-      "known_unknowns": [<string>, ...]
+      "known_unknowns": [<string>, ...],
+      "contradicts_thesis": <bool>,
+      "counter_case": <string or null>
     }
   ]
 }
-Order findings most-material-first. If refused is true, findings must be [].\
+Order findings most-material-first. If refused is true, findings must be []. \
+Rule 7's fields are only meaningful when a RECALLED VIEW is present -- omit \
+or leave them at their defaults (false / null) otherwise.\
 """
 
 

@@ -18,6 +18,14 @@ different question posed to the same validated machinery, not a second
 implementation of it: a synthesizer that bypassed ``ask()`` would have to
 re-derive G1/G3/G4/G8/G10, which is precisely the duplication ADR-0009 warns
 against.
+
+M2.4: ``_build_finding`` populates ``Finding.contradicts_thesis``/
+``counter_case`` -- two C7 fields declared, unpopulated, since M0. Both
+default to ``False``/``None`` when the model's response omits them (rule 7
+of ``SYSTEM_PROMPT`` only asks for them when a RECALLED VIEW was in the
+prompt), so this is additive: every pre-M2.4 fake-LLM response in this
+codebase's tests, none of which emit these keys, produces the exact same
+Finding as before.
 """
 from __future__ import annotations
 
@@ -140,6 +148,13 @@ def _build_finding(
     if assertability == "judgment" and not supporting:
         return None
 
+    # M2.4: contradicts_thesis/counter_case are meaningful only when a
+    # RECALLED VIEW was in the prompt (rule 7); a model response predating
+    # this milestone, or one with no view to check against, simply omits
+    # them -- .get() defaults match Finding's own pre-existing defaults
+    # (False / None) exactly, so every fake-LLM response in this codebase's
+    # existing tests is unaffected.
+    counter_case_raw = raw.get("counter_case")
     return Finding(
         statement=statement,
         assertability=assertability,  # type: ignore[arg-type]
@@ -149,6 +164,8 @@ def _build_finding(
         known_unknowns=tuple(
             str(u) for u in _as_list(raw.get("known_unknowns")) if str(u).strip()
         ),
+        contradicts_thesis=bool(raw.get("contradicts_thesis", False)),
+        counter_case=str(counter_case_raw) if counter_case_raw else None,
     )
 
 
