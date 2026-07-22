@@ -41,7 +41,7 @@ Each layer depends only on layers below it. No layer knows about layers above.
         are consumed at every level.
 ```
 
-Two dependency rules are enforced by test rather than convention:
+Three dependency rules are enforced by test rather than convention:
 
 - `atlas.benchmark` never imports `atlas.eval`, though `eval` imports
   `benchmark`. It consumes structural Protocols (`CaseLike`,
@@ -49,6 +49,10 @@ Two dependency rules are enforced by test rather than convention:
   absent.
 - Planner modules import no knowledge base, no LLM client, and no
   network/filesystem library (§3).
+- `atlas.reasoning` never imports `atlas.research` (M2.4). Research-specific
+  vocabulary (dimensions, dispositions, run fingerprints) stays in
+  `research.Thesis`; only its projection, `RecalledView` (C6), crosses into
+  `reasoning.contracts`, via `Thesis.to_view()` — never the reverse.
 
 ---
 
@@ -113,9 +117,9 @@ evidence at all.
 Provider selection (Anthropic, Gemini, Ollama, OmniRoute) is configuration, not
 architecture: the reasoning layer sees one `LLMClient` interface.
 
-### Research — *decide what to investigate; assemble what is known*
+### Research — *decide what to investigate; assemble what is known; remember what was concluded*
 
-Two distinct surfaces, deliberately not merged:
+Three surfaces, deliberately not merged:
 
 - **The fixed-shape report** (`atlas research`) runs the same nine section
   builders for every company, in the same order, every time. A section that
@@ -127,13 +131,25 @@ Two distinct surfaces, deliberately not merged:
 - **Question-driven investigation** (`atlas investigate`) decomposes an
   open-ended question ("Should I invest in TCS?") into the dimensions that must
   be investigated before a view can be formed, routes each through the
-  retrieval pipeline, and returns grounded findings. It never concludes;
-  forming a view from those findings is a later milestone.
+  retrieval pipeline, and returns grounded findings.
 
-Both name the same nine research dimensions, enforced by test against the real
-section builders so the two vocabularies cannot drift.
+- **Thesis synthesis and memory** (`atlas thesis`, `atlas memory`) forms an
+  argued view from an investigation's findings (`research.thesis.synthesize`),
+  gated by a completeness check that blocks rendering rather than warning —
+  a thesis that silently drops a finding is not shown at all. `--remember`
+  persists an accepted thesis (`ThesisStore`, one JSON file per subject);
+  `atlas memory list/show/check` reads it back, and `check_staleness`
+  (`research.staleness`, pure, no LLM) reports — advisorily — whether a
+  view's cited evidence still resolves. `atlas ask --thesis <view_id>`
+  re-injects a remembered view into reasoning as `RecalledView` (C6, see
+  below) so a new answer can be checked against it; the view is shown to the
+  model as reference only and never becomes citable evidence.
 
-→ ADR-0006 (research planning)
+All three name the same nine research dimensions, enforced by test against
+the real section builders so the vocabularies cannot drift.
+
+→ ADR-0006 (research planning), ADR-0008 (thesis generation), ADR-0010 (C6
+reasoning memory)
 
 ### Evaluation — *measure whether changes actually improve Atlas*
 
@@ -230,8 +246,8 @@ checklist scores as maximally diverse. So:
 | Company | `atlas.company` | `builder.build_profile`, `model.CompanyProfile`, `store.CompanyStore` |
 | Query | `atlas.query` | `engine.run_query`, `metrics`, `screen` |
 | Retrieval | `atlas.reasoning` | `planner.plan_retrieval`, `plan.SearchPlan`, `retrieval.retrieve_with_plan` |
-| Reasoning | `atlas.reasoning` | `context.build_context`, `ask.ask`, `render.to_answer`, `llm/` |
-| Research | `atlas.research` | `report.generate_report`, `sections/`, `planner.plan_research`, `investigate.run_plan` |
+| Reasoning | `atlas.reasoning` | `context.build_context`, `ask.ask`, `render.to_answer`, `llm/`, `contracts.RecalledView` (C6) |
+| Research | `atlas.research` | `report.generate_report`, `sections/`, `planner.plan_research`, `investigate.run_plan`, `thesis.synthesize`, `memory.ThesisStore`, `staleness.check_staleness` |
 | Evaluation | `atlas.eval` | `runner.run_suite`, `report.Report`, `comparison`, `judge` |
 | Benchmark | `atlas.benchmark` | `coverage.analyze_suite`, `coverage.analyze_research_plans`, `validation.validate_cases` |
 | Configuration | `atlas.config` | `settings.Settings` |
@@ -264,6 +280,19 @@ CompanyProfile
                 │
                 └── research planner → ResearchPlan → N investigations
                                         → grounded Findings
+                                        → thesis.synthesize → Thesis
+                                            │  --remember
+                                            ▼
+                                        ThesisStore (theses.json per subject)
+                                            │  Thesis.to_view()
+                                            ▼
+                                        RecalledView (C6) ──┐
+                                            │                │ atlas ask --thesis
+                                            │ check_staleness│ (reference only,
+                                            ▼ (advisory)     ▼  never citable)
+                                        StalenessReport   GroundingContext.thesis
+                                                              → contradicts_thesis/
+                                                                counter_case on Findings
 
         eval + benchmark observe all of the above and score it.
 ```
@@ -281,8 +310,9 @@ CompanyProfile
 | [0005](adr/0005-benchmark-framework.md) | Benchmark framework: coverage, machine-checked provenance |
 | [0006](adr/0006-research-planning.md) | Research planning: decomposition, the anti-checklist gate |
 | [0007](adr/0007-planner-invariants.md) | Planner invariants: the six properties every Atlas planner satisfies |
-| [0008](adr/0008-thesis-generation.md) | Thesis generation (M2.3) — **proposed, not yet built** |
+| [0008](adr/0008-thesis-generation.md) | Thesis generation: synthesis as a reasoning pass, the completeness gate |
 | [0009](adr/0009-orthogonal-concerns.md) | Orthogonal concerns: contracts stay consumer-agnostic |
+| [0010](adr/0010-reasoning-memory.md) | C6 reasoning memory: `RecalledView`, `ThesisStore`, staleness, `atlas ask --thesis` |
 
 New decisions go in `docs/adr/` using [the template](adr/0000-adr-template.md).
 This document is updated to describe the resulting system; it does not record

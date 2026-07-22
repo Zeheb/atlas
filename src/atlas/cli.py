@@ -1,7 +1,11 @@
 import sys
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import click
+
+if TYPE_CHECKING:
+    from atlas.reasoning.contracts import RecalledView
 
 from atlas.acquisition.acquisitions import save_acquisition_run
 from atlas.acquisition.connectors.bse import BSEConnector
