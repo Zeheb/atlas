@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Literal
 
 from atlas.reasoning.ask import ask
@@ -59,6 +60,8 @@ from atlas.reasoning.contracts import (
     GroundingContext,
     Question,
     ReasoningResult,
+    RecalledClaim,
+    RecalledView,
     SubjectRef,
 )
 from atlas.reasoning.llm import LLMClient
@@ -121,6 +124,8 @@ class Thesis:
     question: str
     subjects: tuple[str, ...]
     run_fingerprint: str
+    view_id: str
+    as_of: str
     result: ReasoningResult
     dispositions: tuple[Disposition, ...] = ()
     unresolved_dimensions: tuple[str, ...] = ()
@@ -135,6 +140,10 @@ class Thesis:
             raise ValueError("Thesis.question must be non-empty")
         if not self.subjects:
             raise ValueError("Thesis.subjects must name at least one subject")
+        if not self.view_id.strip():
+            raise ValueError("Thesis.view_id must be non-empty")
+        if not self.as_of.strip():
+            raise ValueError("Thesis.as_of must be non-empty")
         # Invariant 1: a refusal is not a thesis. ask() refuses when nothing
         # grounded survives, and that outcome must not be dressed up as a view.
         if self.result.refused:
@@ -170,6 +179,36 @@ class Thesis:
     def set_aside_dimensions(self) -> tuple[str, ...]:
         return tuple(d.dimension for d in self.dispositions if d.materiality == "not_material")
 
+    def to_view(self) -> RecalledView:
+        """Project this Thesis down to the C6 contract type (M2.4).
+
+        The projection direction matters: research.Thesis carries dimensions,
+        dispositions and run fingerprints, which are Research vocabulary that
+        must not appear on a type consumed identically by Conversation,
+        Research and Attention (ADR-0009). RecalledView keeps only what a
+        later reasoning pass needs to check new evidence against -- the
+        statements, their evidence, and their confidence.
+
+        One RecalledClaim per C7 finding, using the SAME evidence_ids/
+        confidence already computed and gate-checked -- never recomputed,
+        since recomputing invites the two copies to drift.
+        """
+        return RecalledView(
+            view_id=self.view_id,
+            subject_ref=SubjectRef(subject_id=self.subjects[0], display=self.subjects[0]),
+            question=self.question,
+            claims=tuple(
+                RecalledClaim(
+                    statement=f.statement,
+                    evidence_ids=f.evidence_ids,
+                    confidence=f.confidence,
+                )
+                for f in self.result.findings
+            ),
+            as_of=self.as_of,
+            origin="atlas",
+        )
+
     def to_dict(self) -> dict[str, Any]:
         """JSON-ready snapshot. ``result`` is projected field-by-field rather
         than via ``dataclasses.asdict`` because ReasoningResult holds a
@@ -179,6 +218,8 @@ class Thesis:
             "question": self.question,
             "subjects": list(self.subjects),
             "run_fingerprint": self.run_fingerprint,
+            "view_id": self.view_id,
+            "as_of": self.as_of,
             "synthesizer_version": self.synthesizer_version,
             "overall_confidence": self.result.overall_confidence,
             "citations": sorted(self.result.citations),
@@ -324,6 +365,20 @@ def run_fingerprint(run: InvestigationRun) -> str:
     return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
 
 
+def compute_view_id(run_fingerprint_: str, question: str) -> str:
+    """A Thesis's identity for recall (M2.4): deterministic, not a uuid.
+
+    Re-running the same plan against unchanged evidence yields the same
+    view_id -- idempotent, matching every other identity scheme in this
+    codebase (SearchPlan has none because it is never persisted; ResearchPlan/
+    coverage fingerprints all hash their own inputs rather than mint a random
+    id). Any change to the underlying evidence (run_fingerprint_ changes)
+    produces a different id, which is what lets ThesisStore.list() show
+    genuinely distinct views rather than silently overwriting history.
+    """
+    return hashlib.sha256(f"{run_fingerprint_}:{question}".encode("utf-8")).hexdigest()
+
+
 def _claim_for(result: InvestigationResult, subject_ref: SubjectRef) -> Claim | None:
     """One resolved investigation, expressed as a Claim for the synthesis
     context.
@@ -409,10 +464,13 @@ def synthesize(run: InvestigationRun, client: LLMClient) -> Thesis:
         raise SynthesisError(f"synthesis refused: {result.refusal_reason}")
 
     resolved = [r for r in run.results if r.resolved]
+    rf = run_fingerprint(run)
     return Thesis(
         question=run.plan.raw_question,
         subjects=run.plan.subjects,
-        run_fingerprint=run_fingerprint(run),
+        run_fingerprint=rf,
+        view_id=compute_view_id(rf, run.plan.raw_question),
+        as_of=datetime.now(timezone.utc).isoformat(),
         result=result,
         dispositions=tuple(
             Disposition(dimension=r.dimension, materiality="incorporated")
