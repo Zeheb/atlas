@@ -44,6 +44,7 @@ from atlas.company.store import CompanyStore
 from atlas.knowledge.base import KnowledgeBase
 from atlas.reasoning.ask import ask
 from atlas.reasoning.context import build_context_with_diagnostics
+from atlas.reasoning.contracts import Finding as SemanticFinding
 from atlas.reasoning.contracts import Question, SubjectRef
 from atlas.reasoning.llm import LLMClient
 from atlas.reasoning.plan import SearchPlan
@@ -62,6 +63,27 @@ class InvestigationError(RuntimeError):
 class InvestigationResult:
     """One investigation's outcome: a grounded Finding, or an explicit
     statement that it could not be grounded. Never a claim without evidence.
+
+    Two representations of the same outcome, kept deliberately:
+
+    ``finding`` is the RENDERING view -- the answer's prose flattened into a
+    ``research.citations.Finding`` with its evidence ids, which is what the
+    report layer knows how to render.
+
+    ``semantic_findings`` (M2.3) is the REASONING view -- the untouched C7
+    ``contracts.Finding`` objects the reasoning layer produced, each carrying
+    its own ``assertability``, ``confidence``, ``supporting_claims`` and
+    ``known_unknowns``. Before M2.3 these were computed on every investigation
+    and then discarded at this boundary; synthesis needs exactly the structure
+    that was being thrown away (per-finding confidence is what lets a
+    synthesis refuse to be more certain than its inputs).
+
+    Additive: it defaults to ``()``, so every pre-M2.3 caller and test is
+    unaffected. Note the C7 objects are stored UNMODIFIED -- no research-layer
+    field is added to them, and ``dimension`` is read from
+    ``self.investigation.dimension`` where it already lives. That composition,
+    rather than extending a shared contract with Research vocabulary, is
+    ADR-0009's rule applied to this exact case.
     """
 
     investigation: Investigation
@@ -69,6 +91,14 @@ class InvestigationResult:
     unresolved_reason: str | None = None
     plan: SearchPlan | None = None
     retrieval: RetrievalResult | None = None
+    semantic_findings: tuple[SemanticFinding, ...] = ()
+
+    @property
+    def dimension(self) -> str:
+        """The research dimension this investigated -- read from the
+        Investigation, never duplicated onto this record or onto a C7 Finding.
+        """
+        return self.investigation.dimension
 
     def __post_init__(self) -> None:
         if (self.finding is None) == (self.unresolved_reason is None):
@@ -179,6 +209,11 @@ def run_investigation(
 
     return InvestigationResult(
         investigation=investigation,
+        # M2.3: the reasoning layer's own findings, preserved unmodified.
+        # These carry the per-finding confidence/assertability/known_unknowns
+        # that the flattened `finding` below cannot represent, and that
+        # synthesis needs.
+        semantic_findings=result.findings,
         finding=Finding(
             text=answer.prose,
             evidence_ids=evidence_ids,
