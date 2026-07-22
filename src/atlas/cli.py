@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 
 import click
 
@@ -446,6 +447,60 @@ def research_cmd(ticker: str, out_path: str | None) -> None:
         click.echo(markdown)
 
 
+def _load_recalled_view(repo_root: Path, ticker: str, view_id: str) -> "RecalledView":
+    """Load one remembered view for `atlas ask --thesis` (M2.4.1).
+
+    A direct lookup, not a portfolio scan: `ask` already knows its ticker, so
+    unlike `atlas memory show` there is exactly one store to consult. Exits 1
+    on either failure mode -- an id nobody remembered, or a store this build
+    cannot read -- rather than letting the exception reach the user as a
+    traceback.
+    """
+    from atlas.research.memory import (
+        IncompatibleStoreVersionError,
+        ThesisNotFoundError,
+        ThesisStore,
+    )
+
+    store = ThesisStore(repo_root / "theses.json", ticker)
+    try:
+        return store.load(view_id).to_view()
+    except ThesisNotFoundError:
+        click.echo(
+            f"No remembered view {view_id!r} for '{ticker}'. "
+            f"List them with: atlas memory list",
+            err=True,
+        )
+        raise SystemExit(1)
+    except IncompatibleStoreVersionError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        raise SystemExit(1)
+
+
+def _echo_staleness(view: "RecalledView", repo_root: Path) -> None:
+    """One advisory line about the recalled view's currency (M2.4.1).
+
+    Advisory, never blocking (ADR-0010 §5): a stale view is still usable, and
+    whether new evidence actually undercuts it is the reasoning question the
+    model answers below via contradicts_thesis -- not something a deterministic
+    id check can decide.
+    """
+    from atlas.research.staleness import check_staleness
+
+    report = check_staleness(view, repo_root)
+    parts = [f"Recalled view {view.view_id[:12]} ({view.as_of})"]
+    if report.hard_stale:
+        parts.append(
+            f"STALE -- {len(report.missing_evidence)} cited id(s) no longer resolve: "
+            f"{', '.join(report.missing_evidence)}"
+        )
+    else:
+        parts.append("evidence still resolves")
+    if report.new_evidence_since:
+        parts.append(f"{len(report.new_evidence_since)} new evidence item(s) since")
+    click.echo(f"{' | '.join(parts)}\n")
+
+
 @cli.command("ask")
 @click.argument("ticker")
 @click.argument("question")
@@ -475,9 +530,17 @@ def research_cmd(ticker: str, out_path: str | None) -> None:
     "--explain-plan", "explain_plan", is_flag=True, default=False,
     help="Print the retrieval plan's decision trace (requires --retrieval-plan).",
 )
+@click.option(
+    "--thesis", "thesis_view_id", default=None,
+    help="Answer against a remembered view (M2.4.1). Takes a view_id from "
+         "`atlas memory list`. The view is shown to the model for "
+         "support/contradiction checking and is NEVER citable -- its evidence "
+         "ids do not widen the closed world.",
+)
 def ask_cmd(
     ticker: str, question: str, show_evidence: bool,
     question_retrieval: bool, retrieval_plan: bool, explain_plan: bool,
+    thesis_view_id: str | None,
 ) -> None:
     """Answer a natural-language QUESTION about TICKER, grounded in its evidence.
 
@@ -491,6 +554,12 @@ def ask_cmd(
     to also surface passages relevant to this question. --retrieval-plan (M1.7)
     additionally plans that retrieval — classifying intent and biasing ranking
     by doc type/date/period — before it runs.
+
+    --thesis <view_id> (M2.4.1) answers against a view remembered by
+    `atlas thesis ... --remember`, so the model can say whether new evidence
+    supports or undercuts what Atlas concluded before. A one-line advisory
+    staleness note is printed first; the view itself is reference only and
+    never becomes citable evidence.
     """
     from atlas.company.store import CompanyStore
     from atlas.knowledge.base import KnowledgeBase
@@ -512,6 +581,13 @@ def ask_cmd(
     if not profile_path.exists():
         click.echo(f"No profile for '{ticker}'. Run: atlas profile build {ticker}", err=True)
         raise SystemExit(1)
+
+    # M2.4.1: load the recalled view BEFORE building an LLM client -- a bad
+    # view_id is a user error that should not cost an API key check, and
+    # matches --dry-run/--retrieval-only's "fail before spending anything".
+    recalled_view = None
+    if thesis_view_id is not None:
+        recalled_view = _load_recalled_view(repo_root, ticker, thesis_view_id)
 
     try:
         client = build_llm_client(atlas.settings, role="reasoning")
@@ -538,7 +614,10 @@ def ask_cmd(
         profile, subject, kb=kb,
         question=question if question_retrieval else None,
         plan=plan,
+        thesis=recalled_view,
     )
+    if recalled_view is not None:
+        _echo_staleness(recalled_view, repo_root)
     if explain_plan and plan is not None:
         click.echo("Retrieval plan:")
         click.echo(f"  intent: {plan.intent}")
