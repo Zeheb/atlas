@@ -92,9 +92,7 @@ from atlas.reasoning.render import to_answer
 from atlas.reasoning.retrieval import RetrievalResult
 
 
-def _build_recalled_view(
-    fixture: RecalledViewFixture, subject_ref: SubjectRef, case_id: str,
-) -> RecalledView:
+def _build_recalled_view(fixture: RecalledViewFixture, case_id: str) -> RecalledView:
     """Project an EvalCase's fixture into a real RecalledView (M2.4).
 
     Deterministic, fixture-derived id -- not persisted, not read from any
@@ -104,7 +102,6 @@ def _build_recalled_view(
     """
     return RecalledView(
         view_id=f"eval-fixture-{case_id}",
-        subject_ref=subject_ref,
         question=fixture.question,
         claims=tuple(
             RecalledClaim(
@@ -208,7 +205,7 @@ class LiveReasoningRunner:
         subject = SubjectRef(subject_id=case.subject, display=case.subject)
         kb = KnowledgeBase(repo_root) if (repo_root / "knowledge.db").exists() else None
         thesis = (
-            _build_recalled_view(case.recalled_view, subject, case.id)
+            _build_recalled_view(case.recalled_view, case.id)
             if case.recalled_view is not None and CAP_THESIS in self._capabilities
             else None
         )

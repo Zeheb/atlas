@@ -169,14 +169,6 @@ def test_to_view_reuses_evidence_and_confidence_without_recomputing() -> None:
     assert claim.confidence == finding.confidence
 
 
-def test_to_view_subject_ref_matches_the_thesis_subject() -> None:
-    run = _run(_resolved("business_quality", "ev-1"))
-    thesis = synthesize(run, _Fake())
-    view = thesis.to_view()
-
-    assert view.subject_ref.subject_id == "TCS"
-
-
 def test_to_view_is_a_valid_recalled_view() -> None:
     """Round-trips through RecalledView's own __post_init__ without raising --
     proves the projection always satisfies the contract's invariants."""

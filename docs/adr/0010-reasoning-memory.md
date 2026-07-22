@@ -1,10 +1,27 @@
 # ADR-0010 — C6 Reasoning Memory (M2.4)
 
-**Status:** Accepted (implemented)
+**Status:** Accepted (implemented; amended by M2.4.1 before publication)
 **Date:** 2026-07-21, revised 2026-07-22 after two rounds of design review
 **Related:** ADR-0004 (retrieval evaluation, advisory-verdict precedent),
 ADR-0007 (planner invariants), ADR-0008 (thesis generation), ADR-0009
 (orthogonal concerns)
+
+> **M2.4.1 amendment.** A post-implementation stabilization pass found
+> `RecalledView.subject_ref` had no reader anywhere in the codebase —
+> `_render_recalled_view` renders `context.subject_ref` instead, and
+> `check_staleness` takes `repo_root` explicitly. It failed the same trim
+> test this ADR's §3 applied to `RecalledClaim`'s `period`/`value`/`unit`;
+> the trim simply wasn't applied to the field the same review added. Removed
+> before this contract version was ever pushed, so the change amends
+> unpublished contract version 2 rather than requiring a version bump. See
+> §3 below, updated in place.
+>
+> A companion review of `Question.thesis_ref` reached the opposite
+> conclusion: left declared and unpopulated. It is a blueprint-reserved seam
+> (unlike `subject_ref`, which M2.4 itself added), and populating it would
+> have duplicated `GroundingContext.thesis.view_id` with no invariant
+> enforcing agreement between the two — the exact hazard being removed
+> elsewhere in this same pass.
 
 > **Revision history.** This design was reviewed twice before implementation
 > and corrected both times. Both corrections are recorded because the errors
@@ -155,6 +172,14 @@ M2.4's contradiction detection is LLM-level, and the model reads prose, so
 `statement` alone is sufficient. When claim-level comparison is specified by
 a real milestone, the fields arrive then — copied from `Claim`, whose shape
 already proves them out.
+
+**M2.4.1 amendment:** the same trim test, applied after implementation,
+found `RecalledView.subject_ref` in the same state the drafted
+`period`/`value`/`unit` had been in — declared, unread by anything.
+`_render_recalled_view` renders `context.subject_ref`
+(`prompt.py`) and `check_staleness` takes `repo_root` explicitly
+(`staleness.py`); nothing reads the view's own copy. Removed. `RecalledView`
+is now `view_id`, `question`, `claims`, `as_of`, `origin` — no `subject_ref`.
 
 ### 4. The closed world is never widened by memory
 

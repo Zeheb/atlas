@@ -43,7 +43,7 @@ def _question(text: str = "How have margins been?") -> Question:
 
 def _view(view_id: str = "view-1") -> RecalledView:
     return RecalledView(
-        view_id=view_id, subject_ref=SUBJECT, question="Should I invest in TCS?",
+        view_id=view_id, question="Should I invest in TCS?",
         claims=(RecalledClaim(
             statement="Margins were improving.", evidence_ids=frozenset({"ev-OLD"}),
             confidence="medium",
@@ -121,7 +121,7 @@ def test_recalled_view_evidence_not_in_valid_evidence_ids() -> None:
 
 def test_recalled_view_with_no_evidence_says_so() -> None:
     view = RecalledView(
-        view_id="v", subject_ref=SUBJECT, question="q",
+        view_id="v", question="q",
         claims=(RecalledClaim(statement="x", evidence_ids=frozenset(), confidence="low"),),
         as_of="2026-01-01T00:00:00+00:00",
     )

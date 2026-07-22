@@ -46,7 +46,7 @@ def _question(text: str = "How have margins been?") -> Question:
 
 def _view() -> RecalledView:
     return RecalledView(
-        view_id="view-1", subject_ref=SUBJECT, question="Should I invest in TCS?",
+        view_id="view-1", question="Should I invest in TCS?",
         claims=(RecalledClaim(
             statement="Margins were declining.", evidence_ids=frozenset({"ev-OLD"}),
             confidence="medium",

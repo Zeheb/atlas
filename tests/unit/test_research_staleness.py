@@ -43,7 +43,7 @@ def _seed_catalog_and_kb(base, entries: list[CatalogEntry]) -> None:
 def _view(*evidence_ids: str, as_of: str = "2026-06-01T00:00:00+00:00", view_id: str = "view-1") -> RecalledView:
     ids = evidence_ids or ("bse-ev-1",)
     return RecalledView(
-        view_id=view_id, subject_ref=SUBJECT, question="Should I invest in TCS?",
+        view_id=view_id, question="Should I invest in TCS?",
         claims=(RecalledClaim(
             statement="Margins are durable.", evidence_ids=frozenset(ids), confidence="medium",
         ),),

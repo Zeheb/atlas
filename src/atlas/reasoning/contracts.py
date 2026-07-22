@@ -236,10 +236,18 @@ class RecalledView:
     ``evidence_index`` (enforced at ``GroundingContext`` construction, not
     here -- a RecalledView has no evidence_index of its own to violate). A
     stale view can be shown to the model; it can never be cited.
+
+    No ``subject_ref`` (removed in M2.4.1, before this contract version was
+    ever published): the field this milestone shipped with had no reader.
+    ``_render_recalled_view`` renders ``context.subject_ref`` instead
+    (``prompt.py``); ``check_staleness`` takes ``repo_root`` explicitly
+    (``staleness.py``). Carrying it would have been exactly the kind of dead
+    structure on a live contract that ``RecalledClaim``'s own
+    ``period``/``value``/``unit`` trim (above) was rejected for -- the trim
+    just wasn't applied to the field the same review added.
     """
 
     view_id: str
-    subject_ref: SubjectRef
     question: str
     claims: tuple[RecalledClaim, ...]
     as_of: str

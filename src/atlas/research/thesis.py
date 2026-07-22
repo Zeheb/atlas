@@ -195,7 +195,6 @@ class Thesis:
         """
         return RecalledView(
             view_id=self.view_id,
-            subject_ref=SubjectRef(subject_id=self.subjects[0], display=self.subjects[0]),
             question=self.question,
             claims=tuple(
                 RecalledClaim(

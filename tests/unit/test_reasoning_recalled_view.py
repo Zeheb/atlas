@@ -31,7 +31,7 @@ def _recalled_claim(statement: str = "Margins are durable.", eid: str = "ev-1") 
 
 def _view(*claims: RecalledClaim, view_id: str = "view-1") -> RecalledView:
     return RecalledView(
-        view_id=view_id, subject_ref=SUBJECT, question="Should I invest in TCS?",
+        view_id=view_id, question="Should I invest in TCS?",
         claims=claims or (_recalled_claim(),), as_of="2026-07-22T00:00:00+00:00",
     )
 
@@ -103,7 +103,7 @@ def test_recalled_claim_has_no_period_value_unit_or_assertability() -> None:
 def test_recalled_view_requires_at_least_one_claim() -> None:
     with pytest.raises(ValueError, match="claims must not be empty"):
         RecalledView(
-            view_id="v", subject_ref=SUBJECT, question="q",
+            view_id="v", question="q",
             claims=(), as_of="2026-07-22T00:00:00+00:00",
         )
 
@@ -111,7 +111,7 @@ def test_recalled_view_requires_at_least_one_claim() -> None:
 def test_recalled_view_requires_a_question() -> None:
     with pytest.raises(ValueError, match="question must be non-empty"):
         RecalledView(
-            view_id="v", subject_ref=SUBJECT, question="  ",
+            view_id="v", question="  ",
             claims=(_recalled_claim(),), as_of="2026-07-22T00:00:00+00:00",
         )
 
@@ -119,7 +119,7 @@ def test_recalled_view_requires_a_question() -> None:
 def test_recalled_view_requires_a_view_id() -> None:
     with pytest.raises(ValueError, match="view_id must be non-empty"):
         RecalledView(
-            view_id="", subject_ref=SUBJECT, question="q",
+            view_id="", question="q",
             claims=(_recalled_claim(),), as_of="2026-07-22T00:00:00+00:00",
         )
 
@@ -127,14 +127,14 @@ def test_recalled_view_requires_a_view_id() -> None:
 def test_recalled_view_requires_as_of() -> None:
     with pytest.raises(ValueError, match="as_of must be non-empty"):
         RecalledView(
-            view_id="v", subject_ref=SUBJECT, question="q",
+            view_id="v", question="q",
             claims=(_recalled_claim(),), as_of="",
         )
 
 
 def test_recalled_view_coerces_claims_to_tuple() -> None:
     view = RecalledView(
-        view_id="v", subject_ref=SUBJECT, question="q",
+        view_id="v", question="q",
         claims=[_recalled_claim()], as_of="2026-07-22T00:00:00+00:00",
     )
     assert isinstance(view.claims, tuple)
@@ -146,7 +146,7 @@ def test_recalled_view_defaults_origin_to_atlas() -> None:
 
 def test_recalled_view_accepts_user_origin() -> None:
     view = RecalledView(
-        view_id="v", subject_ref=SUBJECT, question="q",
+        view_id="v", question="q",
         claims=(_recalled_claim(),), as_of="2026-07-22T00:00:00+00:00", origin="user",
     )
     assert view.origin == "user"
@@ -154,9 +154,11 @@ def test_recalled_view_accepts_user_origin() -> None:
 
 def test_recalled_view_has_no_dimension_or_disposition_fields() -> None:
     """ADR-0009: C6 carries none of research.Thesis's Research-specific
-    vocabulary (dimensions, dispositions, run fingerprints)."""
+    vocabulary (dimensions, dispositions, run fingerprints). No subject_ref
+    either (M2.4.1): nothing read it -- the context it's shown in already
+    carries one."""
     fields = {f.name for f in dataclasses.fields(RecalledView)}
-    assert fields == {"view_id", "subject_ref", "question", "claims", "as_of", "origin"}
+    assert fields == {"view_id", "question", "claims", "as_of", "origin"}
 
 
 # --- Frozen / hashable, matching every other contract type ---------------------------
