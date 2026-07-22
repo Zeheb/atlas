@@ -878,6 +878,58 @@ def thesis_cmd(
         click.echo(f"\nThesis written to {out_path}")
 
 
+def _sorted_subjects(base: Path) -> list[str]:
+    from atlas.query.screen import discover_companies
+
+    return sorted(discover_companies(base))
+
+
+def _iter_theses(base: Path):
+    """Every remembered view across the portfolio, subject by subject
+    (M2.4.1 item 6). Shared by ``list``/``show`` so the discover-then-iterate
+    sweep exists in exactly one place -- ADR-0010 §7: "a sweep is a
+    function," not three copies of one.
+
+    A subject whose store this build cannot read (``IncompatibleStoreVersionError``,
+    e.g. a stale ``store_version``) is warned about and skipped, not allowed
+    to abort the whole portfolio view -- unlike a missing profile
+    (``discover_companies``'s own convention), a vanished thesis is a real
+    judgment that should be reported, not silently dropped.
+    """
+    from atlas.research.memory import IncompatibleStoreVersionError, ThesisStore
+
+    for subject in _sorted_subjects(base):
+        store = ThesisStore(base / subject / "theses.json", subject)
+        try:
+            theses = store.list()
+        except IncompatibleStoreVersionError as exc:
+            click.echo(f"Warning: skipping {subject!r} -- {exc}", err=True)
+            continue
+        for thesis in theses:
+            yield subject, thesis
+
+
+def _iter_staleness_reports(base: Path):
+    """Every remembered view's staleness, subject by subject (M2.4.1 item 6).
+
+    Same shared-sweep and same-skip-and-warn treatment as ``_iter_theses``,
+    at the ``StalenessReport`` level instead of the ``Thesis`` level --
+    ``sweep_staleness`` already composes ``ThesisStore``+``check_staleness``
+    per subject, so this only adds the error handling around it.
+    """
+    from atlas.research.memory import IncompatibleStoreVersionError
+    from atlas.research.staleness import sweep_staleness
+
+    for subject in _sorted_subjects(base):
+        try:
+            reports = sweep_staleness(base, subject)
+        except IncompatibleStoreVersionError as exc:
+            click.echo(f"Warning: skipping {subject!r} -- {exc}", err=True)
+            continue
+        for report in reports:
+            yield subject, report
+
+
 @cli.group("memory")
 def memory_group() -> None:
     """Inspect and validate Atlas's persisted reasoning memory (C6).
@@ -892,23 +944,17 @@ def memory_group() -> None:
 @memory_group.command("list")
 def memory_list_cmd() -> None:
     """List every remembered view across the whole portfolio."""
-    from atlas.query.screen import discover_companies
-    from atlas.research.memory import ThesisStore
-
     atlas = Atlas.from_environment()
     base = atlas.settings.repository_base_path
-    subjects = sorted(discover_companies(base))
-    if not subjects:
+    if not _sorted_subjects(base):
         click.echo(f"No company profiles found under {base}.", err=True)
         raise SystemExit(1)
 
     found = False
-    for subject in subjects:
-        store = ThesisStore(base / subject / "theses.json", subject)
-        for thesis in store.list():
-            found = True
-            click.echo(f"{subject}  {thesis.view_id}  ({thesis.as_of})")
-            click.echo(f"    {thesis.question}")
+    for subject, thesis in _iter_theses(base):
+        found = True
+        click.echo(f"{subject}  {thesis.view_id}  ({thesis.as_of})")
+        click.echo(f"    {thesis.question}")
     if not found:
         click.echo("No remembered views yet. Run: atlas thesis <TICKER> <QUESTION> --remember")
 
@@ -917,25 +963,20 @@ def memory_list_cmd() -> None:
 @click.argument("view_id")
 def memory_show_cmd(view_id: str) -> None:
     """Show one remembered view's claims, confidence, and evidence."""
-    from atlas.query.screen import discover_companies
-    from atlas.research.memory import ThesisStore
-
     atlas = Atlas.from_environment()
     base = atlas.settings.repository_base_path
-    for subject in sorted(discover_companies(base)):
-        store = ThesisStore(base / subject / "theses.json", subject)
-        for thesis in store.list():
-            if thesis.view_id != view_id:
-                continue
-            click.echo(f"{subject}: {thesis.question}")
-            click.echo(f"as_of: {thesis.as_of}")
-            click.echo(f"overall_confidence: {thesis.result.overall_confidence}\n")
-            for finding in thesis.result.findings:
-                tag = "JUDGMENT" if finding.assertability == "judgment" else "FACT"
-                cited = ", ".join(sorted(finding.evidence_ids))
-                click.echo(f"  [{tag}] {finding.statement}")
-                click.echo(f"      confidence: {finding.confidence}  |  evidence: {cited}")
-            return
+    for subject, thesis in _iter_theses(base):
+        if thesis.view_id != view_id:
+            continue
+        click.echo(f"{subject}: {thesis.question}")
+        click.echo(f"as_of: {thesis.as_of}")
+        click.echo(f"overall_confidence: {thesis.result.overall_confidence}\n")
+        for finding in thesis.result.findings:
+            tag = "JUDGMENT" if finding.assertability == "judgment" else "FACT"
+            cited = ", ".join(sorted(finding.evidence_ids))
+            click.echo(f"  [{tag}] {finding.statement}")
+            click.echo(f"      confidence: {finding.confidence}  |  evidence: {cited}")
+        return
     click.echo(f"No remembered view with id {view_id!r}.", err=True)
     raise SystemExit(1)
 
@@ -949,26 +990,21 @@ def memory_check_cmd() -> None:
     new evidence existing since a view's as_of is informational, not a
     verdict on whether the view still holds.
     """
-    from atlas.query.screen import discover_companies
-    from atlas.research.staleness import sweep_staleness
-
     atlas = Atlas.from_environment()
     base = atlas.settings.repository_base_path
-    subjects = sorted(discover_companies(base))
-    if not subjects:
+    if not _sorted_subjects(base):
         click.echo(f"No company profiles found under {base}.", err=True)
         raise SystemExit(1)
 
     found = False
-    for subject in subjects:
-        for report in sweep_staleness(base, subject):
-            found = True
-            flag = "STALE" if report.hard_stale else "current"
-            click.echo(f"{subject}  {report.view_id}  [{flag}]")
-            if report.hard_stale:
-                click.echo(f"    missing evidence: {', '.join(report.missing_evidence)}")
-            if report.new_evidence_since:
-                click.echo(f"    {len(report.new_evidence_since)} new evidence item(s) since as_of")
+    for subject, report in _iter_staleness_reports(base):
+        found = True
+        flag = "STALE" if report.hard_stale else "current"
+        click.echo(f"{subject}  {report.view_id}  [{flag}]")
+        if report.hard_stale:
+            click.echo(f"    missing evidence: {', '.join(report.missing_evidence)}")
+        if report.new_evidence_since:
+            click.echo(f"    {len(report.new_evidence_since)} new evidence item(s) since as_of")
     if not found:
         click.echo("No remembered views to check.")
 

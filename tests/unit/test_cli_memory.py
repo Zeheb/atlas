@@ -155,3 +155,69 @@ def test_check_reports_no_views_when_none_remembered(monkeypatch, tmp_path) -> N
     result = CliRunner().invoke(cli, ["memory", "check"])
     assert result.exit_code == 0, result.output
     assert "No remembered views to check" in result.output
+
+
+# --- Incompatible store handling (M2.4.1 item 6) ----------------------------------------
+# Before this fix, a store this build cannot read (e.g. a future
+# store_version) crashed the whole command with a raw traceback -- one bad
+# subject blocked the entire portfolio view for list/show/check alike.
+def _write_incompatible_store(base, ticker: str) -> None:
+    import json
+
+    (base / ticker / "theses.json").write_text(
+        json.dumps({"store_version": "999", "subject": ticker, "theses": []}),
+        encoding="utf-8",
+    )
+
+
+def test_list_warns_and_continues_past_an_incompatible_store(monkeypatch, tmp_path) -> None:
+    _env(monkeypatch, tmp_path)
+    _seed_profile(tmp_path, "TCS")
+    _write_incompatible_store(tmp_path, "TCS")
+
+    result = CliRunner().invoke(cli, ["memory", "list"])
+    assert result.exit_code == 0, result.output
+    assert "Warning" in result.output
+    assert "TCS" in result.output
+
+
+def test_list_still_shows_a_good_subject_alongside_a_bad_one(monkeypatch, tmp_path) -> None:
+    _env(monkeypatch, tmp_path)
+    _seed_profile(tmp_path, "TCS")
+    _write_incompatible_store(tmp_path, "TCS")
+    _seed_profile(tmp_path, "SBIN")
+    thesis = _thesis("SBIN", "Should I invest in SBIN?")
+    ThesisStore(tmp_path / "SBIN" / "theses.json", "SBIN").save(thesis)
+
+    result = CliRunner().invoke(cli, ["memory", "list"])
+    assert result.exit_code == 0, result.output
+    assert "SBIN" in result.output
+    assert thesis.view_id in result.output
+
+
+def test_show_warns_and_continues_past_an_incompatible_store(monkeypatch, tmp_path) -> None:
+    _env(monkeypatch, tmp_path)
+    _seed_profile(tmp_path, "TCS")
+    _write_incompatible_store(tmp_path, "TCS")
+    _seed_profile(tmp_path, "SBIN")
+    thesis = _thesis("SBIN", "Should I invest in SBIN?")
+    ThesisStore(tmp_path / "SBIN" / "theses.json", "SBIN").save(thesis)
+
+    result = CliRunner().invoke(cli, ["memory", "show", thesis.view_id])
+    assert result.exit_code == 0, result.output
+    assert "Margins are durable" in result.output
+
+
+def test_check_warns_and_continues_past_an_incompatible_store(monkeypatch, tmp_path) -> None:
+    _env(monkeypatch, tmp_path)
+    _seed_profile(tmp_path, "TCS")
+    _write_incompatible_store(tmp_path, "TCS")
+    _seed_profile(tmp_path, "SBIN")
+    thesis = _thesis("SBIN", "Should I invest in SBIN?")
+    ThesisStore(tmp_path / "SBIN" / "theses.json", "SBIN").save(thesis)
+
+    result = CliRunner().invoke(cli, ["memory", "check"])
+    assert result.exit_code == 0, result.output
+    assert "Warning" in result.output
+    assert "SBIN" in result.output
+    assert thesis.view_id in result.output
