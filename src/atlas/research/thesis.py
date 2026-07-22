@@ -204,6 +204,110 @@ class Thesis:
         }
 
 
+@dataclass(frozen=True)
+class GateViolation:
+    """One reason a thesis may not be shown."""
+
+    kind: str
+    detail: str
+
+
+@dataclass(frozen=True)
+class GateResult:
+    """The completeness gate's verdict. ``passed`` is the only thing a caller
+    should branch on; ``violations`` says why for a human.
+    """
+
+    violations: tuple[GateViolation, ...] = ()
+
+    @property
+    def passed(self) -> bool:
+        return not self.violations
+
+
+def check_completeness(thesis: Thesis, run: InvestigationRun) -> GateResult:
+    """The one guarantee M2.3 adds that it did not inherit: **no silent
+    omission**.
+
+    The deterministic report earns its trust by running the same fixed section
+    list for every company, so a reader always sees the full extent of what
+    Atlas checked (``report.py``). A thesis is variable by nature -- it argues
+    a view -- so it needs the equivalent property enforced rather than
+    structural: every investigation the run performed must be *accounted for*.
+
+    Concretely, each resolved investigation carries exactly one Disposition
+    (incorporated, or set aside with a stated reason), and each unresolved one
+    is carried on ``unresolved_dimensions``. A synthesis that quietly drops an
+    inconvenient finding fails here. That is the difference between a thesis
+    that is technically well-cited and one that is honest.
+
+    Closed-world is re-asserted (not re-implemented): ``ask()`` already
+    guarantees it, and this check exists so a future synthesizer that bypassed
+    ``ask()`` could not silently lose the guarantee. It should never fire in
+    normal operation -- if it does, the pipeline changed underneath.
+
+    Pure: no I/O, no LLM. Needs the run because the thesis alone cannot know
+    what was investigated -- which is precisely why this is a separate
+    function rather than a ``__post_init__`` check.
+    """
+    violations: list[GateViolation] = []
+
+    disposed = {d.dimension for d in thesis.dispositions}
+    unresolved_declared = set(thesis.unresolved_dimensions)
+
+    resolved_actual = {r.dimension for r in run.results if r.resolved}
+    unresolved_actual = {r.dimension for r in run.results if not r.resolved}
+
+    for dimension in sorted(resolved_actual - disposed):
+        violations.append(GateViolation(
+            kind="undisposed_finding",
+            detail=(
+                f"{dimension!r} produced a grounded finding but the thesis neither "
+                "incorporated it nor recorded why it was set aside"
+            ),
+        ))
+
+    for dimension in sorted(disposed - resolved_actual):
+        violations.append(GateViolation(
+            kind="phantom_disposition",
+            detail=(
+                f"{dimension!r} has a disposition but no resolved investigation in "
+                "this run produced it"
+            ),
+        ))
+
+    for dimension in sorted(unresolved_actual - unresolved_declared):
+        violations.append(GateViolation(
+            kind="dropped_unresolved",
+            detail=(
+                f"{dimension!r} could not be resolved, and the thesis does not say so -- "
+                "an unanswered question presented as no question at all"
+            ),
+        ))
+
+    for dimension in sorted(unresolved_declared - unresolved_actual):
+        violations.append(GateViolation(
+            kind="phantom_unresolved",
+            detail=f"{dimension!r} is declared unresolved but the run resolved it",
+        ))
+
+    # Should be unreachable while synthesis goes through ask(); see docstring.
+    run_evidence = frozenset(
+        eid for r in run.results if r.finding is not None for eid in r.finding.evidence_ids
+    )
+    outside = thesis.citations - run_evidence
+    if outside:
+        violations.append(GateViolation(
+            kind="citation_outside_run",
+            detail=(
+                f"thesis cites evidence the run never retrieved: {sorted(outside)} -- "
+                "the closed world was bypassed"
+            ),
+        ))
+
+    return GateResult(violations=tuple(violations))
+
+
 def run_fingerprint(run: InvestigationRun) -> str:
     """Identify which run a thesis was synthesized from.
 
