@@ -8,6 +8,14 @@ and validate every citation — prose is never parsed for claims.
 M1: when a claim's evidence carries a retrieved excerpt, it is rendered
 alongside the terse structured fact — the reasoner sees the actual source
 prose behind a conclusion, not only its "kind = value" summary.
+
+M2.3: a second pair (``SYNTHESIS_PROMPT`` / ``build_synthesis_prompt``) poses
+a different question to the same machinery — synthesizing already-established
+findings rather than answering from raw evidence. Both pairs are consumed
+through ``ask()``'s injectable prompt seam, so the closed-world citation
+filter, the ungrounded-judgment drop, and the refusal fallback apply
+identically to both. Only what the model is ASKED differs; what it is ALLOWED
+to cite never does.
 """
 from __future__ import annotations
 
@@ -53,6 +61,97 @@ Return ONLY a JSON object, no prose, of exactly this shape:
 }
 Order findings most-material-first. If refused is true, findings must be [].\
 """
+
+
+SYNTHESIS_PROMPT = """\
+You are Atlas, an equity research analyst. You are given the FINDINGS of \
+several completed investigations into one research question, each already \
+grounded in specific evidence. Your job is to synthesize them into a single \
+coherent view.
+
+This is a synthesis task, not a retrieval task. The findings below are your \
+whole world: you are reasoning ACROSS already-established findings, not \
+discovering new ones.
+
+Hard rules (these are product guarantees):
+1. Ground everything. Every statement you make must cite the evidence ids of \
+the findings it rests on. A synthesis that cites nothing is worthless.
+2. Never invent an evidence id. Cite ONLY ids that appear in the provided \
+list. Citing an id not in the list is a critical failure.
+3. Do not introduce new facts. You may connect, weigh, and generalize across \
+the given findings; you may not add information they do not contain.
+4. Respect the input confidence. A synthesis resting on low-confidence \
+findings cannot itself be high-confidence. Say so rather than overstating.
+5. Do not average away disagreement. If two findings point in different \
+directions, say that both hold and let the reader see the tension. Never \
+resolve it by silently dropping one side.
+6. State what you do not know. Use "known_unknowns" where the investigations \
+were silent, thin, or unresolved.
+7. Issue NO buy/sell recommendation, price target, or position sizing. Atlas \
+has no market price data and does not rate securities. Describe what the \
+evidence shows; the investment decision is the reader's.
+
+Return ONLY a JSON object, no prose, of exactly this shape:
+{
+  "refused": <bool>,
+  "refusal_reason": <string or null>,
+  "overall_confidence": "high" | "medium" | "low",
+  "findings": [
+    {
+      "statement": <string>,
+      "assertability": "fact" | "judgment",
+      "confidence": "high" | "medium" | "low",
+      "supporting_evidence_ids": [<evidence id>, ...],
+      "known_unknowns": [<string>, ...]
+    }
+  ]
+}
+Order findings most-material-first. If refused is true, findings must be [].\
+"""
+
+
+def build_synthesis_prompt(question: Question, context: GroundingContext) -> str:
+    """Render already-established findings for cross-finding synthesis (M2.3).
+
+    Differs from ``build_user_prompt`` in what it exposes, not in what it
+    permits: each input carries its own ``confidence`` and ``assertability``,
+    because synthesis rule 4 ("a synthesis resting on low-confidence findings
+    cannot itself be high-confidence") is unfollowable if the model cannot see
+    how certain each input was. ``build_user_prompt`` deliberately omits both
+    — for question answering they describe the evidence's own certainty, which
+    is not the reader's concern; here they are the primary signal.
+
+    The closed world is identical and enforced identically: whatever this
+    renders, ``ask()`` still drops any cited id outside
+    ``context.evidence_index``.
+    """
+    lines: list[str] = [
+        f"COMPANY: {context.subject_ref.display} ({context.subject_ref.subject_id})",
+        "",
+        "COMPLETED INVESTIGATIONS (you may cite ONLY these evidence ids):",
+    ]
+    for claim in context.claims:
+        ids = ",".join(sorted(claim.evidence_ids))
+        lines.append(
+            f"- [{ids}] ({claim.assertability}, confidence: {claim.confidence}) "
+            f"{claim.statement}"
+        )
+        seen_excerpts: set[str] = set()
+        for ref in claim.evidence:
+            if ref.excerpt and ref.excerpt not in seen_excerpts:
+                seen_excerpts.add(ref.excerpt)
+                lines.append(f'    source text: "{ref.excerpt}"')
+    if context.budget_note:
+        lines.append(f"(note: {context.budget_note})")
+    lines += [
+        "",
+        f"VALID EVIDENCE IDS: {', '.join(sorted(context.evidence_index))}",
+        "",
+        f"RESEARCH QUESTION: {question.raw_text}",
+        "",
+        "Synthesize the investigations above into a view on that question.",
+    ]
+    return "\n".join(lines)
 
 
 def build_user_prompt(question: Question, context: GroundingContext) -> str:
