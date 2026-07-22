@@ -143,7 +143,7 @@ def test_grounded_answer_becomes_a_cited_finding(tmp_path) -> None:
 
     assert result.resolved
     assert result.finding is not None
-    assert result.finding.evidence_ids == ["ev-1"]
+    assert result.finding.evidence_ids == ("ev-1",)  # tuple since M2.3 froze Finding
     assert result.finding.kind == "fact"
     assert result.plan is not None       # the retrieval plan used, for diagnostics
     assert result.unresolved_reason is None
