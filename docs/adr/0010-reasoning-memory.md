@@ -279,6 +279,19 @@ Atlas once concluded something different is itself information.
   predecessor rather than superseding it, a subject investigated repeatedly
   accumulates views without bound. No eviction policy exists yet; not a
   problem at current usage volumes.
+- **Multi-subject staleness checking assumes single-repo grounding (M2.4.1).**
+  `check_staleness` resolves a view's cited ids against one `repo_root`, and
+  `sweep_staleness` picks `subjects[0]`'s repository only. Correct today
+  because `investigate.py` grounds every investigation of a multi-subject run
+  against its first subject's profile and `KnowledgeBase` — a comparative
+  thesis's evidence genuinely lives entirely in that one repository. The
+  moment true multi-subject grounding lands, this becomes a false-positive
+  generator: a comparative thesis citing a second subject's evidence would
+  report `hard_stale=True` for ids that were never stale, merely never looked
+  up in the right place. Recorded in `staleness.py`'s module docstring so the
+  milestone that fixes multi-subject grounding widens staleness checking to
+  the thesis's full `subjects` tuple in the same change, rather than
+  discovering the false positive afterward.
 
 ## Alternatives Considered
 

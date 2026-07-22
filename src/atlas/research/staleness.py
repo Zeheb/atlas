@@ -21,6 +21,27 @@ imports). ``sweep_staleness`` is the one function that composes both, and it
 imports ``ThesisStore`` LOCALLY, inside its own body -- the same deferred-
 import convention ``cli.py`` already uses for every command's dependencies --
 so the module-level boundary holds while the composition point still exists.
+
+Known limitation (M2.4.1): a single ``repo_root``. ``check_staleness``
+resolves cited ids against ONE ``KnowledgeBase``, and ``sweep_staleness``
+picks ``base / subjects[0]`` -- the thesis's first named subject only. This
+is safe TODAY only because ``research/investigate.py`` grounds every
+investigation of a multi-subject run against its first subject's profile and
+KnowledgeBase, a deliberate, documented limitation of the research layer
+(see ``investigate.py``'s own module docstring). The two limitations
+currently line up: a comparative thesis's evidence really does live entirely
+in ``subjects[0]``'s repository, so checking only that repository is
+correct, not merely convenient.
+
+The coupling is real, though, and recorded here because neither module
+names it on its own: the moment ``investigate.py`` gains true multi-subject
+grounding, a comparative thesis will cite evidence from a SECOND subject's
+repository, and ``check_staleness``/``sweep_staleness`` will report
+``hard_stale=True`` for every one of those ids -- not because anything went
+stale, but because this module never looked in the second subject's
+KnowledgeBase at all. Whoever implements multi-subject grounding should
+widen staleness checking to the thesis's full ``subjects`` tuple in the same
+change, not discover the false positive afterward.
 """
 from __future__ import annotations
 
