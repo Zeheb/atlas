@@ -54,7 +54,13 @@ from typing import Protocol
 from atlas.company.store import CompanyStore
 from atlas.config.settings import Settings
 from atlas.eval.cache import CachingLLMClient, EvalCache
-from atlas.eval.cases import CAP_QUESTION_RETRIEVAL, CAP_RETRIEVAL_PLAN, EvalCase
+from atlas.eval.cases import (
+    CAP_QUESTION_RETRIEVAL,
+    CAP_RETRIEVAL_PLAN,
+    CAP_THESIS,
+    EvalCase,
+    RecalledViewFixture,
+)
 from atlas.eval.correctness import score_correctness
 from atlas.eval.grounding import score_grounding
 from atlas.eval.judge import Judge
@@ -75,6 +81,8 @@ from atlas.reasoning.contracts import (
     GroundingContext,
     Question,
     ReasoningResult,
+    RecalledClaim,
+    RecalledView,
     SubjectRef,
 )
 from atlas.reasoning.llm import LLMClient
@@ -82,6 +90,33 @@ from atlas.reasoning.plan import SearchPlan
 from atlas.reasoning.planner import plan_retrieval
 from atlas.reasoning.render import to_answer
 from atlas.reasoning.retrieval import RetrievalResult
+
+
+def _build_recalled_view(
+    fixture: RecalledViewFixture, subject_ref: SubjectRef, case_id: str,
+) -> RecalledView:
+    """Project an EvalCase's fixture into a real RecalledView (M2.4).
+
+    Deterministic, fixture-derived id -- not persisted, not read from any
+    ThesisStore. See eval/cases.py's module docstring for why evaluation
+    never touches the real memory store: a run's outcome must not depend on
+    what happens to be saved on the machine running it.
+    """
+    return RecalledView(
+        view_id=f"eval-fixture-{case_id}",
+        subject_ref=subject_ref,
+        question=fixture.question,
+        claims=tuple(
+            RecalledClaim(
+                statement=c.statement,
+                evidence_ids=frozenset(c.evidence_ids),
+                confidence=c.confidence,
+            )
+            for c in fixture.claims
+        ),
+        as_of=fixture.as_of,
+        origin=fixture.origin,
+    )
 
 
 class RunnerError(RuntimeError):
@@ -135,6 +170,13 @@ class LiveReasoningRunner:
     touched. ``client`` becomes optional in this mode (``None`` is valid) —
     the CLI builds no LLM client at all for a retrieval-only run (see
     ``cli.py``'s ``eval_run_cmd``), so there is nothing to pass regardless.
+
+    ``CAP_THESIS`` (M2.4) — when active AND the case declares a
+    ``recalled_view`` fixture, ``run()`` projects it into a real
+    ``RecalledView`` (``_build_recalled_view``) and passes it as ``thesis=``
+    to ``build_context_with_diagnostics``. Absent either condition, ``thesis``
+    stays ``None`` -- a fixture on a case is inert until the capability is
+    also active, matching every other capability gate in this class.
     """
 
     def __init__(
@@ -165,6 +207,11 @@ class LiveReasoningRunner:
         profile = CompanyStore(profile_path, case.subject).load()
         subject = SubjectRef(subject_id=case.subject, display=case.subject)
         kb = KnowledgeBase(repo_root) if (repo_root / "knowledge.db").exists() else None
+        thesis = (
+            _build_recalled_view(case.recalled_view, subject, case.id)
+            if case.recalled_view is not None and CAP_THESIS in self._capabilities
+            else None
+        )
 
         if self._strategy is not None:
             question: str | None = case.question
@@ -181,7 +228,7 @@ class LiveReasoningRunner:
             )
 
         build_result = build_context_with_diagnostics(
-            profile, subject, kb=kb, question=question, plan=plan,
+            profile, subject, kb=kb, question=question, plan=plan, thesis=thesis,
         )
         context = build_result.context
 

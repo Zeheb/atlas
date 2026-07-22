@@ -13,6 +13,19 @@ value) is checked here at load time; whether a case's scenario/provenance
 CLAIM actually holds against the real corpus is machine-checked by
 ``atlas.benchmark.validation``, which needs a ``KnowledgeBase`` this module
 deliberately does not depend on.
+
+M2.4 adds ``recalled_view``: a FIXTURE recalled view for cases requiring
+``thesis`` (t29/t33/t34/t35), never read from any on-disk ``ThesisStore``.
+This is deliberate, not an oversight -- if evaluation read the user's actual
+memory store, a run's outcome would depend on what happens to be persisted
+on the machine running it, and the same case could pass or fail depending on
+unrelated state. ``RecalledViewFixture``/``RecalledClaimFixture`` are plain
+data here (not ``reasoning.contracts.RecalledView``/``RecalledClaim``), for
+the same reason ``CaseProvenance``/``RetrievalLabel`` are benchmark-layer
+types rather than reasoning ones: this module has never imported
+``atlas.reasoning`` and should not start for one optional field.
+``eval/runner.py`` (which already imports the reasoning contracts) projects
+the fixture into a real ``RecalledView`` at run time.
 """
 from __future__ import annotations
 
@@ -28,6 +41,7 @@ from atlas.benchmark.taxonomy import ALL_SCENARIO_IDS, DifficultyClass
 _SUITE_PATH = Path(__file__).parent / "data" / "acceptance_v2_1.json"
 
 _VALID_DIFFICULTIES = frozenset({"routine", "difficult"})
+_VALID_CONFIDENCE = frozenset({"high", "medium", "low"})
 
 # Capability tags a milestone may provide. M0/M1 provide only single-name pull.
 CAP_SINGLE_NAME = "single_name"
@@ -61,6 +75,54 @@ Behavior = Literal["answer", "refuse", "honest_negative"]
 
 
 @dataclass(frozen=True)
+class RecalledClaimFixture:
+    """One statement of a fixture recalled view (M2.4). Plain data -- projected
+    into ``reasoning.contracts.RecalledClaim`` by ``eval/runner.py``, never
+    constructed as one here.
+    """
+
+    statement: str
+    evidence_ids: tuple[str, ...] = ()
+    confidence: str = "medium"
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "evidence_ids", tuple(self.evidence_ids))
+        if not self.statement.strip():
+            raise ValueError("RecalledClaimFixture.statement must be non-empty")
+        if self.confidence not in _VALID_CONFIDENCE:
+            raise ValueError(
+                f"RecalledClaimFixture.confidence {self.confidence!r} must be one of "
+                f"{sorted(_VALID_CONFIDENCE)}"
+            )
+
+
+@dataclass(frozen=True)
+class RecalledViewFixture:
+    """A fixture recalled view: what a case pretends Atlas (or a user)
+    concluded, for cases requiring the ``thesis`` capability. Never sourced
+    from a real ``ThesisStore`` -- see the module docstring.
+    """
+
+    question: str
+    as_of: str
+    claims: tuple[RecalledClaimFixture, ...]
+    origin: str = "atlas"
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "claims", tuple(self.claims))
+        if not self.question.strip():
+            raise ValueError("RecalledViewFixture.question must be non-empty")
+        if not self.as_of.strip():
+            raise ValueError("RecalledViewFixture.as_of must be non-empty")
+        if not self.claims:
+            raise ValueError("RecalledViewFixture.claims must not be empty")
+        if self.origin not in ("atlas", "user"):
+            raise ValueError(
+                f"RecalledViewFixture.origin {self.origin!r} must be 'atlas' or 'user'"
+            )
+
+
+@dataclass(frozen=True)
 class EvalCase:
     """One executable acceptance test."""
 
@@ -80,6 +142,10 @@ class EvalCase:
     difficulty: DifficultyClass | None = None
     provenance: CaseProvenance | None = None
     retrieval_label: RetrievalLabel | None = None
+    # M2.4: a fixture recalled view for cases requiring "thesis". None for
+    # every case that doesn't need one -- see the module docstring for why
+    # this is never read from an on-disk ThesisStore.
+    recalled_view: RecalledViewFixture | None = None
 
     def __post_init__(self) -> None:
         if self.scenario is not None and self.scenario not in ALL_SCENARIO_IDS:
@@ -116,6 +182,24 @@ def _retrieval_label_from_dict(d: dict[str, Any] | None) -> RetrievalLabel | Non
     )
 
 
+def _recalled_view_from_dict(d: dict[str, Any] | None) -> RecalledViewFixture | None:
+    if d is None:
+        return None
+    return RecalledViewFixture(
+        question=d["question"],
+        as_of=d["as_of"],
+        claims=tuple(
+            RecalledClaimFixture(
+                statement=c["statement"],
+                evidence_ids=tuple(c.get("evidence_ids", ())),
+                confidence=c.get("confidence", "medium"),
+            )
+            for c in d.get("claims", ())
+        ),
+        origin=d.get("origin", "atlas"),
+    )
+
+
 def _case(d: dict[str, Any]) -> EvalCase:
     return EvalCase(
         id=d["id"],
@@ -131,6 +215,7 @@ def _case(d: dict[str, Any]) -> EvalCase:
         difficulty=d.get("difficulty"),
         provenance=_provenance_from_dict(d.get("provenance")),
         retrieval_label=_retrieval_label_from_dict(d.get("retrieval_label")),
+        recalled_view=_recalled_view_from_dict(d.get("recalled_view")),
     )
 
 

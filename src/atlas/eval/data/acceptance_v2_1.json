@@ -229,7 +229,24 @@
     "requires": [
       "thesis"
     ],
-    "rubric": "Identifies the fragile and load-bearing assumption, explains why."
+    "rubric": "Identifies the fragile and load-bearing assumption, explains why.",
+    "recalled_view": {
+      "question": "Should I invest in TCS?",
+      "as_of": "2026-01-01T00:00:00+00:00",
+      "origin": "atlas",
+      "claims": [
+        {
+          "statement": "Revenue growth has been consistent across recent annual periods.",
+          "evidence_ids": [],
+          "confidence": "medium"
+        },
+        {
+          "statement": "Operating margins have been stable to improving.",
+          "evidence_ids": [],
+          "confidence": "medium"
+        }
+      ]
+    }
   },
   {
     "id": "t30",
@@ -263,7 +280,24 @@
     "requires": [
       "thesis"
     ],
-    "rubric": "References the captured thesis and checks evidence for/against it (G6)."
+    "rubric": "References the captured thesis and checks evidence for/against it (G6).",
+    "recalled_view": {
+      "question": "Should I invest in TCS?",
+      "as_of": "2026-01-01T00:00:00+00:00",
+      "origin": "atlas",
+      "claims": [
+        {
+          "statement": "Revenue growth has been consistent across recent annual periods.",
+          "evidence_ids": [],
+          "confidence": "medium"
+        },
+        {
+          "statement": "Operating margins have been stable to improving.",
+          "evidence_ids": [],
+          "confidence": "medium"
+        }
+      ]
+    }
   },
   {
     "id": "t34",
@@ -273,7 +307,24 @@
     "requires": [
       "thesis"
     ],
-    "rubric": "Checks the captured thesis against evidence; flags conflicts."
+    "rubric": "Checks the captured thesis against evidence; flags conflicts.",
+    "recalled_view": {
+      "question": "Should I invest in TCS?",
+      "as_of": "2026-01-01T00:00:00+00:00",
+      "origin": "atlas",
+      "claims": [
+        {
+          "statement": "Revenue growth has been consistent across recent annual periods.",
+          "evidence_ids": [],
+          "confidence": "medium"
+        },
+        {
+          "statement": "Operating margins have been stable to improving.",
+          "evidence_ids": [],
+          "confidence": "medium"
+        }
+      ]
+    }
   },
   {
     "id": "t35",
@@ -283,7 +334,24 @@
     "requires": [
       "thesis"
     ],
-    "rubric": "Derives from the thesis, justified."
+    "rubric": "Derives from the thesis, justified.",
+    "recalled_view": {
+      "question": "Should I invest in TCS?",
+      "as_of": "2026-01-01T00:00:00+00:00",
+      "origin": "atlas",
+      "claims": [
+        {
+          "statement": "Revenue growth has been consistent across recent annual periods.",
+          "evidence_ids": [],
+          "confidence": "medium"
+        },
+        {
+          "statement": "Operating margins have been stable to improving.",
+          "evidence_ids": [],
+          "confidence": "medium"
+        }
+      ]
+    }
   },
   {
     "id": "t36",
