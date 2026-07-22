@@ -667,6 +667,115 @@ def investigate_cmd(
         click.echo(f"\nInvestigation written to {out_path}")
 
 
+@cli.command("thesis")
+@click.argument("ticker")
+@click.argument("question")
+@click.option(
+    "--also", "also", multiple=True,
+    help="Additional TICKER to investigate alongside the first (repeatable).",
+)
+@click.option(
+    "--out", "out_path", default=None, type=click.Path(dir_okay=False),
+    help="Write the thesis (findings, citations, dispositions) as JSON here.",
+)
+def thesis_cmd(
+    ticker: str, question: str, also: tuple[str, ...], out_path: str | None,
+) -> None:
+    """Investigate QUESTION about TICKER, then form a view from what was found.
+
+    Runs the full research pipeline: plan the investigations, ground each one
+    through retrieval, then synthesize the results into an argued view. Every
+    statement cites evidence the investigations actually retrieved -- a
+    synthesis citing anything else is dropped before it can be shown.
+
+    Atlas issues no buy/sell recommendation and has no market price data.
+    This describes what the evidence supports; the investment decision is
+    yours.
+    """
+    import json as _json
+    from pathlib import Path
+
+    from atlas.reasoning.llm import (
+        LLMConfigurationError,
+        LLMTransportError,
+        build_llm_client,
+    )
+    from atlas.research.investigate import run_plan
+    from atlas.research.planner import plan_research
+    from atlas.research.thesis import SynthesisError, check_completeness, synthesize
+
+    subjects = tuple(t.upper() for t in (ticker, *also))
+    atlas = Atlas.from_environment()
+
+    try:
+        client = build_llm_client(atlas.settings, role="reasoning")
+    except LLMConfigurationError as exc:
+        click.echo(str(exc), err=True)
+        raise SystemExit(1)
+
+    plan = plan_research(question, subjects)
+    click.echo(f"\nInvestigating {', '.join(plan.subjects)} ({plan.intent}) "
+               f"-- {len(plan.investigations)} dimension(s)")
+
+    try:
+        run = run_plan(plan, atlas.settings.repository_base_path, client)
+    except LLMTransportError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        raise SystemExit(1)
+
+    click.echo(f"  grounded: {len(run.findings)}/{len(run.results)}")
+
+    try:
+        thesis = synthesize(run, client)
+    except SynthesisError as exc:
+        # Not a degraded thesis -- no thesis. Said plainly rather than
+        # printing an empty view.
+        click.echo(f"\nNo thesis could be formed: {exc}", err=True)
+        raise SystemExit(1)
+    except LLMTransportError as exc:
+        click.echo(f"Error: {exc}", err=True)
+        raise SystemExit(1)
+
+    # The gate blocks rendering entirely -- it does not warn. A thesis that
+    # silently dropped a finding is not a degraded thesis, it is a wrong one.
+    gate = check_completeness(thesis, run)
+    if not gate.passed:
+        click.echo("\nThesis REJECTED -- it does not account for every investigation:", err=True)
+        for violation in gate.violations:
+            click.echo(f"  - [{violation.kind}] {violation.detail}", err=True)
+        raise SystemExit(1)
+
+    click.echo(f"\n{'=' * 60}")
+    click.echo(f"{question}")
+    click.echo(f"{'=' * 60}")
+    click.echo(f"\nOverall confidence: {thesis.result.overall_confidence}\n")
+    for finding in thesis.result.findings:
+        tag = "JUDGMENT" if finding.assertability == "judgment" else "FACT"
+        cited = ", ".join(sorted(finding.evidence_ids))
+        click.echo(f"  [{tag}] {finding.statement}")
+        click.echo(f"      confidence: {finding.confidence}  |  evidence: {cited}")
+        for unknown in finding.known_unknowns:
+            click.echo(f"      ? not known: {unknown}")
+        click.echo("")
+
+    if thesis.set_aside_dimensions:
+        click.echo("Considered and set aside:")
+        for d in thesis.dispositions:
+            if d.materiality == "not_material":
+                click.echo(f"  - {d.dimension}: {d.rationale}")
+    if thesis.unresolved_dimensions:
+        click.echo(f"Could not be resolved: {', '.join(thesis.unresolved_dimensions)}")
+
+    click.echo(
+        "\nAtlas does not issue a buy/sell recommendation and has no market "
+        "price data -- this is an evidence briefing, not a rating."
+    )
+
+    if out_path:
+        Path(out_path).write_text(_json.dumps(thesis.to_dict(), indent=2), encoding="utf-8")
+        click.echo(f"\nThesis written to {out_path}")
+
+
 @cli.group("eval")
 def eval_group() -> None:
     """Evaluate Atlas against the V2.1 acceptance suite (§8)."""
