@@ -16,7 +16,7 @@ from atlas.acquisition.repository import Repository
 from atlas.company import derived
 from atlas.company.model import CompanyProfile
 from atlas.query import engine
-from atlas.research.citations import Finding
+from atlas.research.citations import DERIVED, Finding
 from atlas.research.model import ReportSection
 from atlas.research.sections._shared import dedupe_identical_rows, drop_empty_rows
 
@@ -49,7 +49,7 @@ def _net_cash_debt_verdict(profile: CompanyProfile) -> Finding | None:
         text += f", {direction} versus {engine._fmt_date(points[-2][0])} ({engine._fmt_crore(abs(prior_nc))})."
     else:
         text += "."
-    return Finding(text=text, kind="synthesis")
+    return Finding(text=text, kind=DERIVED)
 
 
 def _rating_trajectory(profile: CompanyProfile) -> Finding | None:
@@ -72,14 +72,14 @@ def _shareholder_returns(profile: CompanyProfile) -> list[Finding]:
         findings.append(Finding(
             text=f"{len(ce.dividends)} dividend declaration(s) on record.",
             evidence_ids=[e.evidence_id for e in ce.dividends if e.evidence_id],
-            kind="synthesis",
+            kind=DERIVED,
         ))
     buyback_total = sum(e.amount for e in ce.buybacks if e.amount is not None)
     if buyback_total:
         findings.append(Finding(
             text=f"Total disclosed buyback capital across all programs: {engine._fmt_crore(buyback_total)}.",
             evidence_ids=[e.evidence_id for e in ce.buybacks if e.evidence_id and e.amount],
-            kind="synthesis",
+            kind=DERIVED,
         ))
     return findings
 

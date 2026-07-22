@@ -28,10 +28,77 @@ metadata.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 
 from atlas.acquisition.repository import Repository
 from atlas.citation import Citation, build_citation
 from atlas.company.model import CompanyProfile
+
+
+# What kind of statement a Finding is -- and, through CITATION_OBLIGATION
+# below, whether it must cite evidence. M2.3 widened this from the original
+# "fact" | "synthesis" pair, which had collapsed four genuinely different
+# things into one label:
+#
+#   FACT           a claim read directly off extracted data
+#   DERIVED        an interpretive connection across facts ("3 consecutive
+#                  quarters of margin improvement"); inherits the ids of what
+#                  it derives from
+#   CONCLUSION     a synthesized view over completed investigations (M2.3's
+#                  thesis layer); closed-world checked against its run
+#   EVIDENCE_NOTE  a statement ABOUT the evidence -- that it is thin, absent,
+#                  or unreliable. May cite what it examined, or nothing
+#   DISCLOSURE     a statement about Atlas's own limits ("Atlas does not issue
+#                  a buy/sell recommendation"). Not an evidence claim at all
+#
+# The distinction is not cosmetic: before it existed, an empty evidence_ids
+# meant BOTH "this is a disclosure" and "this claim is ungrounded", and no
+# code could tell them apart. That ambiguity is exactly what a provenance
+# gate cannot tolerate.
+FACT = "fact"
+DERIVED = "derived"
+CONCLUSION = "conclusion"
+EVIDENCE_NOTE = "evidence_note"
+DISCLOSURE = "disclosure"
+
+FindingKind = Literal["fact", "derived", "conclusion", "evidence_note", "disclosure"]
+
+# Whether a kind MUST cite, MAY cite, or must NOT cite.
+#
+# Three levels, not two. FORBIDDEN is the one a binary must-cite/optional
+# split would lose, and it catches a real error class: a policy statement
+# dressed up as evidence-backed. A disclosure carrying citations is a
+# category error, not a bonus.
+#
+# Declared here and consumed by the thesis completeness gate
+# (research/thesis.py). Obligation is DECLARED by kind, never inferred from
+# whether citations happen to be present -- inferring is the ambiguity above.
+REQUIRED = "required"
+OPTIONAL = "optional"
+FORBIDDEN = "forbidden"
+
+CITATION_OBLIGATION: dict[str, str] = {
+    FACT: REQUIRED,
+    DERIVED: REQUIRED,
+    CONCLUSION: REQUIRED,
+    EVIDENCE_NOTE: OPTIONAL,
+    DISCLOSURE: FORBIDDEN,
+}
+
+# "synthesis" was the pre-M2.3 label for what are now DERIVED, EVIDENCE_NOTE
+# and DISCLOSURE. Accepted as a legacy alias so any caller or persisted
+# artifact predating the split still loads; it maps to the most permissive
+# obligation, since its real intent cannot be recovered after the fact.
+LEGACY_SYNTHESIS = "synthesis"
+CITATION_OBLIGATION[LEGACY_SYNTHESIS] = OPTIONAL
+
+
+def citation_obligation(kind: str) -> str:
+    """The citation obligation for *kind*. Unknown kinds are OPTIONAL rather
+    than an error: a stricter default would turn an unrecognized label into a
+    hard failure at render time, which is the wrong place to discover it.
+    """
+    return CITATION_OBLIGATION.get(kind, OPTIONAL)
 
 
 @dataclass(frozen=True)
@@ -55,13 +122,11 @@ class Finding:
                   source finding's "Source:" block (e.g. "Business Outlook").
     page:         optional page number; never fabricated — omitted from
                   output whenever not supplied, same as atlas.citation.
-    kind:         "fact" (default) or "synthesis" — distinguishes a claim
-                  read directly off extracted data from an interpretive
-                  connection across multiple facts (e.g. "3 consecutive
-                  quarters of margin improvement" is synthesis; the margin
-                  figure itself is fact). Added for Atlas Research v1;
-                  defaults to "fact" so every pre-existing Finding call site
-                  is unaffected.
+    kind:         one of FACT / DERIVED / CONCLUSION / EVIDENCE_NOTE /
+                  DISCLOSURE (see the module-level vocabulary above), which
+                  determines the citation obligation. Defaults to FACT, so
+                  every pre-existing call site is unaffected; "synthesis" is
+                  still accepted as a legacy alias.
     """
 
     text: str

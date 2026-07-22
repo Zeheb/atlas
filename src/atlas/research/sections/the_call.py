@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from atlas.acquisition.repository import Repository
 from atlas.company.model import CompanyProfile
-from atlas.research.citations import Finding
+from atlas.research.citations import DERIVED, DISCLOSURE, EVIDENCE_NOTE, Finding
 from atlas.research.model import ReportSection
 from atlas.research.signals import classify_metric_moves, top_movers
 
@@ -38,7 +38,7 @@ def build(
         findings.append(Finding(
             text=f"Most recent development: {changed_sec.findings[0].text}",
             evidence_ids=changed_sec.findings[0].evidence_ids,
-            kind="synthesis",
+            kind=DERIVED,
         ))
 
     # Biggest signal move — financial-domain first, same priority rule as
@@ -54,12 +54,12 @@ def build(
     for sig in improving:
         findings.append(Finding(
             text=f"Improving: {sig.label} ({sig.prior_period} → {sig.latest_period}).",
-            evidence_ids=sig.sources, kind="synthesis",
+            evidence_ids=sig.sources, kind=DERIVED,
         ))
     for sig in deteriorating:
         findings.append(Finding(
             text=f"Deteriorating: {sig.label} ({sig.prior_period} → {sig.latest_period}).",
-            evidence_ids=sig.sources, kind="synthesis",
+            evidence_ids=sig.sources, kind=DERIVED,
         ))
 
     # Balance sheet verdict — balance_sheet.py's own first finding IS the
@@ -70,7 +70,7 @@ def build(
         findings.append(Finding(
             text=f"Balance sheet: {bs_sec.findings[0].text}",
             evidence_ids=bs_sec.findings[0].evidence_ids,
-            kind="synthesis",
+            kind=DERIVED,
         ))
 
     # Credibility verdict — a count, pointing at Management Credibility's
@@ -79,7 +79,7 @@ def build(
     if cred_sec and cred_sec.findings:
         findings.append(Finding(
             text=f"{len(cred_sec.findings)} management-credibility signal(s) found — see Management Credibility.",
-            kind="synthesis",
+            kind=DERIVED,
         ))
 
     # Single most severe open risk — risks.py sorts confidence-first, so
@@ -94,7 +94,7 @@ def build(
         findings.append(Finding(
             text=f"Top risk on record: {risks_sec.findings[0].text}",
             evidence_ids=risks_sec.findings[0].evidence_ids,
-            kind="synthesis",
+            kind=DERIVED,
         ))
     elif risks_sec and risks_sec.findings:
         findings.append(Finding(
@@ -103,7 +103,8 @@ def build(
                 "single, unrecurring mention with no clear risk vocabulary. See What Could Go "
                 "Wrong for the full (caveated) list."
             ),
-            kind="synthesis",
+            # A statement about the evidence's quality, not about the company.
+            kind=EVIDENCE_NOTE,
         ))
 
     findings.append(Finding(
@@ -111,7 +112,9 @@ def build(
             "Atlas does not issue a buy/sell recommendation and has no market price data — "
             "this is an evidence briefing, not a rating. See Valuation."
         ),
-        kind="synthesis",
+        # A statement about Atlas's own limits. Not an evidence claim, so
+        # citing evidence for it would be a category error (FORBIDDEN).
+        kind=DISCLOSURE,
     ))
 
     notes = []

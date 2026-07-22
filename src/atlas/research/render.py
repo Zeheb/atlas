@@ -8,7 +8,21 @@ from __future__ import annotations
 from atlas.acquisition.repository import Repository
 from atlas.company.model import CompanyProfile
 from atlas.query.engine import TableSection
-from atlas.research.citations import Finding, _citations_for
+from atlas.research.citations import (
+    CONCLUSION,
+    DERIVED,
+    DISCLOSURE,
+    EVIDENCE_NOTE,
+    LEGACY_SYNTHESIS,
+    Finding,
+    _citations_for,
+)
+
+# Kinds the reader sees tagged "[synthesis]": everything interpretive, as
+# opposed to a fact read directly off extracted data.
+_INTERPRETIVE_KINDS = frozenset({
+    DERIVED, CONCLUSION, EVIDENCE_NOTE, DISCLOSURE, LEGACY_SYNTHESIS,
+})
 from atlas.research.model import ReportData, ReportSection
 
 
@@ -41,7 +55,13 @@ def _render_table(table: TableSection) -> list[str]:
 def _render_finding(
     finding: Finding, ticker: str, repo: Repository | None, profile: CompanyProfile | None,
 ) -> list[str]:
-    tag = "_[synthesis]_ " if finding.kind == "synthesis" else ""
+    # M2.3 split the old "synthesis" label into DERIVED / EVIDENCE_NOTE /
+    # DISCLOSURE. All three are interpretive rather than read straight off
+    # extracted data, so all three keep the reader-facing "[synthesis]" tag --
+    # the rendered report is byte-identical to before the split, which is what
+    # makes that commit a relabelling rather than a behavior change. The
+    # finer distinction exists for the provenance gate, not for the reader.
+    tag = "_[synthesis]_ " if finding.kind in _INTERPRETIVE_KINDS else ""
     lines = [f"- {tag}{finding.text}"]
 
     if repo is not None and finding.evidence_ids:

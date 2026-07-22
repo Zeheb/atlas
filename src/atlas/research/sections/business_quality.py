@@ -22,7 +22,7 @@ from atlas.analysis.base import FactKind
 from atlas.company.model import CompanyProfile
 from atlas.query import engine
 from atlas.query import metrics as metrics_mod
-from atlas.research.citations import Finding
+from atlas.research.citations import DERIVED, Finding
 from atlas.research.model import ReportSection
 
 # Checked in order; the first with >=2 datapoints is used as the headline
@@ -62,7 +62,7 @@ def _margin_stability(profile: CompanyProfile, repo: Repository | None) -> tuple
                     + ("stable" if spread < 3 else "moderately variable" if spread < 8 else "wide-ranging")
                     + " over the period."
                 ),
-                kind="synthesis",
+                kind=DERIVED,
             )
             result = engine.timeline(profile, key, period_type=period_type, repo=repo)
             table = result.sections[0] if result.sections and result.sections[0].rows else None
@@ -92,7 +92,7 @@ def _growth_consistency(profile: CompanyProfile) -> Finding | None:
             f"Revenue grew year-over-year in {yoy_positive} of the last {total_transitions} "
             f"annual comparisons available{cagr_str}."
         ),
-        kind="synthesis",
+        kind=DERIVED,
     )
 
 

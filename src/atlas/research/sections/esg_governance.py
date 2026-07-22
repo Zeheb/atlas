@@ -13,7 +13,7 @@ from atlas.acquisition.repository import Repository
 from atlas.company.model import CompanyProfile
 from atlas.query import engine
 from atlas.query import metrics as metrics_mod
-from atlas.research.citations import Finding
+from atlas.research.citations import DERIVED, Finding
 from atlas.research.model import ReportSection
 from atlas.research.signals import classify_metric_moves, top_movers
 
@@ -66,7 +66,7 @@ def build(profile: CompanyProfile, repo: Repository | None, ticker: str) -> Repo
                  f"{dir_changes[0].change_type} — {engine._oneline(dir_changes[0].name)} "
                  f"({engine._fmt_source_date(dir_changes[0].source_date)}).",
             evidence_ids=[d.evidence_id for d in dir_changes[:5] if d.evidence_id],
-            kind="synthesis",
+            kind=DERIVED,
         ))
 
     if profile.governance.audit_kams:

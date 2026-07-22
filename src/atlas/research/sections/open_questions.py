@@ -12,7 +12,7 @@ from __future__ import annotations
 from atlas.acquisition.repository import Repository
 from atlas.company.model import CompanyProfile
 from atlas.query import metrics as metrics_mod
-from atlas.research.citations import Finding
+from atlas.research.citations import EVIDENCE_NOTE, Finding
 from atlas.research.model import ReportSection
 
 _MIN_DATAPOINTS_FOR_TREND = 2
@@ -46,7 +46,7 @@ def build(
         if sec.is_empty():
             findings.append(Finding(
                 text=f"No evidence found to populate '{sec.title}' — needs further acquisition or analysis.",
-                kind="synthesis",
+                kind=EVIDENCE_NOTE,
             ))
 
     thin = _thin_metrics(profile)
@@ -56,7 +56,7 @@ def build(
                 "Insufficient history (fewer than 2 periods) to assess a trend for: "
                 + "; ".join(thin) + "."
             ),
-            kind="synthesis",
+            kind=EVIDENCE_NOTE,
         ))
 
     notes = []
