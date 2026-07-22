@@ -244,6 +244,57 @@ def test_tickers_are_upper_cased(monkeypatch, tmp_path) -> None:
     assert "TCS" in result.output
 
 
+# --- --remember (M2.4) -----------------------------------------------------------------------
+def test_remember_persists_the_thesis_to_the_store(monkeypatch, tmp_path) -> None:
+    _env(monkeypatch, tmp_path, _GroundedFake())
+    _seed(tmp_path)
+
+    result = CliRunner().invoke(
+        cli, ["thesis", "TCS", "Should I invest in TCS?", "--remember"],
+    )
+    assert result.exit_code == 0, result.output
+    assert "Remembered as view_id=" in result.output
+
+    from atlas.research.memory import ThesisStore
+
+    store = ThesisStore(tmp_path / "TCS" / "theses.json", "TCS")
+    stored = store.list()
+    assert len(stored) == 1
+    assert stored[0].question == "Should I invest in TCS?"
+
+
+def test_without_remember_nothing_is_persisted(monkeypatch, tmp_path) -> None:
+    _env(monkeypatch, tmp_path, _GroundedFake())
+    _seed(tmp_path)
+
+    result = CliRunner().invoke(cli, ["thesis", "TCS", "Should I invest in TCS?"])
+    assert result.exit_code == 0, result.output
+    assert "Remembered as view_id=" not in result.output
+    assert not (tmp_path / "TCS" / "theses.json").exists()
+
+
+def test_remember_is_not_reached_when_the_gate_rejects(monkeypatch, tmp_path) -> None:
+    """The gate blocks BEFORE --remember runs -- a rejected thesis is never
+    persisted, matching the fact that it is never rendered either."""
+    _env(monkeypatch, tmp_path, _GroundedFake())
+    _seed(tmp_path)
+
+    from atlas.research.thesis import GateResult, GateViolation
+
+    monkeypatch.setattr(
+        "atlas.research.thesis.check_completeness",
+        lambda thesis, run: GateResult(violations=(
+            GateViolation(kind="undisposed_finding", detail="ignored a finding"),
+        )),
+    )
+
+    result = CliRunner().invoke(
+        cli, ["thesis", "TCS", "Should I invest in TCS?", "--remember"],
+    )
+    assert result.exit_code == 1
+    assert not (tmp_path / "TCS" / "theses.json").exists()
+
+
 # --- The other commands are untouched --------------------------------------------------------
 def test_investigate_and_research_still_exist(monkeypatch, tmp_path) -> None:
     """thesis is a NEW surface; it replaced nothing."""

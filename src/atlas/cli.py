@@ -678,8 +678,16 @@ def investigate_cmd(
     "--out", "out_path", default=None, type=click.Path(dir_okay=False),
     help="Write the thesis (findings, citations, dispositions) as JSON here.",
 )
+@click.option(
+    "--remember", "remember", is_flag=True, default=False,
+    help="Persist this thesis to the primary TICKER's ThesisStore "
+         "(repositories/TICKER/theses.json) so `atlas memory` commands can "
+         "list, show, and check it later. Persistence is an explicit choice "
+         "(M2.4), not an automatic side effect of every synthesis.",
+)
 def thesis_cmd(
     ticker: str, question: str, also: tuple[str, ...], out_path: str | None,
+    remember: bool,
 ) -> None:
     """Investigate QUESTION about TICKER, then form a view from what was found.
 
@@ -691,6 +699,11 @@ def thesis_cmd(
     Atlas issues no buy/sell recommendation and has no market price data.
     This describes what the evidence supports; the investment decision is
     yours.
+
+    --remember (M2.4) persists an accepted thesis to the primary TICKER's
+    ThesisStore. Persistence is explicit: forming a thesis never saves it
+    unless asked, so re-running this command to iterate on a question does
+    not silently accumulate views you never meant to keep.
     """
     import json as _json
     from pathlib import Path
@@ -771,9 +784,114 @@ def thesis_cmd(
         "price data -- this is an evidence briefing, not a rating."
     )
 
+    if remember:
+        from atlas.research.memory import ThesisStore
+
+        primary = plan.subjects[0]
+        store = ThesisStore(
+            atlas.settings.repository_base_path / primary / "theses.json", primary,
+        )
+        store.save(thesis)
+        click.echo(f"\nRemembered as view_id={thesis.view_id}")
+
     if out_path:
         Path(out_path).write_text(_json.dumps(thesis.to_dict(), indent=2), encoding="utf-8")
         click.echo(f"\nThesis written to {out_path}")
+
+
+@cli.group("memory")
+def memory_group() -> None:
+    """Inspect and validate Atlas's persisted reasoning memory (C6).
+
+    No portfolio-wide index exists -- ``discover_companies()`` (every
+    subject with a saved profile) plus one ThesisStore per subject IS the
+    portfolio, so every command here sweeps that same set rather than
+    reading from a registry.
+    """
+
+
+@memory_group.command("list")
+def memory_list_cmd() -> None:
+    """List every remembered view across the whole portfolio."""
+    from atlas.query.screen import discover_companies
+    from atlas.research.memory import ThesisStore
+
+    atlas = Atlas.from_environment()
+    base = atlas.settings.repository_base_path
+    subjects = sorted(discover_companies(base))
+    if not subjects:
+        click.echo(f"No company profiles found under {base}.", err=True)
+        raise SystemExit(1)
+
+    found = False
+    for subject in subjects:
+        store = ThesisStore(base / subject / "theses.json", subject)
+        for thesis in store.list():
+            found = True
+            click.echo(f"{subject}  {thesis.view_id}  ({thesis.as_of})")
+            click.echo(f"    {thesis.question}")
+    if not found:
+        click.echo("No remembered views yet. Run: atlas thesis <TICKER> <QUESTION> --remember")
+
+
+@memory_group.command("show")
+@click.argument("view_id")
+def memory_show_cmd(view_id: str) -> None:
+    """Show one remembered view's claims, confidence, and evidence."""
+    from atlas.query.screen import discover_companies
+    from atlas.research.memory import ThesisStore
+
+    atlas = Atlas.from_environment()
+    base = atlas.settings.repository_base_path
+    for subject in sorted(discover_companies(base)):
+        store = ThesisStore(base / subject / "theses.json", subject)
+        for thesis in store.list():
+            if thesis.view_id != view_id:
+                continue
+            click.echo(f"{subject}: {thesis.question}")
+            click.echo(f"as_of: {thesis.as_of}")
+            click.echo(f"overall_confidence: {thesis.result.overall_confidence}\n")
+            for finding in thesis.result.findings:
+                tag = "JUDGMENT" if finding.assertability == "judgment" else "FACT"
+                cited = ", ".join(sorted(finding.evidence_ids))
+                click.echo(f"  [{tag}] {finding.statement}")
+                click.echo(f"      confidence: {finding.confidence}  |  evidence: {cited}")
+            return
+    click.echo(f"No remembered view with id {view_id!r}.", err=True)
+    raise SystemExit(1)
+
+
+@memory_group.command("check")
+def memory_check_cmd() -> None:
+    """Sweep every remembered view for staleness against current evidence.
+
+    Advisory (ADR-0004's Phase-1 precedent): a stale view is still usable.
+    Only ``hard_stale`` (a cited id no longer resolves) is a real warning --
+    new evidence existing since a view's as_of is informational, not a
+    verdict on whether the view still holds.
+    """
+    from atlas.query.screen import discover_companies
+    from atlas.research.staleness import sweep_staleness
+
+    atlas = Atlas.from_environment()
+    base = atlas.settings.repository_base_path
+    subjects = sorted(discover_companies(base))
+    if not subjects:
+        click.echo(f"No company profiles found under {base}.", err=True)
+        raise SystemExit(1)
+
+    found = False
+    for subject in subjects:
+        for report in sweep_staleness(base, subject):
+            found = True
+            flag = "STALE" if report.hard_stale else "current"
+            click.echo(f"{subject}  {report.view_id}  [{flag}]")
+            if report.hard_stale:
+                click.echo(f"    missing evidence: {', '.join(report.missing_evidence)}")
+            if report.new_evidence_since:
+                click.echo(f"    {len(report.new_evidence_since)} new evidence item(s) since as_of")
+    if not found:
+        click.echo("No remembered views to check.")
 
 
 @cli.group("eval")
