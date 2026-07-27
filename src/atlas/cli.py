@@ -12,16 +12,16 @@ from atlas.acquisition.acquisitions import save_acquisition_run
 from atlas.acquisition.connectors.bse import BSEConnector
 from atlas.acquisition.profile import COMPREHENSIVE_PROFILE, DEFAULT_PROFILE
 from atlas.acquisition.query import repository_history_depth
-
-_PROFILES = {
-    DEFAULT_PROFILE.name: DEFAULT_PROFILE,
-    COMPREHENSIVE_PROFILE.name: COMPREHENSIVE_PROFILE,
-}
 from atlas.acquisition.scaffold import RepositoryAlreadyExistsError, build_repository
 from atlas.acquisition.workflow import run_acquisition
 from atlas.app import Atlas
 from atlas.query.engine import available_queries, run_query
 from atlas.query.render import render_result
+
+_PROFILES = {
+    DEFAULT_PROFILE.name: DEFAULT_PROFILE,
+    COMPREHENSIVE_PROFILE.name: COMPREHENSIVE_PROFILE,
+}
 
 
 def _force_utf8_output() -> None:

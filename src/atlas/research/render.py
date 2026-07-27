@@ -18,6 +18,7 @@ from atlas.research.citations import (
     Finding,
     _citations_for,
 )
+from atlas.research.model import ReportData, ReportSection
 
 # Kinds the reader sees tagged "[synthesis]": everything interpretive, as
 # opposed to a fact read directly off extracted data.
@@ -30,7 +31,6 @@ _INTERPRETIVE_KINDS = frozenset(
         LEGACY_SYNTHESIS,
     }
 )
-from atlas.research.model import ReportData, ReportSection
 
 
 def _markdown_safe_cell(value: object) -> str:

@@ -10,7 +10,12 @@ from atlas.acquisition.profile import (
     DEFAULT_PROFILE,
     KindFilterProfile,
 )
-from atlas.acquisition.query import query_evidence
+from atlas.acquisition.query import (
+    HistoryDepth,
+    history_depth,
+    query_evidence,
+    repository_history_depth,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -430,11 +435,6 @@ class TestQueryEvidenceSorting:
 # history_depth (M-P0.2) -- per-company corpus depth, the measurement the
 # backfill is run against (Q33).
 # ---------------------------------------------------------------------------
-from atlas.acquisition.query import (
-    HistoryDepth,
-    history_depth,
-    repository_history_depth,
-)
 
 
 class TestHistoryDepth:
