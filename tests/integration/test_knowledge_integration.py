@@ -274,12 +274,12 @@ class TestEndToEndDemo:
         """
         # Step 1: Repository lists annual reports.
         annual_reports = repo.list_evidence(kinds={EvidenceKind.ANNUAL_REPORT})
-        print(f"\n--- Repository ---")
+        print("\n--- Repository ---")
         print(f"Annual reports in catalog: {len(annual_reports)}")
 
         # Step 2: Parse the target document.
         doc = kb.parse(ar_2024_entry)  # type: ignore[arg-type]
-        print(f"\n--- Parsing ---")
+        print("\n--- Parsing ---")
         print(f"Status:         {doc.status}")
         print(f"Evidence ID:    {doc.evidence_id}")
         print(f"Title:          {doc.title}")
@@ -287,14 +287,14 @@ class TestEndToEndDemo:
         print(f"Character count:{doc.char_count:,}" if doc.char_count else "N/A")
 
         # Step 3: Confirm knowledge.db is populated.
-        print(f"\n--- Knowledge DB ---")
+        print("\n--- Knowledge DB ---")
         print(f"known_ids():  {len(kb.known_ids())} records")
         print(f"ok_ids():     {len(kb.ok_ids())} successful")
 
         # Step 4: Retrieve content and show first 400 chars.
         content = kb.get_content(_AR_2024_ID)
         assert content is not None
-        print(f"\n--- Extracted text (first 400 chars) ---")
+        print("\n--- Extracted text (first 400 chars) ---")
         print(content[:400])
 
         # Assertions that prove the demo actually worked.

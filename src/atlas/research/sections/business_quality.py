@@ -64,7 +64,7 @@ def _margin_stability(
             # a bank's margin stability read at all, not a design choice
             # to prefer quarterly generally.
             period_note = (
-                f" (quarterly data — no annual figure extracted)"
+                " (quarterly data — no annual figure extracted)"
                 if period_type == "quarterly"
                 else ""
             )
