@@ -126,12 +126,12 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "black", specifier = ">=24.10" },
-    { name = "mypy", specifier = ">=1.13" },
+    { name = "black", specifier = "==26.5.1" },
+    { name = "mypy", specifier = "==2.1.0" },
     { name = "pre-commit", specifier = ">=4.0" },
     { name = "pytest", specifier = ">=8.3" },
     { name = "pytest-cov", specifier = ">=6.0" },
-    { name = "ruff", specifier = ">=0.8" },
+    { name = "ruff", specifier = "==0.15.19" },
     { name = "types-requests", specifier = ">=2.32" },
 ]
 
