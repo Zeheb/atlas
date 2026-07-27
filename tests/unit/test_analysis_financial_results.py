@@ -19,6 +19,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from atlas.analysis.base import (
+    AnalysisFact,
+    AnalysisResult,
+    FactKind,
+    FactUnit,
+    Provenance,
+)
 from atlas.analysis.financial_results import (
     ANALYZER_VERSION,
     _detect_filing,
@@ -41,13 +48,6 @@ from atlas.analysis.financial_results import (
     analyze,
 )
 from atlas.analysis.patterns import extract_dividend_facts as _extract_dividend_facts
-from atlas.analysis.base import (
-    AnalysisFact,
-    AnalysisResult,
-    FactKind,
-    FactUnit,
-    Provenance,
-)
 from atlas.knowledge.base import KnowledgeBase, ParsedDocument
 
 # ---------------------------------------------------------------------------

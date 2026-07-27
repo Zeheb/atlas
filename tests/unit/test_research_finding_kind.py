@@ -92,9 +92,8 @@ def test_legacy_synthesis_is_still_constructible() -> None:
 def test_the_call_disclosure_is_labelled_disclosure() -> None:
     """ "Atlas does not issue a buy/sell recommendation" is a statement about
     Atlas, not about the company."""
-    from tests.unit.research_fixtures import make_profile  # type: ignore
-
     from atlas.research.report import generate_report
+    from tests.unit.research_fixtures import make_profile  # type: ignore
 
     the_call = generate_report("TCS", make_profile()).section("the_call")
     assert the_call is not None
@@ -133,9 +132,8 @@ def test_open_questions_are_labelled_evidence_notes() -> None:
 def test_no_section_still_uses_the_legacy_label() -> None:
     """The relabelling is complete: nothing in the report is left as the
     ambiguous 'synthesis'."""
-    from tests.unit.research_fixtures import make_profile  # type: ignore
-
     from atlas.research.report import generate_report
+    from tests.unit.research_fixtures import make_profile  # type: ignore
 
     report = generate_report("TCS", make_profile())
     for section in report.sections:
@@ -151,10 +149,9 @@ def test_rendered_report_is_unchanged_by_the_split() -> None:
     '[synthesis]' tag, so the report is byte-identical. The finer distinction
     exists for the provenance gate, not for the reader.
     """
-    from tests.unit.research_fixtures import make_profile  # type: ignore
-
     from atlas.research.render import render_markdown
     from atlas.research.report import generate_report
+    from tests.unit.research_fixtures import make_profile  # type: ignore
 
     markdown = render_markdown(generate_report("TCS", make_profile()))
     assert "_[synthesis]_" in markdown  # the tag survived the relabelling

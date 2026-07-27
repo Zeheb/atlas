@@ -204,8 +204,8 @@ def test_sweep_staleness_checks_every_stored_view(tmp_path) -> None:
     import json
 
     from atlas.reasoning.contracts import Claim, EvidenceReference
-    from atlas.research.investigate import InvestigationResult, InvestigationRun
     from atlas.research.citations import Finding
+    from atlas.research.investigate import InvestigationResult, InvestigationRun
     from atlas.research.memory import ThesisStore
     from atlas.research.plan import Investigation, ResearchPlan
     from atlas.research.thesis import synthesize

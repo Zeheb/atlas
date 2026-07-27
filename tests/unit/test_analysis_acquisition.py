@@ -10,8 +10,9 @@ Uses entirely synthetic fixtures so no real repository access is required.
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 from atlas.analysis.acquisition import ANALYZER_VERSION, analyze
 from atlas.analysis.base import AnalysisFact, AnalysisResult, FactKind, FactUnit

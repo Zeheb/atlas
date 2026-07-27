@@ -6,11 +6,12 @@ fixtures — no real repository access required.
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import MagicMock
 
-from atlas.analysis.buyback import ANALYZER_VERSION, analyze
+import pytest
+
 from atlas.analysis.base import AnalysisFact, AnalysisResult, FactKind, FactUnit
+from atlas.analysis.buyback import ANALYZER_VERSION, analyze
 
 # ---------------------------------------------------------------------------
 # Synthetic fixtures

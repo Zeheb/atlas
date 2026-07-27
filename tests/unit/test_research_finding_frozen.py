@@ -82,9 +82,8 @@ def test_findings_are_hashable_now_that_they_are_frozen() -> None:
 def test_the_call_still_builds_derived_findings(tmp_path) -> None:
     """The real aliasing site, exercised end to end rather than in the
     abstract: the deterministic report must still assemble."""
-    from tests.unit.research_fixtures import make_profile  # type: ignore
-
     from atlas.research.report import generate_report
+    from tests.unit.research_fixtures import make_profile  # type: ignore
 
     report = generate_report("TCS", make_profile())
     the_call = report.section("the_call")

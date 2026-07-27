@@ -16,12 +16,12 @@ from pathlib import Path
 
 import pytest
 
-from atlas.analysis.board_outcome import ANALYZER_VERSION, analyze
+from atlas.acquisition.repository import Repository
 from atlas.analysis.base import AnalysisFact, AnalysisResult, FactKind, FactUnit
+from atlas.analysis.board_outcome import ANALYZER_VERSION, analyze
 from atlas.company.builder import build_profile
 from atlas.company.model import CompanyProfile
 from atlas.knowledge.base import KnowledgeBase
-from atlas.acquisition.repository import Repository
 
 pytestmark = pytest.mark.integration
 

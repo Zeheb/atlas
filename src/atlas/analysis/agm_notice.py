@@ -35,8 +35,8 @@ import re
 from datetime import datetime
 
 from atlas.analysis.base import (
-    AnalysisResult,
     AnalysisFact,
+    AnalysisResult,
     FactKind,
     FactUnit,
     Provenance,

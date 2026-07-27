@@ -92,6 +92,7 @@ def test_absent_for_service_company_pl() -> None:
 # --- builder: routes via existing _FINANCIAL_SNAPSHOT_KINDS, no new code ------
 def test_input_cost_facts_route_into_financial_snapshot() -> None:
     from datetime import datetime, timezone
+
     from atlas.analysis.base import AnalysisFact, AnalysisResult, FactUnit, Provenance
 
     result = AnalysisResult(
@@ -128,6 +129,7 @@ def test_input_cost_facts_route_into_financial_snapshot() -> None:
 # --- store round-trip (negative value must survive) --------------------------
 def test_change_in_inventories_negative_survives_store_round_trip(tmp_path) -> None:
     from datetime import datetime, timezone
+
     from atlas.analysis.base import AnalysisFact, AnalysisResult, FactUnit, Provenance
 
     result = AnalysisResult(

@@ -17,7 +17,7 @@ import pytest
 from atlas.analysis.base import FactKind, FactUnit
 from atlas.analysis.registry import analyze
 from atlas.company.builder import build_profile
-from atlas.company.derived import ebit, net_cash, pat_margin_pct, fcf_gaap
+from atlas.company.derived import ebit, fcf_gaap, net_cash, pat_margin_pct
 from atlas.company.model import CompanyProfile
 from atlas.knowledge.base import KnowledgeBase
 

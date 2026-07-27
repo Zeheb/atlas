@@ -17,11 +17,11 @@ from pathlib import Path
 
 import pytest
 
-from atlas.analysis.buyback import ANALYZER_VERSION, analyze
-from atlas.analysis.base import AnalysisFact, AnalysisResult, FactKind, FactUnit
-from atlas.knowledge.base import KnowledgeBase
-from atlas.acquisition.repository import Repository
 from atlas.acquisition.evidence import EvidenceKind
+from atlas.acquisition.repository import Repository
+from atlas.analysis.base import AnalysisFact, AnalysisResult, FactKind, FactUnit
+from atlas.analysis.buyback import ANALYZER_VERSION, analyze
+from atlas.knowledge.base import KnowledgeBase
 
 pytestmark = pytest.mark.integration
 

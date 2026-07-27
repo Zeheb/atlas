@@ -57,7 +57,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from atlas.analysis.agm_notice import ANALYZER_VERSION, analyze, _extract_vote_pcts
+from atlas.analysis.agm_notice import ANALYZER_VERSION, _extract_vote_pcts, analyze
 from atlas.analysis.base import AnalysisResult, FactKind, FactUnit
 
 # ---------------------------------------------------------------------------

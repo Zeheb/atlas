@@ -13,11 +13,11 @@ import requests
 
 from atlas.config.settings import Settings
 from atlas.reasoning.llm.base import LLMClient
+from atlas.reasoning.llm.factory import build_llm_client
 from atlas.reasoning.llm.omniroute import (
     OmniRouteClient,
     OmniRouteUnavailableError,
 )
-from atlas.reasoning.llm.factory import build_llm_client
 
 
 class _FakeResponse:

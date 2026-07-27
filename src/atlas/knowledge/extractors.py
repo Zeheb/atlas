@@ -205,8 +205,9 @@ def _find_tessdata() -> str:
 
     Raises RuntimeError if Tesseract cannot be found by any method.
     """
-    import fitz  # type: ignore[import-untyped]
     import os
+
+    import fitz  # type: ignore[import-untyped]
 
     try:
         return fitz.get_tessdata()

@@ -37,8 +37,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from atlas.analysis.credit_rating import ANALYZER_VERSION, analyze
 from atlas.analysis.base import AnalysisResult, FactKind, FactUnit
+from atlas.analysis.credit_rating import ANALYZER_VERSION, analyze
 
 # ---------------------------------------------------------------------------
 # Fixtures helpers

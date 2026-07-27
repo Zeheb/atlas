@@ -15,11 +15,11 @@ import json
 import pytest
 
 from atlas.reasoning.contracts import Claim, EvidenceReference, SubjectRef
-from atlas.research.investigate import InvestigationResult, InvestigationRun
 from atlas.research.citations import Finding
+from atlas.research.investigate import InvestigationResult, InvestigationRun
 from atlas.research.memory import (
-    IncompatibleStoreVersionError,
     STORE_VERSION,
+    IncompatibleStoreVersionError,
     ThesisNotFoundError,
     ThesisStore,
 )

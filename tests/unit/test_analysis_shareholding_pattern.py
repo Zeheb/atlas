@@ -26,12 +26,12 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from atlas.analysis.base import AnalysisResult, FactKind, FactUnit
 from atlas.analysis.shareholding_pattern import (
     ANALYZER_VERSION,
-    analyze,
     _detect_decimal_format,
+    analyze,
 )
-from atlas.analysis.base import AnalysisResult, FactKind, FactUnit
 
 # ---------------------------------------------------------------------------
 # Synthetic XBRL builders

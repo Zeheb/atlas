@@ -10,8 +10,8 @@ from atlas.acquisition.catalog import CatalogEntry
 from atlas.acquisition.evidence import EvidenceKind, EvidenceSource
 from atlas.knowledge.base import PARSER_VERSION, KnowledgeBase, ParsedDocument
 from atlas.knowledge.extractors import (
-    ExtractionResult,
     QUALITY_THRESHOLD,
+    ExtractionResult,
     _is_garbled_word,
     score_text_quality,
 )

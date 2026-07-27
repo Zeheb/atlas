@@ -63,8 +63,8 @@ def tcs_repo(isolated_repo_factory) -> Path:
 
 @pytest.fixture(scope="module")
 def kb(tcs_repo: Path) -> Generator:
-    from atlas.knowledge.base import KnowledgeBase
     from atlas.acquisition.repository import Repository
+    from atlas.knowledge.base import KnowledgeBase
 
     instance = KnowledgeBase(tcs_repo)
     repo = Repository(tcs_repo)

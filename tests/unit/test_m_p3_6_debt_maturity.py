@@ -139,6 +139,7 @@ def test_debt_maturity_absent_for_service_company_boilerplate() -> None:
 def test_debt_maturity_facts_route_into_financial_snapshot() -> None:
     result_facts = _extract_debt_maturity(_REAL_TABLE_FY2026, "2026-03-31")
     from datetime import datetime, timezone
+
     from atlas.analysis.base import AnalysisResult
 
     result = AnalysisResult(
@@ -158,6 +159,7 @@ def test_debt_maturity_facts_route_into_financial_snapshot() -> None:
 # --- store round-trip ---------------------------------------------------------
 def test_debt_maturity_survives_store_round_trip(tmp_path) -> None:
     from datetime import datetime, timezone
+
     from atlas.analysis.base import AnalysisResult
 
     result_facts = _extract_debt_maturity(_REAL_TABLE_FY2026, "2026-03-31")

@@ -7,9 +7,10 @@ approximate real values, producing FPI decline, DII rise, and streak signals.
 
 from __future__ import annotations
 
-import pytest
 from datetime import datetime, timezone
 from typing import Any
+
+import pytest
 
 from atlas.analysis.base import (
     AnalysisFact,
@@ -19,13 +20,13 @@ from atlas.analysis.base import (
     Provenance,
 )
 from atlas.analysis.shareholding_trend import (
+    _SIGNAL_THRESHOLD,
+    _STREAK_LENGTH,
+    _TRACKED_KINDS,
     HoldingDelta,
     HoldingPoint,
     TrendResult,
     analyze_trend,
-    _SIGNAL_THRESHOLD,
-    _STREAK_LENGTH,
-    _TRACKED_KINDS,
 )
 
 # ---------------------------------------------------------------------------

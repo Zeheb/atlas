@@ -1,12 +1,14 @@
+from atlas.company import derived
+from atlas.company.builder import build_profile, merge_result
 from atlas.company.model import (
-    AGMResolution,
     AcquisitionEvent,
+    AGMResolution,
     BuybackEvent,
-    CSATEntry,
     CapitalEventLedger,
     CompanyProfile,
     CreditHistory,
     CreditRatingEntry,
+    CSATEntry,
     DirectorChange,
     DividendEvent,
     ESGSnapshot,
@@ -23,9 +25,7 @@ from atlas.company.model import (
     StrategyEntry,
     StrategyProfile,
 )
-from atlas.company.builder import build_profile, merge_result
 from atlas.company.store import CompanyStore, StaleResultError
-from atlas.company import derived
 
 __all__ = [
     "AGMResolution",

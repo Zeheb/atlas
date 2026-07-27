@@ -24,13 +24,13 @@ from atlas.acquisition.repository import Repository
 from atlas.analysis.base import FactKind, FactUnit
 from atlas.citation import build_citation
 from atlas.company import derived
-from atlas.knowledge.entities import EntityResolver
 from atlas.company.model import (
     AcquisitionEvent,
     CompanyProfile,
     CreditRatingEntry,
     FinancialSnapshot,
 )
+from atlas.knowledge.entities import EntityResolver
 from atlas.query import metrics
 
 # ---------------------------------------------------------------------------

@@ -168,10 +168,11 @@ def test_none_question_text_round_trips_as_none(tmp_path) -> None:
 
 # --- real-data validation: TCS / SBI -----------------------------------------------
 def test_real_tcs_transcripts_produce_bounded_questions() -> None:
-    from pathlib import Path
     import sqlite3
-    from atlas.knowledge.base import KnowledgeBase
+    from pathlib import Path
+
     from atlas.analysis.earnings_transcript import analyze
+    from atlas.knowledge.base import KnowledgeBase
 
     con = sqlite3.connect("repositories/TCS/knowledge.db")
     ids = [
@@ -195,10 +196,11 @@ def test_real_tcs_transcripts_produce_bounded_questions() -> None:
 
 
 def test_real_sbi_transcripts_produce_bounded_questions() -> None:
-    from pathlib import Path
     import sqlite3
-    from atlas.knowledge.base import KnowledgeBase
+    from pathlib import Path
+
     from atlas.analysis.earnings_transcript import analyze
+    from atlas.knowledge.base import KnowledgeBase
 
     con = sqlite3.connect("repositories/SBIN/knowledge.db")
     ids = [

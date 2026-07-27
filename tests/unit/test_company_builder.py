@@ -22,9 +22,9 @@ from atlas.company.builder import build_profile
 from atlas.company.derived import (
     capex_intensity_pct,
     ebit,
+    ebit_margin_pct,
     ebitda,
     ebitda_margin_pct,
-    ebit_margin_pct,
     employee_cost_pct,
     fcf_gaap,
     net_cash,

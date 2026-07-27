@@ -13,6 +13,7 @@ import pytest
 
 from atlas.analysis.base import FactKind, FactUnit
 from atlas.company.model import (
+    CapitalEventLedger,
     CompanyProfile,
     CreditHistory,
     CreditRatingEntry,
@@ -20,7 +21,6 @@ from atlas.company.model import (
     DividendEvent,
     ESGSnapshot,
     ESGTimeSeries,
-    CapitalEventLedger,
     FinancialSnapshot,
     FinancialTimeSeries,
     GovernanceProfile,

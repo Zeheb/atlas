@@ -24,6 +24,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from atlas.analysis.base import AnalysisResult, FactKind, FactUnit
 from atlas.analysis.brsr import (
     ANALYZER_VERSION,
     _extract_energy,
@@ -36,7 +37,6 @@ from atlas.analysis.brsr import (
     _fiscal_period,
     analyze,
 )
-from atlas.analysis.base import AnalysisResult, FactKind, FactUnit
 
 # ---------------------------------------------------------------------------
 # Helpers

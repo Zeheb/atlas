@@ -50,8 +50,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from atlas.knowledge.base import KnowledgeBase
 from atlas.acquisition.repository import Repository
+from atlas.knowledge.base import KnowledgeBase
 from atlas.reasoning.contracts import RecalledView
 
 

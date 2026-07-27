@@ -23,14 +23,14 @@ from atlas.analysis.base import (
 )
 from atlas.company.builder import BUILDER_VERSION, build_profile
 from atlas.company.model import (
-    AGMResolution,
     AcquisitionEvent,
+    AGMResolution,
     BuybackEvent,
-    CSATEntry,
     CapitalEventLedger,
     CompanyProfile,
     CreditHistory,
     CreditRatingEntry,
+    CSATEntry,
     DividendEvent,
     ESGSnapshot,
     ESGTimeSeries,

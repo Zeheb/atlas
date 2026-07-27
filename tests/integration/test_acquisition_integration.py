@@ -18,10 +18,10 @@ from pathlib import Path
 
 import pytest
 
+from atlas.acquisition.repository import Repository
 from atlas.analysis.acquisition import ANALYZER_VERSION, analyze
 from atlas.analysis.base import AnalysisFact, AnalysisResult, FactKind, FactUnit
 from atlas.knowledge.base import KnowledgeBase
-from atlas.acquisition.repository import Repository
 
 pytestmark = pytest.mark.integration
 

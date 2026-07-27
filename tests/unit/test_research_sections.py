@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from atlas.company.model import AGMResolution
+from atlas.research.model import ReportSection
 from atlas.research.sections import (
     balance_sheet,
     business_quality,
@@ -25,7 +26,6 @@ from atlas.research.sections import (
     valuation,
     what_changed,
 )
-from atlas.research.model import ReportSection
 from tests.unit.research_fixtures import make_empty_profile, make_profile
 
 

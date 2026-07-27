@@ -43,8 +43,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from atlas.analysis.earnings_transcript import ANALYZER_VERSION, analyze
 from atlas.analysis.base import AnalysisResult, FactKind, FactUnit
+from atlas.analysis.earnings_transcript import ANALYZER_VERSION, analyze
 
 # ---------------------------------------------------------------------------
 # Fixture helpers

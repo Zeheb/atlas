@@ -7,10 +7,10 @@ from typing import get_args
 from atlas.benchmark.taxonomy import (
     ALL_CAPABILITY_IDS,
     ALL_SCENARIO_IDS,
-    AtlasCapability,
     CAPABILITY_DESCRIPTIONS,
-    RetrievalScenario,
     SCENARIO_DESCRIPTIONS,
+    AtlasCapability,
+    RetrievalScenario,
 )
 
 

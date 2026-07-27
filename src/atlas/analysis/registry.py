@@ -12,26 +12,25 @@ Individual analyzer modules remain importable for focused unit testing.
 
 from __future__ import annotations
 
+from atlas.analysis.acquisition import analyze as _acquisition
+from atlas.analysis.agm_notice import analyze as _agm_notice
+from atlas.analysis.annual_report import analyze as _annual_report
 from atlas.analysis.base import AnalysisResult
-from atlas.knowledge.base import KnowledgeBase
+from atlas.analysis.board_outcome import analyze as _board_outcome
+from atlas.analysis.brsr import analyze as _brsr
+from atlas.analysis.buyback import analyze as _buyback
+from atlas.analysis.credit_rating import analyze as _credit_rating
+from atlas.analysis.earnings_transcript import analyze as _earnings_transcript
 
 # ---------------------------------------------------------------------------
 # Static registry — add a new entry here when a new analyzer is implemented.
 # Key: entry.kind value from the catalog / KnowledgeBase.
 # Value: the analyze(evidence_id, kb) -> AnalysisResult callable.
 # ---------------------------------------------------------------------------
-
 from atlas.analysis.financial_results import analyze as _financial_results
-from atlas.analysis.acquisition import analyze as _acquisition
-from atlas.analysis.board_outcome import analyze as _board_outcome
-from atlas.analysis.buyback import analyze as _buyback
-from atlas.analysis.shareholding_pattern import analyze as _shareholding_pattern
-from atlas.analysis.credit_rating import analyze as _credit_rating
-from atlas.analysis.earnings_transcript import analyze as _earnings_transcript
 from atlas.analysis.investor_presentation import analyze as _investor_presentation
-from atlas.analysis.agm_notice import analyze as _agm_notice
-from atlas.analysis.brsr import analyze as _brsr
-from atlas.analysis.annual_report import analyze as _annual_report
+from atlas.analysis.shareholding_pattern import analyze as _shareholding_pattern
+from atlas.knowledge.base import KnowledgeBase
 
 _REGISTRY: dict[str, object] = {
     "financial_results": _financial_results,
