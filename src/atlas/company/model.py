@@ -333,13 +333,48 @@ class RiskEntry:
 @dataclass
 class GovernanceProfile:
     """AGM voting history, director change events, auditor KAM titles, risk
-    factors, and auditor history."""
+    factors, auditor history, and related-party disclosures."""
 
     resolutions: list[AGMResolution] = field(default_factory=list)
     director_changes: list[DirectorChange] = field(default_factory=list)
     audit_kams: list[str] = field(default_factory=list)
     risk_factors: list[RiskEntry] = field(default_factory=list)
     auditor_history: list["AuditorEntry"] = field(default_factory=list)
+    related_parties: list["RelatedPartyEntry"] = field(default_factory=list)
+
+
+@dataclass
+class RelatedPartyEntry:
+    """One related-party amount, keyed by (period, counterparty, category)
+    (M-P3.3, ADR-0012).
+
+    Ind AS 24 requires two structurally different disclosures, never
+    conflated: a period FLOW (transactions during the year) and a period-end
+    STOCK (outstanding balances). ``kind`` discriminates them so a flow and a
+    stock amount are never summed or compared as if they meant the same thing.
+
+    ``counterparty`` is optional: some disclosures are itemized per related
+    party (a name is disclosed); others are a single aggregate across all
+    related parties (e.g. Tata Steel's "Loans to related parties" line, which
+    names none). Absence means the disclosure itself is an aggregate, not a
+    missing extraction.
+
+    kind:        "transaction" (flow, period = year-ended date) |
+                 "balance" (stock, period = as-at date).
+    category:    The disclosed line's own label text (e.g. "Loans to related
+                 parties", "Revenue from operations"). Required — without it,
+                 two amounts for the same counterparty in the same period
+                 (a real, observed case) cannot be told apart.
+    counterparty: Named related party, when the disclosure itemizes one. None
+                 for an aggregate-across-all-related-parties disclosure.
+    """
+
+    period: str
+    kind: str
+    category: str
+    amount: float
+    counterparty: str | None = None
+    evidence_id: str = ""
 
 
 @dataclass

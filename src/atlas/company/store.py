@@ -61,6 +61,7 @@ from atlas.company.model import (
     AGMResolution,
     AcquisitionEvent,
     AuditorEntry,
+    RelatedPartyEntry,
     BuybackEvent,
     CSATEntry,
     CapitalEventLedger,
@@ -301,6 +302,17 @@ def _serialize_profile(profile: CompanyProfile) -> dict[str, Any]:
                     "evidence_id": a.evidence_id,
                 }
                 for a in profile.governance.auditor_history
+            ],
+            "related_parties": [
+                {
+                    "period": rp.period,
+                    "kind": rp.kind,
+                    "category": rp.category,
+                    "amount": rp.amount,
+                    "counterparty": rp.counterparty,
+                    "evidence_id": rp.evidence_id,
+                }
+                for rp in profile.governance.related_parties
             ],
         },
         "participants": [
@@ -547,6 +559,17 @@ def _deserialize_profile(data: dict[str, Any]) -> CompanyProfile:
                     evidence_id=a.get("evidence_id", ""),
                 )
                 for a in gov.get("auditor_history", [])
+            ],
+            related_parties=[
+                RelatedPartyEntry(
+                    period=rp["period"],
+                    kind=rp["kind"],
+                    category=rp["category"],
+                    amount=rp["amount"],
+                    counterparty=rp.get("counterparty"),
+                    evidence_id=rp.get("evidence_id", ""),
+                )
+                for rp in gov.get("related_parties", [])
             ],
         ),
         participants=[

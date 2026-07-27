@@ -192,19 +192,65 @@ round (narrative disclosure, still no clean aggregate found).
 
 ---
 
+## Amendment (M-P3.3)
+
+Two further FactKinds independently satisfy the same three-part test and are
+admitted under this exception, not a new one — reversing the "RPT... still no
+clean aggregate found" note above now that a clean aggregate has been located:
+
+- `GOVERNANCE_RPT_BALANCE_AMOUNT` — primary (the notes-to-accounts "Loans to
+  related parties" line, a period-end STOCK disclosure per Ind AS 24, never
+  conflated with a period FLOW); extends `annual_report.py`'s existing
+  extraction machinery (same file, same period/provenance conventions as
+  `_extract_gross_block`). Evidence-verified at Tata Steel: 9/25 real
+  filings, real varying multi-year values (0.0, 4816.15, 8601.65 (x2),
+  52.01), including a correctly-handled disclosed-nil year. **Condition 3
+  does not hold for TCS's format** — tested directly against the real wider
+  table text: an open-ended, not-fully-observed category vocabulary, a
+  variable value-count per row, and the same counterparty (Jaguar Land
+  Rover) recurring under different categories in the same period, a genuine
+  collision risk with no verified category-boundary mechanism. TCS's
+  per-counterparty transaction table is therefore **not attempted** —
+  under-emit over an untested generic table-row scanner, the same discipline
+  already used for deferred-layout intangibles and Tata-Steel-format gross
+  block above. `GOVERNANCE_RPT_TRANSACTION_AMOUNT` (the flow-side
+  counterpart) and a counterparty FactKind are correspondingly **not added**
+  in this milestone.
+- `GOVERNANCE_RPT_CATEGORY` — the disclosed line's own label text, carried
+  alongside the balance amount so a builder-level `RelatedPartyEntry` can be
+  reconstructed without guessing at the category; sourced from the same
+  regex match, same evidence gate as above.
+
+Row identity for these two FactKinds is `provenance.section = "rpt_row_N"`,
+reusing the existing `resolution_N`/`director_change_N` section-keying
+discipline (see `src/atlas/company/builder.py`) — no new `Provenance` field
+was introduced.
+
+`GOVERNANCE_` (not `FINANCIAL_`) is the deliberate prefix choice: the
+builder's `_FINANCIAL_SNAPSHOT_KINDS` frozenset does blanket
+prefix-routing (`k.value.startswith("financial_")`) into a float-only,
+one-value-per-kind-per-period dict — a `FINANCIAL_`-prefixed name would risk
+being silently swept into the wrong snapshot rather than reaching the
+dedicated `rpt_row_N` reconstruction code this milestone adds.
+
+---
+
 ## References
 
 - `src/atlas/analysis/financial_results.py` — `_extract_balance_sheet_facts`,
   `_extract_cashflow_facts`, the extended functions; `_last_match_before`,
   `_positive` (M-P3.1 helpers)
-- `src/atlas/analysis/annual_report.py` — `_extract_gross_block` (M-P3.2)
-- `src/atlas/company/model.py` — `AuditorEntry`, `GovernanceProfile.auditor_history` (M-P3.2)
-- `src/atlas/analysis/base.py` — the seven FactKind members this exception covers
+- `src/atlas/analysis/annual_report.py` — `_extract_gross_block` (M-P3.2),
+  `_extract_rpt_balance` (M-P3.3)
+- `src/atlas/company/model.py` — `AuditorEntry`, `GovernanceProfile.auditor_history` (M-P3.2);
+  `RelatedPartyEntry`, `GovernanceProfile.related_parties` (M-P3.3)
+- `src/atlas/analysis/base.py` — the nine FactKind members this exception covers
 - `src/atlas/query/metrics.py` — registration (`inventories`,
   `trade_receivables`, `trade_payables`, `unbilled_revenue`, `cash_tax_paid`,
   `intangible_assets`, `gross_block`)
-- `src/atlas/query/engine.py` — `auditor_history()` query (M-P3.2)
+- `src/atlas/query/engine.py` — `auditor_history()` query (M-P3.2);
+  `related_party_disclosures()`, `rpt_resolutions()` queries (M-P3.3)
 - Atlas Evaluation Matrix — Part II Phase 3, M-P3.0 (extraction-risk gate),
-  M-P3.1, M-P3.2 (this amendment)
+  M-P3.1, M-P3.2, M-P3.3 (this amendment)
 - `docs/adr/0009-orthogonal-concerns.md` — the compose-don't-merge discipline
   informing the Billed/Unbilled non-overlap resolution

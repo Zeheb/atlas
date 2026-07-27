@@ -675,6 +675,76 @@ def auditor_history(profile: CompanyProfile) -> QueryResult:
     )
 
 
+def related_party_disclosures(profile: CompanyProfile) -> QueryResult:
+    """Related-party amounts disclosed in notes to accounts, most-recent
+    period first (M-P3.3, Q44).
+
+    ``kind`` distinguishes a period FLOW ("transaction") from a period-end
+    STOCK ("balance") per Ind AS 24 -- never conflated. Only "balance" rows
+    are populated in this milestone (the per-counterparty transaction table
+    is deferred; see AGENT.md / ADR-0012 for why).
+    """
+    entries = sorted(profile.governance.related_parties, key=lambda rp: rp.period, reverse=True)
+    rows = [
+        [rp.period, rp.kind, rp.category, f"{rp.amount:,.2f}", rp.counterparty or "-"]
+        for rp in entries
+    ]
+
+    notes = []
+    if not rows:
+        notes.append("No related-party disclosures found. Annual filings must be analyzed and ingested first.")
+
+    return QueryResult(
+        query="related_party_disclosures",
+        company_id=profile.company_id,
+        title="Related-Party Disclosures",
+        sections=[TableSection(
+            heading="Related-party amounts (most recent period first)",
+            columns=["Period", "Kind", "Category", "Amount (Cr)", "Counterparty"],
+            rows=rows,
+        )],
+        notes=notes,
+    )
+
+
+_RE_RPT_RESOLUTION = re.compile(r"related party transactions?", re.IGNORECASE)
+_RE_RPT_COUNTERPARTY = re.compile(r"\bwith\s+(.+?)(?:\.\s*$|\.$|$)", re.IGNORECASE)
+
+
+def rpt_resolutions(profile: CompanyProfile) -> QueryResult:
+    """AGM resolutions that approve related-party transactions, tagged by
+    classifying ``AGMResolution.title`` text (M-P3.3, Q44).
+
+    A derived query, not a persisted field: RPT-ness and the named
+    counterparty (when the title states one) are computed at query time from
+    the existing resolution title, never stored as a separate fact.
+    """
+    entries = sorted(profile.governance.resolutions, key=lambda r: r.source_date, reverse=True)
+    rows: list[list[str]] = []
+    for r in entries:
+        if not _RE_RPT_RESOLUTION.search(r.title):
+            continue
+        m = _RE_RPT_COUNTERPARTY.search(r.title)
+        counterparty = m.group(1).strip().rstrip(".") if m else "-"
+        rows.append([_fmt_source_date(r.source_date), _oneline(r.title), counterparty, r.outcome or "-"])
+
+    notes = []
+    if not rows:
+        notes.append("No related-party-transaction resolutions found among AGM resolutions on record.")
+
+    return QueryResult(
+        query="rpt_resolutions",
+        company_id=profile.company_id,
+        title="Related-Party-Transaction AGM Resolutions",
+        sections=[TableSection(
+            heading="RPT resolutions (most recent first)",
+            columns=["Date", "Title", "Counterparty", "Outcome"],
+            rows=rows,
+        )],
+        notes=notes,
+    )
+
+
 def rating_risk_timeline(profile: CompanyProfile) -> QueryResult:
     """Debt rating actions annotated with the risk factors from the most
     recent PRECEDING annual-report period (M-P2.3, Q41).
@@ -1351,6 +1421,8 @@ _QUERIES: dict[str, Callable[..., QueryResult]] = {
     "leverage":     leverage,
     "ratings":      credit_ratings,
     "auditor_history": auditor_history,
+    "related_party_disclosures": related_party_disclosures,
+    "rpt_resolutions": rpt_resolutions,
     "rating_risk_timeline": rating_risk_timeline,
     "risks":        risks,
     "risk_recurrence": risk_recurrence,

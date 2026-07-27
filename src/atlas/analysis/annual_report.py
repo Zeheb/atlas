@@ -37,7 +37,7 @@ from atlas.analysis.patterns import extract_n_values, fiscal_year_end
 from atlas.knowledge.base import KnowledgeBase
 from atlas.knowledge.entities import EntityResolver
 
-ANALYZER_VERSION = "3.2"
+ANALYZER_VERSION = "3.3"
 
 # Director identity (M-P1.4, narrowed): only CLEAN "Name (DIN 12345678)"
 # adjacencies. The name is 2-4 Title-case tokens immediately before the DIN
@@ -90,6 +90,59 @@ def _extract_gross_block(content: str, period: str) -> AnalysisFact | None:
             excerpt=_snip(content, m.start()),
         ),
     )
+
+
+# Related-party aggregate balance (M-P3.3, ADR-0012), from the notes-to-
+# accounts "Loans to related parties" line -- verified across 9/25 real Tata
+# Steel filings, real varying multi-year values, single clean label + a
+# 2-value comparative pair.
+#
+# Deliberately NOT the per-counterparty transaction table (TCS's "related
+# party transactions are as follows" note): that table has an open-ended,
+# not-fully-observed category vocabulary, a variable value-count per row (some
+# rows carry one value, not two), and the same counterparty recurs under
+# different categories in the same period -- a real collision risk without a
+# category scanner this milestone does not build. Deferred, not guessed.
+#
+# A dedicated regex, NOT `extract_n_values`: this table's own nil-convention
+# writes a disclosed zero as a bare "-", which `extract_n_values` either
+# silently skips (misattributing the next real number to the wrong period) or
+# treats as a stop condition once collection has started -- tested directly
+# and confirmed wrong before writing this. The label appears twice per filing
+# (non-current, then current); only the first (non-current) occurrence is
+# read, matching the "always read the first/current column" convention
+# already established for FINANCIAL_CASH_AND_EQUIVALENTS -- summing the two
+# sections was not attempted, since that would guess a semantic (is a
+# combined current+non-current total meaningful here?) this pass did not verify.
+_RE_RPT_BALANCE = re.compile(
+    r"Loans to related parties\n(?:Considered good - Unsecured\n)?([\d,]+(?:\.\d+)?|-)\n([\d,]+(?:\.\d+)?|-)"
+)
+
+
+def _parse_rpt_amount(token: str) -> float:
+    """"-" is a disclosed nil, not a missing value -- 0.0 is the correct
+    figure here (the company genuinely reports zero), not an extraction gap."""
+    return 0.0 if token.strip() == "-" else float(token.replace(",", ""))
+
+
+def _extract_rpt_balance(content: str, period: str) -> list[AnalysisFact]:
+    m = _RE_RPT_BALANCE.search(content)
+    if m is None:
+        return []
+    amount = _parse_rpt_amount(m.group(1))
+    prov = Provenance(section="rpt_row_0", char_offset=m.start(), excerpt=_snip(content, m.start()))
+    return [
+        AnalysisFact(
+            kind=FactKind.GOVERNANCE_RPT_BALANCE_AMOUNT,
+            value=amount, unit=FactUnit.CRORE_INR, period=period,
+            confidence="high", provenance=prov,
+        ),
+        AnalysisFact(
+            kind=FactKind.GOVERNANCE_RPT_CATEGORY,
+            value="Loans to related parties", unit=None, period=period,
+            confidence="high", provenance=prov,
+        ),
+    ]
 
 
 def _extract_directors(content: str, resolver: EntityResolver) -> list[EntityMention]:
@@ -486,6 +539,8 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     gross_block_fact = _extract_gross_block(content, period)
     if gross_block_fact is not None:
         facts.append(gross_block_fact)
+
+    facts.extend(_extract_rpt_balance(content, period))
 
     # ------------------------------------------------------------------ #
     # 3. Consolidated auditor's report — KAM titles                        #

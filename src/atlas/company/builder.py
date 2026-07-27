@@ -37,6 +37,7 @@ from atlas.company.model import (
     AGMResolution,
     AcquisitionEvent,
     AuditorEntry,
+    RelatedPartyEntry,
     BuybackEvent,
     CSATEntry,
     CapitalEventLedger,
@@ -473,6 +474,29 @@ def _ingest_annual_report_result(result: AnalysisResult, profile: CompanyProfile
             )
             profile.financial.snapshots.append(snap)
             fin_existing[key] = snap
+
+    # Related-party disclosures (M-P3.3). Row identity via provenance.section
+    # ("rpt_row_N"), the SAME grouping discipline as resolution_N/
+    # director_change_N above -- not char_offset or excerpt matching.
+    rpt_by_section: dict[str, dict[FactKind, AnalysisFact]] = defaultdict(dict)
+    for fact in result.facts:
+        sec = fact.provenance.section if fact.provenance else ""
+        if sec.startswith("rpt_row_"):
+            rpt_by_section[sec].setdefault(fact.kind, fact)
+
+    for _sec, facts in sorted(rpt_by_section.items()):
+        amount_fact = facts.get(FactKind.GOVERNANCE_RPT_BALANCE_AMOUNT)
+        category_fact = facts.get(FactKind.GOVERNANCE_RPT_CATEGORY)
+        if amount_fact is None or amount_fact.period is None:
+            continue
+        profile.governance.related_parties.append(RelatedPartyEntry(
+            period=amount_fact.period,
+            kind="balance",
+            category=str(category_fact.value) if category_fact else "",
+            amount=float(amount_fact.value) if isinstance(amount_fact.value, (int, float)) else 0.0,
+            counterparty=None,
+            evidence_id=result.evidence_id,
+        ))
 
 
 def _ingest_brsr_result(result: AnalysisResult, profile: CompanyProfile) -> None:

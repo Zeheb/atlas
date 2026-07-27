@@ -128,6 +128,18 @@ class FactKind(enum.Enum):
     GOVERNANCE_VOTE_PCT_FOR       = "governance_vote_pct_for"        # % votes in favour on polled; unit=PERCENT
     GOVERNANCE_VOTE_PCT_AGAINST   = "governance_vote_pct_against"    # % votes against on polled; unit=PERCENT
 
+    # Related-party disclosures (M-P3.3, ADR-0012). One fact per disclosed row;
+    # period=as-at date; section="rpt_row_N" (same row-grouping discipline as
+    # "resolution_N"/"director_change_N"). GOVERNANCE_RPT_BALANCE_AMOUNT only
+    # -- the flow-side counterpart (per-counterparty transaction amounts) is
+    # NOT extracted in this milestone: the source table has an open-ended,
+    # not-fully-observed category vocabulary and a variable value-count per
+    # row, and the same counterparty recurs under different categories in the
+    # same period (a real collision risk without reliable category tracking).
+    # Deferred rather than shipped on an untested scanner -- see ADR-0012.
+    GOVERNANCE_RPT_BALANCE_AMOUNT = "governance_rpt_balance_amount"   # aggregate related-party balance (e.g. "Loans to related parties"); unit=CRORE_INR
+    GOVERNANCE_RPT_CATEGORY       = "governance_rpt_category"        # the disclosed line's own label text; unit=None
+
     # Ownership structure (shareholding pattern — all at quarter-end; unit=PERCENT unless noted)
     OWNERSHIP_TOTAL_SHARES = "ownership_total_shares"               # unit=COUNT
     OWNERSHIP_PROMOTER_PCT = "ownership_promoter_pct"               # promoter + promoter group
