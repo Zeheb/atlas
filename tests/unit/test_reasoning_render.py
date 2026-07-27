@@ -1,4 +1,5 @@
 """ReasoningResult -> Answer rendering (§10 C9, M0 commit 6)."""
+
 from __future__ import annotations
 
 from atlas.reasoning.contracts import (
@@ -18,20 +19,29 @@ def _result(refused: bool = False) -> ReasoningResult:
     if refused:
         return ReasoningResult(
             question=Question(raw_text="what is it worth?", subject_ref=SUBJECT),
-            findings=(), overall_confidence="low", citations=frozenset(),
-            refused=True, refusal_reason="No market price data in Atlas.",
+            findings=(),
+            overall_confidence="low",
+            citations=frozenset(),
+            refused=True,
+            refusal_reason="No market price data in Atlas.",
         )
     claim = Claim(
-        subject_ref=SUBJECT, statement="op margin 24.2%", assertability="fact",
-        confidence="high", evidence=[EvidenceReference(evidence_id="ev-1")],
+        subject_ref=SUBJECT,
+        statement="op margin 24.2%",
+        assertability="fact",
+        confidence="high",
+        evidence=[EvidenceReference(evidence_id="ev-1")],
     )
     finding = Finding(
         statement="Margins have been durable near 24%.",
-        assertability="judgment", confidence="high", supporting_claims=[claim],
+        assertability="judgment",
+        confidence="high",
+        supporting_claims=[claim],
     )
     return ReasoningResult(
         question=Question(raw_text="margins?", subject_ref=SUBJECT),
-        findings=[finding], overall_confidence="high",
+        findings=[finding],
+        overall_confidence="high",
         citations=frozenset({"ev-1"}),
     )
 

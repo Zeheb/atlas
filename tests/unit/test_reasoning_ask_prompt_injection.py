@@ -8,6 +8,7 @@ against the GroundingContext and never against the prompt text.
 If a future refactor ever moved a citation check into prompt construction,
 these tests fail. That is what they are for.
 """
+
 from __future__ import annotations
 
 import json
@@ -56,14 +57,21 @@ class _CapturingClient:
 
     def complete(self, *, system: str, user: str) -> str:
         self.system, self.user = system, user
-        return json.dumps({
-            "refused": False, "overall_confidence": "high",
-            "findings": [{
-                "statement": "Margins ~24%.", "assertability": "judgment",
-                "confidence": "high", "supporting_evidence_ids": ["ev-1"],
-                "known_unknowns": [],
-            }],
-        })
+        return json.dumps(
+            {
+                "refused": False,
+                "overall_confidence": "high",
+                "findings": [
+                    {
+                        "statement": "Margins ~24%.",
+                        "assertability": "judgment",
+                        "confidence": "high",
+                        "supporting_evidence_ids": ["ev-1"],
+                        "known_unknowns": [],
+                    }
+                ],
+            }
+        )
 
 
 # --- The defaults are unchanged (every existing call site is unaffected) -----------
@@ -79,7 +87,9 @@ def test_defaults_are_the_m0_question_answering_pair() -> None:
 def test_custom_prompts_are_used() -> None:
     client = _CapturingClient()
     ask(
-        _question(), _context(), client,
+        _question(),
+        _context(),
+        client,
         system_prompt="CUSTOM SYSTEM",
         build_prompt=lambda q, c: f"CUSTOM USER for {q.raw_text}",
     )
@@ -91,18 +101,27 @@ def test_custom_prompts_are_used() -> None:
 # --- Every guarantee still holds with a custom prompt (the actual point) ------------
 def test_invented_citation_still_dropped_with_custom_prompt() -> None:
     """G10: an id outside the closed world is dropped no matter what was asked."""
-    client = _fake({
-        "refused": False, "overall_confidence": "high",
-        "findings": [{
-            "statement": "Margins ~24%.", "assertability": "fact",
-            "confidence": "high",
-            "supporting_evidence_ids": ["ev-1", "ev-DOES-NOT-EXIST"],
-            "known_unknowns": [],
-        }],
-    })
+    client = _fake(
+        {
+            "refused": False,
+            "overall_confidence": "high",
+            "findings": [
+                {
+                    "statement": "Margins ~24%.",
+                    "assertability": "fact",
+                    "confidence": "high",
+                    "supporting_evidence_ids": ["ev-1", "ev-DOES-NOT-EXIST"],
+                    "known_unknowns": [],
+                }
+            ],
+        }
+    )
     result = ask(
-        _question(), _context(), client,
-        system_prompt="anything", build_prompt=lambda q, c: "anything",
+        _question(),
+        _context(),
+        client,
+        system_prompt="anything",
+        build_prompt=lambda q, c: "anything",
     )
 
     assert result.citations == frozenset({"ev-1"})
@@ -111,17 +130,27 @@ def test_invented_citation_still_dropped_with_custom_prompt() -> None:
 
 def test_ungrounded_judgment_still_dropped_with_custom_prompt() -> None:
     """G3/G4: a judgment with no valid support cannot survive, prompt aside."""
-    client = _fake({
-        "refused": False, "overall_confidence": "high",
-        "findings": [{
-            "statement": "Margins are excellent.", "assertability": "judgment",
-            "confidence": "high", "supporting_evidence_ids": ["ev-NOPE"],
-            "known_unknowns": [],
-        }],
-    })
+    client = _fake(
+        {
+            "refused": False,
+            "overall_confidence": "high",
+            "findings": [
+                {
+                    "statement": "Margins are excellent.",
+                    "assertability": "judgment",
+                    "confidence": "high",
+                    "supporting_evidence_ids": ["ev-NOPE"],
+                    "known_unknowns": [],
+                }
+            ],
+        }
+    )
     result = ask(
-        _question(), _context(), client,
-        system_prompt="anything", build_prompt=lambda q, c: "anything",
+        _question(),
+        _context(),
+        client,
+        system_prompt="anything",
+        build_prompt=lambda q, c: "anything",
     )
 
     # Nothing grounded survived -> refusal, not an empty answer (G8).
@@ -130,12 +159,19 @@ def test_ungrounded_judgment_still_dropped_with_custom_prompt() -> None:
 
 
 def test_refusal_still_honored_with_custom_prompt() -> None:
-    client = _fake({
-        "refused": True, "refusal_reason": "out of scope", "findings": [],
-    })
+    client = _fake(
+        {
+            "refused": True,
+            "refusal_reason": "out of scope",
+            "findings": [],
+        }
+    )
     result = ask(
-        _question(), _context(), client,
-        system_prompt="anything", build_prompt=lambda q, c: "anything",
+        _question(),
+        _context(),
+        client,
+        system_prompt="anything",
+        build_prompt=lambda q, c: "anything",
     )
 
     assert result.refused
@@ -144,8 +180,11 @@ def test_refusal_still_honored_with_custom_prompt() -> None:
 
 def test_unparseable_output_still_refuses_with_custom_prompt() -> None:
     result = ask(
-        _question(), _context(), FakeLLMClient(response="not json at all"),
-        system_prompt="anything", build_prompt=lambda q, c: "anything",
+        _question(),
+        _context(),
+        FakeLLMClient(response="not json at all"),
+        system_prompt="anything",
+        build_prompt=lambda q, c: "anything",
     )
 
     assert result.refused
@@ -156,8 +195,11 @@ def test_citations_subset_invariant_holds_with_custom_prompt() -> None:
     it constructs successfully here, which is the assertion."""
     client = _CapturingClient()
     result = ask(
-        _question(), _context(), client,
-        system_prompt="S", build_prompt=lambda q, c: "U",
+        _question(),
+        _context(),
+        client,
+        system_prompt="S",
+        build_prompt=lambda q, c: "U",
     )
 
     finding_ids = {eid for f in result.findings for eid in f.evidence_ids}

@@ -17,6 +17,7 @@ Coverage mapping:
   TestMissingSections      — graceful degradation when sections absent
   TestSummarizeAlias       — summarize() backward-compatible alias
 """
+
 from __future__ import annotations
 
 import re
@@ -45,7 +46,6 @@ from atlas.analysis.base import (
     Provenance,
 )
 from atlas.knowledge.base import KnowledgeBase, ParsedDocument
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -100,16 +100,14 @@ _TOC_AND_BOARDS_REPORT = (
     "101\n"
     "Corporate Governance Report\n\n"
     # Real section body starting ~8000 chars later (simulated with padding)
-    + "x" * 500
-    + "Board’s Report\n"
+    + "x" * 500 + "Board’s Report\n"
     "65\n"
     "1.\tFinancial results\n"
     "The Directors present the annual report for FY 2024. "
     "Revenue from operations on a consolidated basis was ₹2,40,893 crore. "
     "Profit for the year attributable to shareholders was ₹45,908 crore.\n"
     "2.\tReturn of surplus funds to shareholders\n"
-    "Three interim dividends of ₹9 per equity share each were declared.\n"
-    + "x" * 400
+    "Three interim dividends of ₹9 per equity share each were declared.\n" + "x" * 400
 )
 
 _CSR_MANDATORY_DISCLOSURE = (
@@ -162,8 +160,7 @@ _MDA_WITH_ATTRITION = (
     "Risk Management\n"
     "1. Geopolitical risk\n"
     "2. Technology disruption risk\n"
-    "3. Regulatory compliance risk\n"
-    + "x" * 300
+    "3. Regulatory compliance risk\n" + "x" * 300
 )
 
 _RISK_SECTION_BULLETS = (

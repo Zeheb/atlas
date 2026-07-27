@@ -6,6 +6,7 @@ by passing another finding's evidence_ids straight through, which aliased one
 list object across two Findings. Nothing mutated it, so nothing broke -- but
 the safety was accidental, not structural.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -22,7 +23,10 @@ def test_finding_is_frozen() -> None:
 
 
 def test_evidence_ids_is_a_tuple() -> None:
-    assert Finding(text="x", evidence_ids=["ev-1", "ev-2"]).evidence_ids == ("ev-1", "ev-2")
+    assert Finding(text="x", evidence_ids=["ev-1", "ev-2"]).evidence_ids == (
+        "ev-1",
+        "ev-2",
+    )
 
 
 def test_a_list_is_still_accepted_and_coerced() -> None:
@@ -47,7 +51,9 @@ def test_evidence_ids_cannot_be_mutated_after_construction() -> None:
 def test_order_is_preserved() -> None:
     """The docstring promises it and the citation renderer depends on it."""
     assert Finding(text="x", evidence_ids=["ev-3", "ev-1", "ev-2"]).evidence_ids == (
-        "ev-3", "ev-1", "ev-2",
+        "ev-3",
+        "ev-1",
+        "ev-2",
     )
 
 

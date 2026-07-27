@@ -5,6 +5,7 @@ derived functions are exercised via test_query_metrics.py and the company
 builder/integration suites; these two are new and get direct coverage of their
 convention and None-guard behavior.
 """
+
 from __future__ import annotations
 
 from atlas.analysis.base import FactKind
@@ -19,8 +20,11 @@ def _snap(**facts: float) -> FinancialSnapshot:
         "pbe": FactKind.FINANCIAL_PROFIT_BEFORE_EXCEPTIONAL,
     }
     return FinancialSnapshot(
-        period="2026-03-31", period_type="annual", basis="consolidated",
-        facts={kmap[k]: v for k, v in facts.items()}, sources=[],
+        period="2026-03-31",
+        period_type="annual",
+        basis="consolidated",
+        facts={kmap[k]: v for k, v in facts.items()},
+        sources=[],
     )
 
 

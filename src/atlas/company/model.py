@@ -14,13 +14,13 @@ Design rules
 - All snapshot/entry collections are sorted ASC (oldest first) after build_profile().
 - Every container tracks source evidence IDs so facts can be traced to filings.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
 
 from atlas.analysis.base import FactKind, FactUnit
-
 
 # ---------------------------------------------------------------------------
 # Financial time-series
@@ -86,10 +86,10 @@ class DividendEvent:
     """A single dividend declaration from a board resolution or financial filing."""
 
     source_date: datetime
-    per_share: float                        # RUPEES_PER_SHARE
-    dividend_type: str                      # "interim" | "final" | "special"
-    record_date: str | None = None          # ISO date
-    payment_date: str | None = None         # ISO date
+    per_share: float  # RUPEES_PER_SHARE
+    dividend_type: str  # "interim" | "final" | "special"
+    record_date: str | None = None  # ISO date
+    payment_date: str | None = None  # ISO date
     evidence_id: str = ""
 
 
@@ -98,12 +98,12 @@ class BuybackEvent:
     """A single buyback program document (announcement, extinguishment, etc.)."""
 
     source_date: datetime
-    sub_type: str                           # "announcement"|"extinguishment"|"schedule"|"unknown"
-    amount: float | None = None             # CRORE_INR
-    price_per_share: float | None = None    # RUPEES_PER_SHARE
-    shares_offered: int | None = None       # max shares targeted
-    shares_bought: int | None = None        # shares actually extinguished
-    record_date: str | None = None          # ISO date
+    sub_type: str  # "announcement"|"extinguishment"|"schedule"|"unknown"
+    amount: float | None = None  # CRORE_INR
+    price_per_share: float | None = None  # RUPEES_PER_SHARE
+    shares_offered: int | None = None  # max shares targeted
+    shares_bought: int | None = None  # shares actually extinguished
+    record_date: str | None = None  # ISO date
     evidence_id: str = ""
 
 
@@ -113,7 +113,7 @@ class AcquisitionEvent:
 
     source_date: datetime
     target_name: str
-    consideration_type: str | None = None   # "cash" | "share_swap" | "subscription"
+    consideration_type: str | None = None  # "cash" | "share_swap" | "subscription"
     enterprise_value: float | None = None
     enterprise_value_unit: FactUnit | None = None
     stake_pct: float | None = None
@@ -137,8 +137,8 @@ class FundraisingEvent:
     """Board approval for raising capital via equity or debt instruments."""
 
     source_date: datetime
-    fundraise_type: str             # "QIP" | "rights_issue" | "preferential_allotment" | "NCD"
-    amount: float | None = None     # CRORE_INR — maximum amount authorised
+    fundraise_type: str  # "QIP" | "rights_issue" | "preferential_allotment" | "NCD"
+    amount: float | None = None  # CRORE_INR — maximum amount authorised
     evidence_id: str = ""
 
 
@@ -147,9 +147,9 @@ class DirectorChange:
     """A director or KMP appointment, reappointment, or resignation."""
 
     source_date: datetime
-    change_type: str                # "appointment" | "reappointment" | "resignation"
-    name: str                       # as stated in filing
-    role: str | None = None         # e.g. "Managing Director & CEO", "Independent Director"
+    change_type: str  # "appointment" | "reappointment" | "resignation"
+    name: str  # as stated in filing
+    role: str | None = None  # e.g. "Managing Director & CEO", "Independent Director"
     evidence_id: str = ""
 
 
@@ -179,11 +179,11 @@ class CreditRatingEntry:
 
     source_date: datetime
     agency: str
-    instrument: str | None = None           # "Long-term Bank Facilities" | "ESG" | …
-    rating: str | None = None               # "AAA" | "A1+" | "73" | …
-    outlook: str | None = None              # "stable" | "leader" | …
-    action: str | None = None               # "reaffirmed" | "upgraded" | …
-    amount: float | None = None             # CRORE_INR — rated ceiling; absent for ESG
+    instrument: str | None = None  # "Long-term Bank Facilities" | "ESG" | …
+    rating: str | None = None  # "AAA" | "A1+" | "73" | …
+    outlook: str | None = None  # "stable" | "leader" | …
+    action: str | None = None  # "reaffirmed" | "upgraded" | …
+    amount: float | None = None  # CRORE_INR — rated ceiling; absent for ESG
     evidence_id: str = ""
 
 
@@ -212,7 +212,7 @@ class CreditHistory:
 class OwnershipSnapshot:
     """Shareholding pattern at one quarter-end."""
 
-    period: str                             # ISO date (quarter end)
+    period: str  # ISO date (quarter end)
     facts: dict[FactKind, float] = field(default_factory=dict)
     sources: list[str] = field(default_factory=list)
 
@@ -235,9 +235,9 @@ class SegmentEntry:
 
     period: str
     name: str
-    revenue: float | None = None            # CRORE_INR
-    ebit: float | None = None               # CRORE_INR
-    growth_pct: float | None = None         # constant-currency YoY growth; PERCENT
+    revenue: float | None = None  # CRORE_INR
+    ebit: float | None = None  # CRORE_INR
+    growth_pct: float | None = None  # constant-currency YoY growth; PERCENT
     evidence_id: str = ""
 
 
@@ -271,8 +271,8 @@ class StrategyEntry:
 class CSATEntry:
     """One CSAT (customer satisfaction) data point from an investor presentation."""
 
-    period: str                             # half-year or fiscal year end ISO date
-    score: float                            # PERCENT
+    period: str  # half-year or fiscal year end ISO date
+    score: float  # PERCENT
     evidence_id: str = ""
 
 

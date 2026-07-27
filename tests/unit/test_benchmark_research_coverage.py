@@ -5,6 +5,7 @@ so the important tests here are the ones that construct deliberately
 degenerate planners and assert they are REJECTED. A gate never shown to fail
 is not a gate.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -14,8 +15,15 @@ from atlas.research.plan import Investigation, ResearchDecision, ResearchPlan
 from atlas.research.planner import ALL_RESEARCH_RULE_IDS, plan_research
 
 _ALL_NINE = (
-    "what_changed", "business_quality", "management_credibility", "balance_sheet",
-    "valuation", "risks", "catalysts", "competitive_position", "esg_governance",
+    "what_changed",
+    "business_quality",
+    "management_credibility",
+    "balance_sheet",
+    "valuation",
+    "risks",
+    "catalysts",
+    "competitive_position",
+    "esg_governance",
 )
 
 
@@ -33,7 +41,8 @@ class _FakePlan:
 
 def _real_plans() -> list[ResearchPlan]:
     return [
-        plan_research(q, s) for q, s in (
+        plan_research(q, s)
+        for q, s in (
             ("Should I invest in TCS?", ("TCS",)),
             ("What are the key risks to SBI?", ("SBIN",)),
             ("Compare Tata Steel with JSW Steel.", ("TATASTEEL", "JSWSTEEL")),
@@ -93,9 +102,9 @@ def test_everything_planner_is_rejected_even_when_ordering_varies() -> None:
     ]
     coverage = analyze_research_plans(rotated)
 
-    assert coverage.distinct_dimension_sets == 6      # "diverse" by set identity
-    assert coverage.set_entropy == 1.0                # and by evenness
-    assert coverage.is_checklist                      # but still a checklist
+    assert coverage.distinct_dimension_sets == 6  # "diverse" by set identity
+    assert coverage.set_entropy == 1.0  # and by evenness
+    assert coverage.is_checklist  # but still a checklist
     assert any("nearly" in r and "everything" in r for r in coverage.checklist_reasons)
 
 
@@ -124,25 +133,34 @@ def test_dead_rules_are_detected_on_a_narrow_question_set() -> None:
     """One question exercises few rules; the analyzer must say so rather than
     reporting a clean bill of health.
     """
-    coverage = analyze_research_plans([plan_research("Should I invest in TCS?", ("TCS",))])
+    coverage = analyze_research_plans(
+        [plan_research("Should I invest in TCS?", ("TCS",))]
+    )
     assert coverage.dead_rules  # most rules never fired on a single question
 
 
 def test_analyzer_accepts_structural_plans_without_importing_them() -> None:
-    coverage = analyze_research_plans([
-        _FakePlan(intent="a", dimensions=("risks",),
-                  decisions=(ResearchDecision(rule="r", input="i", output="o"),)),
-        _FakePlan(intent="b", dimensions=("valuation", "risks")),
-    ])
+    coverage = analyze_research_plans(
+        [
+            _FakePlan(
+                intent="a",
+                dimensions=("risks",),
+                decisions=(ResearchDecision(rule="r", input="i", output="o"),),
+            ),
+            _FakePlan(intent="b", dimensions=("valuation", "risks")),
+        ]
+    )
     assert coverage.plans_analyzed == 2
     assert coverage.distinct_dimension_sets == 2
 
 
 def test_max_plan_width_is_reported() -> None:
-    coverage = analyze_research_plans([
-        _FakePlan(intent="a", dimensions=("risks",)),
-        _FakePlan(intent="b", dimensions=("risks", "valuation", "catalysts")),
-    ])
+    coverage = analyze_research_plans(
+        [
+            _FakePlan(intent="a", dimensions=("risks",)),
+            _FakePlan(intent="b", dimensions=("risks", "valuation", "catalysts")),
+        ]
+    )
     assert coverage.max_plan_width == 3
     assert coverage.mean_plan_width == 2.0
 
@@ -155,10 +173,15 @@ def test_real_plan_satisfies_the_structural_protocol() -> None:
         raw_question="Should I invest in TCS?",
         intent="invest_decision",
         subjects=("TCS",),
-        investigations=(Investigation(
-            dimension="risks", question="What risks are disclosed?",
-            subjects=("TCS",), rationale="the downside bounds the thesis", priority=5,
-        ),),
+        investigations=(
+            Investigation(
+                dimension="risks",
+                question="What risks are disclosed?",
+                subjects=("TCS",),
+                rationale="the downside bounds the thesis",
+                priority=5,
+            ),
+        ),
     )
     coverage = analyze_research_plans([plan])
     assert coverage.plans_analyzed == 1

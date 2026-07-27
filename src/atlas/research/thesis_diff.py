@@ -25,6 +25,7 @@ Under-emit: comparing two theses that answer DIFFERENT questions would
 misattribute an apparent "change" to what is really just a different
 question, so ``diff_theses`` refuses (returns ``None``) rather than guessing.
 """
+
 from __future__ import annotations
 
 import re
@@ -50,7 +51,7 @@ class ChangedFinding:
     """A finding present in both theses, under the same normalized statement,
     whose confidence differs."""
 
-    statement: str          # verbatim statement from the NEWER thesis
+    statement: str  # verbatim statement from the NEWER thesis
     older_confidence: str
     newer_confidence: str
 
@@ -111,11 +112,13 @@ def diff_theses(older: Thesis, newer: Thesis) -> ThesisDiff | None:
         if older_f.confidence == newer_f.confidence:
             unchanged_count += 1
         else:
-            changed.append(ChangedFinding(
-                statement=newer_f.statement,
-                older_confidence=older_f.confidence,
-                newer_confidence=newer_f.confidence,
-            ))
+            changed.append(
+                ChangedFinding(
+                    statement=newer_f.statement,
+                    older_confidence=older_f.confidence,
+                    newer_confidence=newer_f.confidence,
+                )
+            )
 
     return ThesisDiff(
         question=newer.question,

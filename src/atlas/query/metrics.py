@@ -33,6 +33,7 @@ excluded — this registry is for *numeric* time-series metrics; the existing
 topic-specific queries (risks, strategy, ratings, capital, acquisitions)
 already serve textual/categorical facts well and are untouched.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -69,137 +70,624 @@ class MetricSpec:
     higher_is_better: bool | None = None
 
 
-def _fk(key: str, label: str, kind: FactKind, unit: FactUnit | None, better: bool | None = None) -> MetricSpec:
-    return MetricSpec(key=key, label=label, domain="financial", unit=unit, fact_kind=kind, higher_is_better=better)
+def _fk(
+    key: str,
+    label: str,
+    kind: FactKind,
+    unit: FactUnit | None,
+    better: bool | None = None,
+) -> MetricSpec:
+    return MetricSpec(
+        key=key,
+        label=label,
+        domain="financial",
+        unit=unit,
+        fact_kind=kind,
+        higher_is_better=better,
+    )
 
 
-def _esg(key: str, label: str, kind: FactKind, unit: FactUnit | None, better: bool | None = None) -> MetricSpec:
-    return MetricSpec(key=key, label=label, domain="esg", unit=unit, fact_kind=kind, higher_is_better=better)
+def _esg(
+    key: str,
+    label: str,
+    kind: FactKind,
+    unit: FactUnit | None,
+    better: bool | None = None,
+) -> MetricSpec:
+    return MetricSpec(
+        key=key,
+        label=label,
+        domain="esg",
+        unit=unit,
+        fact_kind=kind,
+        higher_is_better=better,
+    )
 
 
-def _own(key: str, label: str, kind: FactKind, better: bool | None = None) -> MetricSpec:
-    return MetricSpec(key=key, label=label, domain="ownership", unit=FactUnit.PERCENT, fact_kind=kind, higher_is_better=better)
+def _own(
+    key: str, label: str, kind: FactKind, better: bool | None = None
+) -> MetricSpec:
+    return MetricSpec(
+        key=key,
+        label=label,
+        domain="ownership",
+        unit=FactUnit.PERCENT,
+        fact_kind=kind,
+        higher_is_better=better,
+    )
 
 
-def _derived(key: str, label: str, fn: Callable[[FinancialSnapshot], float | None], unit: FactUnit | None, better: bool | None = None) -> MetricSpec:
-    return MetricSpec(key=key, label=label, domain="financial", unit=unit, derive_fn=fn, higher_is_better=better)
+def _derived(
+    key: str,
+    label: str,
+    fn: Callable[[FinancialSnapshot], float | None],
+    unit: FactUnit | None,
+    better: bool | None = None,
+) -> MetricSpec:
+    return MetricSpec(
+        key=key,
+        label=label,
+        domain="financial",
+        unit=unit,
+        derive_fn=fn,
+        higher_is_better=better,
+    )
 
 
 _SPECS: list[MetricSpec] = [
     # -- Financial: P&L (raw FactKinds) ----------------------------------
     _fk("revenue", "Revenue", FactKind.FINANCIAL_REVENUE, FactUnit.CRORE_INR, True),
-    _fk("other_income", "Other Income", FactKind.FINANCIAL_OTHER_INCOME, FactUnit.CRORE_INR, None),
-    _fk("total_income", "Total Income", FactKind.FINANCIAL_TOTAL_INCOME, FactUnit.CRORE_INR, True),
-    _fk("employee_cost", "Employee Cost", FactKind.FINANCIAL_EMPLOYEE_COST, FactUnit.CRORE_INR, False),
-    _fk("equipment_software_cost", "Equipment & Software Cost", FactKind.FINANCIAL_EQUIPMENT_SOFTWARE_COST, FactUnit.CRORE_INR, False),
-    _fk("finance_cost", "Finance Cost", FactKind.FINANCIAL_FINANCE_COST, FactUnit.CRORE_INR, False),
-    _fk("depreciation", "Depreciation", FactKind.FINANCIAL_DEPRECIATION, FactUnit.CRORE_INR, None),
-    _fk("other_expenses", "Other Expenses", FactKind.FINANCIAL_OTHER_EXPENSES, FactUnit.CRORE_INR, False),
-    _fk("total_expenses", "Total Expenses", FactKind.FINANCIAL_TOTAL_EXPENSES, FactUnit.CRORE_INR, False),
-    _fk("profit_before_exceptional", "Profit Before Exceptional Items", FactKind.FINANCIAL_PROFIT_BEFORE_EXCEPTIONAL, FactUnit.CRORE_INR, True),
-    _fk("profit_before_tax", "Profit Before Tax", FactKind.FINANCIAL_PROFIT_BEFORE_TAX, FactUnit.CRORE_INR, True),
-    _fk("current_tax", "Current Tax", FactKind.FINANCIAL_CURRENT_TAX, FactUnit.CRORE_INR, None),
-    _fk("deferred_tax", "Deferred Tax", FactKind.FINANCIAL_DEFERRED_TAX, FactUnit.CRORE_INR, None),
-    _fk("total_tax", "Total Tax", FactKind.FINANCIAL_TOTAL_TAX, FactUnit.CRORE_INR, None),
+    _fk(
+        "other_income",
+        "Other Income",
+        FactKind.FINANCIAL_OTHER_INCOME,
+        FactUnit.CRORE_INR,
+        None,
+    ),
+    _fk(
+        "total_income",
+        "Total Income",
+        FactKind.FINANCIAL_TOTAL_INCOME,
+        FactUnit.CRORE_INR,
+        True,
+    ),
+    _fk(
+        "employee_cost",
+        "Employee Cost",
+        FactKind.FINANCIAL_EMPLOYEE_COST,
+        FactUnit.CRORE_INR,
+        False,
+    ),
+    _fk(
+        "equipment_software_cost",
+        "Equipment & Software Cost",
+        FactKind.FINANCIAL_EQUIPMENT_SOFTWARE_COST,
+        FactUnit.CRORE_INR,
+        False,
+    ),
+    _fk(
+        "finance_cost",
+        "Finance Cost",
+        FactKind.FINANCIAL_FINANCE_COST,
+        FactUnit.CRORE_INR,
+        False,
+    ),
+    _fk(
+        "depreciation",
+        "Depreciation",
+        FactKind.FINANCIAL_DEPRECIATION,
+        FactUnit.CRORE_INR,
+        None,
+    ),
+    _fk(
+        "other_expenses",
+        "Other Expenses",
+        FactKind.FINANCIAL_OTHER_EXPENSES,
+        FactUnit.CRORE_INR,
+        False,
+    ),
+    _fk(
+        "total_expenses",
+        "Total Expenses",
+        FactKind.FINANCIAL_TOTAL_EXPENSES,
+        FactUnit.CRORE_INR,
+        False,
+    ),
+    _fk(
+        "profit_before_exceptional",
+        "Profit Before Exceptional Items",
+        FactKind.FINANCIAL_PROFIT_BEFORE_EXCEPTIONAL,
+        FactUnit.CRORE_INR,
+        True,
+    ),
+    _fk(
+        "profit_before_tax",
+        "Profit Before Tax",
+        FactKind.FINANCIAL_PROFIT_BEFORE_TAX,
+        FactUnit.CRORE_INR,
+        True,
+    ),
+    _fk(
+        "current_tax",
+        "Current Tax",
+        FactKind.FINANCIAL_CURRENT_TAX,
+        FactUnit.CRORE_INR,
+        None,
+    ),
+    _fk(
+        "deferred_tax",
+        "Deferred Tax",
+        FactKind.FINANCIAL_DEFERRED_TAX,
+        FactUnit.CRORE_INR,
+        None,
+    ),
+    _fk(
+        "total_tax", "Total Tax", FactKind.FINANCIAL_TOTAL_TAX, FactUnit.CRORE_INR, None
+    ),
     _fk("pat", "Profit After Tax", FactKind.FINANCIAL_PAT, FactUnit.CRORE_INR, True),
-    _fk("eps_basic", "EPS (Basic)", FactKind.FINANCIAL_EPS_BASIC, FactUnit.RUPEES, True),
-    _fk("eps_diluted", "EPS (Diluted)", FactKind.FINANCIAL_EPS_DILUTED, FactUnit.RUPEES, True),
-
+    _fk(
+        "eps_basic", "EPS (Basic)", FactKind.FINANCIAL_EPS_BASIC, FactUnit.RUPEES, True
+    ),
+    _fk(
+        "eps_diluted",
+        "EPS (Diluted)",
+        FactKind.FINANCIAL_EPS_DILUTED,
+        FactUnit.RUPEES,
+        True,
+    ),
     # -- Financial: transcript / investor-deck metrics --------------------
-    _fk("tcv", "Total Contract Value (TCV)", FactKind.FINANCIAL_TCV, FactUnit.USD_BILLION, True),
-    _fk("operating_margin", "Operating Margin", FactKind.FINANCIAL_OPERATING_MARGIN, FactUnit.PERCENT, True),
-    _fk("net_margin", "Net Margin", FactKind.FINANCIAL_NET_MARGIN, FactUnit.PERCENT, True),
-    _fk("roe", "Return on Equity (ROE)", FactKind.FINANCIAL_ROE, FactUnit.PERCENT, True),
-    _fk("fcf", "Free Cash Flow (management-defined)", FactKind.FINANCIAL_FCF, FactUnit.CRORE_INR, True),
-
+    _fk(
+        "tcv",
+        "Total Contract Value (TCV)",
+        FactKind.FINANCIAL_TCV,
+        FactUnit.USD_BILLION,
+        True,
+    ),
+    _fk(
+        "operating_margin",
+        "Operating Margin",
+        FactKind.FINANCIAL_OPERATING_MARGIN,
+        FactUnit.PERCENT,
+        True,
+    ),
+    _fk(
+        "net_margin",
+        "Net Margin",
+        FactKind.FINANCIAL_NET_MARGIN,
+        FactUnit.PERCENT,
+        True,
+    ),
+    _fk(
+        "roe", "Return on Equity (ROE)", FactKind.FINANCIAL_ROE, FactUnit.PERCENT, True
+    ),
+    _fk(
+        "fcf",
+        "Free Cash Flow (management-defined)",
+        FactKind.FINANCIAL_FCF,
+        FactUnit.CRORE_INR,
+        True,
+    ),
     # -- Financial: balance sheet / cash flow ------------------------------
-    _fk("cash", "Cash & Equivalents", FactKind.FINANCIAL_CASH_AND_EQUIVALENTS, FactUnit.CRORE_INR, True),
-    _fk("total_debt", "Total Debt", FactKind.FINANCIAL_TOTAL_DEBT, FactUnit.CRORE_INR, False),
-    _fk("total_equity", "Total Equity", FactKind.FINANCIAL_TOTAL_EQUITY, FactUnit.CRORE_INR, True),
-    _fk("operating_cash_flow", "Operating Cash Flow", FactKind.FINANCIAL_OPERATING_CASH_FLOW, FactUnit.CRORE_INR, True),
-    _fk("capex", "Capital Expenditure", FactKind.FINANCIAL_CAPEX, FactUnit.CRORE_INR, None),
-    _fk("cash_tax_paid", "Cash Tax Paid", FactKind.FINANCIAL_CASH_TAX_PAID, FactUnit.CRORE_INR, None),
-
+    _fk(
+        "cash",
+        "Cash & Equivalents",
+        FactKind.FINANCIAL_CASH_AND_EQUIVALENTS,
+        FactUnit.CRORE_INR,
+        True,
+    ),
+    _fk(
+        "total_debt",
+        "Total Debt",
+        FactKind.FINANCIAL_TOTAL_DEBT,
+        FactUnit.CRORE_INR,
+        False,
+    ),
+    _fk(
+        "total_equity",
+        "Total Equity",
+        FactKind.FINANCIAL_TOTAL_EQUITY,
+        FactUnit.CRORE_INR,
+        True,
+    ),
+    _fk(
+        "operating_cash_flow",
+        "Operating Cash Flow",
+        FactKind.FINANCIAL_OPERATING_CASH_FLOW,
+        FactUnit.CRORE_INR,
+        True,
+    ),
+    _fk(
+        "capex",
+        "Capital Expenditure",
+        FactKind.FINANCIAL_CAPEX,
+        FactUnit.CRORE_INR,
+        None,
+    ),
+    _fk(
+        "cash_tax_paid",
+        "Cash Tax Paid",
+        FactKind.FINANCIAL_CASH_TAX_PAID,
+        FactUnit.CRORE_INR,
+        None,
+    ),
     # -- Financial: working capital (M-P3.1, ADR-0012) ---------------------
-    _fk("inventories", "Inventories", FactKind.FINANCIAL_INVENTORIES, FactUnit.CRORE_INR, False),
-    _fk("trade_receivables", "Trade Receivables (billed)", FactKind.FINANCIAL_TRADE_RECEIVABLES, FactUnit.CRORE_INR, False),
-    _fk("trade_payables", "Trade Payables", FactKind.FINANCIAL_TRADE_PAYABLES, FactUnit.CRORE_INR, True),
-    _fk("unbilled_revenue", "Unbilled Revenue", FactKind.FINANCIAL_UNBILLED_REVENUE, FactUnit.CRORE_INR, False),
-
+    _fk(
+        "inventories",
+        "Inventories",
+        FactKind.FINANCIAL_INVENTORIES,
+        FactUnit.CRORE_INR,
+        False,
+    ),
+    _fk(
+        "trade_receivables",
+        "Trade Receivables (billed)",
+        FactKind.FINANCIAL_TRADE_RECEIVABLES,
+        FactUnit.CRORE_INR,
+        False,
+    ),
+    _fk(
+        "trade_payables",
+        "Trade Payables",
+        FactKind.FINANCIAL_TRADE_PAYABLES,
+        FactUnit.CRORE_INR,
+        True,
+    ),
+    _fk(
+        "unbilled_revenue",
+        "Unbilled Revenue",
+        FactKind.FINANCIAL_UNBILLED_REVENUE,
+        FactUnit.CRORE_INR,
+        False,
+    ),
     # -- Financial: notes to accounts (M-P3.2, ADR-0012) --------------------
-    _fk("intangible_assets", "Intangible Assets", FactKind.FINANCIAL_INTANGIBLE_ASSETS, FactUnit.CRORE_INR, None),
-    _fk("gross_block", "Gross Block (PP&E)", FactKind.FINANCIAL_GROSS_BLOCK, FactUnit.CRORE_INR, None),
-
+    _fk(
+        "intangible_assets",
+        "Intangible Assets",
+        FactKind.FINANCIAL_INTANGIBLE_ASSETS,
+        FactUnit.CRORE_INR,
+        None,
+    ),
+    _fk(
+        "gross_block",
+        "Gross Block (PP&E)",
+        FactKind.FINANCIAL_GROSS_BLOCK,
+        FactUnit.CRORE_INR,
+        None,
+    ),
     # -- Financial: input-cost components (M-P3.4, ADR-0012) ----------------
     # Manufacturer-specific -- absent for service companies (TCS) by business model.
-    _fk("cost_of_materials", "Cost of Materials Consumed", FactKind.FINANCIAL_COST_OF_MATERIALS, FactUnit.CRORE_INR, False),
-    _fk("purchases_stock_in_trade", "Purchases of Stock-in-Trade", FactKind.FINANCIAL_PURCHASES_STOCK_IN_TRADE, FactUnit.CRORE_INR, False),
-    _fk("change_in_inventories", "Changes in Inventories", FactKind.FINANCIAL_CHANGE_IN_INVENTORIES, FactUnit.CRORE_INR, None),
-
+    _fk(
+        "cost_of_materials",
+        "Cost of Materials Consumed",
+        FactKind.FINANCIAL_COST_OF_MATERIALS,
+        FactUnit.CRORE_INR,
+        False,
+    ),
+    _fk(
+        "purchases_stock_in_trade",
+        "Purchases of Stock-in-Trade",
+        FactKind.FINANCIAL_PURCHASES_STOCK_IN_TRADE,
+        FactUnit.CRORE_INR,
+        False,
+    ),
+    _fk(
+        "change_in_inventories",
+        "Changes in Inventories",
+        FactKind.FINANCIAL_CHANGE_IN_INVENTORIES,
+        FactUnit.CRORE_INR,
+        None,
+    ),
     # -- Financial: borrowings maturity schedule (M-P3.6, ADR-0012) ----------
     # Manufacturer-specific -- absent at TCS (near-zero-debt) and SBIN (different bank disclosure format).
     # Does NOT reconcile to total_debt -- see ADR-0012's M-P3.6 amendment.
-    _fk("debt_maturity_within_1y", "Debt Maturity: Within 1 Year", FactKind.FINANCIAL_DEBT_MATURITY_WITHIN_1Y, FactUnit.CRORE_INR, False),
-    _fk("debt_maturity_1_to_2y", "Debt Maturity: 1-2 Years", FactKind.FINANCIAL_DEBT_MATURITY_1_TO_2Y, FactUnit.CRORE_INR, None),
-    _fk("debt_maturity_2_to_3y", "Debt Maturity: 2-3 Years", FactKind.FINANCIAL_DEBT_MATURITY_2_TO_3Y, FactUnit.CRORE_INR, None),
-    _fk("debt_maturity_3_to_4y", "Debt Maturity: 3-4 Years", FactKind.FINANCIAL_DEBT_MATURITY_3_TO_4Y, FactUnit.CRORE_INR, None),
-    _fk("debt_maturity_4_to_5y", "Debt Maturity: 4-5 Years", FactKind.FINANCIAL_DEBT_MATURITY_4_TO_5Y, FactUnit.CRORE_INR, None),
-    _fk("debt_maturity_beyond_5y", "Debt Maturity: Beyond 5 Years", FactKind.FINANCIAL_DEBT_MATURITY_BEYOND_5Y, FactUnit.CRORE_INR, None),
-
+    _fk(
+        "debt_maturity_within_1y",
+        "Debt Maturity: Within 1 Year",
+        FactKind.FINANCIAL_DEBT_MATURITY_WITHIN_1Y,
+        FactUnit.CRORE_INR,
+        False,
+    ),
+    _fk(
+        "debt_maturity_1_to_2y",
+        "Debt Maturity: 1-2 Years",
+        FactKind.FINANCIAL_DEBT_MATURITY_1_TO_2Y,
+        FactUnit.CRORE_INR,
+        None,
+    ),
+    _fk(
+        "debt_maturity_2_to_3y",
+        "Debt Maturity: 2-3 Years",
+        FactKind.FINANCIAL_DEBT_MATURITY_2_TO_3Y,
+        FactUnit.CRORE_INR,
+        None,
+    ),
+    _fk(
+        "debt_maturity_3_to_4y",
+        "Debt Maturity: 3-4 Years",
+        FactKind.FINANCIAL_DEBT_MATURITY_3_TO_4Y,
+        FactUnit.CRORE_INR,
+        None,
+    ),
+    _fk(
+        "debt_maturity_4_to_5y",
+        "Debt Maturity: 4-5 Years",
+        FactKind.FINANCIAL_DEBT_MATURITY_4_TO_5Y,
+        FactUnit.CRORE_INR,
+        None,
+    ),
+    _fk(
+        "debt_maturity_beyond_5y",
+        "Debt Maturity: Beyond 5 Years",
+        FactKind.FINANCIAL_DEBT_MATURITY_BEYOND_5Y,
+        FactUnit.CRORE_INR,
+        None,
+    ),
     # -- Financial: banking / NBFC ratios ----------------------------------
-    _fk("nii", "Net Interest Income", FactKind.FINANCIAL_NET_INTEREST_INCOME, FactUnit.CRORE_INR, True),
-    _fk("nim", "Net Interest Margin", FactKind.FINANCIAL_NET_INTEREST_MARGIN, FactUnit.PERCENT, True),
-    _fk("gross_npa_ratio", "Gross NPA Ratio", FactKind.FINANCIAL_GROSS_NPA_RATIO, FactUnit.PERCENT, False),
-    _fk("net_npa_ratio", "Net NPA Ratio", FactKind.FINANCIAL_NET_NPA_RATIO, FactUnit.PERCENT, False),
-    _fk("provision_coverage_ratio", "Provision Coverage Ratio", FactKind.FINANCIAL_PROVISION_COVERAGE_RATIO, FactUnit.PERCENT, True),
-    _fk("credit_cost", "Credit Cost", FactKind.FINANCIAL_CREDIT_COST, FactUnit.PERCENT, False),
-    _fk("casa_ratio", "CASA Ratio", FactKind.FINANCIAL_CASA_RATIO, FactUnit.PERCENT, True),
-    _fk("capital_adequacy_ratio", "Capital Adequacy Ratio (CRAR)", FactKind.FINANCIAL_CAPITAL_ADEQUACY_RATIO, FactUnit.PERCENT, True),
-    _fk("slippage_ratio", "Slippage Ratio", FactKind.FINANCIAL_SLIPPAGE_RATIO, FactUnit.PERCENT, False),
-
+    _fk(
+        "nii",
+        "Net Interest Income",
+        FactKind.FINANCIAL_NET_INTEREST_INCOME,
+        FactUnit.CRORE_INR,
+        True,
+    ),
+    _fk(
+        "nim",
+        "Net Interest Margin",
+        FactKind.FINANCIAL_NET_INTEREST_MARGIN,
+        FactUnit.PERCENT,
+        True,
+    ),
+    _fk(
+        "gross_npa_ratio",
+        "Gross NPA Ratio",
+        FactKind.FINANCIAL_GROSS_NPA_RATIO,
+        FactUnit.PERCENT,
+        False,
+    ),
+    _fk(
+        "net_npa_ratio",
+        "Net NPA Ratio",
+        FactKind.FINANCIAL_NET_NPA_RATIO,
+        FactUnit.PERCENT,
+        False,
+    ),
+    _fk(
+        "provision_coverage_ratio",
+        "Provision Coverage Ratio",
+        FactKind.FINANCIAL_PROVISION_COVERAGE_RATIO,
+        FactUnit.PERCENT,
+        True,
+    ),
+    _fk(
+        "credit_cost",
+        "Credit Cost",
+        FactKind.FINANCIAL_CREDIT_COST,
+        FactUnit.PERCENT,
+        False,
+    ),
+    _fk(
+        "casa_ratio",
+        "CASA Ratio",
+        FactKind.FINANCIAL_CASA_RATIO,
+        FactUnit.PERCENT,
+        True,
+    ),
+    _fk(
+        "capital_adequacy_ratio",
+        "Capital Adequacy Ratio (CRAR)",
+        FactKind.FINANCIAL_CAPITAL_ADEQUACY_RATIO,
+        FactUnit.PERCENT,
+        True,
+    ),
+    _fk(
+        "slippage_ratio",
+        "Slippage Ratio",
+        FactKind.FINANCIAL_SLIPPAGE_RATIO,
+        FactUnit.PERCENT,
+        False,
+    ),
     # -- Financial: physical operating volume ------------------------------
-    _fk("production_volume", "Production Volume", FactKind.FINANCIAL_PRODUCTION_VOLUME, FactUnit.MILLION_TONNES, True),
-    _fk("delivery_volume", "Delivery Volume", FactKind.FINANCIAL_DELIVERY_VOLUME, FactUnit.MILLION_TONNES, True),
-
+    _fk(
+        "production_volume",
+        "Production Volume",
+        FactKind.FINANCIAL_PRODUCTION_VOLUME,
+        FactUnit.MILLION_TONNES,
+        True,
+    ),
+    _fk(
+        "delivery_volume",
+        "Delivery Volume",
+        FactKind.FINANCIAL_DELIVERY_VOLUME,
+        FactUnit.MILLION_TONNES,
+        True,
+    ),
     # -- Financial: derived (computed on demand from derived.py) ----------
-    _derived("net_debt", "Net Debt (debt - cash)", derived.net_debt, FactUnit.CRORE_INR, False),
+    _derived(
+        "net_debt",
+        "Net Debt (debt - cash)",
+        derived.net_debt,
+        FactUnit.CRORE_INR,
+        False,
+    ),
     _derived("ebit", "EBIT", derived.ebit, FactUnit.CRORE_INR, True),
     _derived("ebitda", "EBITDA", derived.ebitda, FactUnit.CRORE_INR, True),
-    _derived("ebit_margin", "EBIT Margin", derived.ebit_margin_pct, FactUnit.PERCENT, True),
-    _derived("ebitda_margin", "EBITDA Margin", derived.ebitda_margin_pct, FactUnit.PERCENT, True),
-    _derived("pat_margin", "PAT Margin", derived.pat_margin_pct, FactUnit.PERCENT, True),
-    _derived("capex_intensity", "Capex Intensity (capex / revenue)", derived.capex_intensity_pct, FactUnit.PERCENT, None),
-    _derived("fcf_gaap", "Free Cash Flow (GAAP: OCF - capex)", derived.fcf_gaap, FactUnit.CRORE_INR, True),
-    _derived("employee_cost_pct", "Employee Cost % of Revenue", derived.employee_cost_pct, FactUnit.PERCENT, False),
-    _derived("cost_of_debt", "Cost of Debt (finance cost / debt)", derived.cost_of_debt, FactUnit.PERCENT, False),
-    _derived("interest_coverage", "Interest Coverage (EBIT / finance cost)", derived.interest_coverage, None, True),
-
+    _derived(
+        "ebit_margin", "EBIT Margin", derived.ebit_margin_pct, FactUnit.PERCENT, True
+    ),
+    _derived(
+        "ebitda_margin",
+        "EBITDA Margin",
+        derived.ebitda_margin_pct,
+        FactUnit.PERCENT,
+        True,
+    ),
+    _derived(
+        "pat_margin", "PAT Margin", derived.pat_margin_pct, FactUnit.PERCENT, True
+    ),
+    _derived(
+        "capex_intensity",
+        "Capex Intensity (capex / revenue)",
+        derived.capex_intensity_pct,
+        FactUnit.PERCENT,
+        None,
+    ),
+    _derived(
+        "fcf_gaap",
+        "Free Cash Flow (GAAP: OCF - capex)",
+        derived.fcf_gaap,
+        FactUnit.CRORE_INR,
+        True,
+    ),
+    _derived(
+        "employee_cost_pct",
+        "Employee Cost % of Revenue",
+        derived.employee_cost_pct,
+        FactUnit.PERCENT,
+        False,
+    ),
+    _derived(
+        "cost_of_debt",
+        "Cost of Debt (finance cost / debt)",
+        derived.cost_of_debt,
+        FactUnit.PERCENT,
+        False,
+    ),
+    _derived(
+        "interest_coverage",
+        "Interest Coverage (EBIT / finance cost)",
+        derived.interest_coverage,
+        None,
+        True,
+    ),
     # -- ESG ----------------------------------------------------------------
-    _esg("ghg_scope1", "GHG Scope 1 Emissions", FactKind.ESG_GHG_SCOPE1, FactUnit.TCO2E, False),
-    _esg("ghg_scope2", "GHG Scope 2 Emissions", FactKind.ESG_GHG_SCOPE2, FactUnit.TCO2E, False),
-    _esg("ghg_scope3", "GHG Scope 3 Emissions", FactKind.ESG_GHG_SCOPE3, FactUnit.TCO2E, False),
-    _esg("energy_total", "Total Energy Consumption", FactKind.ESG_ENERGY_TOTAL_MJ, FactUnit.MEGAJOULE, None),
-    _esg("energy_renewable_pct", "Renewable Energy %", FactKind.ESG_ENERGY_RENEWABLE_PCT, FactUnit.PERCENT, True),
-    _esg("water_consumed", "Water Consumed", FactKind.ESG_WATER_CONSUMED_KL, FactUnit.KILOLITRE, False),
-    _esg("waste_generated", "Waste Generated", FactKind.ESG_WASTE_GENERATED_MT, FactUnit.METRIC_TONNE, False),
-    _esg("waste_recovery_pct", "Waste Recovery %", FactKind.ESG_WASTE_RECOVERY_PCT, FactUnit.PERCENT, True),
-    _esg("workforce_headcount", "Workforce Headcount", FactKind.ESG_WORKFORCE_HEADCOUNT, FactUnit.COUNT, None),
-    _esg("workforce_female_pct", "Female Workforce %", FactKind.ESG_WORKFORCE_FEMALE_PCT, FactUnit.PERCENT, True),
-    _esg("workforce_female_wage_pct", "Female Wage Share %", FactKind.ESG_WORKFORCE_FEMALE_WAGE_PCT, FactUnit.PERCENT, True),
-    _esg("workforce_attrition_pct", "Voluntary Attrition %", FactKind.ESG_WORKFORCE_ATTRITION_PCT, FactUnit.PERCENT, False),
-    _esg("safety_ltifr", "Lost Time Injury Frequency Rate", FactKind.ESG_SAFETY_LTIFR, None, False),
-    _esg("sbti_scope12_target", "SBTi Scope 1+2 Reduction Target %", FactKind.ESG_CLIMATE_SBTI_SCOPE12_REDUCTION_PCT, FactUnit.PERCENT, True),
-    _esg("sbti_scope3_target", "SBTi Scope 3 Reduction Target %", FactKind.ESG_CLIMATE_SBTI_SCOPE3_REDUCTION_PCT, FactUnit.PERCENT, True),
+    _esg(
+        "ghg_scope1",
+        "GHG Scope 1 Emissions",
+        FactKind.ESG_GHG_SCOPE1,
+        FactUnit.TCO2E,
+        False,
+    ),
+    _esg(
+        "ghg_scope2",
+        "GHG Scope 2 Emissions",
+        FactKind.ESG_GHG_SCOPE2,
+        FactUnit.TCO2E,
+        False,
+    ),
+    _esg(
+        "ghg_scope3",
+        "GHG Scope 3 Emissions",
+        FactKind.ESG_GHG_SCOPE3,
+        FactUnit.TCO2E,
+        False,
+    ),
+    _esg(
+        "energy_total",
+        "Total Energy Consumption",
+        FactKind.ESG_ENERGY_TOTAL_MJ,
+        FactUnit.MEGAJOULE,
+        None,
+    ),
+    _esg(
+        "energy_renewable_pct",
+        "Renewable Energy %",
+        FactKind.ESG_ENERGY_RENEWABLE_PCT,
+        FactUnit.PERCENT,
+        True,
+    ),
+    _esg(
+        "water_consumed",
+        "Water Consumed",
+        FactKind.ESG_WATER_CONSUMED_KL,
+        FactUnit.KILOLITRE,
+        False,
+    ),
+    _esg(
+        "waste_generated",
+        "Waste Generated",
+        FactKind.ESG_WASTE_GENERATED_MT,
+        FactUnit.METRIC_TONNE,
+        False,
+    ),
+    _esg(
+        "waste_recovery_pct",
+        "Waste Recovery %",
+        FactKind.ESG_WASTE_RECOVERY_PCT,
+        FactUnit.PERCENT,
+        True,
+    ),
+    _esg(
+        "workforce_headcount",
+        "Workforce Headcount",
+        FactKind.ESG_WORKFORCE_HEADCOUNT,
+        FactUnit.COUNT,
+        None,
+    ),
+    _esg(
+        "workforce_female_pct",
+        "Female Workforce %",
+        FactKind.ESG_WORKFORCE_FEMALE_PCT,
+        FactUnit.PERCENT,
+        True,
+    ),
+    _esg(
+        "workforce_female_wage_pct",
+        "Female Wage Share %",
+        FactKind.ESG_WORKFORCE_FEMALE_WAGE_PCT,
+        FactUnit.PERCENT,
+        True,
+    ),
+    _esg(
+        "workforce_attrition_pct",
+        "Voluntary Attrition %",
+        FactKind.ESG_WORKFORCE_ATTRITION_PCT,
+        FactUnit.PERCENT,
+        False,
+    ),
+    _esg(
+        "safety_ltifr",
+        "Lost Time Injury Frequency Rate",
+        FactKind.ESG_SAFETY_LTIFR,
+        None,
+        False,
+    ),
+    _esg(
+        "sbti_scope12_target",
+        "SBTi Scope 1+2 Reduction Target %",
+        FactKind.ESG_CLIMATE_SBTI_SCOPE12_REDUCTION_PCT,
+        FactUnit.PERCENT,
+        True,
+    ),
+    _esg(
+        "sbti_scope3_target",
+        "SBTi Scope 3 Reduction Target %",
+        FactKind.ESG_CLIMATE_SBTI_SCOPE3_REDUCTION_PCT,
+        FactUnit.PERCENT,
+        True,
+    ),
     _esg("csr_spend", "CSR Spend", FactKind.ESG_CSR_SPEND, FactUnit.CRORE_INR, None),
-
     # -- Ownership ------------------------------------------------------------
-    MetricSpec("total_shares", "Total Shares Outstanding", "ownership", FactUnit.COUNT, FactKind.OWNERSHIP_TOTAL_SHARES, higher_is_better=None),
+    MetricSpec(
+        "total_shares",
+        "Total Shares Outstanding",
+        "ownership",
+        FactUnit.COUNT,
+        FactKind.OWNERSHIP_TOTAL_SHARES,
+        higher_is_better=None,
+    ),
     _own("promoter_pct", "Promoter Holding %", FactKind.OWNERSHIP_PROMOTER_PCT, None),
-    _own("promoter_pledged_pct", "Promoter Pledged %", FactKind.OWNERSHIP_PROMOTER_PLEDGED_PCT, False),
+    _own(
+        "promoter_pledged_pct",
+        "Promoter Pledged %",
+        FactKind.OWNERSHIP_PROMOTER_PLEDGED_PCT,
+        False,
+    ),
     _own("fpi_pct", "FPI Holding %", FactKind.OWNERSHIP_FPI_PCT, None),
     _own("dii_pct", "DII Holding %", FactKind.OWNERSHIP_DII_PCT, None),
     _own("mf_pct", "Mutual Fund Holding %", FactKind.OWNERSHIP_MF_PCT, None),
-    _own("insurance_pct", "Insurance Holding %", FactKind.OWNERSHIP_INSURANCE_PCT, None),
+    _own(
+        "insurance_pct", "Insurance Holding %", FactKind.OWNERSHIP_INSURANCE_PCT, None
+    ),
     _own("public_pct", "Public Holding %", FactKind.OWNERSHIP_PUBLIC_PCT, None),
     _own("retail_pct", "Retail Holding %", FactKind.OWNERSHIP_RETAIL_PCT, None),
     _own("hni_pct", "HNI Holding %", FactKind.OWNERSHIP_HNI_PCT, None),
@@ -212,7 +700,9 @@ METRICS: dict[str, MetricSpec] = {spec.key: spec for spec in _SPECS}
 def get_metric(key: str) -> MetricSpec:
     spec = METRICS.get(key)
     if spec is None:
-        raise ValueError(f"Unknown metric {key!r}. Run 'atlas metrics' to list all {len(METRICS)} available.")
+        raise ValueError(
+            f"Unknown metric {key!r}. Run 'atlas metrics' to list all {len(METRICS)} available."
+        )
     return spec
 
 

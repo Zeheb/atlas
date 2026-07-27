@@ -58,6 +58,7 @@ not a §10 contract type, the same category as ``RetrievalMatch``/
 threaded *downward* between hydration passes, not a channel for carrying a
 result back *out* to the caller — the two are not the same shape of problem.
 """
+
 from __future__ import annotations
 
 from collections.abc import Iterable, Iterator, Sequence
@@ -136,7 +137,12 @@ def build_context(
     unchanged.
     """
     return build_context_with_diagnostics(
-        profile, subject_ref, known_ids=known_ids, kb=kb, question=question, plan=plan,
+        profile,
+        subject_ref,
+        known_ids=known_ids,
+        kb=kb,
+        question=question,
+        plan=plan,
         thesis=thesis,
     ).context
 
@@ -160,7 +166,9 @@ def build_context_with_diagnostics(
             "build_context(): question and plan.raw_question disagree "
             f"({question!r} != {plan.raw_question!r})"
         )
-    allowed: frozenset[str] | None = frozenset(known_ids) if known_ids is not None else None
+    allowed: frozenset[str] | None = (
+        frozenset(known_ids) if known_ids is not None else None
+    )
 
     claims: list[Claim] = list(_iter_claims(profile, subject_ref, allowed))
 
@@ -170,25 +178,36 @@ def build_context_with_diagnostics(
         # per time series); record the truncation rather than hiding it (G5).
         dropped = len(claims) - _MAX_CLAIMS
         claims = claims[-_MAX_CLAIMS:]
-        notes.append(f"Truncated to {_MAX_CLAIMS} claims; {dropped} older claims omitted.")
+        notes.append(
+            f"Truncated to {_MAX_CLAIMS} claims; {dropped} older claims omitted."
+        )
 
     retrieved: tuple[RetrievedEvidence, ...] = ()
     retrieval_result: RetrievalResult | None = None
     if kb is not None:
         content_cache: dict[str, str | None] = {}
-        claims, hydrated_retrieved, docs_capped = _hydrate_with_excerpts(claims, kb, content_cache)
+        claims, hydrated_retrieved, docs_capped = _hydrate_with_excerpts(
+            claims, kb, content_cache
+        )
         if docs_capped:
             notes.append(
                 f"Retrieval limited to {_MAX_HYDRATED_DOCS} distinct source "
                 "documents; remaining citations kept without a verbatim excerpt."
             )
         passage_retrieved: tuple[RetrievedEvidence, ...] = ()
-        effective_question = question if question is not None else (
-            plan.raw_question if plan is not None else None
+        effective_question = (
+            question
+            if question is not None
+            else (plan.raw_question if plan is not None else None)
         )
         if effective_question is not None:
             claims, passage_retrieved, retrieval_result = _merge_question_passages(
-                claims, subject_ref, kb, effective_question, content_cache, plan=plan,
+                claims,
+                subject_ref,
+                kb,
+                effective_question,
+                content_cache,
+                plan=plan,
             )
         retrieved = hydrated_retrieved + passage_retrieved
 
@@ -208,7 +227,9 @@ def build_context_with_diagnostics(
 # Raw-text hydration (M1)
 # ---------------------------------------------------------------------------
 def _hydrate_with_excerpts(
-    claims: list[Claim], kb: KnowledgeBase, content_cache: dict[str, str | None],
+    claims: list[Claim],
+    kb: KnowledgeBase,
+    content_cache: dict[str, str | None],
 ) -> tuple[list[Claim], tuple[RetrievedEvidence, ...], bool]:
     """Enrich each claim's evidence with a verbatim excerpt where a confident
     match exists. Never introduces a new evidence_id; leaves a reference bare
@@ -227,7 +248,10 @@ def _hydrate_with_excerpts(
         new_evidence: list[EvidenceReference] = []
         changed = False
         for ref in claim.evidence:
-            if ref.evidence_id not in content_cache and len(content_cache) >= _MAX_HYDRATED_DOCS:
+            if (
+                ref.evidence_id not in content_cache
+                and len(content_cache) >= _MAX_HYDRATED_DOCS
+            ):
                 docs_capped = True
                 new_evidence.append(ref)
                 continue
@@ -238,18 +262,26 @@ def _hydrate_with_excerpts(
                 new_evidence.append(ref)
                 continue
             hydrated_ref = replace(
-                ref, excerpt=match.excerpt, char_offset=match.char_offset, section=match.section,
+                ref,
+                excerpt=match.excerpt,
+                char_offset=match.char_offset,
+                section=match.section,
             )
             new_evidence.append(hydrated_ref)
             changed = True
             span_key = (ref.evidence_id, match.excerpt)
             if span_key not in seen_spans:
                 seen_spans.add(span_key)
-                retrieved.append(RetrievedEvidence(
-                    evidence_ref=hydrated_ref, content_span=match.excerpt,
-                    relevance=match.relevance,
-                ))
-        hydrated_claims.append(replace(claim, evidence=tuple(new_evidence)) if changed else claim)
+                retrieved.append(
+                    RetrievedEvidence(
+                        evidence_ref=hydrated_ref,
+                        content_span=match.excerpt,
+                        relevance=match.relevance,
+                    )
+                )
+        hydrated_claims.append(
+            replace(claim, evidence=tuple(new_evidence)) if changed else claim
+        )
 
     return hydrated_claims, tuple(retrieved), docs_capped
 
@@ -288,21 +320,31 @@ def _merge_question_passages(
     Production reasoning never looks at it; only the eval harness does, via
     ``build_context_with_diagnostics``.
     """
-    candidate_ids = frozenset(eid for c in claims for eid in c.evidence_ids) & frozenset(content_cache)
+    candidate_ids = frozenset(
+        eid for c in claims for eid in c.evidence_ids
+    ) & frozenset(content_cache)
     if not candidate_ids:
         return claims, (), None
 
     seen_spans = {
-        (ref.evidence_id, ref.excerpt) for c in claims for ref in c.evidence if ref.excerpt
+        (ref.evidence_id, ref.excerpt)
+        for c in claims
+        for ref in c.evidence
+        if ref.excerpt
     }
     retrieval_result: RetrievalResult | None = None
     if plan is not None:
         retrieval_result = _retrieval.retrieve_with_plan(
-            kb, candidate_ids, plan, content_cache=content_cache,
+            kb,
+            candidate_ids,
+            plan,
+            content_cache=content_cache,
         )
         matches = retrieval_result.matches
     else:
-        matches = _retrieval.retrieve_passages(kb, candidate_ids, question, content_cache=content_cache)
+        matches = _retrieval.retrieve_passages(
+            kb, candidate_ids, question, content_cache=content_cache
+        )
 
     new_claims: list[Claim] = []
     retrieved: list[RetrievedEvidence] = []
@@ -312,19 +354,27 @@ def _merge_question_passages(
             continue  # identical to an excerpt already hydrated onto an existing claim
         seen_spans.add(span_key)
         ref = EvidenceReference(
-            evidence_id=doc_id, excerpt=match.excerpt,
-            char_offset=match.char_offset, section=match.section,
+            evidence_id=doc_id,
+            excerpt=match.excerpt,
+            char_offset=match.char_offset,
+            section=match.section,
         )
-        new_claims.append(Claim(
-            subject_ref=subject,
-            statement=f'Source passage: "{match.excerpt}"',
-            assertability="fact",
-            confidence=match.relevance,
-            evidence=(ref,),
-        ))
-        retrieved.append(RetrievedEvidence(
-            evidence_ref=ref, content_span=match.excerpt, relevance=match.relevance,
-        ))
+        new_claims.append(
+            Claim(
+                subject_ref=subject,
+                statement=f'Source passage: "{match.excerpt}"',
+                assertability="fact",
+                confidence=match.relevance,
+                evidence=(ref,),
+            )
+        )
+        retrieved.append(
+            RetrievedEvidence(
+                evidence_ref=ref,
+                content_span=match.excerpt,
+                relevance=match.relevance,
+            )
+        )
 
     return claims + new_claims, tuple(retrieved), retrieval_result
 
@@ -347,7 +397,9 @@ def _iter_claims(
             out.append(EvidenceReference(evidence_id=eid))
         return tuple(out)
 
-    def fact(statement: str, sources: Sequence[str], period: str | None) -> Claim | None:
+    def fact(
+        statement: str, sources: Sequence[str], period: str | None
+    ) -> Claim | None:
         evidence = refs(*sources)
         if not evidence:
             return None
@@ -365,18 +417,23 @@ def _iter_claims(
         for kind, value in fs.facts.items():
             c = fact(
                 f"{kind.value} = {value} ({fs.period_type}, {fs.basis}, period {fs.period})",
-                fs.sources, fs.period,
+                fs.sources,
+                fs.period,
             )
             if c:
                 yield c
     for es in profile.esg.snapshots:
         for kind, value in es.facts.items():
-            c = fact(f"{kind.value} = {value} (period {es.period})", es.sources, es.period)
+            c = fact(
+                f"{kind.value} = {value} (period {es.period})", es.sources, es.period
+            )
             if c:
                 yield c
     for os_ in profile.ownership.snapshots:
         for kind, value in os_.facts.items():
-            c = fact(f"{kind.value} = {value} (period {os_.period})", os_.sources, os_.period)
+            c = fact(
+                f"{kind.value} = {value} (period {os_.period})", os_.sources, os_.period
+            )
             if c:
                 yield c
 
@@ -394,13 +451,17 @@ def _iter_claims(
             yield c
 
     # Credit ratings (debt + ESG).
-    for cr in [*profile.credit_history.debt_ratings, *profile.credit_history.esg_ratings]:
+    for cr in [
+        *profile.credit_history.debt_ratings,
+        *profile.credit_history.esg_ratings,
+    ]:
         desc = " ".join(
             p for p in [cr.agency, cr.instrument, cr.rating, cr.outlook, cr.action] if p
         )
         c = fact(
             f"Credit: {desc} (as of {cr.source_date.date().isoformat()})",
-            [cr.evidence_id], cr.source_date.date().isoformat(),
+            [cr.evidence_id],
+            cr.source_date.date().isoformat(),
         )
         if c:
             yield c
@@ -409,14 +470,17 @@ def _iter_claims(
     for se in profile.strategy.entries:
         c = fact(
             f"[{se.kind}] {se.text} (stated {se.source_date.date().isoformat()})",
-            [se.evidence_id], se.source_date.date().isoformat(),
+            [se.evidence_id],
+            se.source_date.date().isoformat(),
         )
         if c:
             yield c
 
     # Governance: risk factors and director changes.
     for risk in profile.governance.risk_factors:
-        c = fact(f"Risk factor ({risk.period}): {risk.text}", [risk.evidence_id], risk.period)
+        c = fact(
+            f"Risk factor ({risk.period}): {risk.text}", [risk.evidence_id], risk.period
+        )
         if c:
             yield c
     for change in profile.governance.director_changes:
@@ -424,7 +488,8 @@ def _iter_claims(
         c = fact(
             f"Board: {change.change_type} — {change.name}{role} "
             f"({change.source_date.date().isoformat()})",
-            [change.evidence_id], change.source_date.date().isoformat(),
+            [change.evidence_id],
+            change.source_date.date().isoformat(),
         )
         if c:
             yield c
@@ -434,28 +499,32 @@ def _iter_claims(
         c = fact(
             f"Dividend: {div.per_share} per share ({div.dividend_type}, "
             f"{div.source_date.date().isoformat()})",
-            [div.evidence_id], div.source_date.date().isoformat(),
+            [div.evidence_id],
+            div.source_date.date().isoformat(),
         )
         if c:
             yield c
     for bb in profile.capital_events.buybacks:
         c = fact(
             f"Buyback ({bb.sub_type}, {bb.source_date.date().isoformat()})",
-            [bb.evidence_id], bb.source_date.date().isoformat(),
+            [bb.evidence_id],
+            bb.source_date.date().isoformat(),
         )
         if c:
             yield c
     for acq in profile.capital_events.acquisitions:
         c = fact(
             f"Acquisition: {acq.target_name} ({acq.source_date.date().isoformat()})",
-            [acq.evidence_id], acq.source_date.date().isoformat(),
+            [acq.evidence_id],
+            acq.source_date.date().isoformat(),
         )
         if c:
             yield c
     for fr in profile.capital_events.fundraises:
         c = fact(
             f"Fundraise: {fr.fundraise_type} ({fr.source_date.date().isoformat()})",
-            [fr.evidence_id], fr.source_date.date().isoformat(),
+            [fr.evidence_id],
+            fr.source_date.date().isoformat(),
         )
         if c:
             yield c

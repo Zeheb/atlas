@@ -5,6 +5,7 @@ This is the one thing in Atlas that knows the Anthropic SDK's request/response
 shape. Everything above this module (reasoning, eval) depends only on the
 ``LLMClient`` Protocol.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -36,7 +37,9 @@ class AnthropicClient:
         self._temperature = temperature
 
     @classmethod
-    def from_settings(cls, settings: "Settings", *, model: str | None = None) -> "AnthropicClient":
+    def from_settings(
+        cls, settings: "Settings", *, model: str | None = None
+    ) -> "AnthropicClient":
         """Build from Settings, failing clearly when no key is configured.
 
         ``model`` — override the model id (defaults to settings.reasoning_model).
@@ -67,5 +70,7 @@ class AnthropicClient:
         )
         from anthropic.types import TextBlock
 
-        parts = [block.text for block in response.content if isinstance(block, TextBlock)]
+        parts = [
+            block.text for block in response.content if isinstance(block, TextBlock)
+        ]
         return "".join(parts)

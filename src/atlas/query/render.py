@@ -3,6 +3,7 @@
 Produces a plain-text output suitable for terminal display.
 Tests should inspect QueryResult.sections directly — this module is for CLI use only.
 """
+
 from __future__ import annotations
 
 from atlas.query.engine import QueryResult, TableSection
@@ -18,8 +19,7 @@ def _render_section(section: TableSection) -> list[str]:
 
     all_rows = [section.columns] + section.rows
     col_widths = [
-        max(len(str(row[i])) for row in all_rows)
-        for i in range(len(section.columns))
+        max(len(str(row[i])) for row in all_rows) for i in range(len(section.columns))
     ]
 
     def _pad_row(row: list[str]) -> str:

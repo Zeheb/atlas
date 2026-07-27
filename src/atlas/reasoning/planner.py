@@ -21,6 +21,7 @@ imports NOTHING from ``atlas.knowledge``, ``atlas.reasoning.llm``, or any
 network/filesystem library. Its only Atlas import is ``plan.py`` itself
 (which in turn only knows about ``EvidenceKind``, a plain enum).
 """
+
 from __future__ import annotations
 
 import re
@@ -41,15 +42,17 @@ from atlas.reasoning.text import keywords as _keywords
 # declared decisions that never created any measurable effect. Kept here,
 # next to the rules themselves, so it cannot silently drift out of sync with
 # what the planner actually does.
-ALL_RULE_IDS: frozenset[str] = frozenset({
-    "intent_keyword_match",
-    "intent_fallback",
-    "doc_type_boost_from_intent",
-    "period_extraction",
-    "top_k_broaden_list_query",
-    "top_k_narrow_specific_metric",
-    "top_k_default",
-})
+ALL_RULE_IDS: frozenset[str] = frozenset(
+    {
+        "intent_keyword_match",
+        "intent_fallback",
+        "doc_type_boost_from_intent",
+        "period_extraction",
+        "top_k_broaden_list_query",
+        "top_k_narrow_specific_metric",
+        "top_k_default",
+    }
+)
 
 # ---------------------------------------------------------------------------
 # Intent classification
@@ -63,38 +66,108 @@ ALL_RULE_IDS: frozenset[str] = frozenset({
 # about margins?" must resolve to a transcript-favoring intent, not a bare
 # financial-metric lookup.
 _INTENT_RULES: tuple[tuple[RetrievalIntent, tuple[str, ...]], ...] = (
-    ("governance", (
-        "board", "director", "auditor", "remuneration", "appointment",
-        "resignation", "independent director", "committee",
-    )),
-    ("capital_action", (
-        "dividend", "buyback", "acquisition", "acquire", "merger",
-        "fundraise", "rights issue", "qip", "preferential allotment",
-    )),
-    ("esg", (
-        "esg", "brsr", "emission", "sustainability", "carbon",
-        "diversity", "csr",
-    )),
-    ("ownership", (
-        "shareholding", "promoter", "pledge", "fii", "dii",
-        "institutional holding", "stake",
-    )),
-    ("risk", (
-        "risk factor", "risk", "exposure", "litigation",
-        "contingent liability", "regulatory action",
-    )),
-    ("guidance", (
-        "guidance", "outlook", "target", "forecast", "aspiration",
-    )),
-    ("narrative", (
-        "management said", "management's view", "management view",
-        "what did management", "commentary", "management commentary",
-        "strategy", "said about", "view on", "management believes",
-    )),
-    ("financial_metric", (
-        "revenue", "margin", "profit", "eps", "ebitda", "turnover",
-        "net income", "growth rate", "debt", "earnings per share",
-    )),
+    (
+        "governance",
+        (
+            "board",
+            "director",
+            "auditor",
+            "remuneration",
+            "appointment",
+            "resignation",
+            "independent director",
+            "committee",
+        ),
+    ),
+    (
+        "capital_action",
+        (
+            "dividend",
+            "buyback",
+            "acquisition",
+            "acquire",
+            "merger",
+            "fundraise",
+            "rights issue",
+            "qip",
+            "preferential allotment",
+        ),
+    ),
+    (
+        "esg",
+        (
+            "esg",
+            "brsr",
+            "emission",
+            "sustainability",
+            "carbon",
+            "diversity",
+            "csr",
+        ),
+    ),
+    (
+        "ownership",
+        (
+            "shareholding",
+            "promoter",
+            "pledge",
+            "fii",
+            "dii",
+            "institutional holding",
+            "stake",
+        ),
+    ),
+    (
+        "risk",
+        (
+            "risk factor",
+            "risk",
+            "exposure",
+            "litigation",
+            "contingent liability",
+            "regulatory action",
+        ),
+    ),
+    (
+        "guidance",
+        (
+            "guidance",
+            "outlook",
+            "target",
+            "forecast",
+            "aspiration",
+        ),
+    ),
+    (
+        "narrative",
+        (
+            "management said",
+            "management's view",
+            "management view",
+            "what did management",
+            "commentary",
+            "management commentary",
+            "strategy",
+            "said about",
+            "view on",
+            "management believes",
+        ),
+    ),
+    (
+        "financial_metric",
+        (
+            "revenue",
+            "margin",
+            "profit",
+            "eps",
+            "ebitda",
+            "turnover",
+            "net income",
+            "growth rate",
+            "debt",
+            "earnings per share",
+        ),
+    ),
 )
 
 # One vocabulary (EvidenceKind), one mapping table -- the only place
@@ -104,32 +177,43 @@ _INTENT_RULES: tuple[tuple[RetrievalIntent, tuple[str, ...]], ...] = (
 # document stays fully eligible either way.
 _INTENT_DOC_TYPES: dict[RetrievalIntent, tuple[tuple[str, int], ...]] = {
     "financial_metric": (
-        ("financial_results", 60), ("annual_report", 40),
+        ("financial_results", 60),
+        ("annual_report", 40),
         ("investor_presentation", 20),
     ),
     "guidance": (
-        ("earnings_transcript", 60), ("investor_presentation", 45),
+        ("earnings_transcript", 60),
+        ("investor_presentation", 45),
         ("annual_report", 20),
     ),
     "risk": (
-        ("annual_report", 60), ("brsr", 25), ("regulatory_filing", 20),
+        ("annual_report", 60),
+        ("brsr", 25),
+        ("regulatory_filing", 20),
     ),
     "governance": (
-        ("agm_notice", 55), ("board_outcome", 50),
-        ("corporate_governance_report", 50), ("annual_report", 25),
+        ("agm_notice", 55),
+        ("board_outcome", 50),
+        ("corporate_governance_report", 50),
+        ("annual_report", 25),
     ),
     "capital_action": (
-        ("board_outcome", 55), ("dividend", 50), ("buyback", 50),
+        ("board_outcome", 55),
+        ("dividend", 50),
+        ("buyback", 50),
         ("acquisition", 50),
     ),
     "esg": (
-        ("brsr", 70), ("annual_report", 30),
+        ("brsr", 70),
+        ("annual_report", 30),
     ),
     "ownership": (
-        ("shareholding_pattern", 70), ("annual_report", 20),
+        ("shareholding_pattern", 70),
+        ("annual_report", 20),
     ),
     "narrative": (
-        ("earnings_transcript", 55), ("annual_report", 35),
+        ("earnings_transcript", 55),
+        ("annual_report", 35),
         ("investor_presentation", 25),
     ),
     "general": (),
@@ -154,7 +238,7 @@ _NARROW_TOP_K = 3
 
 
 def _normalize_year(raw: str) -> str:
-    """"24" -> "2024"; "2024" stays "2024". Two-digit years assumed 20xx."""
+    """ "24" -> "2024"; "2024" stays "2024". Two-digit years assumed 20xx."""
     return f"20{raw}" if len(raw) == 2 else raw
 
 
@@ -201,9 +285,13 @@ class HeuristicPlanner:
         preferred_doc_types = self._doc_type_preferences(intent, decisions)
         periods = _extract_periods(question)
         if periods:
-            decisions.append(PlanningDecision(
-                rule="period_extraction", input=question, output=", ".join(periods),
-            ))
+            decisions.append(
+                PlanningDecision(
+                    rule="period_extraction",
+                    input=question,
+                    output=", ".join(periods),
+                )
+            )
         top_k = self._top_k(question, intent, numeric_terms, query_terms, decisions)
 
         return SearchPlan(
@@ -221,55 +309,83 @@ class HeuristicPlanner:
     # -- rules, one method each, so each is independently testable ---------
 
     def _classify_intent(
-        self, question: str, decisions: list[PlanningDecision],
+        self,
+        question: str,
+        decisions: list[PlanningDecision],
     ) -> RetrievalIntent:
         haystack = question.lower()
         for intent, markers in _INTENT_RULES:
             for marker in markers:
                 if marker in haystack:
-                    decisions.append(PlanningDecision(
-                        rule="intent_keyword_match", input=marker, output=intent,
-                    ))
+                    decisions.append(
+                        PlanningDecision(
+                            rule="intent_keyword_match",
+                            input=marker,
+                            output=intent,
+                        )
+                    )
                     return intent
-        decisions.append(PlanningDecision(
-            rule="intent_fallback", input=question, output="general",
-        ))
+        decisions.append(
+            PlanningDecision(
+                rule="intent_fallback",
+                input=question,
+                output="general",
+            )
+        )
         return "general"
 
     def _doc_type_preferences(
-        self, intent: RetrievalIntent, decisions: list[PlanningDecision],
+        self,
+        intent: RetrievalIntent,
+        decisions: list[PlanningDecision],
     ) -> tuple[DocTypePreference, ...]:
         entries = _INTENT_DOC_TYPES.get(intent, ())
         if entries:
-            decisions.append(PlanningDecision(
-                rule="doc_type_boost_from_intent", input=intent,
-                output=", ".join(f"{kind}:{weight}" for kind, weight in entries),
-            ))
-        return tuple(DocTypePreference(kind=kind, weight=weight) for kind, weight in entries)
+            decisions.append(
+                PlanningDecision(
+                    rule="doc_type_boost_from_intent",
+                    input=intent,
+                    output=", ".join(f"{kind}:{weight}" for kind, weight in entries),
+                )
+            )
+        return tuple(
+            DocTypePreference(kind=kind, weight=weight) for kind, weight in entries
+        )
 
     def _top_k(
-        self, question: str, intent: RetrievalIntent,
-        numeric_terms: tuple[str, ...], query_terms: tuple[str, ...],
+        self,
+        question: str,
+        intent: RetrievalIntent,
+        numeric_terms: tuple[str, ...],
+        query_terms: tuple[str, ...],
         decisions: list[PlanningDecision],
     ) -> int:
         words = set(question.lower().split())
         if words & _BROADEN_WORDS:
-            decisions.append(PlanningDecision(
-                rule="top_k_broaden_list_query",
-                input=", ".join(sorted(words & _BROADEN_WORDS)),
-                output=str(_BROAD_TOP_K),
-            ))
+            decisions.append(
+                PlanningDecision(
+                    rule="top_k_broaden_list_query",
+                    input=", ".join(sorted(words & _BROADEN_WORDS)),
+                    output=str(_BROAD_TOP_K),
+                )
+            )
             return _BROAD_TOP_K
         if intent == "financial_metric" and numeric_terms and len(query_terms) <= 3:
-            decisions.append(PlanningDecision(
-                rule="top_k_narrow_specific_metric",
-                input=f"numeric_terms={len(numeric_terms)}, query_terms={len(query_terms)}",
-                output=str(_NARROW_TOP_K),
-            ))
+            decisions.append(
+                PlanningDecision(
+                    rule="top_k_narrow_specific_metric",
+                    input=f"numeric_terms={len(numeric_terms)}, query_terms={len(query_terms)}",
+                    output=str(_NARROW_TOP_K),
+                )
+            )
             return _NARROW_TOP_K
-        decisions.append(PlanningDecision(
-            rule="top_k_default", input="", output=str(_DEFAULT_TOP_K),
-        ))
+        decisions.append(
+            PlanningDecision(
+                rule="top_k_default",
+                input="",
+                output=str(_DEFAULT_TOP_K),
+            )
+        )
         return _DEFAULT_TOP_K
 
 

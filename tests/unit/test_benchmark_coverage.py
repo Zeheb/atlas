@@ -4,6 +4,7 @@ analyze_suite is pure (no I/O beyond the real plan_retrieval); analyze_corpus
 needs a real KnowledgeBase, so those tests build one via the same hermetic
 pattern used throughout tests/unit/test_reasoning_retrieval_plan.py.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -31,6 +32,7 @@ from atlas.reasoning.planner import ALL_RULE_IDS
 @dataclass(frozen=True)
 class _Case:
     """A minimal CaseLike -- proves the Protocol is structural, not nominal."""
+
     id: str
     category: str
     question: str
@@ -68,7 +70,9 @@ def test_missing_intent_detected() -> None:
 
 def test_intent_floor_marks_underrepresented_below_three() -> None:
     cases = [
-        _Case(id="c1", category="A", question="What are the key risk factors disclosed?"),
+        _Case(
+            id="c1", category="A", question="What are the key risk factors disclosed?"
+        ),
         _Case(id="c2", category="A", question="What is the weather today?"),
     ]
     cov = analyze_suite(cases)
@@ -78,7 +82,11 @@ def test_intent_floor_marks_underrepresented_below_three() -> None:
 
 def test_intent_meets_floor_at_exactly_three_cases() -> None:
     cases = [
-        _Case(id=f"c{i}", category="A", question="What are the key risk factors disclosed?")
+        _Case(
+            id=f"c{i}",
+            category="A",
+            question="What are the key risk factors disclosed?",
+        )
         for i in range(_MIN_CASES_PER_SLOT)
     ]
     cov = analyze_suite(cases)
@@ -96,7 +104,10 @@ def test_dead_rule_detected_when_no_case_triggers_it() -> None:
 def test_period_extraction_rule_fires_when_a_case_uses_a_fiscal_period() -> None:
     cases = [_Case(id="c1", category="A", question="What was revenue in FY2024?")]
     cov = analyze_suite(cases)
-    assert cov.rule.counts[[k for k, _ in cov.rule.counts].index("period_extraction")][1] == 1
+    assert (
+        cov.rule.counts[[k for k, _ in cov.rule.counts].index("period_extraction")][1]
+        == 1
+    )
 
 
 # --- scenario / difficulty / subject / general share -------------------------------
@@ -115,14 +126,18 @@ def test_general_intent_share_computed_correctly() -> None:
     cases = [
         _Case(id="c1", category="A", question="What is the weather today?"),  # general
         _Case(id="c2", category="A", question="What is the weather like?"),  # general
-        _Case(id="c3", category="A", question="What are the key risk factors disclosed?"),  # risk
+        _Case(
+            id="c3", category="A", question="What are the key risk factors disclosed?"
+        ),  # risk
     ]
     cov = analyze_suite(cases)
     assert cov.general_intent_share == round(2 / 3, 3)
 
 
 def test_max_subject_share_flags_single_subject_dominance() -> None:
-    cases = [_Case(id=f"c{i}", category="A", question="q", subject="TCS") for i in range(5)]
+    cases = [
+        _Case(id=f"c{i}", category="A", question="q", subject="TCS") for i in range(5)
+    ]
     cov = analyze_suite(cases)
     assert cov.max_subject_share == 1.0
 
@@ -146,8 +161,16 @@ def test_empty_suite_does_not_crash() -> None:
 # --- redundancy ----------------------------------------------------------------------
 def test_identical_questions_flagged_as_near_duplicates() -> None:
     cases = [
-        _Case(id="c1", category="A", question="What are the key risk factors disclosed this year?"),
-        _Case(id="c2", category="A", question="What are the key risk factors disclosed this year?"),
+        _Case(
+            id="c1",
+            category="A",
+            question="What are the key risk factors disclosed this year?",
+        ),
+        _Case(
+            id="c2",
+            category="A",
+            question="What are the key risk factors disclosed this year?",
+        ),
     ]
     cov = analyze_suite(cases)
     assert len(cov.redundancy.near_duplicate_pairs) == 1
@@ -158,8 +181,14 @@ def test_identical_questions_flagged_as_near_duplicates() -> None:
 
 def test_dissimilar_questions_not_flagged() -> None:
     cases = [
-        _Case(id="c1", category="A", question="What are the key risk factors disclosed?"),
-        _Case(id="c2", category="A", question="Did management deliver on the growth target?"),
+        _Case(
+            id="c1", category="A", question="What are the key risk factors disclosed?"
+        ),
+        _Case(
+            id="c2",
+            category="A",
+            question="Did management deliver on the growth target?",
+        ),
     ]
     cov = analyze_suite(cases)
     assert cov.redundancy.near_duplicate_pairs == ()
@@ -197,22 +226,37 @@ def test_real_q4_q34_not_flagged_by_analyze_suite() -> None:
 
 
 # --- analyze_corpus (real KnowledgeBase) --------------------------------------------
-def _seed_kb(tmp_path: Path, subject: str, kind: EvidenceKind, source_field: str) -> None:
+def _seed_kb(
+    tmp_path: Path, subject: str, kind: EvidenceKind, source_field: str
+) -> None:
     root = tmp_path / subject
     profile = CompanyProfile(
         company_id=subject,
-        financial=FinancialTimeSeries(snapshots=[FinancialSnapshot(
-            period="2026-03-31", period_type="annual", basis="consolidated",
-            facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2}, sources=["ev-1"],
-        )]),
+        financial=FinancialTimeSeries(
+            snapshots=[
+                FinancialSnapshot(
+                    period="2026-03-31",
+                    period_type="annual",
+                    basis="consolidated",
+                    facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2},
+                    sources=["ev-1"],
+                )
+            ]
+        ),
     )
     CompanyStore(root / "profile.json", subject).save(profile)
     rel = "ev-1.txt"
     (root / rel).write_text("Operating margin stood at 24.2%.", encoding="utf-8")
     entry = CatalogEntry(
-        evidence_id="ev-1", source=EvidenceSource.BSE.value, kind=kind.value,
-        title="Test filing", source_date="2026-03-31T00:00:00+00:00", document_url=None,
-        local_path=rel, file_size_bytes=None, acquired_at="2026-04-01T00:00:00+00:00",
+        evidence_id="ev-1",
+        source=EvidenceSource.BSE.value,
+        kind=kind.value,
+        title="Test filing",
+        source_date="2026-03-31T00:00:00+00:00",
+        document_url=None,
+        local_path=rel,
+        file_size_bytes=None,
+        acquired_at="2026-04-01T00:00:00+00:00",
     )
     KnowledgeBase(root).parse(entry)
 
@@ -248,7 +292,11 @@ def test_analyze_without_repo_root_gives_no_corpus_section() -> None:
 
 def test_analyze_with_repo_root_includes_corpus_section(tmp_path: Path) -> None:
     _seed_kb(tmp_path, "TCS", EvidenceKind.ANNUAL_REPORT, "ev-1")
-    result = analyze([_Case(id="c1", category="A", question="q")], repo_root=tmp_path, subjects=["TCS"])
+    result = analyze(
+        [_Case(id="c1", category="A", question="q")],
+        repo_root=tmp_path,
+        subjects=["TCS"],
+    )
     assert result.corpus is not None
     assert dict(result.corpus.retrievable_kinds_by_subject)["TCS"] == ("annual_report",)
 

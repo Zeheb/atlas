@@ -10,6 +10,7 @@ These tests pin the vocabulary, the three-level obligation map, and -- most
 importantly -- that the rendered report is unchanged, which is what makes
 this commit a relabelling rather than a behavior change.
 """
+
 from __future__ import annotations
 
 from atlas.research.citations import (
@@ -31,7 +32,11 @@ from atlas.research.citations import (
 # --- The vocabulary ---------------------------------------------------------------------
 def test_five_kinds_exist() -> None:
     assert {FACT, DERIVED, CONCLUSION, EVIDENCE_NOTE, DISCLOSURE} == {
-        "fact", "derived", "conclusion", "evidence_note", "disclosure",
+        "fact",
+        "derived",
+        "conclusion",
+        "evidence_note",
+        "disclosure",
     }
 
 
@@ -85,7 +90,7 @@ def test_legacy_synthesis_is_still_constructible() -> None:
 
 # --- The relabelling is honest -------------------------------------------------------------
 def test_the_call_disclosure_is_labelled_disclosure() -> None:
-    """"Atlas does not issue a buy/sell recommendation" is a statement about
+    """ "Atlas does not issue a buy/sell recommendation" is a statement about
     Atlas, not about the company."""
     from tests.unit.research_fixtures import make_profile  # type: ignore
 
@@ -116,7 +121,10 @@ def test_open_questions_are_labelled_evidence_notes() -> None:
     assert truly_empty.is_empty()
 
     section = open_questions.build(
-        make_profile(), None, "TCS", other_sections=[truly_empty],
+        make_profile(),
+        None,
+        "TCS",
+        other_sections=[truly_empty],
     )
     assert section.findings
     assert all(f.kind == EVIDENCE_NOTE for f in section.findings)
@@ -132,7 +140,9 @@ def test_no_section_still_uses_the_legacy_label() -> None:
     report = generate_report("TCS", make_profile())
     for section in report.sections:
         for finding in section.findings:
-            assert finding.kind != LEGACY_SYNTHESIS, f"{section.key}: {finding.text[:50]}"
+            assert (
+                finding.kind != LEGACY_SYNTHESIS
+            ), f"{section.key}: {finding.text[:50]}"
 
 
 # --- Behavior preserved ----------------------------------------------------------------------

@@ -13,6 +13,7 @@ Two test scenarios:
 
 Run with: pytest -m integration -v -s
 """
+
 from __future__ import annotations
 
 from collections.abc import Generator
@@ -42,6 +43,7 @@ _TCS_SHP_ID = "bse-shp-532540-129"
 # ---------------------------------------------------------------------------
 # Minimal XBRL XML generator
 # ---------------------------------------------------------------------------
+
 
 def _shp_xml(
     period: str,
@@ -98,6 +100,7 @@ def _mock_kb(eid: str, xml: str, period: str) -> MagicMock:
 # Scenario 1: Real TCS Q4 FY26 SHP through the repository pipeline
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def tcs_root(isolated_repo_factory) -> Path:
     if not _TCS_REPO.exists():
@@ -142,7 +145,9 @@ class TestRealQ4Fy26:
     def test_promoter_pct_in_facts(self):
         p = self.t.points[0]
         assert FactKind.OWNERSHIP_PROMOTER_PCT in p.facts
-        assert p.facts[FactKind.OWNERSHIP_PROMOTER_PCT] == pytest.approx(71.77, abs=0.01)
+        assert p.facts[FactKind.OWNERSHIP_PROMOTER_PCT] == pytest.approx(
+            71.77, abs=0.01
+        )
 
     def test_fpi_pct_in_facts(self):
         p = self.t.points[0]
@@ -171,26 +176,46 @@ _SYNTHETIC_QUARTERS = [
     {
         "eid": "bse-shp-test-q4fy25",
         "period": "2025-03-31",
-        "promoter": 71.77, "public": 28.23,
-        "fpi": 11.24, "dii": 12.54, "mf": 5.46, "insurance": 6.18, "nri": 0.24,
+        "promoter": 71.77,
+        "public": 28.23,
+        "fpi": 11.24,
+        "dii": 12.54,
+        "mf": 5.46,
+        "insurance": 6.18,
+        "nri": 0.24,
     },
     {
         "eid": "bse-shp-test-q1fy26",
         "period": "2025-06-30",
-        "promoter": 71.77, "public": 28.23,
-        "fpi": 10.59, "dii": 12.98, "mf": 5.68, "insurance": 6.44, "nri": 0.25,
+        "promoter": 71.77,
+        "public": 28.23,
+        "fpi": 10.59,
+        "dii": 12.98,
+        "mf": 5.68,
+        "insurance": 6.44,
+        "nri": 0.25,
     },
     {
         "eid": "bse-shp-test-q2fy26",
         "period": "2025-09-30",
-        "promoter": 71.77, "public": 28.23,
-        "fpi": 10.28, "dii": 13.09, "mf": 5.65, "insurance": 6.58, "nri": 0.27,
+        "promoter": 71.77,
+        "public": 28.23,
+        "fpi": 10.28,
+        "dii": 13.09,
+        "mf": 5.65,
+        "insurance": 6.58,
+        "nri": 0.27,
     },
     {
         "eid": "bse-shp-test-q3fy26",
         "period": "2025-12-31",
-        "promoter": 71.77, "public": 28.23,
-        "fpi": 10.01, "dii": 13.27, "mf": 5.72, "insurance": 6.64, "nri": 0.26,
+        "promoter": 71.77,
+        "public": 28.23,
+        "fpi": 10.01,
+        "dii": 13.27,
+        "mf": 5.72,
+        "insurance": 6.64,
+        "nri": 0.26,
     },
 ]
 
@@ -227,19 +252,28 @@ class TestMultiQuarterTrend:
         assert periods == sorted(periods)
 
     def test_fpi_qoq_all_negative(self, multi_quarter_trend: TrendResult):
-        fpi = [d for d in multi_quarter_trend.qoq_deltas
-               if d.kind == FactKind.OWNERSHIP_FPI_PCT]
+        fpi = [
+            d
+            for d in multi_quarter_trend.qoq_deltas
+            if d.kind == FactKind.OWNERSHIP_FPI_PCT
+        ]
         assert len(fpi) == 3
         assert all(d.delta < 0 for d in fpi)
 
     def test_dii_qoq_all_positive(self, multi_quarter_trend: TrendResult):
-        dii = [d for d in multi_quarter_trend.qoq_deltas
-               if d.kind == FactKind.OWNERSHIP_DII_PCT]
+        dii = [
+            d
+            for d in multi_quarter_trend.qoq_deltas
+            if d.kind == FactKind.OWNERSHIP_DII_PCT
+        ]
         assert all(d.delta > 0 for d in dii)
 
     def test_fpi_first_qoq_value(self, multi_quarter_trend: TrendResult):
-        fpi = [d for d in multi_quarter_trend.qoq_deltas
-               if d.kind == FactKind.OWNERSHIP_FPI_PCT][0]
+        fpi = [
+            d
+            for d in multi_quarter_trend.qoq_deltas
+            if d.kind == FactKind.OWNERSHIP_FPI_PCT
+        ][0]
         assert fpi.from_period == "2025-03-31"
         assert fpi.to_period == "2025-06-30"
         assert fpi.delta == pytest.approx(-0.65, abs=1e-3)
@@ -267,6 +301,7 @@ class TestMultiQuarterTrend:
 # ---------------------------------------------------------------------------
 # Scenario 3: Real Q4 FY26 + 3 synthetic quarters → YoY delta
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def five_quarter_trend(real_shp_result: AnalysisResult) -> TrendResult:
@@ -298,22 +333,28 @@ class TestFiveQuarterTrend:
 
     def test_yoy_fpi_delta_produced(self, five_quarter_trend: TrendResult):
         # Q4 FY26 vs Q4 FY25
-        yoy_fpi = [d for d in five_quarter_trend.yoy_deltas
-                   if d.kind == FactKind.OWNERSHIP_FPI_PCT
-                   and d.to_period == "2026-03-31"]
+        yoy_fpi = [
+            d
+            for d in five_quarter_trend.yoy_deltas
+            if d.kind == FactKind.OWNERSHIP_FPI_PCT and d.to_period == "2026-03-31"
+        ]
         assert len(yoy_fpi) == 1
 
     def test_yoy_fpi_is_negative(self, five_quarter_trend: TrendResult):
-        yoy_fpi = [d for d in five_quarter_trend.yoy_deltas
-                   if d.kind == FactKind.OWNERSHIP_FPI_PCT
-                   and d.to_period == "2026-03-31"][0]
-        assert yoy_fpi.delta < 0    # FPI declined year-over-year
+        yoy_fpi = [
+            d
+            for d in five_quarter_trend.yoy_deltas
+            if d.kind == FactKind.OWNERSHIP_FPI_PCT and d.to_period == "2026-03-31"
+        ][0]
+        assert yoy_fpi.delta < 0  # FPI declined year-over-year
         assert yoy_fpi.from_period == "2025-03-31"
 
     def test_yoy_dii_is_positive(self, five_quarter_trend: TrendResult):
-        yoy_dii = [d for d in five_quarter_trend.yoy_deltas
-                   if d.kind == FactKind.OWNERSHIP_DII_PCT
-                   and d.to_period == "2026-03-31"]
+        yoy_dii = [
+            d
+            for d in five_quarter_trend.yoy_deltas
+            if d.kind == FactKind.OWNERSHIP_DII_PCT and d.to_period == "2026-03-31"
+        ]
         assert len(yoy_dii) == 1
         assert yoy_dii[0].delta > 0
 

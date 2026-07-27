@@ -133,11 +133,15 @@ def _row_to_doc(row: sqlite3.Row) -> ParsedDocument:
         status=row["status"],
         error=row["error"],
         char_count=row["char_count"],
-        extraction_method=row["extraction_method"] if "extraction_method" in keys else None,
+        extraction_method=(
+            row["extraction_method"] if "extraction_method" in keys else None
+        ),
         quality_score=row["quality_score"] if "quality_score" in keys else None,
         ocr_attempted=bool(row["ocr_attempted"]) if "ocr_attempted" in keys else False,
         page_count=row["page_count"] if "page_count" in keys else None,
-        document_language=row["document_language"] if "document_language" in keys else None,
+        document_language=(
+            row["document_language"] if "document_language" in keys else None
+        ),
     )
 
 
@@ -190,9 +194,7 @@ class KnowledgeBase:
     def known_ids(self) -> frozenset[str]:
         """Return all evidence_ids with a parsing record (any status)."""
         with self._db_conn() as conn:
-            rows = conn.execute(
-                "SELECT evidence_id FROM parsed_documents"
-            ).fetchall()
+            rows = conn.execute("SELECT evidence_id FROM parsed_documents").fetchall()
         return frozenset(row[0] for row in rows)
 
     def ok_ids(self) -> frozenset[str]:
@@ -243,7 +245,9 @@ class KnowledgeBase:
         as a valid, boost-free case (see retrieval.py's plan-aware scoring).
         Duplicate input ids collapse naturally (a dict keyed by evidence_id).
         """
-        ids = list(dict.fromkeys(evidence_ids))  # de-dupe, preserve order (irrelevant to output but deterministic)
+        ids = list(
+            dict.fromkeys(evidence_ids)
+        )  # de-dupe, preserve order (irrelevant to output but deterministic)
         if not ids:
             return {}
 

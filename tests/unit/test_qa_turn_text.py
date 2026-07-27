@@ -4,6 +4,7 @@ Reuses the existing _RE_ANY_SPEAKER turn-boundary (no new segmentation
 heuristic). ParticipantAppearance.question_text is populated only for analyst
 appearances; management appearances are always None.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -58,8 +59,7 @@ def test_multiple_analysts_each_get_own_question() -> None:
 def test_management_mentions_have_no_question_text() -> None:
     roster = (
         "CORPORATE PARTICIPANTS\n\nN G Subramaniam, COO - TCS\n\n"
-        "CONFERENCE CALL PARTICIPANTS\nRavi Menon, Macquarie\n"
-        + _TRANSCRIPT
+        "CONFERENCE CALL PARTICIPANTS\nRavi Menon, Macquarie\n" + _TRANSCRIPT
     )
     mgmt = _extract_management_mentions(roster, EntityResolver())
     assert mgmt  # sanity: extraction actually found management
@@ -72,17 +72,22 @@ def test_unbounded_question_capped_at_max_chars() -> None:
     text = _bounded_question_text(huge, "Ravi Menon", 0)
     assert text is not None
     from atlas.analysis.earnings_transcript import _MAX_QUESTION_CHARS
+
     assert len(text) <= _MAX_QUESTION_CHARS
 
 
 def test_analysts_own_tag_never_found_returns_none() -> None:
     # Introduced by the moderator but never actually speaks in the extracted text.
-    assert _bounded_question_text("no speaker tags here at all", "Ravi Menon", 0) is None
+    assert (
+        _bounded_question_text("no speaker tags here at all", "Ravi Menon", 0) is None
+    )
 
 
 # --- trailing whitespace trimmed -------------------------------------------------
 def test_trailing_whitespace_trimmed() -> None:
-    text = "Ravi Menon: \n  Question with trailing space.   \n\nN G Subramaniam: \nAnswer."
+    text = (
+        "Ravi Menon: \n  Question with trailing space.   \n\nN G Subramaniam: \nAnswer."
+    )
     got = _bounded_question_text(text, "Ravi Menon", 0)
     assert got == "Question with trailing space."
     assert got == got.strip()
@@ -103,17 +108,24 @@ def test_entity_mention_question_text_defaults_none() -> None:
 # --- builder ingestion -----------------------------------------------------------
 def _result(mentions: list[EntityMention]) -> AnalysisResult:
     return AnalysisResult(
-        evidence_id="bse-t1", kind="earnings_transcript", analyzer_version="2.3",
-        confidence="low", source_date=datetime(2026, 4, 15, tzinfo=timezone.utc),
+        evidence_id="bse-t1",
+        kind="earnings_transcript",
+        analyzer_version="2.3",
+        confidence="low",
+        source_date=datetime(2026, 4, 15, tzinfo=timezone.utc),
         entities=mentions,
     )
 
 
 def _mention(name: str, role: str, question_text: str | None) -> EntityMention:
     return EntityMention(
-        entity=Entity(entity_id=f"person:{name.lower().replace(' ', '-')}",
-                      kind="person", canonical_name=name),
-        role=role, affiliation="X" if role == "analyst" else None,
+        entity=Entity(
+            entity_id=f"person:{name.lower().replace(' ', '-')}",
+            kind="person",
+            canonical_name=name,
+        ),
+        role=role,
+        affiliation="X" if role == "analyst" else None,
         question_text=question_text,
     )
 
@@ -135,6 +147,7 @@ def test_builder_forces_none_for_management_even_if_producer_set_it() -> None:
 # --- store round-trip -------------------------------------------------------------
 def test_question_text_survives_store_round_trip(tmp_path) -> None:
     from atlas.company.store import CompanyStore
+
     result = _result([_mention("Ravi Menon", "analyst", "What about margins?")])
     profile = build_profile("TCS", [result])
     store = CompanyStore(tmp_path / "TCS" / "profile.json", "TCS")
@@ -145,6 +158,7 @@ def test_question_text_survives_store_round_trip(tmp_path) -> None:
 
 def test_none_question_text_round_trips_as_none(tmp_path) -> None:
     from atlas.company.store import CompanyStore
+
     result = _result([_mention("Ravi Menon", "analyst", None)])
     profile = build_profile("TCS", [result])
     store = CompanyStore(tmp_path / "TCS" / "profile.json", "TCS")
@@ -160,9 +174,12 @@ def test_real_tcs_transcripts_produce_bounded_questions() -> None:
     from atlas.analysis.earnings_transcript import analyze
 
     con = sqlite3.connect("repositories/TCS/knowledge.db")
-    ids = [r[0] for r in con.execute(
-        "SELECT evidence_id FROM parsed_documents WHERE kind='earnings_transcript'"
-    ).fetchall()]
+    ids = [
+        r[0]
+        for r in con.execute(
+            "SELECT evidence_id FROM parsed_documents WHERE kind='earnings_transcript'"
+        ).fetchall()
+    ]
     kb = KnowledgeBase(Path("repositories/TCS"))
     total_analysts = 0
     total_with_question = 0
@@ -184,9 +201,12 @@ def test_real_sbi_transcripts_produce_bounded_questions() -> None:
     from atlas.analysis.earnings_transcript import analyze
 
     con = sqlite3.connect("repositories/SBIN/knowledge.db")
-    ids = [r[0] for r in con.execute(
-        "SELECT evidence_id FROM parsed_documents WHERE kind='earnings_transcript'"
-    ).fetchall()]
+    ids = [
+        r[0]
+        for r in con.execute(
+            "SELECT evidence_id FROM parsed_documents WHERE kind='earnings_transcript'"
+        ).fetchall()
+    ]
     kb = KnowledgeBase(Path("repositories/SBIN"))
     total_analysts = 0
     total_with_question = 0

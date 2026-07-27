@@ -4,13 +4,20 @@ All fixtures are synthetic AnalysisResult objects — no real PDFs or KB access.
 Tests verify that build_profile correctly routes facts to the right domain model
 and that derived metrics compute accurate values.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
 
 import pytest
 
-from atlas.analysis.base import AnalysisFact, AnalysisResult, FactKind, FactUnit, Provenance
+from atlas.analysis.base import (
+    AnalysisFact,
+    AnalysisResult,
+    FactKind,
+    FactUnit,
+    Provenance,
+)
 from atlas.company.builder import build_profile
 from atlas.company.derived import (
     capex_intensity_pct,
@@ -25,7 +32,6 @@ from atlas.company.derived import (
     pat_margin_pct,
 )
 from atlas.company.model import CompanyProfile, FinancialSnapshot
-
 
 # ---------------------------------------------------------------------------
 # Fixture helpers
@@ -51,7 +57,9 @@ def _fact(
         unit=unit,
         period=period,
         confidence=confidence,
-        provenance=Provenance(section=section, char_offset=char_offset, excerpt=excerpt),
+        provenance=Provenance(
+            section=section, char_offset=char_offset, excerpt=excerpt
+        ),
     )
 
 
@@ -83,12 +91,31 @@ def _financial_result(
 ) -> AnalysisResult:
     section = f"{basis}_pl_table"
     facts = [
-        _fact(FactKind.REPORT_PERIOD_END, period, FactUnit.ISO_DATE, section="cover_letter"),
+        _fact(
+            FactKind.REPORT_PERIOD_END,
+            period,
+            FactUnit.ISO_DATE,
+            section="cover_letter",
+        ),
         _fact(FactKind.REPORT_PERIOD_TYPE, period_type, section="cover_letter"),
-        _fact(FactKind.FINANCIAL_REVENUE, revenue, FactUnit.CRORE_INR, period=period, section=section),
-        _fact(FactKind.FINANCIAL_PAT, pat, FactUnit.CRORE_INR, period=period, section=section),
+        _fact(
+            FactKind.FINANCIAL_REVENUE,
+            revenue,
+            FactUnit.CRORE_INR,
+            period=period,
+            section=section,
+        ),
+        _fact(
+            FactKind.FINANCIAL_PAT,
+            pat,
+            FactUnit.CRORE_INR,
+            period=period,
+            section=section,
+        ),
     ]
-    return _result("financial_results", facts, evidence_id=evidence_id, source_date=source_date)
+    return _result(
+        "financial_results", facts, evidence_id=evidence_id, source_date=source_date
+    )
 
 
 def _esg_result(
@@ -98,8 +125,20 @@ def _esg_result(
     evidence_id: str = "brsr-001",
 ) -> AnalysisResult:
     facts = [
-        _fact(FactKind.ESG_GHG_SCOPE1, scope1, FactUnit.TCO2E, period=period, section="emissions"),
-        _fact(FactKind.ESG_WORKFORCE_HEADCOUNT, workforce, FactUnit.COUNT, period=period, section="workforce"),
+        _fact(
+            FactKind.ESG_GHG_SCOPE1,
+            scope1,
+            FactUnit.TCO2E,
+            period=period,
+            section="emissions",
+        ),
+        _fact(
+            FactKind.ESG_WORKFORCE_HEADCOUNT,
+            workforce,
+            FactUnit.COUNT,
+            period=period,
+            section="workforce",
+        ),
     ]
     return _result("brsr", facts, evidence_id=evidence_id)
 
@@ -111,8 +150,20 @@ def _shp_result(
     evidence_id: str = "shp-001",
 ) -> AnalysisResult:
     facts = [
-        _fact(FactKind.OWNERSHIP_PROMOTER_PCT, promoter_pct, FactUnit.PERCENT, period=period, section="promoter"),
-        _fact(FactKind.OWNERSHIP_PUBLIC_PCT, public_pct, FactUnit.PERCENT, period=period, section="public"),
+        _fact(
+            FactKind.OWNERSHIP_PROMOTER_PCT,
+            promoter_pct,
+            FactUnit.PERCENT,
+            period=period,
+            section="promoter",
+        ),
+        _fact(
+            FactKind.OWNERSHIP_PUBLIC_PCT,
+            public_pct,
+            FactUnit.PERCENT,
+            period=period,
+            section="public",
+        ),
     ]
     return _result("shareholding_pattern", facts, evidence_id=evidence_id)
 
@@ -122,13 +173,34 @@ def _investor_presentation_result(
     source_date: datetime = _DT,
 ) -> AnalysisResult:
     facts = [
-        _fact(FactKind.STRATEGY_PRIORITY, "Cloud and AI platform leadership", section="strategy"),
-        _fact(FactKind.STRATEGY_ASPIRATION, "50 billion dollar company", section="strategy"),
-        _fact(FactKind.STRATEGY_CSAT, 78.5, FactUnit.PERCENT, period="2024-09-30", section="customer"),
-        _fact(FactKind.FINANCIAL_ROE, 52.0, FactUnit.PERCENT, period="2025-03-31",
-              section="financial_highlights"),
+        _fact(
+            FactKind.STRATEGY_PRIORITY,
+            "Cloud and AI platform leadership",
+            section="strategy",
+        ),
+        _fact(
+            FactKind.STRATEGY_ASPIRATION,
+            "50 billion dollar company",
+            section="strategy",
+        ),
+        _fact(
+            FactKind.STRATEGY_CSAT,
+            78.5,
+            FactUnit.PERCENT,
+            period="2024-09-30",
+            section="customer",
+        ),
+        _fact(
+            FactKind.FINANCIAL_ROE,
+            52.0,
+            FactUnit.PERCENT,
+            period="2025-03-31",
+            section="financial_highlights",
+        ),
     ]
-    return _result("investor_presentation", facts, evidence_id=evidence_id, source_date=source_date)
+    return _result(
+        "investor_presentation", facts, evidence_id=evidence_id, source_date=source_date
+    )
 
 
 def _agm_result(
@@ -136,38 +208,74 @@ def _agm_result(
     source_date: datetime = _DT,
 ) -> AnalysisResult:
     facts = [
-        _fact(FactKind.GOVERNANCE_RESOLUTION_TITLE,
-              "Re-appointment of auditor Deloitte",
-              period="2024-08-14", section="resolution_1"),
-        _fact(FactKind.GOVERNANCE_RESOLUTION_TYPE,
-              "ordinary",
-              period="2024-08-14", section="resolution_1"),
-        _fact(FactKind.GOVERNANCE_RESOLUTION_OUTCOME,
-              "passed",
-              period="2024-08-14", section="resolution_1"),
-        _fact(FactKind.GOVERNANCE_VOTE_PCT_FOR,
-              99.12, FactUnit.PERCENT,
-              period="2024-08-14", section="resolution_1"),
-        _fact(FactKind.GOVERNANCE_VOTE_PCT_AGAINST,
-              0.88, FactUnit.PERCENT,
-              period="2024-08-14", section="resolution_1"),
-        _fact(FactKind.GOVERNANCE_RESOLUTION_TITLE,
-              "Approve remuneration of MD & CEO",
-              period="2024-08-14", section="resolution_2"),
-        _fact(FactKind.GOVERNANCE_RESOLUTION_TYPE,
-              "special",
-              period="2024-08-14", section="resolution_2"),
-        _fact(FactKind.GOVERNANCE_RESOLUTION_OUTCOME,
-              "passed",
-              period="2024-08-14", section="resolution_2"),
-        _fact(FactKind.GOVERNANCE_VOTE_PCT_FOR,
-              85.3, FactUnit.PERCENT,
-              period="2024-08-14", section="resolution_2"),
-        _fact(FactKind.GOVERNANCE_VOTE_PCT_AGAINST,
-              14.7, FactUnit.PERCENT,
-              period="2024-08-14", section="resolution_2"),
+        _fact(
+            FactKind.GOVERNANCE_RESOLUTION_TITLE,
+            "Re-appointment of auditor Deloitte",
+            period="2024-08-14",
+            section="resolution_1",
+        ),
+        _fact(
+            FactKind.GOVERNANCE_RESOLUTION_TYPE,
+            "ordinary",
+            period="2024-08-14",
+            section="resolution_1",
+        ),
+        _fact(
+            FactKind.GOVERNANCE_RESOLUTION_OUTCOME,
+            "passed",
+            period="2024-08-14",
+            section="resolution_1",
+        ),
+        _fact(
+            FactKind.GOVERNANCE_VOTE_PCT_FOR,
+            99.12,
+            FactUnit.PERCENT,
+            period="2024-08-14",
+            section="resolution_1",
+        ),
+        _fact(
+            FactKind.GOVERNANCE_VOTE_PCT_AGAINST,
+            0.88,
+            FactUnit.PERCENT,
+            period="2024-08-14",
+            section="resolution_1",
+        ),
+        _fact(
+            FactKind.GOVERNANCE_RESOLUTION_TITLE,
+            "Approve remuneration of MD & CEO",
+            period="2024-08-14",
+            section="resolution_2",
+        ),
+        _fact(
+            FactKind.GOVERNANCE_RESOLUTION_TYPE,
+            "special",
+            period="2024-08-14",
+            section="resolution_2",
+        ),
+        _fact(
+            FactKind.GOVERNANCE_RESOLUTION_OUTCOME,
+            "passed",
+            period="2024-08-14",
+            section="resolution_2",
+        ),
+        _fact(
+            FactKind.GOVERNANCE_VOTE_PCT_FOR,
+            85.3,
+            FactUnit.PERCENT,
+            period="2024-08-14",
+            section="resolution_2",
+        ),
+        _fact(
+            FactKind.GOVERNANCE_VOTE_PCT_AGAINST,
+            14.7,
+            FactUnit.PERCENT,
+            period="2024-08-14",
+            section="resolution_2",
+        ),
     ]
-    return _result("agm_notice", facts, evidence_id=evidence_id, source_date=source_date)
+    return _result(
+        "agm_notice", facts, evidence_id=evidence_id, source_date=source_date
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -236,12 +344,48 @@ def test_build_profile_annual_result():
     section = "consolidated_pl_table"
     annual_facts = [
         _fact(FactKind.REPORT_PERIOD_TYPE, "annual", section="cover_letter"),
-        _fact(FactKind.FINANCIAL_REVENUE, 240000.0, FactUnit.CRORE_INR, period="2025-03-31", section=section),
-        _fact(FactKind.FINANCIAL_PAT, 47000.0, FactUnit.CRORE_INR, period="2025-03-31", section=section),
-        _fact(FactKind.FINANCIAL_CASH_AND_EQUIVALENTS, 8000.0, FactUnit.CRORE_INR, period="2025-03-31", section="consolidated_bs_table"),
-        _fact(FactKind.FINANCIAL_TOTAL_DEBT, 0.0, FactUnit.CRORE_INR, period="2025-03-31", section="consolidated_bs_table"),
-        _fact(FactKind.FINANCIAL_OPERATING_CASH_FLOW, 50000.0, FactUnit.CRORE_INR, period="2025-03-31", section="consolidated_cf_table"),
-        _fact(FactKind.FINANCIAL_CAPEX, 2000.0, FactUnit.CRORE_INR, period="2025-03-31", section="consolidated_cf_table"),
+        _fact(
+            FactKind.FINANCIAL_REVENUE,
+            240000.0,
+            FactUnit.CRORE_INR,
+            period="2025-03-31",
+            section=section,
+        ),
+        _fact(
+            FactKind.FINANCIAL_PAT,
+            47000.0,
+            FactUnit.CRORE_INR,
+            period="2025-03-31",
+            section=section,
+        ),
+        _fact(
+            FactKind.FINANCIAL_CASH_AND_EQUIVALENTS,
+            8000.0,
+            FactUnit.CRORE_INR,
+            period="2025-03-31",
+            section="consolidated_bs_table",
+        ),
+        _fact(
+            FactKind.FINANCIAL_TOTAL_DEBT,
+            0.0,
+            FactUnit.CRORE_INR,
+            period="2025-03-31",
+            section="consolidated_bs_table",
+        ),
+        _fact(
+            FactKind.FINANCIAL_OPERATING_CASH_FLOW,
+            50000.0,
+            FactUnit.CRORE_INR,
+            period="2025-03-31",
+            section="consolidated_cf_table",
+        ),
+        _fact(
+            FactKind.FINANCIAL_CAPEX,
+            2000.0,
+            FactUnit.CRORE_INR,
+            period="2025-03-31",
+            section="consolidated_cf_table",
+        ),
     ]
     r = _result("financial_results", annual_facts, evidence_id="fr-ann")
     profile = build_profile("TCS", [r])
@@ -312,12 +456,38 @@ def test_build_profile_dividend_from_financial_result():
     offset = 100
     facts = [
         _fact(FactKind.REPORT_PERIOD_TYPE, "quarterly", section="cover_letter"),
-        _fact(FactKind.FINANCIAL_REVENUE, 60000.0, FactUnit.CRORE_INR, period="2024-09-30", section=section),
-        _fact(FactKind.CAPITAL_DIVIDEND_PER_SHARE, 10.0, FactUnit.RUPEES_PER_SHARE,
-              section="cover_letter", char_offset=offset),
-        _fact(FactKind.CAPITAL_DIVIDEND_TYPE, "interim", section="cover_letter", char_offset=offset),
-        _fact(FactKind.CAPITAL_DIVIDEND_RECORD_DATE, "2024-10-18", FactUnit.ISO_DATE, section="cover_letter"),
-        _fact(FactKind.CAPITAL_DIVIDEND_PAYMENT_DATE, "2024-11-05", FactUnit.ISO_DATE, section="cover_letter"),
+        _fact(
+            FactKind.FINANCIAL_REVENUE,
+            60000.0,
+            FactUnit.CRORE_INR,
+            period="2024-09-30",
+            section=section,
+        ),
+        _fact(
+            FactKind.CAPITAL_DIVIDEND_PER_SHARE,
+            10.0,
+            FactUnit.RUPEES_PER_SHARE,
+            section="cover_letter",
+            char_offset=offset,
+        ),
+        _fact(
+            FactKind.CAPITAL_DIVIDEND_TYPE,
+            "interim",
+            section="cover_letter",
+            char_offset=offset,
+        ),
+        _fact(
+            FactKind.CAPITAL_DIVIDEND_RECORD_DATE,
+            "2024-10-18",
+            FactUnit.ISO_DATE,
+            section="cover_letter",
+        ),
+        _fact(
+            FactKind.CAPITAL_DIVIDEND_PAYMENT_DATE,
+            "2024-11-05",
+            FactUnit.ISO_DATE,
+            section="cover_letter",
+        ),
     ]
     profile = build_profile("TCS", [_result("financial_results", facts)])
     assert len(profile.capital_events.dividends) == 1
@@ -330,14 +500,39 @@ def test_build_profile_dividend_from_financial_result():
 
 def test_build_profile_multiple_dividends_same_result():
     facts = [
-        _fact(FactKind.FINANCIAL_REVENUE, 60000.0, FactUnit.CRORE_INR, period="2025-03-31",
-              section="consolidated_pl_table"),
-        _fact(FactKind.CAPITAL_DIVIDEND_PER_SHARE, 28.0, FactUnit.RUPEES_PER_SHARE,
-              section="cover_letter", char_offset=50),
-        _fact(FactKind.CAPITAL_DIVIDEND_TYPE, "final", section="cover_letter", char_offset=50),
-        _fact(FactKind.CAPITAL_DIVIDEND_PER_SHARE, 4.5, FactUnit.RUPEES_PER_SHARE,
-              section="cover_letter", char_offset=200),
-        _fact(FactKind.CAPITAL_DIVIDEND_TYPE, "special", section="cover_letter", char_offset=200),
+        _fact(
+            FactKind.FINANCIAL_REVENUE,
+            60000.0,
+            FactUnit.CRORE_INR,
+            period="2025-03-31",
+            section="consolidated_pl_table",
+        ),
+        _fact(
+            FactKind.CAPITAL_DIVIDEND_PER_SHARE,
+            28.0,
+            FactUnit.RUPEES_PER_SHARE,
+            section="cover_letter",
+            char_offset=50,
+        ),
+        _fact(
+            FactKind.CAPITAL_DIVIDEND_TYPE,
+            "final",
+            section="cover_letter",
+            char_offset=50,
+        ),
+        _fact(
+            FactKind.CAPITAL_DIVIDEND_PER_SHARE,
+            4.5,
+            FactUnit.RUPEES_PER_SHARE,
+            section="cover_letter",
+            char_offset=200,
+        ),
+        _fact(
+            FactKind.CAPITAL_DIVIDEND_TYPE,
+            "special",
+            section="cover_letter",
+            char_offset=200,
+        ),
     ]
     profile = build_profile("TCS", [_result("financial_results", facts)])
     assert len(profile.capital_events.dividends) == 2
@@ -352,9 +547,24 @@ def test_build_profile_multiple_dividends_same_result():
 
 def test_build_profile_buyback_announcement():
     facts = [
-        _fact(FactKind.CAPITAL_BUYBACK_AMOUNT, 17000.0, FactUnit.CRORE_INR, section="cover_letter"),
-        _fact(FactKind.CAPITAL_BUYBACK_PRICE_PER_SHARE, 4500.0, FactUnit.RUPEES_PER_SHARE, section="cover_letter"),
-        _fact(FactKind.CAPITAL_BUYBACK_SHARES_OFFERED, 37777778, FactUnit.COUNT, section="cover_letter"),
+        _fact(
+            FactKind.CAPITAL_BUYBACK_AMOUNT,
+            17000.0,
+            FactUnit.CRORE_INR,
+            section="cover_letter",
+        ),
+        _fact(
+            FactKind.CAPITAL_BUYBACK_PRICE_PER_SHARE,
+            4500.0,
+            FactUnit.RUPEES_PER_SHARE,
+            section="cover_letter",
+        ),
+        _fact(
+            FactKind.CAPITAL_BUYBACK_SHARES_OFFERED,
+            37777778,
+            FactUnit.COUNT,
+            section="cover_letter",
+        ),
     ]
     profile = build_profile("TCS", [_result("buyback", facts)])
     assert len(profile.capital_events.buybacks) == 1
@@ -366,7 +576,12 @@ def test_build_profile_buyback_announcement():
 
 def test_build_profile_buyback_extinguishment():
     facts = [
-        _fact(FactKind.CAPITAL_BUYBACK_SHARES_BOUGHT, 1000000, FactUnit.COUNT, section="cover_letter"),
+        _fact(
+            FactKind.CAPITAL_BUYBACK_SHARES_BOUGHT,
+            1000000,
+            FactUnit.COUNT,
+            section="cover_letter",
+        ),
     ]
     profile = build_profile("TCS", [_result("buyback", facts)])
     assert profile.capital_events.buybacks[0].sub_type == "extinguishment"
@@ -375,7 +590,12 @@ def test_build_profile_buyback_extinguishment():
 
 def test_build_profile_buyback_schedule():
     facts = [
-        _fact(FactKind.CAPITAL_BUYBACK_RECORD_DATE, "2024-11-01", FactUnit.ISO_DATE, section="cover_letter"),
+        _fact(
+            FactKind.CAPITAL_BUYBACK_RECORD_DATE,
+            "2024-11-01",
+            FactUnit.ISO_DATE,
+            section="cover_letter",
+        ),
     ]
     profile = build_profile("TCS", [_result("buyback", facts)])
     assert profile.capital_events.buybacks[0].sub_type == "schedule"
@@ -391,9 +611,21 @@ def test_build_profile_acquisition():
     facts = [
         _fact(FactKind.CAPITAL_ACQ_TARGET_NAME, "Acme Corp", section="annexure_a"),
         _fact(FactKind.CAPITAL_ACQ_CONSIDERATION_TYPE, "cash", section="annexure_a"),
-        _fact(FactKind.CAPITAL_ACQ_ENTERPRISE_VALUE, 700.0, FactUnit.USD_MILLION, section="annexure_a"),
-        _fact(FactKind.CAPITAL_ACQ_STAKE_PCT, 100.0, FactUnit.PERCENT, section="annexure_a"),
-        _fact(FactKind.CAPITAL_ACQ_EXPECTED_COMPLETION, "2025-03-31", section="annexure_a"),
+        _fact(
+            FactKind.CAPITAL_ACQ_ENTERPRISE_VALUE,
+            700.0,
+            FactUnit.USD_MILLION,
+            section="annexure_a",
+        ),
+        _fact(
+            FactKind.CAPITAL_ACQ_STAKE_PCT,
+            100.0,
+            FactUnit.PERCENT,
+            section="annexure_a",
+        ),
+        _fact(
+            FactKind.CAPITAL_ACQ_EXPECTED_COMPLETION, "2025-03-31", section="annexure_a"
+        ),
     ]
     profile = build_profile("TCS", [_result("acquisition", facts)])
     assert len(profile.capital_events.acquisitions) == 1
@@ -409,7 +641,11 @@ def test_build_profile_acquisition_multiple_targets():
     facts = [
         _fact(FactKind.CAPITAL_ACQ_TARGET_NAME, "Sub A Ltd", section="annexure_a"),
         _fact(FactKind.CAPITAL_ACQ_TARGET_NAME, "Sub B Ltd", section="annexure_a"),
-        _fact(FactKind.CAPITAL_ACQ_CONSIDERATION_TYPE, "subscription", section="annexure_a"),
+        _fact(
+            FactKind.CAPITAL_ACQ_CONSIDERATION_TYPE,
+            "subscription",
+            section="annexure_a",
+        ),
     ]
     profile = build_profile("TCS", [_result("acquisition", facts)])
     assert len(profile.capital_events.acquisitions) == 2
@@ -419,8 +655,17 @@ def test_build_profile_acquisition_multiple_targets():
 
 def test_build_profile_board_outcome_investment():
     facts = [
-        _fact(FactKind.CAPITAL_INVEST_TARGET_NAME, "HyperVault Private Limited", section="annexure_b"),
-        _fact(FactKind.CAPITAL_INVEST_AMOUNT, 500.0, FactUnit.CRORE_INR, section="annexure_b"),
+        _fact(
+            FactKind.CAPITAL_INVEST_TARGET_NAME,
+            "HyperVault Private Limited",
+            section="annexure_b",
+        ),
+        _fact(
+            FactKind.CAPITAL_INVEST_AMOUNT,
+            500.0,
+            FactUnit.CRORE_INR,
+            section="annexure_b",
+        ),
     ]
     profile = build_profile("TCS", [_result("board_outcome", facts)])
     assert len(profile.capital_events.investments) == 1
@@ -458,14 +703,19 @@ def test_build_profile_credit_esg_goes_to_esg_ratings():
 def test_build_profile_credit_debt_goes_to_debt_ratings():
     facts = [
         _fact(FactKind.CREDIT_AGENCY, "CRISIL", section="document"),
-        _fact(FactKind.CREDIT_INSTRUMENT, "Long-term Bank Facilities",
-              section="Long-term Bank Facilities"),
-        _fact(FactKind.CREDIT_RATING, "AAA",
-              section="Long-term Bank Facilities"),
-        _fact(FactKind.CREDIT_OUTLOOK, "stable",
-              section="Long-term Bank Facilities"),
-        _fact(FactKind.CREDIT_AMOUNT, 5000.0, FactUnit.CRORE_INR,
-              section="Long-term Bank Facilities"),
+        _fact(
+            FactKind.CREDIT_INSTRUMENT,
+            "Long-term Bank Facilities",
+            section="Long-term Bank Facilities",
+        ),
+        _fact(FactKind.CREDIT_RATING, "AAA", section="Long-term Bank Facilities"),
+        _fact(FactKind.CREDIT_OUTLOOK, "stable", section="Long-term Bank Facilities"),
+        _fact(
+            FactKind.CREDIT_AMOUNT,
+            5000.0,
+            FactUnit.CRORE_INR,
+            section="Long-term Bank Facilities",
+        ),
     ]
     profile = build_profile("TCS", [_result("credit_rating_report", facts)])
     assert profile.credit_history.esg_ratings == []
@@ -479,25 +729,31 @@ def test_build_profile_credit_debt_goes_to_debt_ratings():
 def test_build_profile_credit_debt_multiple_instruments():
     facts = [
         _fact(FactKind.CREDIT_AGENCY, "CRISIL", section="document"),
-        _fact(FactKind.CREDIT_INSTRUMENT, "Long-term Bank Facilities",
-              section="Long-term Bank Facilities"),
-        _fact(FactKind.CREDIT_RATING, "AAA",
-              section="Long-term Bank Facilities"),
-        _fact(FactKind.CREDIT_OUTLOOK, "stable",
-              section="Long-term Bank Facilities"),
-        _fact(FactKind.CREDIT_AMOUNT, 5000.0, FactUnit.CRORE_INR,
-              section="Long-term Bank Facilities"),
-        _fact(FactKind.CREDIT_INSTRUMENT, "Commercial Paper",
-              section="Commercial Paper"),
-        _fact(FactKind.CREDIT_RATING, "A1+",
-              section="Commercial Paper"),
+        _fact(
+            FactKind.CREDIT_INSTRUMENT,
+            "Long-term Bank Facilities",
+            section="Long-term Bank Facilities",
+        ),
+        _fact(FactKind.CREDIT_RATING, "AAA", section="Long-term Bank Facilities"),
+        _fact(FactKind.CREDIT_OUTLOOK, "stable", section="Long-term Bank Facilities"),
+        _fact(
+            FactKind.CREDIT_AMOUNT,
+            5000.0,
+            FactUnit.CRORE_INR,
+            section="Long-term Bank Facilities",
+        ),
+        _fact(
+            FactKind.CREDIT_INSTRUMENT, "Commercial Paper", section="Commercial Paper"
+        ),
+        _fact(FactKind.CREDIT_RATING, "A1+", section="Commercial Paper"),
     ]
     profile = build_profile("TCS", [_result("credit_rating_report", facts)])
     assert len(profile.credit_history.debt_ratings) == 2
     instruments = {e.instrument for e in profile.credit_history.debt_ratings}
     assert instruments == {"Long-term Bank Facilities", "Commercial Paper"}
     lt = next(
-        e for e in profile.credit_history.debt_ratings
+        e
+        for e in profile.credit_history.debt_ratings
         if e.instrument == "Long-term Bank Facilities"
     )
     assert lt.rating == "AAA"
@@ -523,14 +779,36 @@ def test_build_profile_segments():
     period = "2024-09-30"
     # Pair SEGMENT_NAME + SEGMENT_REVENUE by char_offset
     facts = [
-        _fact(FactKind.SEGMENT_NAME, "Banking, Financial Services and Insurance",
-              period=period, section="segment_table", char_offset=1000),
-        _fact(FactKind.SEGMENT_REVENUE, 14000.0, FactUnit.CRORE_INR,
-              period=period, section="segment_table", char_offset=1000),
-        _fact(FactKind.SEGMENT_NAME, "Manufacturing",
-              period=period, section="segment_table", char_offset=1200),
-        _fact(FactKind.SEGMENT_REVENUE, 6000.0, FactUnit.CRORE_INR,
-              period=period, section="segment_table", char_offset=1200),
+        _fact(
+            FactKind.SEGMENT_NAME,
+            "Banking, Financial Services and Insurance",
+            period=period,
+            section="segment_table",
+            char_offset=1000,
+        ),
+        _fact(
+            FactKind.SEGMENT_REVENUE,
+            14000.0,
+            FactUnit.CRORE_INR,
+            period=period,
+            section="segment_table",
+            char_offset=1000,
+        ),
+        _fact(
+            FactKind.SEGMENT_NAME,
+            "Manufacturing",
+            period=period,
+            section="segment_table",
+            char_offset=1200,
+        ),
+        _fact(
+            FactKind.SEGMENT_REVENUE,
+            6000.0,
+            FactUnit.CRORE_INR,
+            period=period,
+            section="segment_table",
+            char_offset=1200,
+        ),
         # SEGMENT_EBIT: excerpt starts with segment name
         AnalysisFact(
             kind=FactKind.SEGMENT_EBIT,
@@ -567,14 +845,31 @@ def test_transcript_supplements_financial_result():
     fr = _financial_result(period="2024-09-30", revenue=60000.0)
     transcript_facts = [
         _fact(FactKind.REPORT_PERIOD_TYPE, "quarterly", section="cover_letter"),
-        _fact(FactKind.FINANCIAL_REVENUE, 59000.0, FactUnit.CRORE_INR,
-              period="2024-09-30", section="cfo_section"),
-        _fact(FactKind.FINANCIAL_TCV, 9.8, FactUnit.USD_BILLION,
-              period="2024-09-30", section="cfo_section"),
-        _fact(FactKind.FINANCIAL_OPERATING_MARGIN, 24.5, FactUnit.PERCENT,
-              period="2024-09-30", section="cfo_section"),
+        _fact(
+            FactKind.FINANCIAL_REVENUE,
+            59000.0,
+            FactUnit.CRORE_INR,
+            period="2024-09-30",
+            section="cfo_section",
+        ),
+        _fact(
+            FactKind.FINANCIAL_TCV,
+            9.8,
+            FactUnit.USD_BILLION,
+            period="2024-09-30",
+            section="cfo_section",
+        ),
+        _fact(
+            FactKind.FINANCIAL_OPERATING_MARGIN,
+            24.5,
+            FactUnit.PERCENT,
+            period="2024-09-30",
+            section="cfo_section",
+        ),
     ]
-    tr = _result("earnings_transcript", transcript_facts, evidence_id="tr-001", source_date=_DT2)
+    tr = _result(
+        "earnings_transcript", transcript_facts, evidence_id="tr-001", source_date=_DT2
+    )
     profile = build_profile("TCS", [fr, tr])
     assert len(profile.financial.snapshots) == 1
     snap = profile.financial.snapshots[0]
@@ -588,10 +883,20 @@ def test_transcript_supplements_financial_result():
 def test_transcript_creates_new_snapshot_when_no_financial_result():
     transcript_facts = [
         _fact(FactKind.REPORT_PERIOD_TYPE, "quarterly", section="cover_letter"),
-        _fact(FactKind.FINANCIAL_REVENUE, 60000.0, FactUnit.CRORE_INR,
-              period="2024-09-30", section="cfo_section"),
-        _fact(FactKind.FINANCIAL_TCV, 9.8, FactUnit.USD_BILLION,
-              period="2024-09-30", section="cfo_section"),
+        _fact(
+            FactKind.FINANCIAL_REVENUE,
+            60000.0,
+            FactUnit.CRORE_INR,
+            period="2024-09-30",
+            section="cfo_section",
+        ),
+        _fact(
+            FactKind.FINANCIAL_TCV,
+            9.8,
+            FactUnit.USD_BILLION,
+            period="2024-09-30",
+            section="cfo_section",
+        ),
     ]
     tr = _result("earnings_transcript", transcript_facts, evidence_id="tr-001")
     profile = build_profile("TCS", [tr])
@@ -607,7 +912,11 @@ def test_transcript_creates_new_snapshot_when_no_financial_result():
 
 
 def test_annual_report_kind_ignored():
-    facts = [_fact(FactKind.SEGMENT_NAME, "BFSI", section="segment_table", period="2024-03-31")]
+    facts = [
+        _fact(
+            FactKind.SEGMENT_NAME, "BFSI", section="segment_table", period="2024-03-31"
+        )
+    ]
     r = _result("annual_report", facts)
     profile = build_profile("TCS", [r])
     assert profile.financial.snapshots == []
@@ -655,10 +964,20 @@ def test_investor_presentation_does_not_overwrite_financial_result_roe():
     # financial_result creates a snapshot; IP should not overwrite it
     fr_facts = [
         _fact(FactKind.REPORT_PERIOD_TYPE, "annual", section="cover_letter"),
-        _fact(FactKind.FINANCIAL_REVENUE, 240000.0, FactUnit.CRORE_INR,
-              period="2025-03-31", section="consolidated_pl_table"),
-        _fact(FactKind.FINANCIAL_ROE, 55.0, FactUnit.PERCENT,
-              period="2025-03-31", section="consolidated_pl_table"),
+        _fact(
+            FactKind.FINANCIAL_REVENUE,
+            240000.0,
+            FactUnit.CRORE_INR,
+            period="2025-03-31",
+            section="consolidated_pl_table",
+        ),
+        _fact(
+            FactKind.FINANCIAL_ROE,
+            55.0,
+            FactUnit.PERCENT,
+            period="2025-03-31",
+            section="consolidated_pl_table",
+        ),
     ]
     fr = _result("financial_results", fr_facts, evidence_id="fr-ann")
     ip = _investor_presentation_result()  # has ROE=52.0 for same period
@@ -669,8 +988,12 @@ def test_investor_presentation_does_not_overwrite_financial_result_roe():
 
 def test_investor_presentation_strategy_entries_sorted_by_date():
     ip1 = _investor_presentation_result(evidence_id="ip-old", source_date=_DT)
-    ip2_facts = [_fact(FactKind.STRATEGY_GUIDANCE, "30% operating margin", section="guidance")]
-    ip2 = _result("investor_presentation", ip2_facts, evidence_id="ip-new", source_date=_DT2)
+    ip2_facts = [
+        _fact(FactKind.STRATEGY_GUIDANCE, "30% operating margin", section="guidance")
+    ]
+    ip2 = _result(
+        "investor_presentation", ip2_facts, evidence_id="ip-new", source_date=_DT2
+    )
     profile = build_profile("TCS", [ip2, ip1])
     dates = [e.source_date for e in profile.strategy.entries]
     assert dates == sorted(dates)
@@ -689,7 +1012,9 @@ def test_agm_notice_resolutions_ingested():
 def test_agm_notice_resolution_fields():
     profile = build_profile("TCS", [_agm_result()])
     # Resolutions sorted by (period, title)
-    res = next(r for r in profile.governance.resolutions if "auditor" in r.title.lower())
+    res = next(
+        r for r in profile.governance.resolutions if "auditor" in r.title.lower()
+    )
     assert res.period == "2024-08-14"
     assert res.resolution_type == "ordinary"
     assert res.outcome == "passed"
@@ -700,7 +1025,9 @@ def test_agm_notice_resolution_fields():
 
 def test_agm_notice_special_resolution():
     profile = build_profile("TCS", [_agm_result()])
-    special = next(r for r in profile.governance.resolutions if r.resolution_type == "special")
+    special = next(
+        r for r in profile.governance.resolutions if r.resolution_type == "special"
+    )
     assert special.pct_for == pytest.approx(85.3)
 
 
@@ -843,7 +1170,9 @@ def test_employee_cost_pct():
 
 
 def test_derived_missing_inputs_return_none():
-    s = FinancialSnapshot(period="2025-03-31", period_type="annual", basis="consolidated")
+    s = FinancialSnapshot(
+        period="2025-03-31", period_type="annual", basis="consolidated"
+    )
     assert ebit(s) is None
     assert ebitda(s) is None
     assert ebit_margin_pct(s) is None

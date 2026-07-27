@@ -12,6 +12,7 @@ every existing caller and test keeps working unchanged.
 Each QueryResult is a list of TableSections; the CLI render layer (render.py)
 turns them into text tables.  Test code can inspect rows directly.
 """
+
 from __future__ import annotations
 
 import re
@@ -114,11 +115,11 @@ def _pp_delta(current: float | None, prior: float | None) -> str:
 # ---------------------------------------------------------------------------
 
 _OWNERSHIP_THRESHOLDS: dict[FactKind, float] = {
-    FactKind.OWNERSHIP_FPI_PCT:              0.50,
-    FactKind.OWNERSHIP_DII_PCT:              0.50,
-    FactKind.OWNERSHIP_MF_PCT:               0.30,
-    FactKind.OWNERSHIP_INSURANCE_PCT:        0.30,
-    FactKind.OWNERSHIP_PROMOTER_PCT:         0.05,
+    FactKind.OWNERSHIP_FPI_PCT: 0.50,
+    FactKind.OWNERSHIP_DII_PCT: 0.50,
+    FactKind.OWNERSHIP_MF_PCT: 0.30,
+    FactKind.OWNERSHIP_INSURANCE_PCT: 0.30,
+    FactKind.OWNERSHIP_PROMOTER_PCT: 0.05,
     FactKind.OWNERSHIP_PROMOTER_PLEDGED_PCT: 0.001,
 }
 _OWNERSHIP_STREAK = 3
@@ -148,11 +149,15 @@ def _ownership_signals(snaps_asc: list) -> list[str]:
             v0 = prev.facts.get(kind)
             v1 = curr.facts.get(kind)
             if v0 is not None and v1 is not None:
-                kind_series[kind].append((
-                    prev.period, curr.period,
-                    float(v0), float(v1),
-                    round(float(v1) - float(v0), 4),
-                ))
+                kind_series[kind].append(
+                    (
+                        prev.period,
+                        curr.period,
+                        float(v0),
+                        float(v1),
+                        round(float(v1) - float(v0), 4),
+                    )
+                )
 
     # Single-period notable moves
     for kind, series in kind_series.items():
@@ -198,7 +203,9 @@ def _ownership_signals(snaps_asc: list) -> list[str]:
             if v0 == 0.0 and v1 > 0.0:
                 signals.append(f"promoter pledged pct appeared: {v1:.2f}% as of {p1}")
             elif v0 > 0.0 and v1 == 0.0:
-                signals.append(f"promoter pledged pct cleared: was {v0:.2f}% as of {p0}")
+                signals.append(
+                    f"promoter pledged pct cleared: was {v0:.2f}% as of {p0}"
+                )
 
     return signals
 
@@ -219,26 +226,38 @@ def revenue(
     Adds YoY revenue growth (%) column.
     """
     snaps = sorted(
-        [s for s in profile.financial.snapshots
-         if s.basis == basis and s.period_type == period_type],
+        [
+            s
+            for s in profile.financial.snapshots
+            if s.basis == basis and s.period_type == period_type
+        ],
         key=lambda s: s.period,
     )
 
-    columns = ["Period", "Revenue (cr)", "PAT (cr)", "PAT Margin", "EBIT Margin", "YoY Rev"]
+    columns = [
+        "Period",
+        "Revenue (cr)",
+        "PAT (cr)",
+        "PAT Margin",
+        "EBIT Margin",
+        "YoY Rev",
+    ]
     rows: list[list[str]] = []
     prev_rev: float | None = None
 
     for snap in snaps:
         rev = snap.facts.get(FactKind.FINANCIAL_REVENUE)
         pat = snap.facts.get(FactKind.FINANCIAL_PAT)
-        rows.append([
-            _fmt_date(snap.period),
-            _fmt_crore(rev),
-            _fmt_crore(pat),
-            _fmt_pct(derived.pat_margin_pct(snap)),
-            _fmt_pct(derived.ebit_margin_pct(snap)),
-            _yoy_delta(rev, prev_rev),
-        ])
+        rows.append(
+            [
+                _fmt_date(snap.period),
+                _fmt_crore(rev),
+                _fmt_crore(pat),
+                _fmt_pct(derived.pat_margin_pct(snap)),
+                _fmt_pct(derived.ebit_margin_pct(snap)),
+                _yoy_delta(rev, prev_rev),
+            ]
+        )
         prev_rev = rev
 
     notes = []
@@ -281,11 +300,13 @@ def capital_allocation(profile: CompanyProfile) -> QueryResult:
         ]
         for e in reversed(ce.dividends)
     ]
-    sections.append(TableSection(
-        heading="Dividends",
-        columns=["Date", "Type", "Per Share", "Record Date"],
-        rows=div_rows,
-    ))
+    sections.append(
+        TableSection(
+            heading="Dividends",
+            columns=["Date", "Type", "Per Share", "Record Date"],
+            rows=div_rows,
+        )
+    )
 
     # Buybacks
     bb_rows = [
@@ -293,15 +314,21 @@ def capital_allocation(profile: CompanyProfile) -> QueryResult:
             _fmt_source_date(e.source_date),
             e.sub_type,
             _fmt_crore(e.amount),
-            _fmt_crore(e.price_per_share).replace(" cr", "/share") if e.price_per_share else "-",
+            (
+                _fmt_crore(e.price_per_share).replace(" cr", "/share")
+                if e.price_per_share
+                else "-"
+            ),
         ]
         for e in reversed(ce.buybacks)
     ]
-    sections.append(TableSection(
-        heading="Buybacks",
-        columns=["Date", "Sub-type", "Amount", "Price/Share"],
-        rows=bb_rows,
-    ))
+    sections.append(
+        TableSection(
+            heading="Buybacks",
+            columns=["Date", "Sub-type", "Amount", "Price/Share"],
+            rows=bb_rows,
+        )
+    )
 
     # Acquisitions
     def _ev(e: AcquisitionEvent) -> str:
@@ -320,27 +347,34 @@ def capital_allocation(profile: CompanyProfile) -> QueryResult:
         ]
         for e in reversed(ce.acquisitions)
     ]
-    sections.append(TableSection(
-        heading="Acquisitions & Incorporations",
-        columns=["Date", "Target", "Consideration", "EV", "Stake"],
-        rows=acq_rows,
-    ))
+    sections.append(
+        TableSection(
+            heading="Acquisitions & Incorporations",
+            columns=["Date", "Target", "Consideration", "EV", "Stake"],
+            rows=acq_rows,
+        )
+    )
 
     # Investments
     inv_rows = [
         [
             _fmt_source_date(e.source_date),
             e.target_name,
-            (f"{e.amount:,.1f} {e.amount_unit.value}" if e.amount and e.amount_unit
-             else _fmt_crore(e.amount) if e.amount else "-"),
+            (
+                f"{e.amount:,.1f} {e.amount_unit.value}"
+                if e.amount and e.amount_unit
+                else _fmt_crore(e.amount) if e.amount else "-"
+            ),
         ]
         for e in reversed(ce.investments)
     ]
-    sections.append(TableSection(
-        heading="Investments",
-        columns=["Date", "Target", "Amount"],
-        rows=inv_rows,
-    ))
+    sections.append(
+        TableSection(
+            heading="Investments",
+            columns=["Date", "Target", "Amount"],
+            rows=inv_rows,
+        )
+    )
 
     # Fundraises
     fund_rows = [
@@ -351,11 +385,13 @@ def capital_allocation(profile: CompanyProfile) -> QueryResult:
         ]
         for e in reversed(ce.fundraises)
     ]
-    sections.append(TableSection(
-        heading="Fundraising",
-        columns=["Date", "Type", "Max Amount"],
-        rows=fund_rows,
-    ))
+    sections.append(
+        TableSection(
+            heading="Fundraising",
+            columns=["Date", "Type", "Max Amount"],
+            rows=fund_rows,
+        )
+    )
 
     notes = []
     total = sum(len(s.rows) for s in sections)
@@ -397,10 +433,16 @@ def strategy(
             bucket.append(e)
 
     sections: list[TableSection] = []
-    for kind, label in [("priority", "Strategic Priorities"), ("guidance", "Guidance"), ("aspiration", "Aspirations")]:
+    for kind, label in [
+        ("priority", "Strategic Priorities"),
+        ("guidance", "Guidance"),
+        ("aspiration", "Aspirations"),
+    ]:
         bucket = sorted(by_kind[kind], key=lambda e: e.source_date, reverse=True)
         rows = [[_fmt_source_date(e.source_date), e.text] for e in bucket]
-        sections.append(TableSection(heading=label, columns=["Date", "Statement"], rows=rows))
+        sections.append(
+            TableSection(heading=label, columns=["Date", "Statement"], rows=rows)
+        )
 
     notes = []
     if keyword and all(not s.rows for s in sections):
@@ -412,11 +454,13 @@ def strategy(
         for c in sorted(profile.strategy.csat, key=lambda c: c.period, reverse=True)
     ]
     if csat_rows:
-        sections.append(TableSection(
-            heading="Customer Satisfaction (CSAT)",
-            columns=["Period", "Score"],
-            rows=csat_rows,
-        ))
+        sections.append(
+            TableSection(
+                heading="Customer Satisfaction (CSAT)",
+                columns=["Period", "Score"],
+                rows=csat_rows,
+            )
+        )
 
     return QueryResult(
         query="strategy",
@@ -438,16 +482,20 @@ def acquisitions(profile: CompanyProfile) -> QueryResult:
     for e in reversed(profile.capital_events.acquisitions):
         ev_str = "-"
         if e.enterprise_value is not None:
-            unit_label = e.enterprise_value_unit.value if e.enterprise_value_unit else ""
+            unit_label = (
+                e.enterprise_value_unit.value if e.enterprise_value_unit else ""
+            )
             ev_str = f"{e.enterprise_value:,.1f} {unit_label}".strip()
-        rows.append([
-            _fmt_source_date(e.source_date),
-            e.target_name,
-            e.consideration_type or "-",
-            ev_str,
-            _fmt_pct(e.stake_pct) if e.stake_pct is not None else "-",
-            e.expected_completion or "-",
-        ])
+        rows.append(
+            [
+                _fmt_source_date(e.source_date),
+                e.target_name,
+                e.consideration_type or "-",
+                ev_str,
+                _fmt_pct(e.stake_pct) if e.stake_pct is not None else "-",
+                e.expected_completion or "-",
+            ]
+        )
 
     notes = []
     if not rows:
@@ -457,11 +505,20 @@ def acquisitions(profile: CompanyProfile) -> QueryResult:
         query="acquisitions",
         company_id=profile.company_id,
         title="Acquisitions & Incorporations",
-        sections=[TableSection(
-            heading="All Events",
-            columns=["Date", "Target", "Consideration", "EV", "Stake", "Expected Close"],
-            rows=rows,
-        )],
+        sections=[
+            TableSection(
+                heading="All Events",
+                columns=[
+                    "Date",
+                    "Target",
+                    "Consideration",
+                    "EV",
+                    "Stake",
+                    "Expected Close",
+                ],
+                rows=rows,
+            )
+        ],
         notes=notes,
     )
 
@@ -478,7 +535,9 @@ def ownership(profile: CompanyProfile, last_n: int = 8) -> QueryResult:
     consecutive-direction streaks, large single-quarter moves, and pledging
     transitions appear as a second "Ownership Signals" section.
     """
-    snaps = sorted(profile.ownership.snapshots, key=lambda s: s.period, reverse=True)[:last_n]
+    snaps = sorted(profile.ownership.snapshots, key=lambda s: s.period, reverse=True)[
+        :last_n
+    ]
 
     # Build ordered list oldest-first so we can compute deltas forward, then reverse for display
     snaps_asc = list(reversed(snaps))
@@ -492,27 +551,31 @@ def ownership(profile: CompanyProfile, last_n: int = 8) -> QueryResult:
         public = snap.facts.get(FactKind.OWNERSHIP_PUBLIC_PCT)
         pledged = snap.facts.get(FactKind.OWNERSHIP_PROMOTER_PLEDGED_PCT)
 
-        prior_promoter = prior.facts.get(FactKind.OWNERSHIP_PROMOTER_PCT) if prior else None
+        prior_promoter = (
+            prior.facts.get(FactKind.OWNERSHIP_PROMOTER_PCT) if prior else None
+        )
         prior_fpi = prior.facts.get(FactKind.OWNERSHIP_FPI_PCT) if prior else None
 
         promoter_str = (
             f"{promoter:.2f}% ({_pp_delta(promoter, prior_promoter)})"
-            if promoter is not None else "-"
+            if promoter is not None
+            else "-"
         )
         fpi_str = (
-            f"{fpi:.2f}% ({_pp_delta(fpi, prior_fpi)})"
-            if fpi is not None else "-"
+            f"{fpi:.2f}% ({_pp_delta(fpi, prior_fpi)})" if fpi is not None else "-"
         )
 
-        rows.append([
-            _fmt_date(snap.period),
-            promoter_str,
-            fpi_str,
-            _fmt_pct(dii, 2),
-            _fmt_pct(mf, 2),
-            _fmt_pct(public, 2),
-            _fmt_pct(pledged, 2),
-        ])
+        rows.append(
+            [
+                _fmt_date(snap.period),
+                promoter_str,
+                fpi_str,
+                _fmt_pct(dii, 2),
+                _fmt_pct(mf, 2),
+                _fmt_pct(public, 2),
+                _fmt_pct(pledged, 2),
+            ]
+        )
 
     # Reverse to show most-recent first
     rows.reverse()
@@ -521,17 +584,29 @@ def ownership(profile: CompanyProfile, last_n: int = 8) -> QueryResult:
     all_snaps_asc = sorted(profile.ownership.snapshots, key=lambda s: s.period)
     signals = _ownership_signals(all_snaps_asc)
 
-    sections: list[TableSection] = [TableSection(
-        heading=f"Shareholding Pattern (last {last_n} quarters)",
-        columns=["Period", "Promoter (QoQ)", "FPI (QoQ)", "DII", "MF", "Public", "Pledged"],
-        rows=rows,
-    )]
+    sections: list[TableSection] = [
+        TableSection(
+            heading=f"Shareholding Pattern (last {last_n} quarters)",
+            columns=[
+                "Period",
+                "Promoter (QoQ)",
+                "FPI (QoQ)",
+                "DII",
+                "MF",
+                "Public",
+                "Pledged",
+            ],
+            rows=rows,
+        )
+    ]
     if signals:
-        sections.append(TableSection(
-            heading="Ownership Signals",
-            columns=["Signal"],
-            rows=[[sig] for sig in signals],
-        ))
+        sections.append(
+            TableSection(
+                heading="Ownership Signals",
+                columns=["Signal"],
+                rows=[[sig] for sig in signals],
+            )
+        )
 
     notes = []
     if not rows:
@@ -558,8 +633,11 @@ def leverage(
 ) -> QueryResult:
     """Cash, debt, and net cash/debt position over time."""
     snaps = sorted(
-        [s for s in profile.financial.snapshots
-         if s.basis == basis and s.period_type == period_type],
+        [
+            s
+            for s in profile.financial.snapshots
+            if s.basis == basis and s.period_type == period_type
+        ],
         key=lambda s: s.period,
     )
 
@@ -573,26 +651,32 @@ def leverage(
         if nc is not None:
             label = "net cash" if nc >= 0 else "net debt"
             nc_str = f"{abs(nc):,.0f} cr ({label})"
-        rows.append([
-            _fmt_date(snap.period),
-            _fmt_crore(cash),
-            _fmt_crore(debt),
-            nc_str,
-        ])
+        rows.append(
+            [
+                _fmt_date(snap.period),
+                _fmt_crore(cash),
+                _fmt_crore(debt),
+                nc_str,
+            ]
+        )
 
     notes = []
     if not rows:
-        notes.append(f"No {period_type} {basis} snapshots with balance sheet data found.")
+        notes.append(
+            f"No {period_type} {basis} snapshots with balance sheet data found."
+        )
 
     return QueryResult(
         query="leverage",
         company_id=profile.company_id,
         title="Leverage Evolution",
-        sections=[TableSection(
-            heading=f"{basis.title()} {period_type.title()} Balance Sheet",
-            columns=columns,
-            rows=rows,
-        )],
+        sections=[
+            TableSection(
+                heading=f"{basis.title()} {period_type.title()} Balance Sheet",
+                columns=columns,
+                rows=rows,
+            )
+        ],
         notes=notes,
     )
 
@@ -631,8 +715,12 @@ def credit_ratings(profile: CompanyProfile) -> QueryResult:
 
     cols = ["Date", "Agency", "Instrument", "Rating/Score", "Outlook", "Action"]
     sections = [
-        TableSection(heading="ESG Ratings", columns=cols, rows=_rating_rows(esg_latest)),
-        TableSection(heading="Debt Ratings", columns=cols, rows=_rating_rows(debt_latest)),
+        TableSection(
+            heading="ESG Ratings", columns=cols, rows=_rating_rows(esg_latest)
+        ),
+        TableSection(
+            heading="Debt Ratings", columns=cols, rows=_rating_rows(debt_latest)
+        ),
     ]
 
     notes = []
@@ -652,7 +740,9 @@ def auditor_history(profile: CompanyProfile) -> QueryResult:
     """Statutory auditor firm and opinion across filings, most-recent first
     (M-P3.2, Q42) -- multi-year continuity/changes readable directly from the
     row order."""
-    entries = sorted(profile.governance.auditor_history, key=lambda a: a.source_date, reverse=True)
+    entries = sorted(
+        profile.governance.auditor_history, key=lambda a: a.source_date, reverse=True
+    )
     rows = [
         [_fmt_source_date(a.source_date), a.firm or "-", a.opinion or "-"]
         for a in entries
@@ -660,17 +750,21 @@ def auditor_history(profile: CompanyProfile) -> QueryResult:
 
     notes = []
     if not rows:
-        notes.append("No auditor firm/opinion found. Annual filings must be analyzed and ingested first.")
+        notes.append(
+            "No auditor firm/opinion found. Annual filings must be analyzed and ingested first."
+        )
 
     return QueryResult(
         query="auditor_history",
         company_id=profile.company_id,
         title="Auditor History",
-        sections=[TableSection(
-            heading="Auditor firm and opinion (most recent first)",
-            columns=["Date", "Firm", "Opinion"],
-            rows=rows,
-        )],
+        sections=[
+            TableSection(
+                heading="Auditor firm and opinion (most recent first)",
+                columns=["Date", "Firm", "Opinion"],
+                rows=rows,
+            )
+        ],
         notes=notes,
     )
 
@@ -684,7 +778,9 @@ def related_party_disclosures(profile: CompanyProfile) -> QueryResult:
     are populated in this milestone (the per-counterparty transaction table
     is deferred; see AGENT.md / ADR-0012 for why).
     """
-    entries = sorted(profile.governance.related_parties, key=lambda rp: rp.period, reverse=True)
+    entries = sorted(
+        profile.governance.related_parties, key=lambda rp: rp.period, reverse=True
+    )
     rows = [
         [rp.period, rp.kind, rp.category, f"{rp.amount:,.2f}", rp.counterparty or "-"]
         for rp in entries
@@ -692,17 +788,21 @@ def related_party_disclosures(profile: CompanyProfile) -> QueryResult:
 
     notes = []
     if not rows:
-        notes.append("No related-party disclosures found. Annual filings must be analyzed and ingested first.")
+        notes.append(
+            "No related-party disclosures found. Annual filings must be analyzed and ingested first."
+        )
 
     return QueryResult(
         query="related_party_disclosures",
         company_id=profile.company_id,
         title="Related-Party Disclosures",
-        sections=[TableSection(
-            heading="Related-party amounts (most recent period first)",
-            columns=["Period", "Kind", "Category", "Amount (Cr)", "Counterparty"],
-            rows=rows,
-        )],
+        sections=[
+            TableSection(
+                heading="Related-party amounts (most recent period first)",
+                columns=["Period", "Kind", "Category", "Amount (Cr)", "Counterparty"],
+                rows=rows,
+            )
+        ],
         notes=notes,
     )
 
@@ -719,28 +819,41 @@ def rpt_resolutions(profile: CompanyProfile) -> QueryResult:
     counterparty (when the title states one) are computed at query time from
     the existing resolution title, never stored as a separate fact.
     """
-    entries = sorted(profile.governance.resolutions, key=lambda r: r.source_date, reverse=True)
+    entries = sorted(
+        profile.governance.resolutions, key=lambda r: r.source_date, reverse=True
+    )
     rows: list[list[str]] = []
     for r in entries:
         if not _RE_RPT_RESOLUTION.search(r.title):
             continue
         m = _RE_RPT_COUNTERPARTY.search(r.title)
         counterparty = m.group(1).strip().rstrip(".") if m else "-"
-        rows.append([_fmt_source_date(r.source_date), _oneline(r.title), counterparty, r.outcome or "-"])
+        rows.append(
+            [
+                _fmt_source_date(r.source_date),
+                _oneline(r.title),
+                counterparty,
+                r.outcome or "-",
+            ]
+        )
 
     notes = []
     if not rows:
-        notes.append("No related-party-transaction resolutions found among AGM resolutions on record.")
+        notes.append(
+            "No related-party-transaction resolutions found among AGM resolutions on record."
+        )
 
     return QueryResult(
         query="rpt_resolutions",
         company_id=profile.company_id,
         title="Related-Party-Transaction AGM Resolutions",
-        sections=[TableSection(
-            heading="RPT resolutions (most recent first)",
-            columns=["Date", "Title", "Counterparty", "Outcome"],
-            rows=rows,
-        )],
+        sections=[
+            TableSection(
+                heading="RPT resolutions (most recent first)",
+                columns=["Date", "Title", "Counterparty", "Outcome"],
+                rows=rows,
+            )
+        ],
         notes=notes,
     )
 
@@ -778,19 +891,23 @@ def rating_risk_timeline(profile: CompanyProfile) -> QueryResult:
         if period is None:
             risk_text = "(no preceding annual-report risk factors on record)"
         else:
-            texts = [r.text for r in profile.governance.risk_factors if r.period == period]
+            texts = [
+                r.text for r in profile.governance.risk_factors if r.period == period
+            ]
             risk_text = "; ".join(_oneline(t) for t in texts[:3])
             if len(texts) > 3:
                 risk_text += f" (+{len(texts) - 3} more)"
 
-        rows.append([
-            _fmt_source_date(e.source_date),
-            e.agency,
-            e.rating or "-",
-            e.action or "-",
-            _fmt_date(period) if period else "-",
-            risk_text,
-        ])
+        rows.append(
+            [
+                _fmt_source_date(e.source_date),
+                e.agency,
+                e.rating or "-",
+                e.action or "-",
+                _fmt_date(period) if period else "-",
+                risk_text,
+            ]
+        )
 
     notes = [
         "Temporal association only: risk factors shown are what was on file "
@@ -805,11 +922,20 @@ def rating_risk_timeline(profile: CompanyProfile) -> QueryResult:
         query="rating_risk_timeline",
         company_id=profile.company_id,
         title="Rating Actions and Preceding Risk Factors",
-        sections=[TableSection(
-            heading="Debt rating actions (chronological)",
-            columns=["Date", "Agency", "Rating", "Action", "Preceding Risk Period", "Risk Factors on File"],
-            rows=rows,
-        )],
+        sections=[
+            TableSection(
+                heading="Debt rating actions (chronological)",
+                columns=[
+                    "Date",
+                    "Agency",
+                    "Rating",
+                    "Action",
+                    "Preceding Risk Period",
+                    "Risk Factors on File",
+                ],
+                rows=rows,
+            )
+        ],
         notes=notes,
     )
 
@@ -845,11 +971,13 @@ def risks(profile: CompanyProfile) -> QueryResult:
         query="risks",
         company_id=profile.company_id,
         title="Recurring Risk Factors",
-        sections=[TableSection(
-            heading="Risk Factors (deduplicated, most-recent first)",
-            columns=["Period", "Risk Factor"],
-            rows=rows,
-        )],
+        sections=[
+            TableSection(
+                heading="Risk Factors (deduplicated, most-recent first)",
+                columns=["Period", "Risk Factor"],
+                rows=rows,
+            )
+        ],
         notes=notes,
     )
 
@@ -897,14 +1025,16 @@ def risk_recurrence(profile: CompanyProfile) -> QueryResult:
                 entry[0], entry[1] = r.text, r.period
 
     recurring = [
-        (display, periods) for display, _, periods in groups.values() if len(periods) >= 2
+        (display, periods)
+        for display, _, periods in groups.values()
+        if len(periods) >= 2
     ]
 
     # Three stable passes in REVERSE priority order (lowest priority first) --
     # Python's sort is stable, so each pass preserves the ordering already
     # established by the previous (higher-priority) pass among equal keys.
     # Net effect: count desc, then most-recent-period desc, then text asc.
-    recurring.sort(key=lambda item: item[0])                 # 3. text asc
+    recurring.sort(key=lambda item: item[0])  # 3. text asc
     recurring.sort(key=lambda item: max(item[1]), reverse=True)  # 2. period desc
     recurring.sort(key=lambda item: len(item[1]), reverse=True)  # 1. count desc
 
@@ -924,11 +1054,13 @@ def risk_recurrence(profile: CompanyProfile) -> QueryResult:
         query="risk_recurrence",
         company_id=profile.company_id,
         title="Recurring Risk Factors Across Periods",
-        sections=[TableSection(
-            heading="Risks appearing in 2+ distinct reporting periods",
-            columns=["Occurrences", "Most Recent Period", "Risk Factor"],
-            rows=rows,
-        )],
+        sections=[
+            TableSection(
+                heading="Risks appearing in 2+ distinct reporting periods",
+                columns=["Occurrences", "Most Recent Period", "Risk Factor"],
+                rows=rows,
+            )
+        ],
         notes=notes,
     )
 
@@ -960,8 +1092,10 @@ def timeline(
     snaps = metrics.domain_snapshots(profile, spec.domain)
     if spec.domain == "financial":
         snaps = [
-            s for s in snaps
-            if s.basis == basis and (period_type is None or s.period_type == period_type)
+            s
+            for s in snaps
+            if s.basis == basis
+            and (period_type is None or s.period_type == period_type)
         ]
     snaps = sorted(snaps, key=lambda s: s.period)
 
@@ -972,13 +1106,19 @@ def timeline(
         value = metrics.snapshot_value(spec, snap)
         if value is None:
             continue
-        delta = _pp_delta(value, prev_value) if spec.unit == FactUnit.PERCENT else _yoy_delta(value, prev_value)
-        rows.append([
-            _fmt_date(snap.period),
-            metrics.format_value(value, spec.unit),
-            delta,
-            _cite_sources(snap.sources, profile, repo),
-        ])
+        delta = (
+            _pp_delta(value, prev_value)
+            if spec.unit == FactUnit.PERCENT
+            else _yoy_delta(value, prev_value)
+        )
+        rows.append(
+            [
+                _fmt_date(snap.period),
+                metrics.format_value(value, spec.unit),
+                delta,
+                _cite_sources(snap.sources, profile, repo),
+            ]
+        )
         prev_value = value
 
     notes = []
@@ -1020,8 +1160,10 @@ def compare(
     snaps = metrics.domain_snapshots(profile, spec.domain)
     if spec.domain == "financial":
         snaps = [
-            s for s in snaps
-            if s.basis == basis and (period_type is None or s.period_type == period_type)
+            s
+            for s in snaps
+            if s.basis == basis
+            and (period_type is None or s.period_type == period_type)
         ]
     snaps = sorted(snaps, key=lambda s: s.period)
 
@@ -1036,8 +1178,19 @@ def compare(
     rows: list[list[str]] = []
     for i, (period, value, sources) in enumerate(points):
         prior_value = points[i - 1][1] if i > 0 else None
-        delta = _pp_delta(value, prior_value) if spec.unit == FactUnit.PERCENT else _yoy_delta(value, prior_value)
-        rows.append([_fmt_date(period), metrics.format_value(value, spec.unit), delta, _cite_sources(sources, profile, repo)])
+        delta = (
+            _pp_delta(value, prior_value)
+            if spec.unit == FactUnit.PERCENT
+            else _yoy_delta(value, prior_value)
+        )
+        rows.append(
+            [
+                _fmt_date(period),
+                metrics.format_value(value, spec.unit),
+                delta,
+                _cite_sources(sources, profile, repo),
+            ]
+        )
 
     notes = []
     if not points:
@@ -1049,7 +1202,11 @@ def compare(
         query="compare",
         company_id=profile.company_id,
         title=f"Period Comparison: {spec.label}",
-        sections=[TableSection(heading=f"Last {len(points)} periods", columns=columns, rows=rows)],
+        sections=[
+            TableSection(
+                heading=f"Last {len(points)} periods", columns=columns, rows=rows
+            )
+        ],
         notes=notes,
     )
 
@@ -1075,72 +1232,122 @@ def summary(profile: CompanyProfile, repo: Repository | None = None) -> QueryRes
         if repo is None:
             return "-"
         entry = repo.get(evidence_id)
-        return build_citation(entry, profile.company_id, profile).citation_short if entry else "-"
+        return (
+            build_citation(entry, profile.company_id, profile).citation_short
+            if entry
+            else "-"
+        )
 
     fin_snaps = sorted(
-        [s for s in profile.financial.snapshots if s.basis == "consolidated" and s.period_type == "annual"],
+        [
+            s
+            for s in profile.financial.snapshots
+            if s.basis == "consolidated" and s.period_type == "annual"
+        ],
         key=lambda s: s.period,
     )
     if fin_snaps:
         latest = fin_snaps[-1]
-        rows = [[
-            _fmt_date(latest.period),
-            _fmt_crore(latest.facts.get(FactKind.FINANCIAL_REVENUE)),
-            _fmt_crore(latest.facts.get(FactKind.FINANCIAL_PAT)),
-            _fmt_pct(derived.pat_margin_pct(latest)),
-            _fmt_pct(derived.ebit_margin_pct(latest)),
-        ]]
-        sections.append(TableSection(
-            heading="Latest Annual Financials",
-            columns=["Period", "Revenue", "PAT", "PAT Margin", "EBIT Margin"],
-            rows=rows,
-        ))
+        rows = [
+            [
+                _fmt_date(latest.period),
+                _fmt_crore(latest.facts.get(FactKind.FINANCIAL_REVENUE)),
+                _fmt_crore(latest.facts.get(FactKind.FINANCIAL_PAT)),
+                _fmt_pct(derived.pat_margin_pct(latest)),
+                _fmt_pct(derived.ebit_margin_pct(latest)),
+            ]
+        ]
+        sections.append(
+            TableSection(
+                heading="Latest Annual Financials",
+                columns=["Period", "Revenue", "PAT", "PAT Margin", "EBIT Margin"],
+                rows=rows,
+            )
+        )
 
     own_snaps = sorted(profile.ownership.snapshots, key=lambda s: s.period)
     if own_snaps:
         latest = own_snaps[-1]
-        rows = [[
-            _fmt_date(latest.period),
-            _fmt_pct(latest.facts.get(FactKind.OWNERSHIP_PROMOTER_PCT), 2),
-            _fmt_pct(latest.facts.get(FactKind.OWNERSHIP_FPI_PCT), 2),
-            _fmt_pct(latest.facts.get(FactKind.OWNERSHIP_DII_PCT), 2),
-        ]]
-        sections.append(TableSection(
-            heading="Latest Ownership",
-            columns=["Period", "Promoter", "FPI", "DII"],
-            rows=rows,
-        ))
+        rows = [
+            [
+                _fmt_date(latest.period),
+                _fmt_pct(latest.facts.get(FactKind.OWNERSHIP_PROMOTER_PCT), 2),
+                _fmt_pct(latest.facts.get(FactKind.OWNERSHIP_FPI_PCT), 2),
+                _fmt_pct(latest.facts.get(FactKind.OWNERSHIP_DII_PCT), 2),
+            ]
+        ]
+        sections.append(
+            TableSection(
+                heading="Latest Ownership",
+                columns=["Period", "Promoter", "FPI", "DII"],
+                rows=rows,
+            )
+        )
 
     ratings_result = credit_ratings(profile)
     for sec in ratings_result.sections:
         if sec.rows:
-            sections.append(TableSection(heading=f"Latest {sec.heading}", columns=sec.columns, rows=sec.rows[:3]))
+            sections.append(
+                TableSection(
+                    heading=f"Latest {sec.heading}",
+                    columns=sec.columns,
+                    rows=sec.rows[:3],
+                )
+            )
 
     guidance = sorted(
         [e for e in profile.strategy.entries if e.kind == "guidance"],
-        key=lambda e: e.source_date, reverse=True,
+        key=lambda e: e.source_date,
+        reverse=True,
     )[:3]
     if guidance:
-        rows = [[_fmt_source_date(e.source_date), e.text, _cite_one(e.evidence_id)] for e in guidance]
-        sections.append(TableSection(heading="Recent Guidance", columns=["Date", "Statement", "Source"], rows=rows))
+        rows = [
+            [_fmt_source_date(e.source_date), e.text, _cite_one(e.evidence_id)]
+            for e in guidance
+        ]
+        sections.append(
+            TableSection(
+                heading="Recent Guidance",
+                columns=["Date", "Statement", "Source"],
+                rows=rows,
+            )
+        )
 
     events: list[tuple[datetime, str, str]] = []
     ce = profile.capital_events
     for e in ce.dividends:
-        events.append((e.source_date, f"Dividend: {e.dividend_type} {e.per_share:.2f}/share", e.evidence_id))
+        events.append(
+            (
+                e.source_date,
+                f"Dividend: {e.dividend_type} {e.per_share:.2f}/share",
+                e.evidence_id,
+            )
+        )
     for e in ce.buybacks:
         amt = f" ({e.amount:,.0f} cr)" if e.amount else ""
         events.append((e.source_date, f"Buyback: {e.sub_type}{amt}", e.evidence_id))
     for e in ce.acquisitions:
-        events.append((e.source_date, f"Acquisition: {_oneline(e.target_name)}", e.evidence_id))
+        events.append(
+            (e.source_date, f"Acquisition: {_oneline(e.target_name)}", e.evidence_id)
+        )
     for e in ce.investments:
-        events.append((e.source_date, f"Investment: {_oneline(e.target_name)}", e.evidence_id))
+        events.append(
+            (e.source_date, f"Investment: {_oneline(e.target_name)}", e.evidence_id)
+        )
     for e in ce.fundraises:
         events.append((e.source_date, f"Fundraise: {e.fundraise_type}", e.evidence_id))
     events.sort(key=lambda t: t[0], reverse=True)
     if events:
-        rows = [[_fmt_source_date(d), text, _cite_one(eid)] for d, text, eid in events[:5]]
-        sections.append(TableSection(heading="Recent Capital Events", columns=["Date", "Event", "Source"], rows=rows))
+        rows = [
+            [_fmt_source_date(d), text, _cite_one(eid)] for d, text, eid in events[:5]
+        ]
+        sections.append(
+            TableSection(
+                heading="Recent Capital Events",
+                columns=["Date", "Event", "Source"],
+                rows=rows,
+            )
+        )
 
     # SBTi commitment facts (ESG_CLIMATE_SBTI_SCOPE12/3_REDUCTION_PCT) are
     # stored with period = target year, not report year (a company's 2050
@@ -1150,7 +1357,11 @@ def summary(profile: CompanyProfile, repo: Repository | None = None) -> QueryRes
     # annual snapshot, absent from a bare forward-target-only snapshot — so
     # "latest" means the latest real report, not the latest target date.
     esg_snaps = sorted(
-        [s for s in profile.esg.snapshots if FactKind.ESG_WORKFORCE_HEADCOUNT in s.facts],
+        [
+            s
+            for s in profile.esg.snapshots
+            if FactKind.ESG_WORKFORCE_HEADCOUNT in s.facts
+        ],
         key=lambda s: s.period,
     )
     if esg_snaps:
@@ -1159,32 +1370,56 @@ def summary(profile: CompanyProfile, repo: Repository | None = None) -> QueryRes
         female_pct = latest.facts.get(FactKind.ESG_WORKFORCE_FEMALE_PCT)
         scope1 = latest.facts.get(FactKind.ESG_GHG_SCOPE1)
         scope2 = latest.facts.get(FactKind.ESG_GHG_SCOPE2)
-        rows = [[
-            _fmt_date(latest.period),
-            f"{headcount:,.0f}" if headcount is not None else "-",
-            _fmt_pct(female_pct) if female_pct is not None else "-",
-            f"{scope1:,.0f} tCO2e" if scope1 is not None else "-",
-            f"{scope2:,.0f} tCO2e" if scope2 is not None else "-",
-        ]]
-        sections.append(TableSection(
-            heading="ESG Headline",
-            columns=["Period", "Headcount", "Female %", "GHG Scope 1", "GHG Scope 2"],
-            rows=rows,
-        ))
+        rows = [
+            [
+                _fmt_date(latest.period),
+                f"{headcount:,.0f}" if headcount is not None else "-",
+                _fmt_pct(female_pct) if female_pct is not None else "-",
+                f"{scope1:,.0f} tCO2e" if scope1 is not None else "-",
+                f"{scope2:,.0f} tCO2e" if scope2 is not None else "-",
+            ]
+        ]
+        sections.append(
+            TableSection(
+                heading="ESG Headline",
+                columns=[
+                    "Period",
+                    "Headcount",
+                    "Female %",
+                    "GHG Scope 1",
+                    "GHG Scope 2",
+                ],
+                rows=rows,
+            )
+        )
 
-    dir_changes = sorted(profile.governance.director_changes, key=lambda d: d.source_date, reverse=True)[:3]
+    dir_changes = sorted(
+        profile.governance.director_changes, key=lambda d: d.source_date, reverse=True
+    )[:3]
     if dir_changes:
-        rows = [[_fmt_source_date(d.source_date), d.change_type, _oneline(d.name), _oneline(d.role) if d.role else "-"] for d in dir_changes]
-        sections.append(TableSection(
-            heading="Recent Board Changes",
-            columns=["Date", "Type", "Name", "Role"],
-            rows=rows,
-        ))
+        rows = [
+            [
+                _fmt_source_date(d.source_date),
+                d.change_type,
+                _oneline(d.name),
+                _oneline(d.role) if d.role else "-",
+            ]
+            for d in dir_changes
+        ]
+        sections.append(
+            TableSection(
+                heading="Recent Board Changes",
+                columns=["Date", "Type", "Name", "Role"],
+                rows=rows,
+            )
+        )
 
     notes = []
     risk_count = len({r.text.lower().strip() for r in profile.governance.risk_factors})
     if risk_count:
-        notes.append(f"{risk_count} unique risk factors tracked - see 'risks' query for detail.")
+        notes.append(
+            f"{risk_count} unique risk factors tracked - see 'risks' query for detail."
+        )
     if not sections:
         notes.append("No data found in profile.")
 
@@ -1202,7 +1437,9 @@ def summary(profile: CompanyProfile, repo: Repository | None = None) -> QueryRes
 # ---------------------------------------------------------------------------
 
 
-def drilldown(profile: CompanyProfile, evidence_id: str, repo: Repository | None = None) -> QueryResult:
+def drilldown(
+    profile: CompanyProfile, evidence_id: str, repo: Repository | None = None
+) -> QueryResult:
     """Every fact and event in the profile traced back to one evidence_id.
 
     Snapshots and events already track their source evidence_ids (sources /
@@ -1218,62 +1455,183 @@ def drilldown(profile: CompanyProfile, evidence_id: str, repo: Repository | None
     sections: list[TableSection] = []
 
     def _facts_str(facts: dict) -> str:
-        return "; ".join(f"{k.value}={v}" for k, v in sorted(facts.items(), key=lambda kv: kv[0].value))
+        return "; ".join(
+            f"{k.value}={v}"
+            for k, v in sorted(facts.items(), key=lambda kv: kv[0].value)
+        )
 
     rows = [
         [_fmt_date(s.period), s.period_type, s.basis, _facts_str(s.facts)]
-        for s in profile.financial.snapshots if evidence_id in s.sources
+        for s in profile.financial.snapshots
+        if evidence_id in s.sources
     ]
     if rows:
-        sections.append(TableSection(heading="Financial Snapshots", columns=["Period", "Type", "Basis", "Facts"], rows=rows))
-
-    rows = [[_fmt_date(s.period), _facts_str(s.facts)] for s in profile.esg.snapshots if evidence_id in s.sources]
-    if rows:
-        sections.append(TableSection(heading="ESG Snapshots", columns=["Period", "Facts"], rows=rows))
-
-    rows = [[_fmt_date(s.period), _facts_str(s.facts)] for s in profile.ownership.snapshots if evidence_id in s.sources]
-    if rows:
-        sections.append(TableSection(heading="Ownership Snapshots", columns=["Period", "Facts"], rows=rows))
+        sections.append(
+            TableSection(
+                heading="Financial Snapshots",
+                columns=["Period", "Type", "Basis", "Facts"],
+                rows=rows,
+            )
+        )
 
     rows = [
-        [_fmt_date(e.period), e.name, _fmt_crore(e.revenue), _fmt_crore(e.ebit), _fmt_pct(e.growth_pct)]
-        for e in profile.segments.entries if e.evidence_id == evidence_id
+        [_fmt_date(s.period), _facts_str(s.facts)]
+        for s in profile.esg.snapshots
+        if evidence_id in s.sources
     ]
     if rows:
-        sections.append(TableSection(heading="Segments", columns=["Period", "Segment", "Revenue", "EBIT", "Growth"], rows=rows))
-
-    ce = profile.capital_events
-    rows = [[_fmt_source_date(e.source_date), "Dividend", f"{e.dividend_type} {e.per_share:.2f}/share"] for e in ce.dividends if e.evidence_id == evidence_id]
-    rows += [[_fmt_source_date(e.source_date), "Buyback", e.sub_type] for e in ce.buybacks if e.evidence_id == evidence_id]
-    rows += [[_fmt_source_date(e.source_date), "Acquisition", _oneline(e.target_name)] for e in ce.acquisitions if e.evidence_id == evidence_id]
-    rows += [[_fmt_source_date(e.source_date), "Investment", _oneline(e.target_name)] for e in ce.investments if e.evidence_id == evidence_id]
-    rows += [[_fmt_source_date(e.source_date), "Fundraise", e.fundraise_type] for e in ce.fundraises if e.evidence_id == evidence_id]
-    if rows:
-        sections.append(TableSection(heading="Capital Events", columns=["Date", "Type", "Detail"], rows=rows))
+        sections.append(
+            TableSection(
+                heading="ESG Snapshots", columns=["Period", "Facts"], rows=rows
+            )
+        )
 
     rows = [
-        [_fmt_source_date(e.source_date), e.agency, e.instrument or "-", e.rating or "-", e.action or "-"]
-        for e in profile.credit_history.debt_ratings + profile.credit_history.esg_ratings
+        [_fmt_date(s.period), _facts_str(s.facts)]
+        for s in profile.ownership.snapshots
+        if evidence_id in s.sources
+    ]
+    if rows:
+        sections.append(
+            TableSection(
+                heading="Ownership Snapshots", columns=["Period", "Facts"], rows=rows
+            )
+        )
+
+    rows = [
+        [
+            _fmt_date(e.period),
+            e.name,
+            _fmt_crore(e.revenue),
+            _fmt_crore(e.ebit),
+            _fmt_pct(e.growth_pct),
+        ]
+        for e in profile.segments.entries
         if e.evidence_id == evidence_id
     ]
     if rows:
-        sections.append(TableSection(heading="Credit/ESG Ratings", columns=["Date", "Agency", "Instrument", "Rating", "Action"], rows=rows))
+        sections.append(
+            TableSection(
+                heading="Segments",
+                columns=["Period", "Segment", "Revenue", "EBIT", "Growth"],
+                rows=rows,
+            )
+        )
 
-    rows = [[_fmt_source_date(e.source_date), e.kind, e.text] for e in profile.strategy.entries if e.evidence_id == evidence_id]
+    ce = profile.capital_events
+    rows = [
+        [
+            _fmt_source_date(e.source_date),
+            "Dividend",
+            f"{e.dividend_type} {e.per_share:.2f}/share",
+        ]
+        for e in ce.dividends
+        if e.evidence_id == evidence_id
+    ]
+    rows += [
+        [_fmt_source_date(e.source_date), "Buyback", e.sub_type]
+        for e in ce.buybacks
+        if e.evidence_id == evidence_id
+    ]
+    rows += [
+        [_fmt_source_date(e.source_date), "Acquisition", _oneline(e.target_name)]
+        for e in ce.acquisitions
+        if e.evidence_id == evidence_id
+    ]
+    rows += [
+        [_fmt_source_date(e.source_date), "Investment", _oneline(e.target_name)]
+        for e in ce.investments
+        if e.evidence_id == evidence_id
+    ]
+    rows += [
+        [_fmt_source_date(e.source_date), "Fundraise", e.fundraise_type]
+        for e in ce.fundraises
+        if e.evidence_id == evidence_id
+    ]
     if rows:
-        sections.append(TableSection(heading="Strategy Statements", columns=["Date", "Kind", "Text"], rows=rows))
+        sections.append(
+            TableSection(
+                heading="Capital Events", columns=["Date", "Type", "Detail"], rows=rows
+            )
+        )
 
-    rows = [[_fmt_source_date(d.source_date), d.change_type, _oneline(d.name), _oneline(d.role) if d.role else "-"] for d in profile.governance.director_changes if d.evidence_id == evidence_id]
+    rows = [
+        [
+            _fmt_source_date(e.source_date),
+            e.agency,
+            e.instrument or "-",
+            e.rating or "-",
+            e.action or "-",
+        ]
+        for e in profile.credit_history.debt_ratings
+        + profile.credit_history.esg_ratings
+        if e.evidence_id == evidence_id
+    ]
     if rows:
-        sections.append(TableSection(heading="Director Changes", columns=["Date", "Type", "Name", "Role"], rows=rows))
+        sections.append(
+            TableSection(
+                heading="Credit/ESG Ratings",
+                columns=["Date", "Agency", "Instrument", "Rating", "Action"],
+                rows=rows,
+            )
+        )
 
-    rows = [[_fmt_source_date(r.source_date), _oneline(r.title), r.outcome or "-"] for r in profile.governance.resolutions if r.evidence_id == evidence_id]
+    rows = [
+        [_fmt_source_date(e.source_date), e.kind, e.text]
+        for e in profile.strategy.entries
+        if e.evidence_id == evidence_id
+    ]
     if rows:
-        sections.append(TableSection(heading="AGM Resolutions", columns=["Date", "Title", "Outcome"], rows=rows))
+        sections.append(
+            TableSection(
+                heading="Strategy Statements",
+                columns=["Date", "Kind", "Text"],
+                rows=rows,
+            )
+        )
 
-    rows = [[_fmt_date(r.period), _oneline(r.text)] for r in profile.governance.risk_factors if r.evidence_id == evidence_id]
+    rows = [
+        [
+            _fmt_source_date(d.source_date),
+            d.change_type,
+            _oneline(d.name),
+            _oneline(d.role) if d.role else "-",
+        ]
+        for d in profile.governance.director_changes
+        if d.evidence_id == evidence_id
+    ]
     if rows:
-        sections.append(TableSection(heading="Risk Factors", columns=["Period", "Text"], rows=rows))
+        sections.append(
+            TableSection(
+                heading="Director Changes",
+                columns=["Date", "Type", "Name", "Role"],
+                rows=rows,
+            )
+        )
+
+    rows = [
+        [_fmt_source_date(r.source_date), _oneline(r.title), r.outcome or "-"]
+        for r in profile.governance.resolutions
+        if r.evidence_id == evidence_id
+    ]
+    if rows:
+        sections.append(
+            TableSection(
+                heading="AGM Resolutions",
+                columns=["Date", "Title", "Outcome"],
+                rows=rows,
+            )
+        )
+
+    rows = [
+        [_fmt_date(r.period), _oneline(r.text)]
+        for r in profile.governance.risk_factors
+        if r.evidence_id == evidence_id
+    ]
+    if rows:
+        sections.append(
+            TableSection(heading="Risk Factors", columns=["Period", "Text"], rows=rows)
+        )
 
     notes = []
     if not sections:
@@ -1317,7 +1675,9 @@ def _fmt_sources(sources: list[str]) -> str:
     return f"{sources[0]} (+{len(sources) - 1} more)"
 
 
-def _cite_sources(sources: list[str], profile: CompanyProfile, repo: Repository | None) -> str:
+def _cite_sources(
+    sources: list[str], profile: CompanyProfile, repo: Repository | None
+) -> str:
     """Human-readable citation(s) for a Sources column, or the raw
     evidence_id fallback when no repo is available to resolve one.
 
@@ -1335,7 +1695,9 @@ def _cite_sources(sources: list[str], profile: CompanyProfile, repo: Repository 
         if entry is None:
             labels.append(eid)
         else:
-            labels.append(build_citation(entry, profile.company_id, profile).citation_short)
+            labels.append(
+                build_citation(entry, profile.company_id, profile).citation_short
+            )
     if len(labels) == 1:
         return labels[0]
     return f"{labels[0]} (+{len(labels) - 1} more)"
@@ -1344,6 +1706,7 @@ def _cite_sources(sources: list[str], profile: CompanyProfile, repo: Repository 
 # ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
+
 
 def former_answerers(profile: CompanyProfile) -> QueryResult:
     """Q45 — management who answered on earnings calls and have since departed.
@@ -1358,7 +1721,9 @@ def former_answerers(profile: CompanyProfile) -> QueryResult:
     """
     mgmt = [p for p in profile.participants if p.role == "management"]
     resignations = [
-        dc for dc in profile.governance.director_changes if dc.change_type == "resignation"
+        dc
+        for dc in profile.governance.director_changes
+        if dc.change_type == "resignation"
     ]
 
     resolver = EntityResolver()
@@ -1378,7 +1743,12 @@ def former_answerers(profile: CompanyProfile) -> QueryResult:
         matched[eid][1].add(p.evidence_id)
 
     rows = [
-        [name, str(len(calls)), _fmt_date(_dc_date(dc)), _oneline(getattr(dc, "role", "") or "")]
+        [
+            name,
+            str(len(calls)),
+            _fmt_date(_dc_date(dc)),
+            _oneline(getattr(dc, "role", "") or ""),
+        ]
         for name, calls, dc in sorted(matched.values(), key=lambda t: t[0])
     ]
 
@@ -1397,11 +1767,13 @@ def former_answerers(profile: CompanyProfile) -> QueryResult:
         query="former_answerers",
         company_id=profile.company_id,
         title="Management Answerers Who Have Since Departed",
-        sections=[TableSection(
-            heading="Departed answerers",
-            columns=["Name", "Calls", "Departed", "Role"],
-            rows=rows,
-        )],
+        sections=[
+            TableSection(
+                heading="Departed answerers",
+                columns=["Name", "Calls", "Departed", "Role"],
+                rows=rows,
+            )
+        ],
         notes=notes,
     )
 
@@ -1412,24 +1784,24 @@ def _dc_date(dc: object) -> str:
 
 
 _QUERIES: dict[str, Callable[..., QueryResult]] = {
-    "revenue":      revenue,
+    "revenue": revenue,
     "former_answerers": former_answerers,
-    "capital":      capital_allocation,
-    "strategy":     strategy,
+    "capital": capital_allocation,
+    "strategy": strategy,
     "acquisitions": acquisitions,
-    "ownership":    ownership,
-    "leverage":     leverage,
-    "ratings":      credit_ratings,
+    "ownership": ownership,
+    "leverage": leverage,
+    "ratings": credit_ratings,
     "auditor_history": auditor_history,
     "related_party_disclosures": related_party_disclosures,
     "rpt_resolutions": rpt_resolutions,
     "rating_risk_timeline": rating_risk_timeline,
-    "risks":        risks,
+    "risks": risks,
     "risk_recurrence": risk_recurrence,
-    "summary":      summary,
-    "timeline":     timeline,
-    "compare":      compare,
-    "drilldown":    drilldown,
+    "summary": summary,
+    "timeline": timeline,
+    "compare": compare,
+    "drilldown": drilldown,
 }
 
 
@@ -1442,9 +1814,7 @@ def run_query(query: str, profile: CompanyProfile, **kwargs: object) -> QueryRes
     """
     fn = _QUERIES.get(query)
     if fn is None:
-        raise ValueError(
-            f"Unknown query {query!r}. Available: {sorted(_QUERIES)}"
-        )
+        raise ValueError(f"Unknown query {query!r}. Available: {sorted(_QUERIES)}")
     return fn(profile, **kwargs)
 
 

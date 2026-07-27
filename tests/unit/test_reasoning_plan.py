@@ -4,6 +4,7 @@ Mirrors the discipline test_reasoning_contracts.py applies to the §10 types:
 every invariant is pinned by a test, so a future relaxation breaks loudly
 rather than silently.
 """
+
 from __future__ import annotations
 
 import json
@@ -46,10 +47,20 @@ def test_intent_must_be_valid() -> None:
         _plan(intent="not_a_real_intent")
 
 
-@pytest.mark.parametrize("intent", [
-    "financial_metric", "guidance", "risk", "governance", "capital_action",
-    "esg", "ownership", "narrative", "general",
-])
+@pytest.mark.parametrize(
+    "intent",
+    [
+        "financial_metric",
+        "guidance",
+        "risk",
+        "governance",
+        "capital_action",
+        "esg",
+        "ownership",
+        "narrative",
+        "general",
+    ],
+)
 def test_every_declared_intent_is_accepted(intent: str) -> None:
     _plan(intent=intent)  # must not raise
 
@@ -69,17 +80,21 @@ def test_top_k_in_range_accepted(top_k: int) -> None:
 # --- SearchPlan.preferred_doc_types --------------------------------------------
 def test_preferred_doc_types_rejects_duplicate_kinds() -> None:
     with pytest.raises(ValueError):
-        _plan(preferred_doc_types=(
-            DocTypePreference(kind="annual_report", weight=10),
-            DocTypePreference(kind="annual_report", weight=20),
-        ))
+        _plan(
+            preferred_doc_types=(
+                DocTypePreference(kind="annual_report", weight=10),
+                DocTypePreference(kind="annual_report", weight=20),
+            )
+        )
 
 
 def test_preferred_doc_types_accepts_distinct_kinds() -> None:
-    plan = _plan(preferred_doc_types=(
-        DocTypePreference(kind="annual_report", weight=10),
-        DocTypePreference(kind="earnings_transcript", weight=20),
-    ))
+    plan = _plan(
+        preferred_doc_types=(
+            DocTypePreference(kind="annual_report", weight=10),
+            DocTypePreference(kind="earnings_transcript", weight=20),
+        )
+    )
     assert len(plan.preferred_doc_types) == 2
 
 
@@ -137,7 +152,9 @@ def test_planning_decision_requires_rule() -> None:
 
 def test_planning_decision_has_no_confidence_field() -> None:
     # Deliberate: a deterministic rule engine has no meaningful confidence.
-    decision = PlanningDecision(rule="intent_keyword_match", input="margins", output="narrative")
+    decision = PlanningDecision(
+        rule="intent_keyword_match", input="margins", output="narrative"
+    )
     assert not hasattr(decision, "confidence")
 
 
@@ -159,7 +176,9 @@ def test_decisions_default_empty_tuple() -> None:
 
 
 def test_preferred_doc_types_coerced_to_tuple_from_list() -> None:
-    plan = _plan(preferred_doc_types=[DocTypePreference(kind="annual_report", weight=10)])
+    plan = _plan(
+        preferred_doc_types=[DocTypePreference(kind="annual_report", weight=10)]
+    )
     assert isinstance(plan.preferred_doc_types, tuple)
 
 
@@ -170,7 +189,11 @@ def test_to_dict_round_trips_through_json() -> None:
         date_window=DateWindow(start="2024-01-01", end="2024-12-31"),
         periods=("FY2024",),
         rerank=RerankHints(prefer_recent=True, max_per_document=2),
-        decisions=(PlanningDecision(rule="intent_keyword_match", input="margins", output="narrative"),),
+        decisions=(
+            PlanningDecision(
+                rule="intent_keyword_match", input="margins", output="narrative"
+            ),
+        ),
     )
     as_dict = plan.to_dict()
     # Must be JSON-serializable with no custom encoder.

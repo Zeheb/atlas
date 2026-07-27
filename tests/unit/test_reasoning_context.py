@@ -1,4 +1,5 @@
 """GroundingContext assembly (§10 C5, M0 commit 3). No network, synthetic profile."""
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -25,27 +26,46 @@ def _profile() -> CompanyProfile:
         financial=FinancialTimeSeries(
             snapshots=[
                 FinancialSnapshot(
-                    period="2026-03-31", period_type="annual", basis="consolidated",
-                    facts={FactKind.FINANCIAL_REVENUE: 255000.0,
-                           FactKind.FINANCIAL_OPERATING_MARGIN: 24.2},
+                    period="2026-03-31",
+                    period_type="annual",
+                    basis="consolidated",
+                    facts={
+                        FactKind.FINANCIAL_REVENUE: 255000.0,
+                        FactKind.FINANCIAL_OPERATING_MARGIN: 24.2,
+                    },
                     sources=["ev-fin"],
                 ),
                 # An unbacked snapshot (no sources) must yield no claims (G10).
                 FinancialSnapshot(
-                    period="2025-03-31", period_type="annual", basis="consolidated",
+                    period="2025-03-31",
+                    period_type="annual",
+                    basis="consolidated",
                     facts={FactKind.FINANCIAL_REVENUE: 240000.0},
                     sources=[],
                 ),
             ]
         ),
         segments=SegmentTimeSeries(
-            entries=[SegmentEntry(period="2026-03-31", name="BFSI", revenue=80000.0,
-                                  ebit=20000.0, growth_pct=8.1, evidence_id="ev-seg")]
+            entries=[
+                SegmentEntry(
+                    period="2026-03-31",
+                    name="BFSI",
+                    revenue=80000.0,
+                    ebit=20000.0,
+                    growth_pct=8.1,
+                    evidence_id="ev-seg",
+                )
+            ]
         ),
         strategy=StrategyProfile(
-            entries=[StrategyEntry(source_date=datetime(2026, 4, 1, tzinfo=timezone.utc),
-                                   kind="guidance", text="Targeting 26-28% EBIT margin",
-                                   evidence_id="ev-strat")]
+            entries=[
+                StrategyEntry(
+                    source_date=datetime(2026, 4, 1, tzinfo=timezone.utc),
+                    kind="guidance",
+                    text="Targeting 26-28% EBIT margin",
+                    evidence_id="ev-strat",
+                )
+            ]
         ),
     )
 

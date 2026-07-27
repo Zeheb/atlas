@@ -22,6 +22,7 @@ Read-only, no LLM, no mutation of any case or corpus. Depends on
 ``company.store`` to load a profile -- not on ``atlas.eval`` (see
 ``coverage.py``'s ``CaseLike`` for the same structural-Protocol pattern).
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence
@@ -69,7 +70,9 @@ class ValidationReport:
 
 
 def _validate_corpus_derived(
-    case: ValidatableCase, kb: KnowledgeBase, provenance: CaseProvenance,
+    case: ValidatableCase,
+    kb: KnowledgeBase,
+    provenance: CaseProvenance,
 ) -> list[ValidationIssue]:
     issues: list[ValidationIssue] = []
     all_ids: set[str] = set(provenance.supporting_evidence_ids)
@@ -79,45 +82,66 @@ def _validate_corpus_derived(
 
     metadata = kb.get_many(sorted(all_ids)) if all_ids else {}
     for evidence_id in sorted(all_ids - set(metadata)):
-        issues.append(ValidationIssue(
-            case.id, "missing_evidence",
-            f"evidence_id {evidence_id!r} does not resolve in {case.subject}'s KnowledgeBase",
-        ))
+        issues.append(
+            ValidationIssue(
+                case.id,
+                "missing_evidence",
+                f"evidence_id {evidence_id!r} does not resolve in {case.subject}'s KnowledgeBase",
+            )
+        )
 
     if label is not None and label.relevant_kinds:
         for evidence_id in label.relevant_evidence_ids:
             doc = metadata.get(evidence_id)
             if doc is not None and doc.kind not in label.relevant_kinds:
-                issues.append(ValidationIssue(
-                    case.id, "kind_mismatch",
-                    f"evidence_id {evidence_id!r} has kind {doc.kind!r}, "
-                    f"not in declared relevant_kinds {label.relevant_kinds}",
-                ))
+                issues.append(
+                    ValidationIssue(
+                        case.id,
+                        "kind_mismatch",
+                        f"evidence_id {evidence_id!r} has kind {doc.kind!r}, "
+                        f"not in declared relevant_kinds {label.relevant_kinds}",
+                    )
+                )
     return issues
 
 
-def _validate_negative(case: ValidatableCase, kb: KnowledgeBase, repo_root: Path) -> list[ValidationIssue]:
+def _validate_negative(
+    case: ValidatableCase, kb: KnowledgeBase, repo_root: Path
+) -> list[ValidationIssue]:
     profile_path = repo_root / case.subject / "profile.json"
     if not profile_path.exists():
-        return [ValidationIssue(
-            case.id, "missing_profile", f"no profile.json for subject {case.subject!r}",
-        )]
+        return [
+            ValidationIssue(
+                case.id,
+                "missing_profile",
+                f"no profile.json for subject {case.subject!r}",
+            )
+        ]
     profile = CompanyStore(profile_path, case.subject).load()
     subject_ref = SubjectRef(subject_id=case.subject, display=case.subject)
     plan = plan_retrieval(case.question)
     build_result = build_context_with_diagnostics(
-        profile, subject_ref, kb=kb, question=case.question, plan=plan,
+        profile,
+        subject_ref,
+        kb=kb,
+        question=case.question,
+        plan=plan,
     )
     if build_result.retrieval is not None and build_result.retrieval.matches:
-        return [ValidationIssue(
-            case.id, "negative_not_absent",
-            f"question retrieved {len(build_result.retrieval.matches)} match(es); "
-            "no longer verifiably absent",
-        )]
+        return [
+            ValidationIssue(
+                case.id,
+                "negative_not_absent",
+                f"question retrieved {len(build_result.retrieval.matches)} match(es); "
+                "no longer verifiably absent",
+            )
+        ]
     return []
 
 
-def validate_cases(cases: Sequence[ValidatableCase], repo_root: Path) -> ValidationReport:
+def validate_cases(
+    cases: Sequence[ValidatableCase], repo_root: Path
+) -> ValidationReport:
     """Machine-check every case's provenance claim. See module docstring for
     what "checked" means per origin.
     """
@@ -127,21 +151,33 @@ def validate_cases(cases: Sequence[ValidatableCase], repo_root: Path) -> Validat
     def _kb_for(subject: str) -> KnowledgeBase | None:
         if subject not in kb_cache:
             root = repo_root / subject
-            kb_cache[subject] = KnowledgeBase(root) if (root / "knowledge.db").exists() else None
+            kb_cache[subject] = (
+                KnowledgeBase(root) if (root / "knowledge.db").exists() else None
+            )
         return kb_cache[subject]
 
     for case in cases:
         if case.difficulty == "difficult":
             if case.provenance is None:
-                issues.append(ValidationIssue(
-                    case.id, "missing_provenance", "difficult case has no provenance",
-                ))
+                issues.append(
+                    ValidationIssue(
+                        case.id,
+                        "missing_provenance",
+                        "difficult case has no provenance",
+                    )
+                )
                 continue
-            if case.provenance.origin != "corpus_validated_negative" and case.retrieval_label is None:
-                issues.append(ValidationIssue(
-                    case.id, "missing_label",
-                    "non-negative difficult case has no retrieval_label",
-                ))
+            if (
+                case.provenance.origin != "corpus_validated_negative"
+                and case.retrieval_label is None
+            ):
+                issues.append(
+                    ValidationIssue(
+                        case.id,
+                        "missing_label",
+                        "non-negative difficult case has no retrieval_label",
+                    )
+                )
 
         provenance = case.provenance
         if provenance is None:
@@ -149,9 +185,13 @@ def validate_cases(cases: Sequence[ValidatableCase], repo_root: Path) -> Validat
 
         kb = _kb_for(case.subject)
         if kb is None:
-            issues.append(ValidationIssue(
-                case.id, "missing_kb", f"no KnowledgeBase for subject {case.subject!r}",
-            ))
+            issues.append(
+                ValidationIssue(
+                    case.id,
+                    "missing_kb",
+                    f"no KnowledgeBase for subject {case.subject!r}",
+                )
+            )
             continue
 
         if provenance.origin == "corpus_derived":

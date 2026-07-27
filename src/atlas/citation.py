@@ -50,6 +50,7 @@ Page numbers are never fabricated. Atlas has no page-tracking infrastructure
 citation_full simply omits the page line when none is available rather than
 approximate one from char_offset.
 """
+
 from __future__ import annotations
 
 import re
@@ -103,7 +104,8 @@ def _month_year(source_date: str) -> str:
 
 
 def resolve_period(
-    evidence_id: str, profile: CompanyProfile | None,
+    evidence_id: str,
+    profile: CompanyProfile | None,
 ) -> tuple[str | None, str | None, bool]:
     """(period, period_type, spans_multiple_periods) for evidence_id.
 
@@ -126,7 +128,11 @@ def resolve_period(
     """
     if profile is None:
         return None, None, False
-    for container in (profile.financial.snapshots, profile.esg.snapshots, profile.ownership.snapshots):
+    for container in (
+        profile.financial.snapshots,
+        profile.esg.snapshots,
+        profile.ownership.snapshots,
+    ):
         matches = [s for s in container if evidence_id in s.sources]
         if not matches:
             continue
@@ -142,7 +148,9 @@ def resolve_agency(evidence_id: str, profile: CompanyProfile | None) -> str | No
     """Rating agency name for a credit_rating_report evidence_id, or None."""
     if profile is None:
         return None
-    for entry in profile.credit_history.debt_ratings + profile.credit_history.esg_ratings:
+    for entry in (
+        profile.credit_history.debt_ratings + profile.credit_history.esg_ratings
+    ):
         if entry.evidence_id == evidence_id:
             return entry.agency
     return None
@@ -195,7 +203,11 @@ _SHORT_ABBREV = {
 }
 
 # Kinds whose documents cover a fiscal quarter (shown as "Q{n} FY{yyyy}").
-_QUARTER_COVERING_KINDS = {"financial_results", "earnings_transcript", "investor_presentation"}
+_QUARTER_COVERING_KINDS = {
+    "financial_results",
+    "earnings_transcript",
+    "investor_presentation",
+}
 # Kinds whose documents cover a full fiscal year only (shown as "FY{yyyy}").
 _YEAR_COVERING_KINDS = {"annual_report", "brsr"}
 # Everything else is a point-in-time event, shown as "{Kind} - {Mon YYYY}".
@@ -312,7 +324,12 @@ def build_citation(
     period, period_type, spans_multiple = resolve_period(entry.evidence_id, profile)
     kind = entry.kind
     display_name = _build_display_name(
-        ticker, kind, entry.source_date, period, period_type, spans_multiple,
+        ticker,
+        kind,
+        entry.source_date,
+        period,
+        period_type,
+        spans_multiple,
     )
 
     if kind == "credit_rating_report":

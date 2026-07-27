@@ -31,6 +31,7 @@ every field anything in this codebase actually consumes.
 ``Thesis.result.refused`` is always ``False`` for a persisted Thesis --
 enforced by ``Thesis.__post_init__`` before it ever reaches ``save()``.
 """
+
 from __future__ import annotations
 
 import json
@@ -83,13 +84,17 @@ def _deserialize_finding(d: dict[str, Any], subject_ref: SubjectRef) -> Finding:
     # Claim that would violate its own invariant.
     supporting_claims: tuple[Claim, ...] = ()
     if evidence_ids:
-        supporting_claims = (Claim(
-            subject_ref=subject_ref,
-            statement=d["statement"],
-            assertability=d["assertability"],
-            confidence=d["confidence"],
-            evidence=tuple(EvidenceReference(evidence_id=eid) for eid in evidence_ids),
-        ),)
+        supporting_claims = (
+            Claim(
+                subject_ref=subject_ref,
+                statement=d["statement"],
+                assertability=d["assertability"],
+                confidence=d["confidence"],
+                evidence=tuple(
+                    EvidenceReference(evidence_id=eid) for eid in evidence_ids
+                ),
+            ),
+        )
     return Finding(
         statement=d["statement"],
         assertability=d["assertability"],
@@ -154,7 +159,8 @@ def _deserialize_thesis(d: dict[str, Any]) -> Thesis:
         result=result,
         dispositions=tuple(
             Disposition(
-                dimension=disp["dimension"], materiality=disp["materiality"],
+                dimension=disp["dimension"],
+                materiality=disp["materiality"],
                 rationale=disp.get("rationale", ""),
             )
             for disp in d.get("dispositions", ())
@@ -242,5 +248,6 @@ class ThesisStore:
     def _write(self, envelope: dict[str, Any]) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._path.write_text(
-            json.dumps(envelope, indent=2, ensure_ascii=False), encoding="utf-8",
+            json.dumps(envelope, indent=2, ensure_ascii=False),
+            encoding="utf-8",
         )

@@ -16,6 +16,7 @@ not enforced; promotion is Phase 2 (ADR-0004), once there is data.
 ``RetrievalQualityScore`` is defined in ``eval/report.py``, not here, purely
 to avoid a cycle: this module needs ``RetrievalCaseMetrics`` from that one.
 """
+
 from __future__ import annotations
 
 from atlas.benchmark.provenance import RetrievalLabel
@@ -23,7 +24,8 @@ from atlas.eval.report import RetrievalCaseMetrics, RetrievalQualityScore
 
 
 def score_retrieval_quality(
-    metrics: RetrievalCaseMetrics | None, label: RetrievalLabel | None,
+    metrics: RetrievalCaseMetrics | None,
+    label: RetrievalLabel | None,
 ) -> RetrievalQualityScore | None:
     """Score one case's retrieval against its gold label.
 
@@ -42,11 +44,15 @@ def score_retrieval_quality(
     selected_ids = [doc_id for doc_id, _char_offset, _score in metrics.selected]
     relevant_ids = set(label.relevant_evidence_ids)
     forbidden_ids = set(label.must_not_retrieve)
-    forbidden_retrieved = tuple(doc_id for doc_id in selected_ids if doc_id in forbidden_ids)
+    forbidden_retrieved = tuple(
+        doc_id for doc_id in selected_ids if doc_id in forbidden_ids
+    )
 
     if not relevant_ids:
         return RetrievalQualityScore(
-            precision_at_k=None, recall_at_k=None, mrr=None,
+            precision_at_k=None,
+            recall_at_k=None,
+            mrr=None,
             forbidden_retrieved=forbidden_retrieved,
         )
 
@@ -54,7 +60,9 @@ def score_retrieval_quality(
         # Nothing retrieved but relevant docs were expected: zero, not None
         # -- there IS ground truth to score against, retrieval simply missed it.
         return RetrievalQualityScore(
-            precision_at_k=0.0, recall_at_k=0.0, mrr=0.0,
+            precision_at_k=0.0,
+            recall_at_k=0.0,
+            mrr=0.0,
             forbidden_retrieved=forbidden_retrieved,
         )
 
@@ -69,6 +77,8 @@ def score_retrieval_quality(
             break
 
     return RetrievalQualityScore(
-        precision_at_k=precision, recall_at_k=recall, mrr=mrr,
+        precision_at_k=precision,
+        recall_at_k=recall,
+        mrr=mrr,
         forbidden_retrieved=forbidden_retrieved,
     )

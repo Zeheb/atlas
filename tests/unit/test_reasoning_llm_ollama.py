@@ -6,6 +6,7 @@ shape (``POST {host}/api/generate``, ``stream=false``), settings wiring, the
 two deliberate divergences from the cloud adapters (keyless build + its own
 ``ollama_model`` identity), and response/error handling.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -45,7 +46,9 @@ class _PostRecorder:
         return self._response
 
 
-def _patch_post(monkeypatch: pytest.MonkeyPatch, response: _FakeResponse) -> _PostRecorder:
+def _patch_post(
+    monkeypatch: pytest.MonkeyPatch, response: _FakeResponse
+) -> _PostRecorder:
     recorder = _PostRecorder(response)
     monkeypatch.setattr("atlas.reasoning.llm.ollama.requests.post", recorder)
     return recorder
@@ -59,7 +62,11 @@ def test_ollama_client_satisfies_llm_client_protocol() -> None:
 
 def test_constructor_accepts_explicit_params() -> None:
     client = OllamaClient(
-        host="http://h:1", model="m", max_tokens=10, temperature=0.9, timeout=5.0,
+        host="http://h:1",
+        model="m",
+        max_tokens=10,
+        temperature=0.9,
+        timeout=5.0,
     )
     assert client._model == "m"
     assert client._max_tokens == 10
@@ -124,7 +131,9 @@ def test_from_settings_explicit_model_override_wins(monkeypatch) -> None:
     assert client._model == "mistral"
 
 
-def test_from_settings_reads_max_tokens_and_temperature_from_shared_settings(monkeypatch) -> None:
+def test_from_settings_reads_max_tokens_and_temperature_from_shared_settings(
+    monkeypatch,
+) -> None:
     # Same shared determinism policy (G7) as the cloud adapters — one Settings
     # knob, not reinvented per provider.
     monkeypatch.setenv("ATLAS_OLLAMA_MODEL", "qwen3:8b")
@@ -135,7 +144,9 @@ def test_from_settings_reads_max_tokens_and_temperature_from_shared_settings(mon
     assert client._temperature == 0.7
 
 
-def test_from_settings_default_max_tokens_and_temperature_match_parity(monkeypatch) -> None:
+def test_from_settings_default_max_tokens_and_temperature_match_parity(
+    monkeypatch,
+) -> None:
     monkeypatch.setenv("ATLAS_OLLAMA_MODEL", "qwen3:8b")
     client = OllamaClient.from_settings(Settings(_env_file=None))
     assert client._max_tokens == 4096
@@ -144,9 +155,14 @@ def test_from_settings_default_max_tokens_and_temperature_match_parity(monkeypat
 
 # --- complete(): HTTP call shape, mocked transport ----------------------------
 def test_complete_posts_to_generate_endpoint_with_correct_shape(monkeypatch) -> None:
-    recorder = _patch_post(monkeypatch, _FakeResponse(json_data={"response": "Margins ~24%."}))
+    recorder = _patch_post(
+        monkeypatch, _FakeResponse(json_data={"response": "Margins ~24%."})
+    )
     client = OllamaClient(
-        host="http://localhost:11434", model="llama3.2", max_tokens=2048, temperature=0.3,
+        host="http://localhost:11434",
+        model="llama3.2",
+        max_tokens=2048,
+        temperature=0.3,
         timeout=99.0,
     )
     result = client.complete(system="You are Atlas.", user="How are margins?")
@@ -187,10 +203,14 @@ def test_complete_raises_on_http_error(monkeypatch) -> None:
 def test_complete_raises_friendly_error_when_server_unreachable(monkeypatch) -> None:
     # A raw ConnectionError becomes an OllamaUnavailableError with a "is it
     # running?" message the CLI prints instead of a traceback.
-    def _raise_connection_error(url, *, json, timeout):  # noqa: ANN001, ANN202 - test double
+    def _raise_connection_error(
+        url, *, json, timeout
+    ):  # noqa: ANN001, ANN202 - test double
         raise requests.exceptions.ConnectionError("refused")
 
-    monkeypatch.setattr("atlas.reasoning.llm.ollama.requests.post", _raise_connection_error)
+    monkeypatch.setattr(
+        "atlas.reasoning.llm.ollama.requests.post", _raise_connection_error
+    )
     client = OllamaClient(host="http://localhost:11434", model="m")
     with pytest.raises(OllamaUnavailableError) as exc_info:
         client.complete(system="s", user="u")

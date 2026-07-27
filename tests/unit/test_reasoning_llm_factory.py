@@ -1,6 +1,7 @@
 """build_llm_client — the only place in Atlas dispatching a transport name to
 a concrete adapter (LLM-layer refactor, commit 1/2; Google provider).
 """
+
 from __future__ import annotations
 
 import pytest
@@ -30,7 +31,9 @@ def test_default_provider_dispatches_to_anthropic() -> None:
     assert isinstance(client, AnthropicClient)
 
 
-def test_switching_llm_provider_to_google_ai_studio_dispatches_both_roles(monkeypatch) -> None:
+def test_switching_llm_provider_to_google_ai_studio_dispatches_both_roles(
+    monkeypatch,
+) -> None:
     # Requirement 10: setting ATLAS_LLM_PROVIDER=google_ai_studio must require
     # no code changes anywhere else in Atlas — verified here at the exact seam
     # cli.py depends on (build_llm_client), for both roles, with no
@@ -107,8 +110,10 @@ def test_ollama_dispatch_uses_ollama_model_not_cloud_role_model() -> None:
     # The factory must not thread reasoning_model/judge_model (cloud ids) into
     # the ollama transport — it reads ATLAS_OLLAMA_MODEL instead.
     settings = _settings(
-        llm_provider="ollama", reasoning_model="claude-sonnet-5",
-        judge_model="claude-judge", ollama_model="llama3.2",
+        llm_provider="ollama",
+        reasoning_model="claude-sonnet-5",
+        judge_model="claude-judge",
+        ollama_model="llama3.2",
     )
     assert build_llm_client(settings, role="reasoning")._model == "llama3.2"  # type: ignore[attr-defined]
     assert build_llm_client(settings, role="judge")._model == "llama3.2"  # type: ignore[attr-defined]

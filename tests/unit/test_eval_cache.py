@@ -6,6 +6,7 @@ inputs never collide, and the cache persists across separate EvalCache
 instances pointed at the same file (simulating separate `atlas eval run`
 invocations). No network, no reasoning code involved.
 """
+
 from __future__ import annotations
 
 import json
@@ -79,7 +80,9 @@ def test_cache_persists_across_separate_instances_sharing_a_path(tmp_path) -> No
     # construct, reading the same path.
     cache2 = EvalCache(path)
     inner2 = FakeLLMClient(response="should not be used")
-    result = CachingLLMClient(inner2, cache2, model="m").complete(system="SYS", user="USER: q1")
+    result = CachingLLMClient(inner2, cache2, model="m").complete(
+        system="SYS", user="USER: q1"
+    )
 
     assert result == "cached answer"
     assert len(inner2.calls) == 0
@@ -90,7 +93,9 @@ def test_cache_entry_records_readable_question_label(tmp_path) -> None:
     cache = EvalCache(tmp_path / "cache.json")
     inner = FakeLLMClient(response="ans")
     client = CachingLLMClient(inner, cache, model="m")
-    client.complete(system="SYS", user="Some context.\nQUESTION: How stable are margins?")
+    client.complete(
+        system="SYS", user="Some context.\nQUESTION: How stable are margins?"
+    )
     cache.save()
 
     raw = (tmp_path / "cache.json").read_text(encoding="utf-8")
@@ -154,10 +159,15 @@ def test_write_through_persists_immediately_without_explicit_save(tmp_path) -> N
 
 def test_mismatched_cache_version_is_treated_as_cold(tmp_path) -> None:
     path = tmp_path / "cache.json"
-    path.write_text(json.dumps({
-        "cache_version": CACHE_VERSION + 1,
-        "entries": {"some::key": {"response": "stale-schema-response"}},
-    }), encoding="utf-8")
+    path.write_text(
+        json.dumps(
+            {
+                "cache_version": CACHE_VERSION + 1,
+                "entries": {"some::key": {"response": "stale-schema-response"}},
+            }
+        ),
+        encoding="utf-8",
+    )
 
     cache = EvalCache(path)
     assert cache.get("some::key") is None  # not trusted, not returned
@@ -167,7 +177,9 @@ def test_mismatched_cache_version_is_treated_as_cold(tmp_path) -> None:
 def test_missing_cache_version_field_is_treated_as_cold(tmp_path) -> None:
     # A foreign or pre-versioning file shouldn't be interpreted as compatible.
     path = tmp_path / "cache.json"
-    path.write_text(json.dumps({"entries": {"some::key": {"response": "x"}}}), encoding="utf-8")
+    path.write_text(
+        json.dumps({"entries": {"some::key": {"response": "x"}}}), encoding="utf-8"
+    )
 
     cache = EvalCache(path)
     assert cache.get("some::key") is None

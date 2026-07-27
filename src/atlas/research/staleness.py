@@ -43,6 +43,7 @@ KnowledgeBase at all. Whoever implements multi-subject grounding should
 widen staleness checking to the thesis's full ``subjects`` tuple in the same
 change, not discover the false positive afterward.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -95,7 +96,9 @@ class StalenessReport:
 
 
 def check_staleness(
-    view: RecalledView, repo_root: Path, policy: StalenessPolicy = _DEFAULT_POLICY,
+    view: RecalledView,
+    repo_root: Path,
+    policy: StalenessPolicy = _DEFAULT_POLICY,
 ) -> StalenessReport:
     """Check one recalled view against the current state of its repository.
 
@@ -126,7 +129,9 @@ def check_staleness(
 
 
 def sweep_staleness(
-    repo_base: Path, subject: str, policy: StalenessPolicy = _DEFAULT_POLICY,
+    repo_base: Path,
+    subject: str,
+    policy: StalenessPolicy = _DEFAULT_POLICY,
 ) -> tuple[StalenessReport, ...]:
     """Check every stored view for one subject.
 
@@ -139,6 +144,5 @@ def sweep_staleness(
     repo_root = repo_base / subject
     store = ThesisStore(repo_root / "theses.json", subject)
     return tuple(
-        check_staleness(thesis.to_view(), repo_root, policy)
-        for thesis in store.list()
+        check_staleness(thesis.to_view(), repo_root, policy) for thesis in store.list()
     )

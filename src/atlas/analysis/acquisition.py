@@ -21,6 +21,7 @@ Provenance sections:
   "annexure_a"     — Annexure A table body
   "press_release"  — Annexure B press release (Type A only)
 """
+
 from __future__ import annotations
 
 import re
@@ -108,13 +109,16 @@ _RE_INC_COUNTRY = re.compile(r"Country of Incorporation:\s*([^\n]+)")
 _RE_INC_DATE = re.compile(r"Date of Incorporation:\s*(\w+ \d+,?\s*\d{4})")
 
 
-
 # ---------------------------------------------------------------------------
 # Type A helpers
 # ---------------------------------------------------------------------------
 
+
 def _extract_type_a(
-    cover: str, ann_a: str, ann_b: str, full_text: str,
+    cover: str,
+    ann_a: str,
+    ann_b: str,
+    full_text: str,
 ) -> tuple[list[AnalysisFact], list[str]]:
     facts: list[AnalysisFact] = []
     warnings: list[str] = []
@@ -123,10 +127,16 @@ def _extract_type_a(
     m = _RE_COVER_TARGET.search(cover)
     if m:
         name = m.group(1).strip().rstrip(",.")
-        facts.append(_fact(
-            FactKind.CAPITAL_ACQ_TARGET_NAME, name, None,
-            "cover_letter", cover, m.start(1),
-        ))
+        facts.append(
+            _fact(
+                FactKind.CAPITAL_ACQ_TARGET_NAME,
+                name,
+                None,
+                "cover_letter",
+                cover,
+                m.start(1),
+            )
+        )
     else:
         warnings.append("Could not extract target name from cover letter")
 
@@ -134,17 +144,29 @@ def _extract_type_a(
     if _RE_SHARE_SWAP.search(ann_a):
         m2 = _RE_SHARE_SWAP.search(ann_a)
         assert m2 is not None
-        facts.append(_fact(
-            FactKind.CAPITAL_ACQ_CONSIDERATION_TYPE, "share_swap", None,
-            "annexure_a", ann_a, m2.start(),
-        ))
+        facts.append(
+            _fact(
+                FactKind.CAPITAL_ACQ_CONSIDERATION_TYPE,
+                "share_swap",
+                None,
+                "annexure_a",
+                ann_a,
+                m2.start(),
+            )
+        )
     elif _RE_CASH.search(ann_a):
         m2 = _RE_CASH.search(ann_a)
         assert m2 is not None
-        facts.append(_fact(
-            FactKind.CAPITAL_ACQ_CONSIDERATION_TYPE, "cash", None,
-            "annexure_a", ann_a, m2.start(),
-        ))
+        facts.append(
+            _fact(
+                FactKind.CAPITAL_ACQ_CONSIDERATION_TYPE,
+                "cash",
+                None,
+                "annexure_a",
+                ann_a,
+                m2.start(),
+            )
+        )
     else:
         warnings.append("Consideration type not found in Annexure A")
 
@@ -159,20 +181,32 @@ def _extract_type_a(
             warnings.append(f"Could not parse enterprise value amount: {amount_str!r}")
         else:
             unit = FactUnit.USD_BILLION if scale == "billion" else FactUnit.USD_MILLION
-            facts.append(_fact(
-                FactKind.CAPITAL_ACQ_ENTERPRISE_VALUE, amount, unit,
-                "annexure_a", ann_a, m_usd.start(),
-            ))
+            facts.append(
+                _fact(
+                    FactKind.CAPITAL_ACQ_ENTERPRISE_VALUE,
+                    amount,
+                    unit,
+                    "annexure_a",
+                    ann_a,
+                    m_usd.start(),
+                )
+            )
     else:
         warnings.append("Enterprise value not found in Annexure A")
 
     # --- Stake percentage from Annexure A ---
     m_stake = _RE_STAKE.search(ann_a)
     if m_stake:
-        facts.append(_fact(
-            FactKind.CAPITAL_ACQ_STAKE_PCT, float(m_stake.group(1)), FactUnit.PERCENT,
-            "annexure_a", ann_a, m_stake.start(),
-        ))
+        facts.append(
+            _fact(
+                FactKind.CAPITAL_ACQ_STAKE_PCT,
+                float(m_stake.group(1)),
+                FactUnit.PERCENT,
+                "annexure_a",
+                ann_a,
+                m_stake.start(),
+            )
+        )
     else:
         warnings.append("Stake percentage not found in Annexure A")
 
@@ -181,10 +215,16 @@ def _extract_type_a(
     if m_comp:
         iso = parse_iso_date(m_comp.group(1))
         if iso:
-            facts.append(_fact(
-                FactKind.CAPITAL_ACQ_EXPECTED_COMPLETION, iso, FactUnit.ISO_DATE,
-                "annexure_a", ann_a, m_comp.start(),
-            ))
+            facts.append(
+                _fact(
+                    FactKind.CAPITAL_ACQ_EXPECTED_COMPLETION,
+                    iso,
+                    FactUnit.ISO_DATE,
+                    "annexure_a",
+                    ann_a,
+                    m_comp.start(),
+                )
+            )
         else:
             warnings.append(f"Could not parse completion date: {m_comp.group(1)!r}")
     # Completion date absence is not warned — it legitimately may not appear in all Type A filings
@@ -196,8 +236,11 @@ def _extract_type_a(
 # Type B helpers
 # ---------------------------------------------------------------------------
 
+
 def _extract_type_b(
-    cover: str, ann_a: str, full_text: str,
+    cover: str,
+    ann_a: str,
+    full_text: str,
 ) -> tuple[list[AnalysisFact], list[str]]:
     facts: list[AnalysisFact] = []
     warnings: list[str] = []
@@ -213,27 +256,45 @@ def _extract_type_b(
             # Strip parenthetical short-forms like '("HyperVault")'
             name = re.sub(r'\s*\([“”"][^)]*\)', "", name).strip()
             if name:
-                facts.append(_fact(
-                    FactKind.CAPITAL_ACQ_TARGET_NAME, name, None,
-                    "annexure_a", ann_a, m.start(1),
-                ))
+                facts.append(
+                    _fact(
+                        FactKind.CAPITAL_ACQ_TARGET_NAME,
+                        name,
+                        None,
+                        "annexure_a",
+                        ann_a,
+                        m.start(1),
+                    )
+                )
     else:
         # Fall back to cover letter single-incorporation sentence
         m_cov = _RE_COVER_INC_SINGLE.search(cover)
         if m_cov:
-            facts.append(_fact(
-                FactKind.CAPITAL_ACQ_TARGET_NAME, m_cov.group(1).strip(), None,
-                "cover_letter", cover, m_cov.start(1),
-                confidence="medium",
-            ))
+            facts.append(
+                _fact(
+                    FactKind.CAPITAL_ACQ_TARGET_NAME,
+                    m_cov.group(1).strip(),
+                    None,
+                    "cover_letter",
+                    cover,
+                    m_cov.start(1),
+                    confidence="medium",
+                )
+            )
         else:
             warnings.append("Could not extract incorporated entity name")
 
     # --- Consideration type (always subscription for incorporations) ---
-    facts.append(_fact(
-        FactKind.CAPITAL_ACQ_CONSIDERATION_TYPE, "subscription", None,
-        "annexure_a", ann_a, 0,
-    ))
+    facts.append(
+        _fact(
+            FactKind.CAPITAL_ACQ_CONSIDERATION_TYPE,
+            "subscription",
+            None,
+            "annexure_a",
+            ann_a,
+            0,
+        )
+    )
 
     # --- Subscription cost (only when explicitly stated) ---
     m_inr = _RE_EV_INR.search(ann_a)
@@ -243,18 +304,30 @@ def _extract_type_b(
         except ValueError:
             pass
         else:
-            facts.append(_fact(
-                FactKind.CAPITAL_ACQ_ENTERPRISE_VALUE, amount, FactUnit.CRORE_INR,
-                "annexure_a", ann_a, m_inr.start(),
-            ))
+            facts.append(
+                _fact(
+                    FactKind.CAPITAL_ACQ_ENTERPRISE_VALUE,
+                    amount,
+                    FactUnit.CRORE_INR,
+                    "annexure_a",
+                    ann_a,
+                    m_inr.start(),
+                )
+            )
 
     # --- Stake percentage (typically 100% for wholly owned) ---
     m_stake = _RE_STAKE.search(ann_a)
     if m_stake:
-        facts.append(_fact(
-            FactKind.CAPITAL_ACQ_STAKE_PCT, float(m_stake.group(1)), FactUnit.PERCENT,
-            "annexure_a", ann_a, m_stake.start(),
-        ))
+        facts.append(
+            _fact(
+                FactKind.CAPITAL_ACQ_STAKE_PCT,
+                float(m_stake.group(1)),
+                FactUnit.PERCENT,
+                "annexure_a",
+                ann_a,
+                m_stake.start(),
+            )
+        )
     else:
         warnings.append("Stake percentage not found in Annexure A")
 
@@ -265,11 +338,14 @@ def _extract_type_b(
 # Public entry point
 # ---------------------------------------------------------------------------
 
+
 def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     """Extract structured facts from a SEBI Reg 30 acquisition or incorporation filing."""
     entry = kb.get(evidence_id)
     if entry is None:
-        raise ValueError(f"cannot analyze evidence_id={evidence_id!r}: not in knowledge base")
+        raise ValueError(
+            f"cannot analyze evidence_id={evidence_id!r}: not in knowledge base"
+        )
     if entry.kind != "acquisition":
         raise ValueError(
             f"cannot analyze evidence_id={evidence_id!r}: kind={entry.kind!r} is not 'acquisition'"
@@ -277,7 +353,9 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
 
     content = kb.get_content(evidence_id)
     if not content:
-        raise ValueError(f"cannot analyze evidence_id={evidence_id!r}: document has no content")
+        raise ValueError(
+            f"cannot analyze evidence_id={evidence_id!r}: document has no content"
+        )
 
     cover, ann_a, ann_b = split_reg30_sections(content)
 

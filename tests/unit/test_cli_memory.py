@@ -6,6 +6,7 @@ central claims: list/show read what --remember actually wrote (round-trip,
 not a stub), and check's hard_stale flag actually reflects a cited id that no
 longer resolves in the KnowledgeBase.
 """
+
 from __future__ import annotations
 
 from click.testing import CliRunner
@@ -29,10 +30,17 @@ from atlas.research.thesis import Thesis, compute_view_id
 def _seed_profile(base, ticker: str = "TCS") -> None:
     profile = CompanyProfile(
         company_id=ticker,
-        financial=FinancialTimeSeries(snapshots=[FinancialSnapshot(
-            period="2026-03-31", period_type="annual", basis="consolidated",
-            facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2}, sources=["ev-1"],
-        )]),
+        financial=FinancialTimeSeries(
+            snapshots=[
+                FinancialSnapshot(
+                    period="2026-03-31",
+                    period_type="annual",
+                    basis="consolidated",
+                    facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2},
+                    sources=["ev-1"],
+                )
+            ]
+        ),
     )
     CompanyStore(base / ticker / "profile.json", ticker).save(profile)
 
@@ -41,19 +49,28 @@ def _thesis(ticker: str, question: str, evidence_id: str = "ev-1") -> Thesis:
     subject = SubjectRef(subject_id=ticker, display=ticker)
     result = ReasoningResult(
         question=Question(raw_text=question, subject_ref=subject),
-        findings=(Finding(
-            statement="Margins are durable at ~24%.", assertability="judgment",
-            confidence="medium",
-            supporting_claims=(_claim(subject, evidence_id),),
-        ),),
-        overall_confidence="medium", citations=frozenset({evidence_id}), refused=False,
+        findings=(
+            Finding(
+                statement="Margins are durable at ~24%.",
+                assertability="judgment",
+                confidence="medium",
+                supporting_claims=(_claim(subject, evidence_id),),
+            ),
+        ),
+        overall_confidence="medium",
+        citations=frozenset({evidence_id}),
+        refused=False,
     )
     fingerprint = f"fp-{ticker}"
     return Thesis(
-        question=question, subjects=(ticker,), run_fingerprint=fingerprint,
+        question=question,
+        subjects=(ticker,),
+        run_fingerprint=fingerprint,
         view_id=compute_view_id(fingerprint, question),
         as_of="2026-01-01T00:00:00+00:00",
-        result=result, dispositions=(), unresolved_dimensions=(),
+        result=result,
+        dispositions=(),
+        unresolved_dimensions=(),
     )
 
 
@@ -61,8 +78,10 @@ def _claim(subject, evidence_id: str):
     from atlas.reasoning.contracts import Claim
 
     return Claim(
-        subject_ref=subject, statement="Margins are durable at ~24%.",
-        assertability="judgment", confidence="medium",
+        subject_ref=subject,
+        statement="Margins are durable at ~24%.",
+        assertability="judgment",
+        confidence="medium",
         evidence=(EvidenceReference(evidence_id=evidence_id),),
     )
 
@@ -72,7 +91,9 @@ def _env(monkeypatch, tmp_path) -> None:
 
 
 # --- list --------------------------------------------------------------------------------
-def test_list_reports_no_profiles_when_portfolio_is_empty(monkeypatch, tmp_path) -> None:
+def test_list_reports_no_profiles_when_portfolio_is_empty(
+    monkeypatch, tmp_path
+) -> None:
     _env(monkeypatch, tmp_path)
     result = CliRunner().invoke(cli, ["memory", "list"])
     assert result.exit_code == 1
@@ -123,7 +144,9 @@ def test_show_unknown_view_id_fails_cleanly(monkeypatch, tmp_path) -> None:
 
 
 # --- check -------------------------------------------------------------------------------
-def test_check_flags_hard_stale_when_evidence_no_longer_resolves(monkeypatch, tmp_path) -> None:
+def test_check_flags_hard_stale_when_evidence_no_longer_resolves(
+    monkeypatch, tmp_path
+) -> None:
     """The view cites 'ev-1', but no knowledge.db exists for TCS at all -- so
     the cited id cannot resolve, and hard_stale must be true."""
     _env(monkeypatch, tmp_path)
@@ -137,7 +160,9 @@ def test_check_flags_hard_stale_when_evidence_no_longer_resolves(monkeypatch, tm
     assert "ev-does-not-exist" in result.output
 
 
-def test_check_reports_current_when_no_knowledge_base_exists(monkeypatch, tmp_path) -> None:
+def test_check_reports_current_when_no_knowledge_base_exists(
+    monkeypatch, tmp_path
+) -> None:
     """No knowledge.db at all means check_staleness has nothing to compare
     against -- known ids are empty, so any cited id is reported missing."""
     _env(monkeypatch, tmp_path)
@@ -171,7 +196,9 @@ def _write_incompatible_store(base, ticker: str) -> None:
     )
 
 
-def test_list_warns_and_continues_past_an_incompatible_store(monkeypatch, tmp_path) -> None:
+def test_list_warns_and_continues_past_an_incompatible_store(
+    monkeypatch, tmp_path
+) -> None:
     _env(monkeypatch, tmp_path)
     _seed_profile(tmp_path, "TCS")
     _write_incompatible_store(tmp_path, "TCS")
@@ -182,7 +209,9 @@ def test_list_warns_and_continues_past_an_incompatible_store(monkeypatch, tmp_pa
     assert "TCS" in result.output
 
 
-def test_list_still_shows_a_good_subject_alongside_a_bad_one(monkeypatch, tmp_path) -> None:
+def test_list_still_shows_a_good_subject_alongside_a_bad_one(
+    monkeypatch, tmp_path
+) -> None:
     _env(monkeypatch, tmp_path)
     _seed_profile(tmp_path, "TCS")
     _write_incompatible_store(tmp_path, "TCS")
@@ -196,7 +225,9 @@ def test_list_still_shows_a_good_subject_alongside_a_bad_one(monkeypatch, tmp_pa
     assert thesis.view_id in result.output
 
 
-def test_show_warns_and_continues_past_an_incompatible_store(monkeypatch, tmp_path) -> None:
+def test_show_warns_and_continues_past_an_incompatible_store(
+    monkeypatch, tmp_path
+) -> None:
     _env(monkeypatch, tmp_path)
     _seed_profile(tmp_path, "TCS")
     _write_incompatible_store(tmp_path, "TCS")
@@ -209,7 +240,9 @@ def test_show_warns_and_continues_past_an_incompatible_store(monkeypatch, tmp_pa
     assert "Margins are durable" in result.output
 
 
-def test_check_warns_and_continues_past_an_incompatible_store(monkeypatch, tmp_path) -> None:
+def test_check_warns_and_continues_past_an_incompatible_store(
+    monkeypatch, tmp_path
+) -> None:
     _env(monkeypatch, tmp_path)
     _seed_profile(tmp_path, "TCS")
     _write_incompatible_store(tmp_path, "TCS")
@@ -225,34 +258,58 @@ def test_check_warns_and_continues_past_an_incompatible_store(monkeypatch, tmp_p
 
 
 # --- diff --------------------------------------------------------------------------------
-def _thesis_v(ticker: str, question: str, fingerprint: str, as_of: str,
-              statement: str, confidence: str) -> Thesis:
+def _thesis_v(
+    ticker: str,
+    question: str,
+    fingerprint: str,
+    as_of: str,
+    statement: str,
+    confidence: str,
+) -> Thesis:
     subject = SubjectRef(subject_id=ticker, display=ticker)
     result = ReasoningResult(
         question=Question(raw_text=question, subject_ref=subject),
-        findings=(Finding(
-            statement=statement, assertability="judgment", confidence=confidence,
-            supporting_claims=(Claim(
-                subject_ref=subject, statement=statement, assertability="judgment",
-                confidence=confidence, evidence=(EvidenceReference(evidence_id="ev-1"),),
-            ),),
-        ),),
-        overall_confidence=confidence, citations=frozenset({"ev-1"}), refused=False,
+        findings=(
+            Finding(
+                statement=statement,
+                assertability="judgment",
+                confidence=confidence,
+                supporting_claims=(
+                    Claim(
+                        subject_ref=subject,
+                        statement=statement,
+                        assertability="judgment",
+                        confidence=confidence,
+                        evidence=(EvidenceReference(evidence_id="ev-1"),),
+                    ),
+                ),
+            ),
+        ),
+        overall_confidence=confidence,
+        citations=frozenset({"ev-1"}),
+        refused=False,
     )
     return Thesis(
-        question=question, subjects=(ticker,), run_fingerprint=fingerprint,
-        view_id=compute_view_id(fingerprint, question), as_of=as_of,
-        result=result, dispositions=(), unresolved_dimensions=(),
+        question=question,
+        subjects=(ticker,),
+        run_fingerprint=fingerprint,
+        view_id=compute_view_id(fingerprint, question),
+        as_of=as_of,
+        result=result,
+        dispositions=(),
+        unresolved_dimensions=(),
     )
 
 
 def test_diff_shows_confidence_change(monkeypatch, tmp_path) -> None:
     _env(monkeypatch, tmp_path)
     _seed_profile(tmp_path, "TCS")
-    older = _thesis_v("TCS", "Is margin durable?", "fp1", "2024-01-01",
-                      "Margins are durable.", "low")
-    newer = _thesis_v("TCS", "Is margin durable?", "fp2", "2025-01-01",
-                      "Margins are durable.", "high")
+    older = _thesis_v(
+        "TCS", "Is margin durable?", "fp1", "2024-01-01", "Margins are durable.", "low"
+    )
+    newer = _thesis_v(
+        "TCS", "Is margin durable?", "fp2", "2025-01-01", "Margins are durable.", "high"
+    )
     store = ThesisStore(tmp_path / "TCS" / "theses.json", "TCS")
     store.save(older)
     store.save(newer)
@@ -266,7 +323,9 @@ def test_diff_question_mismatch_refuses(monkeypatch, tmp_path) -> None:
     _env(monkeypatch, tmp_path)
     _seed_profile(tmp_path, "TCS")
     a = _thesis_v("TCS", "Is margin durable?", "fp1", "2024-01-01", "X", "medium")
-    b = _thesis_v("TCS", "Is the balance sheet safe?", "fp2", "2025-01-01", "Y", "medium")
+    b = _thesis_v(
+        "TCS", "Is the balance sheet safe?", "fp2", "2025-01-01", "Y", "medium"
+    )
     store = ThesisStore(tmp_path / "TCS" / "theses.json", "TCS")
     store.save(a)
     store.save(b)

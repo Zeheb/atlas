@@ -10,6 +10,7 @@ Validates all six acquisition documents in the TCS repository:
   4a229f29  Costa Rica subsidiary (Type B — incorporation)
   6526a894  TRIL completion update (Type C — no Annexure A)
 """
+
 from __future__ import annotations
 
 from collections.abc import Generator
@@ -28,15 +29,19 @@ _PROJECT_ROOT = Path(__file__).parents[2]
 _TCS_REPO = _PROJECT_ROOT / "repositories" / "TCS"
 
 _COASTAL_CLOUD_ID = "bse-news-c6427530-ce9c-4ed6-88a5-bdf314aeca25"
-_BHUTAN_ID        = "bse-news-f4a6b240-0d7e-4f6f-9c4e-df11afd53c99"
-_HYPERVAULT_ID    = "bse-news-de5103de-ad7c-4136-839d-b5b3cfccaf05"
-_MULTI_ID         = "bse-news-0179b556-ec38-4936-8855-496263416d64"
-_COSTA_RICA_ID    = "bse-news-4a229f29-4d77-4b17-894b-bc2564f5014e"
-_TRIL_ID          = "bse-news-6526a894-ab8e-42a7-92fc-2ad9407d9f26"
+_BHUTAN_ID = "bse-news-f4a6b240-0d7e-4f6f-9c4e-df11afd53c99"
+_HYPERVAULT_ID = "bse-news-de5103de-ad7c-4136-839d-b5b3cfccaf05"
+_MULTI_ID = "bse-news-0179b556-ec38-4936-8855-496263416d64"
+_COSTA_RICA_ID = "bse-news-4a229f29-4d77-4b17-894b-bc2564f5014e"
+_TRIL_ID = "bse-news-6526a894-ab8e-42a7-92fc-2ad9407d9f26"
 
 _ALL_IDS = [
-    _COASTAL_CLOUD_ID, _BHUTAN_ID, _HYPERVAULT_ID,
-    _MULTI_ID, _COSTA_RICA_ID, _TRIL_ID,
+    _COASTAL_CLOUD_ID,
+    _BHUTAN_ID,
+    _HYPERVAULT_ID,
+    _MULTI_ID,
+    _COSTA_RICA_ID,
+    _TRIL_ID,
 ]
 
 
@@ -66,10 +71,14 @@ def _facts(result: AnalysisResult, kind: FactKind) -> list[AnalysisFact]:
 # Type A — Coastal Cloud external acquisition
 # ---------------------------------------------------------------------------
 
+
 class TestCoastalCloud:
     @pytest.fixture(scope="class")
     def result(self, kb: KnowledgeBase) -> AnalysisResult:
-        if kb.get(_COASTAL_CLOUD_ID) is None or kb.get(_COASTAL_CLOUD_ID).status != "ok":
+        if (
+            kb.get(_COASTAL_CLOUD_ID) is None
+            or kb.get(_COASTAL_CLOUD_ID).status != "ok"
+        ):
             pytest.skip("Coastal Cloud filing not parsed")
         return analyze(_COASTAL_CLOUD_ID, kb)
 
@@ -142,6 +151,7 @@ class TestCoastalCloud:
 # Type B — Bhutan subsidiary (single entity, no stated cost)
 # ---------------------------------------------------------------------------
 
+
 class TestBhutanSubsidiary:
     @pytest.fixture(scope="class")
     def result(self, kb: KnowledgeBase) -> AnalysisResult:
@@ -182,6 +192,7 @@ class TestBhutanSubsidiary:
 # Type B — HyperVault (single entity, stated subscription cost)
 # ---------------------------------------------------------------------------
 
+
 class TestHyperVault:
     @pytest.fixture(scope="class")
     def result(self, kb: KnowledgeBase) -> AnalysisResult:
@@ -212,6 +223,7 @@ class TestHyperVault:
 # Type B — Two entities in one filing (ListEngage SPVs)
 # ---------------------------------------------------------------------------
 
+
 class TestMultiEntity:
     @pytest.fixture(scope="class")
     def result(self, kb: KnowledgeBase) -> AnalysisResult:
@@ -236,6 +248,7 @@ class TestMultiEntity:
 # Type B — Costa Rica subsidiary
 # ---------------------------------------------------------------------------
 
+
 class TestCostaRica:
     @pytest.fixture(scope="class")
     def result(self, kb: KnowledgeBase) -> AnalysisResult:
@@ -254,6 +267,7 @@ class TestCostaRica:
 # ---------------------------------------------------------------------------
 # Type C — TRIL completion update (no Annexure A)
 # ---------------------------------------------------------------------------
+
 
 class TestTRILCompletion:
     @pytest.fixture(scope="class")

@@ -3,6 +3,7 @@
 Mirrors the discipline test_reasoning_plan.py applies to SearchPlan: every
 invariant is pinned by a test.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -12,9 +13,11 @@ from atlas.benchmark.provenance import CaseProvenance, RetrievalLabel
 
 def _provenance(**overrides: object) -> CaseProvenance:
     defaults: dict[str, object] = dict(
-        origin="corpus_derived", supporting_evidence_ids=("ev-1",),
+        origin="corpus_derived",
+        supporting_evidence_ids=("ev-1",),
         verification_method="inspected the annual report by hand",
-        verified_at="2026-07-21", verified_by="zeheb",
+        verified_at="2026-07-21",
+        verified_by="zeheb",
     )
     defaults.update(overrides)
     return CaseProvenance(**defaults)  # type: ignore[arg-type]
@@ -41,7 +44,9 @@ def test_corpus_derived_requires_at_least_one_supporting_evidence_id() -> None:
 
 
 def test_corpus_validated_negative_requires_no_evidence() -> None:
-    _provenance(origin="corpus_validated_negative", supporting_evidence_ids=())  # must not raise
+    _provenance(
+        origin="corpus_validated_negative", supporting_evidence_ids=()
+    )  # must not raise
 
 
 # --- required text fields ---------------------------------------------------------

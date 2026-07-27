@@ -18,6 +18,7 @@ Coverage:
   - Fact provenance: section equals the context ID used
   - Fact period matches the DateOfReport
 """
+
 from __future__ import annotations
 
 import textwrap
@@ -25,15 +26,19 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from atlas.analysis.shareholding_pattern import ANALYZER_VERSION, analyze, _detect_decimal_format
+from atlas.analysis.shareholding_pattern import (
+    ANALYZER_VERSION,
+    analyze,
+    _detect_decimal_format,
+)
 from atlas.analysis.base import AnalysisResult, FactKind, FactUnit
-
 
 # ---------------------------------------------------------------------------
 # Synthetic XBRL builders
 # ---------------------------------------------------------------------------
 
 _NS = "http://www.bseindia.com/xbrl/shp/2025-10-31/in-bse-shp"
+
 
 def _xml(
     date_of_report: str = "2026-03-31",
@@ -54,10 +59,26 @@ def _xml(
     omit_hni: bool = False,
 ) -> str:
     """Build a minimal valid BSE XBRL SHP instance document."""
-    date_fact = "" if omit_date else f'<s:DateOfReport contextRef="MainI">{date_of_report}</s:DateOfReport>'
-    fpi_fact = "" if omit_fpi else f'<s:ShareholdingAsAPercentageOfTotalNumberOfShares contextRef="InstitutionsForeign_ContextI">{fpi_pct}</s:ShareholdingAsAPercentageOfTotalNumberOfShares>'
-    retail_fact = "" if omit_retail else f'<s:ShareholdingAsAPercentageOfTotalNumberOfShares contextRef="ResidentIndividualShareholdersHoldingNominalShareCapitalUpToRsTwoLakh_ContextI">{retail_pct}</s:ShareholdingAsAPercentageOfTotalNumberOfShares>'
-    hni_fact = "" if omit_hni else f'<s:ShareholdingAsAPercentageOfTotalNumberOfShares contextRef="ResidentIndividualShareholdersHoldingNominalShareCapitalInExcessOfRsTwoLakh_ContextI">{hni_pct}</s:ShareholdingAsAPercentageOfTotalNumberOfShares>'
+    date_fact = (
+        ""
+        if omit_date
+        else f'<s:DateOfReport contextRef="MainI">{date_of_report}</s:DateOfReport>'
+    )
+    fpi_fact = (
+        ""
+        if omit_fpi
+        else f'<s:ShareholdingAsAPercentageOfTotalNumberOfShares contextRef="InstitutionsForeign_ContextI">{fpi_pct}</s:ShareholdingAsAPercentageOfTotalNumberOfShares>'
+    )
+    retail_fact = (
+        ""
+        if omit_retail
+        else f'<s:ShareholdingAsAPercentageOfTotalNumberOfShares contextRef="ResidentIndividualShareholdersHoldingNominalShareCapitalUpToRsTwoLakh_ContextI">{retail_pct}</s:ShareholdingAsAPercentageOfTotalNumberOfShares>'
+    )
+    hni_fact = (
+        ""
+        if omit_hni
+        else f'<s:ShareholdingAsAPercentageOfTotalNumberOfShares contextRef="ResidentIndividualShareholdersHoldingNominalShareCapitalInExcessOfRsTwoLakh_ContextI">{hni_pct}</s:ShareholdingAsAPercentageOfTotalNumberOfShares>'
+    )
 
     return textwrap.dedent(f"""\
         <?xml version="1.0" encoding="UTF-8"?>
@@ -84,7 +105,11 @@ def _xml(
     """)
 
 
-def _kb(content: str, kind: str = "shareholding_pattern", source_date: str = "2026-04-21T10:21:39+00:00") -> MagicMock:
+def _kb(
+    content: str,
+    kind: str = "shareholding_pattern",
+    source_date: str = "2026-04-21T10:21:39+00:00",
+) -> MagicMock:
     entry = MagicMock()
     entry.kind = kind
     entry.source_date = source_date
@@ -101,6 +126,7 @@ def _facts(result: AnalysisResult, kind: FactKind):
 # ---------------------------------------------------------------------------
 # Normal extraction
 # ---------------------------------------------------------------------------
+
 
 class TestNormalExtraction:
     @pytest.fixture(scope="class")
@@ -197,6 +223,7 @@ class TestNormalExtraction:
 # Percentage scale: XBRL 0–1 → Atlas 0–100
 # ---------------------------------------------------------------------------
 
+
 class TestPercentageScale:
     def test_fraction_multiplied_by_100(self):
         xml = _xml(promoter_pct="0.7177")
@@ -214,6 +241,7 @@ class TestPercentageScale:
 # ---------------------------------------------------------------------------
 # Promoter pledging
 # ---------------------------------------------------------------------------
+
 
 class TestPromoterPledging:
     def test_pledged_false_emits_zero(self):
@@ -255,6 +283,7 @@ class TestPromoterPledging:
 # Date fallback
 # ---------------------------------------------------------------------------
 
+
 class TestDateFallback:
     def test_missing_date_falls_back_to_source_date(self):
         xml = _xml(omit_date=True)
@@ -268,6 +297,7 @@ class TestDateFallback:
 # ---------------------------------------------------------------------------
 # Missing optional vs. required contexts
 # ---------------------------------------------------------------------------
+
 
 class TestMissingContexts:
     def test_missing_fpi_emits_warning(self):
@@ -289,6 +319,7 @@ class TestMissingContexts:
 # ---------------------------------------------------------------------------
 # Confidence logic
 # ---------------------------------------------------------------------------
+
 
 class TestConfidence:
     def test_high_when_all_core_facts_present(self):
@@ -333,6 +364,7 @@ class TestConfidence:
 # ---------------------------------------------------------------------------
 # Error handling
 # ---------------------------------------------------------------------------
+
 
 class TestErrorHandling:
     def test_wrong_kind_raises(self):

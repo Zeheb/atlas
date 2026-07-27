@@ -1,5 +1,6 @@
 """Unit tests for atlas.research.render — the only module that emits
 Markdown syntax."""
+
 from __future__ import annotations
 
 from atlas.query.engine import TableSection
@@ -15,17 +16,29 @@ class TestRenderMarkdown:
         assert md.startswith("# X — Briefing")
 
     def test_section_rendered_as_h2(self) -> None:
-        report = ReportData(ticker="X", title="T", sections=[ReportSection(key="risks", title="Risks", findings=[Finding(text="a risk")])])
+        report = ReportData(
+            ticker="X",
+            title="T",
+            sections=[
+                ReportSection(
+                    key="risks", title="Risks", findings=[Finding(text="a risk")]
+                )
+            ],
+        )
         md = render_markdown(report)
         assert "## Risks" in md
 
     def test_synthesis_finding_tagged(self) -> None:
-        sec = ReportSection(key="k", title="K", findings=[Finding(text="claim", kind="synthesis")])
+        sec = ReportSection(
+            key="k", title="K", findings=[Finding(text="claim", kind="synthesis")]
+        )
         md = render_markdown(ReportData(ticker="X", title="T", sections=[sec]))
         assert "_[synthesis]_" in md
 
     def test_fact_finding_not_tagged(self) -> None:
-        sec = ReportSection(key="k", title="K", findings=[Finding(text="claim", kind="fact")])
+        sec = ReportSection(
+            key="k", title="K", findings=[Finding(text="claim", kind="fact")]
+        )
         md = render_markdown(ReportData(ticker="X", title="T", sections=[sec]))
         assert "[synthesis]" not in md
 
@@ -40,7 +53,9 @@ class TestRenderMarkdown:
         # Real case found in Tata Steel's data: an acquisition target name
         # extracted from a PDF carried an embedded newline, which would
         # otherwise split one logical row across multiple broken lines.
-        table = TableSection(heading="H", columns=["Target"], rows=[["Widget Co\n\nWidget Co"]])
+        table = TableSection(
+            heading="H", columns=["Target"], rows=[["Widget Co\n\nWidget Co"]]
+        )
         sec = ReportSection(key="k", title="K", tables=[table])
         md = render_markdown(ReportData(ticker="X", title="T", sections=[sec]))
         assert "| Widget Co Widget Co |" in md
@@ -62,11 +77,21 @@ class TestRenderMarkdown:
         assert "No evidence available" in md
 
     def test_no_source_line_when_finding_has_no_evidence_ids(self) -> None:
-        sec = ReportSection(key="k", title="K", findings=[Finding(text="claim", evidence_ids=[])])
-        md = render_markdown(ReportData(ticker="X", title="T", sections=[sec]), repo=None)
+        sec = ReportSection(
+            key="k", title="K", findings=[Finding(text="claim", evidence_ids=[])]
+        )
+        md = render_markdown(
+            ReportData(ticker="X", title="T", sections=[sec]), repo=None
+        )
         assert "Source:" not in md
 
     def test_no_raw_evidence_id_ever_shown_without_repo(self) -> None:
-        sec = ReportSection(key="k", title="K", findings=[Finding(text="claim", evidence_ids=["bse-news-abc123"])])
-        md = render_markdown(ReportData(ticker="X", title="T", sections=[sec]), repo=None)
+        sec = ReportSection(
+            key="k",
+            title="K",
+            findings=[Finding(text="claim", evidence_ids=["bse-news-abc123"])],
+        )
+        md = render_markdown(
+            ReportData(ticker="X", title="T", sections=[sec]), repo=None
+        )
         assert "bse-news-abc123" not in md

@@ -8,6 +8,7 @@ test_reasoning_context_retrieval.py (M1), test_reasoning_context_question.py
 change), and that the diagnostics variant surfaces a RetrievalResult exactly
 when a plan produced one.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -43,10 +44,17 @@ _QUESTION = "What favourable pricing mix and bookings did the company report?"
 def _profile() -> CompanyProfile:
     return CompanyProfile(
         company_id="TCS",
-        financial=FinancialTimeSeries(snapshots=[FinancialSnapshot(
-            period="2026-03-31", period_type="annual", basis="consolidated",
-            facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2}, sources=["ev-1"],
-        )]),
+        financial=FinancialTimeSeries(
+            snapshots=[
+                FinancialSnapshot(
+                    period="2026-03-31",
+                    period_type="annual",
+                    basis="consolidated",
+                    facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2},
+                    sources=["ev-1"],
+                )
+            ]
+        ),
     )
 
 
@@ -54,10 +62,15 @@ def _kb_with(tmp_path: Path, evidence_id: str, content: str) -> KnowledgeBase:
     rel = f"{evidence_id}.txt"
     (tmp_path / rel).write_text(content, encoding="utf-8")
     entry = CatalogEntry(
-        evidence_id=evidence_id, source=EvidenceSource.BSE.value,
-        kind=EvidenceKind.FINANCIAL_RESULTS.value, title="Test filing",
-        source_date="2026-03-31T00:00:00+00:00", document_url=None,
-        local_path=rel, file_size_bytes=None, acquired_at="2026-04-01T00:00:00+00:00",
+        evidence_id=evidence_id,
+        source=EvidenceSource.BSE.value,
+        kind=EvidenceKind.FINANCIAL_RESULTS.value,
+        title="Test filing",
+        source_date="2026-03-31T00:00:00+00:00",
+        document_url=None,
+        local_path=rel,
+        file_size_bytes=None,
+        acquired_at="2026-04-01T00:00:00+00:00",
     )
     kb = KnowledgeBase(tmp_path)
     kb.parse(entry)
@@ -92,7 +105,9 @@ def test_kb_hydration_only_delegation_matches(tmp_path: Path) -> None:
 def test_question_conditioned_delegation_matches(tmp_path: Path) -> None:
     kb = _kb_with(tmp_path, "ev-1", _CONTENT)
     direct = build_context(_profile(), SUBJECT, kb=kb, question=_QUESTION)
-    via_diagnostics = build_context_with_diagnostics(_profile(), SUBJECT, kb=kb, question=_QUESTION)
+    via_diagnostics = build_context_with_diagnostics(
+        _profile(), SUBJECT, kb=kb, question=_QUESTION
+    )
     assert direct == via_diagnostics.context
 
 
@@ -101,14 +116,20 @@ def test_plan_conditioned_delegation_matches(tmp_path: Path) -> None:
     plan = _plan()
     direct = build_context(_profile(), SUBJECT, kb=kb, question=_QUESTION, plan=plan)
     via_diagnostics = build_context_with_diagnostics(
-        _profile(), SUBJECT, kb=kb, question=_QUESTION, plan=plan,
+        _profile(),
+        SUBJECT,
+        kb=kb,
+        question=_QUESTION,
+        plan=plan,
     )
     assert direct == via_diagnostics.context
 
 
 def test_known_ids_filter_delegation_matches() -> None:
     direct = build_context(_profile(), SUBJECT, known_ids={"ev-1"})
-    via_diagnostics = build_context_with_diagnostics(_profile(), SUBJECT, known_ids={"ev-1"})
+    via_diagnostics = build_context_with_diagnostics(
+        _profile(), SUBJECT, known_ids={"ev-1"}
+    )
     assert direct == via_diagnostics.context
 
 
@@ -128,14 +149,18 @@ def test_retrieval_is_none_without_question_or_plan(tmp_path: Path) -> None:
 def test_retrieval_is_none_with_question_but_no_plan(tmp_path: Path) -> None:
     # retrieve_passages (the M1.5 path) has no RetrievalResult to surface.
     kb = _kb_with(tmp_path, "ev-1", _CONTENT)
-    result = build_context_with_diagnostics(_profile(), SUBJECT, kb=kb, question=_QUESTION)
+    result = build_context_with_diagnostics(
+        _profile(), SUBJECT, kb=kb, question=_QUESTION
+    )
     assert result.retrieval is None
 
 
 def test_retrieval_result_present_when_plan_given(tmp_path: Path) -> None:
     kb = _kb_with(tmp_path, "ev-1", _CONTENT)
     plan = _plan()
-    result = build_context_with_diagnostics(_profile(), SUBJECT, kb=kb, question=_QUESTION, plan=plan)
+    result = build_context_with_diagnostics(
+        _profile(), SUBJECT, kb=kb, question=_QUESTION, plan=plan
+    )
     assert isinstance(result.retrieval, RetrievalResult)
     assert result.retrieval.plan is plan
 
@@ -143,9 +168,13 @@ def test_retrieval_result_present_when_plan_given(tmp_path: Path) -> None:
 def test_retrieval_result_matches_reflected_in_context_claims(tmp_path: Path) -> None:
     kb = _kb_with(tmp_path, "ev-1", _CONTENT)
     plan = _plan()
-    result = build_context_with_diagnostics(_profile(), SUBJECT, kb=kb, question=_QUESTION, plan=plan)
+    result = build_context_with_diagnostics(
+        _profile(), SUBJECT, kb=kb, question=_QUESTION, plan=plan
+    )
     assert result.retrieval is not None
-    passage_claims = [c for c in result.context.claims if c.statement.startswith("Source passage:")]
+    passage_claims = [
+        c for c in result.context.claims if c.statement.startswith("Source passage:")
+    ]
     assert len(result.retrieval.matches) == len(passage_claims)
 
 

@@ -95,14 +95,20 @@ def run_acquisition(
         for w in discovery.warnings:
             count = w.metadata.get("count", "?")
             subcat = w.metadata.get("subcategory", "unknown")
-            _emit(f"  Warning: {count} occurrence(s) of unmapped subcategory {subcat!r}")
+            _emit(
+                f"  Warning: {count} occurrence(s) of unmapped subcategory {subcat!r}"
+            )
 
     # Step 2 — Deduplicate across sources (a no-op with one connector)
     merged = resolve_multi_source(discoveries)
     all_evidence = merged.evidence
-    dedup_warnings = [w for w in merged.warnings if w.code == "duplicate_across_exchanges"]
+    dedup_warnings = [
+        w for w in merged.warnings if w.code == "duplicate_across_exchanges"
+    ]
     if dedup_warnings:
-        _emit(f"  Deduplication: suppressed {len(dedup_warnings)} cross-source duplicate(s)")
+        _emit(
+            f"  Deduplication: suppressed {len(dedup_warnings)} cross-source duplicate(s)"
+        )
 
     # Persist any source identities the connector(s) resolved during discovery
     company_data["exchange_identities"] = company.exchange_identities
@@ -147,19 +153,35 @@ def run_acquisition(
             text = kb.get_content(ev.evidence_id) or ""
             classification = classify(ev.kind.value, text, parsed.page_count)
             if classification.was_reclassified:
-                _emit(f"        reclassified: {classification.original_kind} -> {classification.resolved_kind}")
-                reclassified_entry = replace(provisional_entry, kind=classification.resolved_kind)
-                kb.parse(reclassified_entry)  # keep ParsedDocument.kind in sync with the catalog
+                _emit(
+                    f"        reclassified: {classification.original_kind} -> {classification.resolved_kind}"
+                )
+                reclassified_entry = replace(
+                    provisional_entry, kind=classification.resolved_kind
+                )
+                kb.parse(
+                    reclassified_entry
+                )  # keep ParsedDocument.kind in sync with the catalog
                 resolved_kind_enum = EvidenceKind(classification.resolved_kind)
-                dl_result = replace(dl_result, evidence=replace(ev, kind=resolved_kind_enum))
+                dl_result = replace(
+                    dl_result, evidence=replace(ev, kind=resolved_kind_enum)
+                )
 
-        outcomes.append(DocumentOutcome(download=dl_result, ocr_used=ocr_used, classification=classification))
+        outcomes.append(
+            DocumentOutcome(
+                download=dl_result, ocr_used=ocr_used, classification=classification
+            )
+        )
 
     # Step 6 — Update catalog with the (possibly classification-corrected) results
     for outcome in outcomes:
         result = outcome.download
         if result.succeeded and result.local_path is not None:
-            catalog.add(CatalogEntry.from_evidence(result.evidence, result.local_path, checksum=result.checksum))
+            catalog.add(
+                CatalogEntry.from_evidence(
+                    result.evidence, result.local_path, checksum=result.checksum
+                )
+            )
     catalog.save()
 
     return AcquisitionReport(

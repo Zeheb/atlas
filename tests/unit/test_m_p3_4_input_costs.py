@@ -13,6 +13,7 @@ that passes through it (unlike the dedicated M-P3.1/M-P3.2 balance-sheet/
 cash-flow extractions, which use `_positive()`) -- see ADR-0012's M-P3.4
 amendment.
 """
+
 from __future__ import annotations
 
 from atlas.analysis.base import FactKind
@@ -94,15 +95,28 @@ def test_input_cost_facts_route_into_financial_snapshot() -> None:
     from atlas.analysis.base import AnalysisFact, AnalysisResult, FactUnit, Provenance
 
     result = AnalysisResult(
-        evidence_id="bse-fr-1", kind="financial_results", analyzer_version="1.1",
-        confidence="high", source_date=datetime(2025, 10, 1, tzinfo=timezone.utc),
+        evidence_id="bse-fr-1",
+        kind="financial_results",
+        analyzer_version="1.1",
+        confidence="high",
+        source_date=datetime(2025, 10, 1, tzinfo=timezone.utc),
         facts=[
-            AnalysisFact(kind=FactKind.FINANCIAL_COST_OF_MATERIALS, value=11764.27,
-                         unit=FactUnit.CRORE_INR, period="2025-09-30", confidence="high",
-                         provenance=Provenance(section="consolidated_pl_table")),
-            AnalysisFact(kind=FactKind.FINANCIAL_CHANGE_IN_INVENTORIES, value=-851.30,
-                         unit=FactUnit.CRORE_INR, period="2025-09-30", confidence="high",
-                         provenance=Provenance(section="consolidated_pl_table")),
+            AnalysisFact(
+                kind=FactKind.FINANCIAL_COST_OF_MATERIALS,
+                value=11764.27,
+                unit=FactUnit.CRORE_INR,
+                period="2025-09-30",
+                confidence="high",
+                provenance=Provenance(section="consolidated_pl_table"),
+            ),
+            AnalysisFact(
+                kind=FactKind.FINANCIAL_CHANGE_IN_INVENTORIES,
+                value=-851.30,
+                unit=FactUnit.CRORE_INR,
+                period="2025-09-30",
+                confidence="high",
+                provenance=Provenance(section="consolidated_pl_table"),
+            ),
         ],
     )
     profile = build_profile("TATASTEEL", [result])
@@ -117,11 +131,21 @@ def test_change_in_inventories_negative_survives_store_round_trip(tmp_path) -> N
     from atlas.analysis.base import AnalysisFact, AnalysisResult, FactUnit, Provenance
 
     result = AnalysisResult(
-        evidence_id="bse-fr-1", kind="financial_results", analyzer_version="1.1",
-        confidence="high", source_date=datetime(2025, 10, 1, tzinfo=timezone.utc),
-        facts=[AnalysisFact(kind=FactKind.FINANCIAL_CHANGE_IN_INVENTORIES, value=-851.30,
-                             unit=FactUnit.CRORE_INR, period="2025-09-30", confidence="high",
-                             provenance=Provenance(section="consolidated_pl_table"))],
+        evidence_id="bse-fr-1",
+        kind="financial_results",
+        analyzer_version="1.1",
+        confidence="high",
+        source_date=datetime(2025, 10, 1, tzinfo=timezone.utc),
+        facts=[
+            AnalysisFact(
+                kind=FactKind.FINANCIAL_CHANGE_IN_INVENTORIES,
+                value=-851.30,
+                unit=FactUnit.CRORE_INR,
+                period="2025-09-30",
+                confidence="high",
+                provenance=Provenance(section="consolidated_pl_table"),
+            )
+        ],
     )
     profile = build_profile("TATASTEEL", [result])
     store = CompanyStore(tmp_path / "TATASTEEL" / "profile.json", "TATASTEEL")
@@ -134,6 +158,11 @@ def test_change_in_inventories_negative_survives_store_round_trip(tmp_path) -> N
 # --- metrics registration -----------------------------------------------------
 def test_new_metrics_registered() -> None:
     from atlas.query.metrics import get_metric
-    for key in ("cost_of_materials", "purchases_stock_in_trade", "change_in_inventories"):
+
+    for key in (
+        "cost_of_materials",
+        "purchases_stock_in_trade",
+        "change_in_inventories",
+    ):
         spec = get_metric(key)
         assert spec.fact_kind is not None

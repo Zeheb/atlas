@@ -43,7 +43,9 @@ class TestAcquisitionProfileProtocol:
 
 class TestKindFilterProfile:
     def test_name_returns_configured_name(self) -> None:
-        profile = KindFilterProfile("my-profile", frozenset({EvidenceKind.ANNUAL_REPORT}))
+        profile = KindFilterProfile(
+            "my-profile", frozenset({EvidenceKind.ANNUAL_REPORT})
+        )
         assert profile.name == "my-profile"
 
     def test_select_returns_only_matching_kinds(self) -> None:
@@ -173,7 +175,9 @@ class TestComprehensiveProfile:
     def test_is_superset_of_default_profile(self) -> None:
         all_evidence = [_make_evidence(f"e{i}", k) for i, k in enumerate(EvidenceKind)]
         default_ids = {e.evidence_id for e in DEFAULT_PROFILE.select(all_evidence)}
-        comprehensive_ids = {e.evidence_id for e in COMPREHENSIVE_PROFILE.select(all_evidence)}
+        comprehensive_ids = {
+            e.evidence_id for e in COMPREHENSIVE_PROFILE.select(all_evidence)
+        }
         assert default_ids.issubset(comprehensive_ids)
 
     def test_includes_board_outcome(self) -> None:

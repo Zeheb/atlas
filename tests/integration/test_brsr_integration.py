@@ -9,6 +9,7 @@ Uses four real TCS BRSR filings from the repository:
 
 Run with: pytest -m integration -v -s
 """
+
 from __future__ import annotations
 
 from collections.abc import Generator
@@ -24,7 +25,7 @@ from atlas.acquisition.repository import Repository
 pytestmark = pytest.mark.integration
 
 _PROJECT_ROOT = Path(__file__).parents[2]
-_TCS_REPO     = _PROJECT_ROOT / "repositories" / "TCS"
+_TCS_REPO = _PROJECT_ROOT / "repositories" / "TCS"
 
 _FY26_ID = "bse-news-ffe33416-6ca6-4c63-ae04-f914bb97c4cc"
 _FY25_ID = "bse-news-2e389663-765c-46b8-975a-7d07faf5c25e"
@@ -66,6 +67,7 @@ def _skip_if_not_parsed(kb: KnowledgeBase, eid: str) -> None:
 # FY2026 — primary year; should have all 15 facts, 0 warnings
 # ---------------------------------------------------------------------------
 
+
 class TestBRSR_FY26:
     @pytest.fixture(scope="class")
     def result(self, kb: KnowledgeBase) -> AnalysisResult:
@@ -105,12 +107,20 @@ class TestBRSR_FY26:
         assert abs(facts[0].value - 573_872.0) < 1.0
 
     def test_ghg_units(self, result: AnalysisResult):
-        for kind in (FactKind.ESG_GHG_SCOPE1, FactKind.ESG_GHG_SCOPE2, FactKind.ESG_GHG_SCOPE3):
+        for kind in (
+            FactKind.ESG_GHG_SCOPE1,
+            FactKind.ESG_GHG_SCOPE2,
+            FactKind.ESG_GHG_SCOPE3,
+        ):
             for f in _facts(result, kind):
                 assert f.unit == FactUnit.TCO2E
 
     def test_ghg_period(self, result: AnalysisResult):
-        for kind in (FactKind.ESG_GHG_SCOPE1, FactKind.ESG_GHG_SCOPE2, FactKind.ESG_GHG_SCOPE3):
+        for kind in (
+            FactKind.ESG_GHG_SCOPE1,
+            FactKind.ESG_GHG_SCOPE2,
+            FactKind.ESG_GHG_SCOPE3,
+        ):
             for f in _facts(result, kind):
                 assert f.period == "2026-03-31"
 
@@ -119,7 +129,9 @@ class TestBRSR_FY26:
         # Location-based Scope 2 (FY26) = 318,184 tCO2e; market-based = 53,971.
         # We must extract the market-based value (from the main table, not the note).
         scope2 = _facts(result, FactKind.ESG_GHG_SCOPE2)[0].value
-        assert scope2 < 100_000, "Expected market-based (53,971), not location-based (318,184)"
+        assert (
+            scope2 < 100_000
+        ), "Expected market-based (53,971), not location-based (318,184)"
 
     # Energy
     def test_energy_total(self, result: AnalysisResult):
@@ -188,21 +200,31 @@ class TestBRSR_FY26:
 
     def test_all_yearly_facts_have_correct_period(self, result: AnalysisResult):
         yearly_kinds = {
-            FactKind.ESG_GHG_SCOPE1, FactKind.ESG_GHG_SCOPE2, FactKind.ESG_GHG_SCOPE3,
-            FactKind.ESG_ENERGY_TOTAL_MJ, FactKind.ESG_ENERGY_RENEWABLE_PCT,
-            FactKind.ESG_WATER_CONSUMED_KL, FactKind.ESG_WASTE_GENERATED_MT,
-            FactKind.ESG_WASTE_RECOVERY_PCT, FactKind.ESG_WORKFORCE_HEADCOUNT,
-            FactKind.ESG_WORKFORCE_FEMALE_PCT, FactKind.ESG_WORKFORCE_FEMALE_WAGE_PCT,
-            FactKind.ESG_WORKFORCE_ATTRITION_PCT, FactKind.ESG_SAFETY_LTIFR,
+            FactKind.ESG_GHG_SCOPE1,
+            FactKind.ESG_GHG_SCOPE2,
+            FactKind.ESG_GHG_SCOPE3,
+            FactKind.ESG_ENERGY_TOTAL_MJ,
+            FactKind.ESG_ENERGY_RENEWABLE_PCT,
+            FactKind.ESG_WATER_CONSUMED_KL,
+            FactKind.ESG_WASTE_GENERATED_MT,
+            FactKind.ESG_WASTE_RECOVERY_PCT,
+            FactKind.ESG_WORKFORCE_HEADCOUNT,
+            FactKind.ESG_WORKFORCE_FEMALE_PCT,
+            FactKind.ESG_WORKFORCE_FEMALE_WAGE_PCT,
+            FactKind.ESG_WORKFORCE_ATTRITION_PCT,
+            FactKind.ESG_SAFETY_LTIFR,
         }
         for f in result.facts:
             if f.kind in yearly_kinds:
-                assert f.period == "2026-03-31", f"{f.kind}: expected 2026-03-31, got {f.period}"
+                assert (
+                    f.period == "2026-03-31"
+                ), f"{f.kind}: expected 2026-03-31, got {f.period}"
 
 
 # ---------------------------------------------------------------------------
 # FY2025
 # ---------------------------------------------------------------------------
+
 
 class TestBRSR_FY25:
     @pytest.fixture(scope="class")
@@ -236,16 +258,27 @@ class TestBRSR_FY25:
         assert _facts(result, FactKind.ESG_GHG_SCOPE2)[0].value < 73_722.0
 
     def test_energy_total(self, result: AnalysisResult):
-        assert abs(_facts(result, FactKind.ESG_ENERGY_TOTAL_MJ)[0].value - 1_940_926_732.0) < 1000
+        assert (
+            abs(_facts(result, FactKind.ESG_ENERGY_TOTAL_MJ)[0].value - 1_940_926_732.0)
+            < 1000
+        )
 
     def test_water_consumed(self, result: AnalysisResult):
-        assert abs(_facts(result, FactKind.ESG_WATER_CONSUMED_KL)[0].value - 2_871_784.0) < 10
+        assert (
+            abs(_facts(result, FactKind.ESG_WATER_CONSUMED_KL)[0].value - 2_871_784.0)
+            < 10
+        )
 
     def test_waste_generated(self, result: AnalysisResult):
-        assert abs(_facts(result, FactKind.ESG_WASTE_GENERATED_MT)[0].value - 9_983.0) < 5.0
+        assert (
+            abs(_facts(result, FactKind.ESG_WASTE_GENERATED_MT)[0].value - 9_983.0)
+            < 5.0
+        )
 
     def test_waste_recovery_56pct(self, result: AnalysisResult):
-        assert abs(_facts(result, FactKind.ESG_WASTE_RECOVERY_PCT)[0].value - 56.0) < 0.1
+        assert (
+            abs(_facts(result, FactKind.ESG_WASTE_RECOVERY_PCT)[0].value - 56.0) < 0.1
+        )
 
     def test_headcount(self, result: AnalysisResult):
         assert _facts(result, FactKind.ESG_WORKFORCE_HEADCOUNT)[0].value == 636_833
@@ -257,7 +290,10 @@ class TestBRSR_FY25:
         assert abs(facts[0].value - 24.8) < 0.1
 
     def test_attrition_pct(self, result: AnalysisResult):
-        assert abs(_facts(result, FactKind.ESG_WORKFORCE_ATTRITION_PCT)[0].value - 13.3) < 0.1
+        assert (
+            abs(_facts(result, FactKind.ESG_WORKFORCE_ATTRITION_PCT)[0].value - 13.3)
+            < 0.1
+        )
 
     def test_ltifr(self, result: AnalysisResult):
         assert abs(_facts(result, FactKind.ESG_SAFETY_LTIFR)[0].value - 0.025) < 0.001
@@ -270,6 +306,7 @@ class TestBRSR_FY25:
 # ---------------------------------------------------------------------------
 # FY2024 — SBTi targets and waste recovery not in BRSR text (expected gaps)
 # ---------------------------------------------------------------------------
+
 
 class TestBRSR_FY24:
     @pytest.fixture(scope="class")
@@ -294,25 +331,42 @@ class TestBRSR_FY24:
         assert abs(_facts(result, FactKind.ESG_GHG_SCOPE3)[0].value - 498_509.0) < 100.0
 
     def test_energy_total(self, result: AnalysisResult):
-        assert abs(_facts(result, FactKind.ESG_ENERGY_TOTAL_MJ)[0].value - 1_709_182_976.0) < 1000
+        assert (
+            abs(_facts(result, FactKind.ESG_ENERGY_TOTAL_MJ)[0].value - 1_709_182_976.0)
+            < 1000
+        )
 
     def test_water_consumed(self, result: AnalysisResult):
-        assert abs(_facts(result, FactKind.ESG_WATER_CONSUMED_KL)[0].value - 2_467_342.0) < 10
+        assert (
+            abs(_facts(result, FactKind.ESG_WATER_CONSUMED_KL)[0].value - 2_467_342.0)
+            < 10
+        )
 
     def test_waste_generated(self, result: AnalysisResult):
-        assert abs(_facts(result, FactKind.ESG_WASTE_GENERATED_MT)[0].value - 6_716.2) < 5.0
+        assert (
+            abs(_facts(result, FactKind.ESG_WASTE_GENERATED_MT)[0].value - 6_716.2)
+            < 5.0
+        )
 
     def test_headcount(self, result: AnalysisResult):
         assert _facts(result, FactKind.ESG_WORKFORCE_HEADCOUNT)[0].value == 631_858
 
     def test_female_pct(self, result: AnalysisResult):
-        assert abs(_facts(result, FactKind.ESG_WORKFORCE_FEMALE_PCT)[0].value - 35.6) < 0.1
+        assert (
+            abs(_facts(result, FactKind.ESG_WORKFORCE_FEMALE_PCT)[0].value - 35.6) < 0.1
+        )
 
     def test_female_wage_pct(self, result: AnalysisResult):
-        assert abs(_facts(result, FactKind.ESG_WORKFORCE_FEMALE_WAGE_PCT)[0].value - 26.1) < 0.1
+        assert (
+            abs(_facts(result, FactKind.ESG_WORKFORCE_FEMALE_WAGE_PCT)[0].value - 26.1)
+            < 0.1
+        )
 
     def test_attrition_pct(self, result: AnalysisResult):
-        assert abs(_facts(result, FactKind.ESG_WORKFORCE_ATTRITION_PCT)[0].value - 12.5) < 0.1
+        assert (
+            abs(_facts(result, FactKind.ESG_WORKFORCE_ATTRITION_PCT)[0].value - 12.5)
+            < 0.1
+        )
 
     def test_ltifr(self, result: AnalysisResult):
         assert abs(_facts(result, FactKind.ESG_SAFETY_LTIFR)[0].value - 0.009) < 0.001
@@ -334,6 +388,7 @@ class TestBRSR_FY24:
 # FY2023 — oldest year; additional gaps expected
 # ---------------------------------------------------------------------------
 
+
 class TestBRSR_FY23:
     @pytest.fixture(scope="class")
     def result(self, kb: KnowledgeBase) -> AnalysisResult:
@@ -353,7 +408,9 @@ class TestBRSR_FY23:
     def test_scope3(self, result: AnalysisResult):
         assert abs(_facts(result, FactKind.ESG_GHG_SCOPE3)[0].value - 366_606.0) < 100.0
 
-    def test_energy_computed_from_renewable_plus_nonrenewable(self, result: AnalysisResult):
+    def test_energy_computed_from_renewable_plus_nonrenewable(
+        self, result: AnalysisResult
+    ):
         """FY23 BRSR has no total energy label (tab in label); computed from parts."""
         facts = _facts(result, FactKind.ESG_ENERGY_TOTAL_MJ)
         assert len(facts) == 1
@@ -366,7 +423,10 @@ class TestBRSR_FY23:
         assert 50.0 <= facts[0].value <= 60.0
 
     def test_water_consumed(self, result: AnalysisResult):
-        assert abs(_facts(result, FactKind.ESG_WATER_CONSUMED_KL)[0].value - 2_082_781.0) < 10
+        assert (
+            abs(_facts(result, FactKind.ESG_WATER_CONSUMED_KL)[0].value - 2_082_781.0)
+            < 10
+        )
 
     def test_waste_total_suppressed(self, result: AnalysisResult):
         """FY23 construction waste anomaly triggers suppression."""
@@ -379,7 +439,9 @@ class TestBRSR_FY23:
         assert _facts(result, FactKind.ESG_WORKFORCE_HEADCOUNT)[0].value == 615_721
 
     def test_female_pct(self, result: AnalysisResult):
-        assert abs(_facts(result, FactKind.ESG_WORKFORCE_FEMALE_PCT)[0].value - 35.8) < 0.1
+        assert (
+            abs(_facts(result, FactKind.ESG_WORKFORCE_FEMALE_PCT)[0].value - 35.8) < 0.1
+        )
 
     def test_ltifr(self, result: AnalysisResult):
         # FY23 LTIFR = 0.016 (not 0.0032 which is FY22 prior year)
@@ -390,7 +452,11 @@ class TestBRSR_FY23:
         assert _facts(result, FactKind.ESG_GHG_SCOPE2)[0].value > 100_000.0
 
     def test_all_ghg_facts_have_period_2023(self, result: AnalysisResult):
-        for kind in (FactKind.ESG_GHG_SCOPE1, FactKind.ESG_GHG_SCOPE2, FactKind.ESG_GHG_SCOPE3):
+        for kind in (
+            FactKind.ESG_GHG_SCOPE1,
+            FactKind.ESG_GHG_SCOPE2,
+            FactKind.ESG_GHG_SCOPE3,
+        ):
             for f in _facts(result, kind):
                 assert f.period == "2023-03-31"
 
@@ -399,11 +465,17 @@ class TestBRSR_FY23:
 # Cross-year trend assertions
 # ---------------------------------------------------------------------------
 
+
 class TestCrossYearTrends:
     @pytest.fixture(scope="class")
     def results(self, kb: KnowledgeBase) -> dict[str, AnalysisResult]:
         out = {}
-        for label, eid in [("FY26", _FY26_ID), ("FY25", _FY25_ID), ("FY24", _FY24_ID), ("FY23", _FY23_ID)]:
+        for label, eid in [
+            ("FY26", _FY26_ID),
+            ("FY25", _FY25_ID),
+            ("FY24", _FY24_ID),
+            ("FY23", _FY23_ID),
+        ]:
             entry = kb.get(eid)
             if entry is not None and entry.status == "ok":
                 out[label] = analyze(eid, kb)
@@ -418,7 +490,10 @@ class TestCrossYearTrends:
 
     def test_scope2_decreasing_trend(self, results: dict):
         """Scope 2 must strictly decrease across all four years (renewable shift)."""
-        s2 = [self._get(results, y, FactKind.ESG_GHG_SCOPE2) for y in ("FY23", "FY24", "FY25", "FY26")]
+        s2 = [
+            self._get(results, y, FactKind.ESG_GHG_SCOPE2)
+            for y in ("FY23", "FY24", "FY25", "FY26")
+        ]
         s2 = [v for v in s2 if v is not None]
         if len(s2) >= 2:
             for a, b in zip(s2, s2[1:]):
@@ -426,19 +501,24 @@ class TestCrossYearTrends:
 
     def test_renewable_pct_increasing_trend(self, results: dict):
         """Renewable energy % should increase as TCS added renewable contracts."""
-        pcts = [self._get(results, y, FactKind.ESG_ENERGY_RENEWABLE_PCT) for y in ("FY23", "FY24", "FY25", "FY26")]
+        pcts = [
+            self._get(results, y, FactKind.ESG_ENERGY_RENEWABLE_PCT)
+            for y in ("FY23", "FY24", "FY25", "FY26")
+        ]
         pcts = [v for v in pcts if v is not None]
         if len(pcts) >= 2:
-            assert pcts[-1] >= pcts[0], "Renewable % should be at least as high as earliest year"
+            assert (
+                pcts[-1] >= pcts[0]
+            ), "Renewable % should be at least as high as earliest year"
 
     def test_scope2_fy26_less_than_half_of_fy23(self, results: dict):
         """FY26 market-based Scope 2 should be <50% of FY23 Scope 2 (renewable shift)."""
         s2_fy23 = self._get(results, "FY23", FactKind.ESG_GHG_SCOPE2)
         s2_fy26 = self._get(results, "FY26", FactKind.ESG_GHG_SCOPE2)
         if s2_fy23 and s2_fy26:
-            assert s2_fy26 < s2_fy23 * 0.5, (
-                f"Expected FY26 Scope 2 ({s2_fy26}) to be less than half of FY23 ({s2_fy23})"
-            )
+            assert (
+                s2_fy26 < s2_fy23 * 0.5
+            ), f"Expected FY26 Scope 2 ({s2_fy26}) to be less than half of FY23 ({s2_fy23})"
 
     def test_scope3_dominates_total_ghg_in_fy26(self, results: dict):
         """Scope 3 (employee travel + commuting) should far exceed Scope 1+2."""
@@ -447,4 +527,6 @@ class TestCrossYearTrends:
             s1 = self._get(results, "FY26", FactKind.ESG_GHG_SCOPE1) or 0
             s2 = self._get(results, "FY26", FactKind.ESG_GHG_SCOPE2) or 0
             s3 = self._get(results, "FY26", FactKind.ESG_GHG_SCOPE3) or 0
-            assert s3 > (s1 + s2) * 5, "Scope 3 should be >5× Scope 1+2 for a software company"
+            assert (
+                s3 > (s1 + s2) * 5
+            ), "Scope 3 should be >5× Scope 1+2 for a software company"

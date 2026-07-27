@@ -7,6 +7,7 @@ Covers all three document types:
 
 Uses entirely synthetic fixtures so no real repository access is required.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -14,7 +15,6 @@ from unittest.mock import MagicMock
 
 from atlas.analysis.acquisition import ANALYZER_VERSION, analyze
 from atlas.analysis.base import AnalysisFact, AnalysisResult, FactKind, FactUnit
-
 
 # ---------------------------------------------------------------------------
 # Synthetic document fixtures
@@ -269,6 +269,7 @@ This is for your information and record.
 # KB mock factory
 # ---------------------------------------------------------------------------
 
+
 def _make_kb(eid: str, content: str, kind: str = "acquisition") -> MagicMock:
     entry = MagicMock()
     entry.kind = kind
@@ -285,6 +286,7 @@ def _make_kb(eid: str, content: str, kind: str = "acquisition") -> MagicMock:
 # Helper
 # ---------------------------------------------------------------------------
 
+
 def _facts(result: AnalysisResult, kind: FactKind) -> list[AnalysisFact]:
     return [f for f in result.facts if f.kind == kind]
 
@@ -292,6 +294,7 @@ def _facts(result: AnalysisResult, kind: FactKind) -> list[AnalysisFact]:
 # ---------------------------------------------------------------------------
 # Tests: common result structure
 # ---------------------------------------------------------------------------
+
 
 class TestResultStructure:
     def test_returns_analysis_result(self) -> None:
@@ -316,6 +319,7 @@ class TestResultStructure:
 
     def test_analyzed_at_is_utc(self) -> None:
         from datetime import timezone
+
         kb = _make_kb("eid-a", _FULL_TYPE_A)
         result = analyze("eid-a", kb)
         assert result.analyzed_at.tzinfo == timezone.utc
@@ -331,6 +335,7 @@ class TestResultStructure:
 # ---------------------------------------------------------------------------
 # Tests: error cases
 # ---------------------------------------------------------------------------
+
 
 class TestErrors:
     def test_raises_for_unknown_evidence_id(self) -> None:
@@ -360,6 +365,7 @@ class TestErrors:
 # ---------------------------------------------------------------------------
 # Tests: Type A — external acquisition
 # ---------------------------------------------------------------------------
+
 
 class TestTypeA:
     def test_confidence_high(self) -> None:
@@ -470,6 +476,7 @@ class TestTypeA:
 # Tests: Type B — subsidiary incorporation (single entity, no cost)
 # ---------------------------------------------------------------------------
 
+
 class TestTypeBSingle:
     def test_confidence_high(self) -> None:
         kb = _make_kb("eid-b1", _FULL_TYPE_B_SINGLE)
@@ -512,6 +519,7 @@ class TestTypeBSingle:
 # Tests: Type B — subsidiary incorporation (with subscription cost)
 # ---------------------------------------------------------------------------
 
+
 class TestTypeBWithCost:
     def test_enterprise_value_inr_stated(self) -> None:
         kb = _make_kb("eid-b2", _FULL_TYPE_B_WITH_COST)
@@ -539,6 +547,7 @@ class TestTypeBWithCost:
 # ---------------------------------------------------------------------------
 # Tests: Type B — multiple entities in one filing
 # ---------------------------------------------------------------------------
+
 
 class TestTypeBMulti:
     def test_two_target_name_facts(self) -> None:
@@ -570,6 +579,7 @@ class TestTypeBMulti:
 # ---------------------------------------------------------------------------
 # Tests: Type C — completion update notice
 # ---------------------------------------------------------------------------
+
 
 class TestTypeC:
     def test_confidence_low(self) -> None:

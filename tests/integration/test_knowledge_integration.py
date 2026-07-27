@@ -9,6 +9,7 @@ repository (see isolated_repo_factory in tests/conftest.py), containing only
 the catalog metadata and the one PDF these tests need. knowledge.db is
 written into that tmp copy, never into repositories/TCS/.
 """
+
 from collections.abc import Generator
 from pathlib import Path
 
@@ -114,22 +115,30 @@ class TestRepositoryListsEvidence:
 
 
 class TestPDFExtraction:
-    def test_parse_returns_ok_status(self, kb: KnowledgeBase, ar_2024_entry: object) -> None:
+    def test_parse_returns_ok_status(
+        self, kb: KnowledgeBase, ar_2024_entry: object
+    ) -> None:
         doc = kb.parse(ar_2024_entry)  # type: ignore[arg-type]
         assert doc.status == "ok", f"Parsing failed: {doc.error}"
 
-    def test_parse_returns_parsed_document(self, kb: KnowledgeBase, ar_2024_entry: object) -> None:
+    def test_parse_returns_parsed_document(
+        self, kb: KnowledgeBase, ar_2024_entry: object
+    ) -> None:
         doc = kb.parse(ar_2024_entry)  # type: ignore[arg-type]
         assert isinstance(doc, ParsedDocument)
 
-    def test_extracted_text_meets_minimum_length(self, kb: KnowledgeBase, ar_2024_entry: object) -> None:
+    def test_extracted_text_meets_minimum_length(
+        self, kb: KnowledgeBase, ar_2024_entry: object
+    ) -> None:
         doc = kb.parse(ar_2024_entry)  # type: ignore[arg-type]
         assert doc.char_count is not None
-        assert doc.char_count >= _MIN_CHARS, (
-            f"Expected at least {_MIN_CHARS:,} chars, got {doc.char_count:,}"
-        )
+        assert (
+            doc.char_count >= _MIN_CHARS
+        ), f"Expected at least {_MIN_CHARS:,} chars, got {doc.char_count:,}"
 
-    def test_char_count_matches_stored_content(self, kb: KnowledgeBase, ar_2024_entry: object) -> None:
+    def test_char_count_matches_stored_content(
+        self, kb: KnowledgeBase, ar_2024_entry: object
+    ) -> None:
         kb.parse(ar_2024_entry)  # type: ignore[arg-type]
         content = kb.get_content(_AR_2024_ID)
         assert content is not None
@@ -137,31 +146,44 @@ class TestPDFExtraction:
         assert doc is not None
         assert doc.char_count == len(content)
 
-    def test_content_is_not_empty(self, kb: KnowledgeBase, ar_2024_entry: object) -> None:
+    def test_content_is_not_empty(
+        self, kb: KnowledgeBase, ar_2024_entry: object
+    ) -> None:
         kb.parse(ar_2024_entry)  # type: ignore[arg-type]
         content = kb.get_content(_AR_2024_ID)
         assert content is not None and len(content) > 0
 
-    def test_content_mentions_tcs(self, kb: KnowledgeBase, ar_2024_entry: object) -> None:
+    def test_content_mentions_tcs(
+        self, kb: KnowledgeBase, ar_2024_entry: object
+    ) -> None:
         kb.parse(ar_2024_entry)  # type: ignore[arg-type]
         content = kb.get_content(_AR_2024_ID) or ""
         assert "Tata Consultancy" in content or "TCS" in content
 
-    def test_evidence_id_in_known_ids(self, kb: KnowledgeBase, ar_2024_entry: object) -> None:
+    def test_evidence_id_in_known_ids(
+        self, kb: KnowledgeBase, ar_2024_entry: object
+    ) -> None:
         kb.parse(ar_2024_entry)  # type: ignore[arg-type]
         assert _AR_2024_ID in kb.known_ids()
 
-    def test_evidence_id_in_ok_ids(self, kb: KnowledgeBase, ar_2024_entry: object) -> None:
+    def test_evidence_id_in_ok_ids(
+        self, kb: KnowledgeBase, ar_2024_entry: object
+    ) -> None:
         kb.parse(ar_2024_entry)  # type: ignore[arg-type]
         assert _AR_2024_ID in kb.ok_ids()
 
-    def test_metadata_from_catalog_entry(self, kb: KnowledgeBase, ar_2024_entry: object) -> None:
+    def test_metadata_from_catalog_entry(
+        self, kb: KnowledgeBase, ar_2024_entry: object
+    ) -> None:
         doc = kb.parse(ar_2024_entry)  # type: ignore[arg-type]
         assert doc.kind == EvidenceKind.ANNUAL_REPORT.value
         assert doc.local_path == _AR_2024_PATH
 
-    def test_parser_version_recorded(self, kb: KnowledgeBase, ar_2024_entry: object) -> None:
+    def test_parser_version_recorded(
+        self, kb: KnowledgeBase, ar_2024_entry: object
+    ) -> None:
         from atlas.knowledge.base import PARSER_VERSION
+
         doc = kb.parse(ar_2024_entry)  # type: ignore[arg-type]
         assert doc.parser_version == PARSER_VERSION
 
@@ -172,7 +194,9 @@ class TestPDFExtraction:
 
 
 class TestKnowledgeDbPersistence:
-    def test_knowledge_db_created_in_root(self, kb: KnowledgeBase, ar_2024_entry: object) -> None:
+    def test_knowledge_db_created_in_root(
+        self, kb: KnowledgeBase, ar_2024_entry: object
+    ) -> None:
         kb.parse(ar_2024_entry)  # type: ignore[arg-type]
         assert kb._db_path.exists()
 

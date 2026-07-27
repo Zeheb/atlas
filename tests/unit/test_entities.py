@@ -4,6 +4,7 @@ Covers normalization, the conservative merge rule (initials, ambiguity), and
 the two governing invariants: entity_id STABILITY (never changes on merge /
 canonical update) and entity_id UNIQUENESS (no two distinct entities collide).
 """
+
 from __future__ import annotations
 
 import pytest
@@ -59,7 +60,7 @@ def test_resolve_empty_name_raises() -> None:
 def test_initials_merge_when_unambiguous() -> None:
     r = EntityResolver()
     first = r.resolve("K S Rao", "person")
-    second = r.resolve("Kumar S Rao", "person")   # unambiguous expansion
+    second = r.resolve("Kumar S Rao", "person")  # unambiguous expansion
     assert first.entity_id == second.entity_id
     assert len(r.entities()) == 1
     assert second.canonical_name == "Kumar S Rao"  # canonical upgraded to fuller form
@@ -91,7 +92,7 @@ def test_absorbed_initials_alias_does_not_promiscuously_match() -> None:
     # the absorbed initials alias (matching is against canonical only).
     r = EntityResolver()
     r.resolve("K S Rao", "person")
-    r.resolve("Kumar S Rao", "person")     # canonical now "Kumar S Rao"
+    r.resolve("Kumar S Rao", "person")  # canonical now "Kumar S Rao"
     krishna = r.resolve("Krishna S Rao", "person")
     assert len(r.entities()) == 2
     assert krishna.canonical_name == "Krishna S Rao"
@@ -125,16 +126,23 @@ def test_id_is_stable_across_merge_and_canonical_change() -> None:
     r = EntityResolver()
     first = r.resolve("K S Rao", "person")
     original_id = first.entity_id
-    merged = r.resolve("Kumar S Rao", "person")   # canonical changes...
-    assert merged.entity_id == original_id        # ...id does not
+    merged = r.resolve("Kumar S Rao", "person")  # canonical changes...
+    assert merged.entity_id == original_id  # ...id does not
     assert r.entities()[0].entity_id == original_id
 
 
 # --- INVARIANT: id uniqueness -------------------------------------------------
 def test_ids_are_unique_across_all_entities() -> None:
     r = EntityResolver()
-    for name in ["K S Rao", "Kumar S Rao", "Krishna S Rao", "K S Rao",
-                 "Acme Ltd", "Acme Services Ltd", "Sunil Singhania"]:
+    for name in [
+        "K S Rao",
+        "Kumar S Rao",
+        "Krishna S Rao",
+        "K S Rao",
+        "Acme Ltd",
+        "Acme Services Ltd",
+        "Sunil Singhania",
+    ]:
         r.resolve(name, "person" if "Ltd" not in name else "organization")
     ids = [e.entity_id for e in r.entities()]
     assert len(ids) == len(set(ids))
@@ -145,10 +153,10 @@ def test_colliding_first_seen_slug_is_disambiguated() -> None:
     # later upgraded), then two distinct fulls, then an ambiguous "K S Rao"
     # whose first-seen slug would collide -> must get a suffixed id.
     r = EntityResolver()
-    r.resolve("K S Rao", "person")          # id person:k-s-rao
-    r.resolve("Kumar S Rao", "person")      # merges; canonical -> Kumar S Rao
-    r.resolve("Krishna S Rao", "person")    # distinct
-    amb = r.resolve("K S Rao", "person")    # ambiguous -> new entity, slug collides
+    r.resolve("K S Rao", "person")  # id person:k-s-rao
+    r.resolve("Kumar S Rao", "person")  # merges; canonical -> Kumar S Rao
+    r.resolve("Krishna S Rao", "person")  # distinct
+    amb = r.resolve("K S Rao", "person")  # ambiguous -> new entity, slug collides
     assert amb.entity_id != "person:k-s-rao"
     assert amb.entity_id.startswith("person:k-s-rao-")
     ids = [e.entity_id for e in r.entities()]

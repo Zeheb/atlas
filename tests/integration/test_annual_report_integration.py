@@ -13,6 +13,7 @@ Expected values (from targeted document research):
   FY2025: CSR ₹949 crore,  KAM: Revenue recognition
   FY2024: CSR ₹813 crore,  KAM: Revenue recognition
 """
+
 from __future__ import annotations
 
 from collections.abc import Generator
@@ -69,6 +70,7 @@ def kb(isolated_repo_factory) -> Generator[KnowledgeBase, None, None]:
     instance = KnowledgeBase(tcs_root)
 
     from atlas.acquisition.repository import Repository
+
     repo = Repository(tcs_root)
 
     parsed_count = 0
@@ -110,9 +112,10 @@ class TestFY2026:
         assert result.evidence_id == _EID_FY2026
 
     def test_confidence_not_low(self, result: AnalysisResult) -> None:
-        assert result.confidence in ("high", "medium"), (
-            f"Expected high/medium confidence for FY2026; warnings: {result.warnings}"
-        )
+        assert result.confidence in (
+            "high",
+            "medium",
+        ), f"Expected high/medium confidence for FY2026; warnings: {result.warnings}"
 
     def test_csr_spend_found(self, result: AnalysisResult) -> None:
         csr = _facts(result, FactKind.ESG_CSR_SPEND)
@@ -123,9 +126,9 @@ class TestFY2026:
         if not csr:
             pytest.skip("CSR fact not found")
         # FY2026 mandatory disclosure: ₹1,009 crore (amount spent on CSR Projects)
-        assert 990 <= float(csr[0].value) <= 1030, (
-            f"Expected FY2026 CSR ~1009 crore; got {csr[0].value}"
-        )
+        assert (
+            990 <= float(csr[0].value) <= 1030
+        ), f"Expected FY2026 CSR ~1009 crore; got {csr[0].value}"
 
     def test_csr_unit(self, result: AnalysisResult) -> None:
         csr = _facts(result, FactKind.ESG_CSR_SPEND)
@@ -141,18 +144,20 @@ class TestFY2026:
 
     def test_kam_titles_found(self, result: AnalysisResult) -> None:
         kams = _facts(result, FactKind.AUDIT_KAM_TITLE)
-        assert len(kams) >= 1, f"Expected KAM titles; got none. Warnings: {result.warnings}"
+        assert (
+            len(kams) >= 1
+        ), f"Expected KAM titles; got none. Warnings: {result.warnings}"
 
     def test_revenue_recognition_kam(self, result: AnalysisResult) -> None:
         titles = [str(f.value) for f in _facts(result, FactKind.AUDIT_KAM_TITLE)]
-        assert any("Revenue recognition" in t or "revenue recognition" in t for t in titles), (
-            f"Expected Revenue recognition KAM; got: {titles}"
-        )
+        assert any(
+            "Revenue recognition" in t or "revenue recognition" in t for t in titles
+        ), f"Expected Revenue recognition KAM; got: {titles}"
 
     def test_boards_report_excerpt(self, result: AnalysisResult) -> None:
-        assert "boards_report" in result.excerpts, (
-            "Board's Report section not found in FY2026 (uses Unicode apostrophe U+2019)"
-        )
+        assert (
+            "boards_report" in result.excerpts
+        ), "Board's Report section not found in FY2026 (uses Unicode apostrophe U+2019)"
 
     def test_mda_excerpt(self, result: AnalysisResult) -> None:
         assert "mda" in result.excerpts
@@ -187,9 +192,9 @@ class TestFY2025:
         if not csr:
             pytest.skip("CSR fact not found")
         # FY2025 mandatory disclosure: ₹949 crore
-        assert 930 <= float(csr[0].value) <= 970, (
-            f"Expected FY2025 CSR ~949 crore; got {csr[0].value}"
-        )
+        assert (
+            930 <= float(csr[0].value) <= 970
+        ), f"Expected FY2025 CSR ~949 crore; got {csr[0].value}"
 
     def test_csr_period(self, result: AnalysisResult) -> None:
         csr = _facts(result, FactKind.ESG_CSR_SPEND)
@@ -203,9 +208,9 @@ class TestFY2025:
 
     def test_revenue_recognition_kam(self, result: AnalysisResult) -> None:
         titles = [str(f.value) for f in _facts(result, FactKind.AUDIT_KAM_TITLE)]
-        assert any("Revenue recognition" in t or "revenue recognition" in t for t in titles), (
-            f"Expected Revenue recognition KAM; got: {titles}"
-        )
+        assert any(
+            "Revenue recognition" in t or "revenue recognition" in t for t in titles
+        ), f"Expected Revenue recognition KAM; got: {titles}"
 
 
 # ---------------------------------------------------------------------------
@@ -228,9 +233,9 @@ class TestFY2024:
     def test_directors_report_detected(self, result: AnalysisResult) -> None:
         # FY2024 uses "Directors' Report" not "Board's Report"
         # Both aliases map to the "boards_report" excerpt key
-        assert "boards_report" in result.excerpts, (
-            "Expected Directors' Report to be found as 'boards_report' excerpt"
-        )
+        assert (
+            "boards_report" in result.excerpts
+        ), "Expected Directors' Report to be found as 'boards_report' excerpt"
 
     def test_csr_spend_found(self, result: AnalysisResult) -> None:
         csr = _facts(result, FactKind.ESG_CSR_SPEND)
@@ -241,9 +246,9 @@ class TestFY2024:
         if not csr:
             pytest.skip("CSR fact not found")
         # FY2024 mandatory disclosure: ₹813 crore
-        assert 800 <= float(csr[0].value) <= 830, (
-            f"Expected FY2024 CSR ~813 crore; got {csr[0].value}"
-        )
+        assert (
+            800 <= float(csr[0].value) <= 830
+        ), f"Expected FY2024 CSR ~813 crore; got {csr[0].value}"
 
     def test_csr_period(self, result: AnalysisResult) -> None:
         csr = _facts(result, FactKind.ESG_CSR_SPEND)
@@ -257,9 +262,9 @@ class TestFY2024:
 
     def test_revenue_recognition_kam(self, result: AnalysisResult) -> None:
         titles = [str(f.value) for f in _facts(result, FactKind.AUDIT_KAM_TITLE)]
-        assert any("Revenue recognition" in t or "revenue recognition" in t for t in titles), (
-            f"Expected Revenue recognition KAM; got: {titles}"
-        )
+        assert any(
+            "Revenue recognition" in t or "revenue recognition" in t for t in titles
+        ), f"Expected Revenue recognition KAM; got: {titles}"
 
     def test_mda_excerpt_found(self, result: AnalysisResult) -> None:
         assert "mda" in result.excerpts
@@ -275,7 +280,11 @@ class TestCrossYearConsistency:
 
     def test_csr_spend_increases_across_years(self, kb: KnowledgeBase) -> None:
         values: dict[str, float] = {}
-        for eid, label in [(_EID_FY2024, "FY2024"), (_EID_FY2025, "FY2025"), (_EID_FY2026, "FY2026")]:
+        for eid, label in [
+            (_EID_FY2024, "FY2024"),
+            (_EID_FY2025, "FY2025"),
+            (_EID_FY2026, "FY2026"),
+        ]:
             doc = kb.get(eid)
             if doc is None or doc.status != "ok":
                 continue
@@ -288,7 +297,9 @@ class TestCrossYearConsistency:
                 values[label] = float(csr[0].value)
 
         if len(values) < 2:
-            pytest.skip("Fewer than 2 years parsed — cannot check cross-year consistency")
+            pytest.skip(
+                "Fewer than 2 years parsed — cannot check cross-year consistency"
+            )
 
         years = ["FY2024", "FY2025", "FY2026"]
         present = [y for y in years if y in values]
@@ -314,6 +325,6 @@ class TestCrossYearConsistency:
                 continue
             for f in r.facts:
                 if f.kind == FactKind.AUDIT_KAM_TITLE:
-                    assert f.period == expected_period, (
-                        f"{eid}: expected KAM period {expected_period}; got {f.period}"
-                    )
+                    assert (
+                        f.period == expected_period
+                    ), f"{eid}: expected KAM period {expected_period}; got {f.period}"

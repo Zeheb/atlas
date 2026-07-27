@@ -18,6 +18,7 @@ so "was this target met" can't be answered without parsing prose (the
 fragile-heuristic pattern this codebase avoids elsewhere). Repetition is
 a fact Atlas can state; whether it was *kept* is not.
 """
+
 from __future__ import annotations
 
 from atlas.acquisition.repository import Repository
@@ -34,11 +35,13 @@ def _repeated_targets(profile: CompanyProfile) -> list[Finding]:
     findings = []
     for t in detect_repeated_targets(profile):
         dates = ", ".join(engine._fmt_source_date(d) for d, _ in t.occurrences)
-        findings.append(Finding(
-            text=f"Target \"{t.pattern}\" repeated across {len(t.occurrences)} dated filings: {dates}.",
-            evidence_ids=[eid for _, eid in t.occurrences if eid],
-            kind="fact",
-        ))
+        findings.append(
+            Finding(
+                text=f'Target "{t.pattern}" repeated across {len(t.occurrences)} dated filings: {dates}.',
+                evidence_ids=[eid for _, eid in t.occurrences if eid],
+                kind="fact",
+            )
+        )
     return findings
 
 
@@ -51,14 +54,18 @@ def _recurring_risks(profile: CompanyProfile) -> list[Finding]:
         if len(periods) < _MIN_RECURRENCE:
             continue
         text = entries[0].text
-        findings.append(Finding(
-            text=(
-                f"Risk factor disclosed consistently across {len(periods)} annual reports "
-                f"({engine._fmt_date(periods[0])} to {engine._fmt_date(periods[-1])}): {text}"
-            ),
-            evidence_ids=list(dict.fromkeys(e.evidence_id for e in entries if e.evidence_id)),
-            kind="fact",
-        ))
+        findings.append(
+            Finding(
+                text=(
+                    f"Risk factor disclosed consistently across {len(periods)} annual reports "
+                    f"({engine._fmt_date(periods[0])} to {engine._fmt_date(periods[-1])}): {text}"
+                ),
+                evidence_ids=list(
+                    dict.fromkeys(e.evidence_id for e in entries if e.evidence_id)
+                ),
+                kind="fact",
+            )
+        )
     return sorted(findings, key=lambda f: f.text)
 
 
@@ -68,7 +75,11 @@ def _failed_resolutions(profile: CompanyProfile) -> list[Finding]:
             text=(
                 f"AGM resolution did not pass: {r.title.strip()} "
                 f"({engine._fmt_source_date(r.source_date)}"
-                + (f", {r.pct_against:.1f}% against" if r.pct_against is not None else "")
+                + (
+                    f", {r.pct_against:.1f}% against"
+                    if r.pct_against is not None
+                    else ""
+                )
                 + ")"
             ),
             evidence_ids=[r.evidence_id] if r.evidence_id else [],
@@ -79,7 +90,9 @@ def _failed_resolutions(profile: CompanyProfile) -> list[Finding]:
     ]
 
 
-def build(profile: CompanyProfile, repo: Repository | None, ticker: str) -> ReportSection:
+def build(
+    profile: CompanyProfile, repo: Repository | None, ticker: str
+) -> ReportSection:
     findings: list[Finding] = []
     notes = []
 
@@ -88,7 +101,9 @@ def build(profile: CompanyProfile, repo: Repository | None, ticker: str) -> Repo
     findings.extend(_failed_resolutions(profile))
 
     if not findings:
-        notes.append("No repeated targets, recurring risks, or failed resolutions found to assess.")
+        notes.append(
+            "No repeated targets, recurring risks, or failed resolutions found to assess."
+        )
 
     return ReportSection(
         key="management_credibility",

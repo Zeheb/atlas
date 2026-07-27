@@ -12,13 +12,13 @@ The decision to fall back to OCR depends only on two quantitative metrics:
 
 No company, sector, or document-type knowledge is used.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
-
 
 # ---------------------------------------------------------------------------
 # Quality constants
@@ -44,15 +44,15 @@ QUALITY_THRESHOLD: float = 0.65
 # Unicode characters that commonly appear in Indian financial text and are NOT
 # evidence of encoding corruption.
 _SAFE_NON_ASCII: frozenset[str] = frozenset(
-    "₹"        # Indian Rupee sign  U+20B9
-    "–"        # en-dash            U+2013
-    "—"        # em-dash            U+2014
-    "‘"   # left single quote
-    "’"   # right single quote
-    "“"   # left double quote
-    "”"   # right double quote
-    "…"   # ellipsis
-    " "   # non-breaking space
+    "₹"  # Indian Rupee sign  U+20B9
+    "–"  # en-dash            U+2013
+    "—"  # em-dash            U+2014
+    "‘"  # left single quote
+    "’"  # right single quote
+    "“"  # left double quote
+    "”"  # right double quote
+    "…"  # ellipsis
+    " "  # non-breaking space
 )
 
 
@@ -171,9 +171,7 @@ def _check_html_guard(path: Path) -> None:
     """
     header = path.read_bytes()[:64].lstrip()
     if header[:9].lower() == b"<!doctype" or header[:5].lower() == b"<html":
-        raise ValueError(
-            f"file appears to be HTML, not PDF (header={header[:24]!r})"
-        )
+        raise ValueError(f"file appears to be HTML, not PDF (header={header[:24]!r})")
 
 
 def _native_extract(path: Path) -> tuple[str, int]:
@@ -252,7 +250,9 @@ def _ocr_extract(path: Path, page_count: int) -> str:
     try:
         pages_text: list[str] = []
         for page in doc:
-            tp = page.get_textpage_ocr(language="eng", dpi=300, full=True, tessdata=tessdata)
+            tp = page.get_textpage_ocr(
+                language="eng", dpi=300, full=True, tessdata=tessdata
+            )
             pages_text.append(fitz.utils.get_text(page, "text", textpage=tp))
         return "\n".join(pages_text)
     finally:
@@ -347,11 +347,11 @@ def _extract_pdf_text(path: Path) -> str:
 
 
 _EXTRACTORS: dict[str, Callable[[Path], str]] = {
-    "csv":  _read_utf8,
-    "htm":  _read_utf8,
+    "csv": _read_utf8,
+    "htm": _read_utf8,
     "html": _read_utf8,
     "json": _read_utf8,
-    "pdf":  _extract_pdf_text,
-    "txt":  _read_utf8,
-    "xml":  _read_utf8,
+    "pdf": _extract_pdf_text,
+    "txt": _read_utf8,
+    "xml": _read_utf8,
 }

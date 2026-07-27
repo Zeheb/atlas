@@ -34,6 +34,7 @@ rule ``eval/runner.py``'s ``_run_case`` already applies to eval cases, for the
 same reason: a six-dimension research run that dies on dimension three is
 strictly less useful than one that reports five findings and one failure.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -141,7 +142,9 @@ class InvestigationRun:
         return round(len(self.findings) / len(self.results), 3)
 
 
-def _load_subject(repo_base: Path, subject: str) -> tuple[CompanyProfile, KnowledgeBase | None]:
+def _load_subject(
+    repo_base: Path, subject: str
+) -> tuple[CompanyProfile, KnowledgeBase | None]:
     repo_root = repo_base / subject
     profile_path = repo_root / "profile.json"
     if not profile_path.exists():
@@ -172,7 +175,11 @@ def run_investigation(
 
         plan = plan_retrieval(investigation.question)
         build_result = build_context_with_diagnostics(
-            profile, subject_ref, kb=kb, question=investigation.question, plan=plan,
+            profile,
+            subject_ref,
+            kb=kb,
+            question=investigation.question,
+            plan=plan,
         )
         context = build_result.context
 

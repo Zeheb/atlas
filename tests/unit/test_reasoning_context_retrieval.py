@@ -4,6 +4,7 @@ build_context(kb=None) must remain byte-identical to M0 (covered by the
 existing test_reasoning_context.py, untouched). These tests cover the new
 kb-aware path only, against a real, hermetic KnowledgeBase.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -32,11 +33,17 @@ _IRRELEVANT_TEXT = "This document discusses an unrelated corporate matter entire
 def _profile(evidence_id: str = "ev-1") -> CompanyProfile:
     return CompanyProfile(
         company_id="TCS",
-        financial=FinancialTimeSeries(snapshots=[FinancialSnapshot(
-            period="2026-03-31", period_type="annual", basis="consolidated",
-            facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2},
-            sources=[evidence_id],
-        )]),
+        financial=FinancialTimeSeries(
+            snapshots=[
+                FinancialSnapshot(
+                    period="2026-03-31",
+                    period_type="annual",
+                    basis="consolidated",
+                    facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2},
+                    sources=[evidence_id],
+                )
+            ]
+        ),
     )
 
 
@@ -44,10 +51,15 @@ def _kb_with(tmp_path: Path, evidence_id: str, content: str) -> KnowledgeBase:
     rel = f"{evidence_id}.txt"
     (tmp_path / rel).write_text(content, encoding="utf-8")
     entry = CatalogEntry(
-        evidence_id=evidence_id, source=EvidenceSource.BSE.value,
-        kind=EvidenceKind.FINANCIAL_RESULTS.value, title="Test filing",
-        source_date="2026-03-31T00:00:00+00:00", document_url=None,
-        local_path=rel, file_size_bytes=None, acquired_at="2026-04-01T00:00:00+00:00",
+        evidence_id=evidence_id,
+        source=EvidenceSource.BSE.value,
+        kind=EvidenceKind.FINANCIAL_RESULTS.value,
+        title="Test filing",
+        source_date="2026-03-31T00:00:00+00:00",
+        document_url=None,
+        local_path=rel,
+        file_size_bytes=None,
+        acquired_at="2026-04-01T00:00:00+00:00",
     )
     kb = KnowledgeBase(tmp_path)
     kb.parse(entry)

@@ -126,6 +126,7 @@ management_commentary   The first substantive prepared-remarks block from
 financial_commentary     The prepared-remarks block containing the revenue/
                           margin figures actually extracted, for provenance.
 """
+
 from __future__ import annotations
 
 import re
@@ -167,7 +168,9 @@ _RE_ANALYST_INTRO = re.compile(
 _MAX_QUESTION_CHARS = 3000
 
 
-def _bounded_question_text(content: str, analyst_name: str, search_from: int) -> str | None:
+def _bounded_question_text(
+    content: str, analyst_name: str, search_from: int
+) -> str | None:
     """Verbatim text of the analyst's own question turn: from their own
     speaker tag (``Name:``) to the NEXT speaker tag, using the SAME
     ``_RE_ANY_SPEAKER`` boundary ``_speaker_section`` already uses for the
@@ -177,7 +180,9 @@ def _bounded_question_text(content: str, analyst_name: str, search_from: int) ->
     matching in-dialogue tag in the extracted text), or if the bounded text is
     empty after trimming.
     """
-    tag_match = re.compile(re.escape(analyst_name) + r"\s*:", re.MULTILINE).search(content, search_from)
+    tag_match = re.compile(re.escape(analyst_name) + r"\s*:", re.MULTILINE).search(
+        content, search_from
+    )
     if tag_match is None:
         return None
     start = tag_match.end()
@@ -188,7 +193,9 @@ def _bounded_question_text(content: str, analyst_name: str, search_from: int) ->
     return text or None
 
 
-def _extract_analyst_mentions(content: str, resolver: EntityResolver) -> list[EntityMention]:
+def _extract_analyst_mentions(
+    content: str, resolver: EntityResolver
+) -> list[EntityMention]:
     """Resolve the analysts who asked questions, one EntityMention per distinct
     analyst (role="analyst", affiliation=their institution, question_text=their
     bounded question turn). De-duplicated within this transcript by resolved
@@ -203,13 +210,15 @@ def _extract_analyst_mentions(content: str, resolver: EntityResolver) -> list[En
             continue
         seen.add(entity.entity_id)
         question_text = _bounded_question_text(content, name, m.end())
-        mentions.append(EntityMention(
-            entity=entity,
-            role="analyst",
-            affiliation=affiliation,
-            question_text=question_text,
-            provenance=Provenance("qa", m.start(), _snip(content, m.start())),
-        ))
+        mentions.append(
+            EntityMention(
+                entity=entity,
+                role="analyst",
+                affiliation=affiliation,
+                question_text=question_text,
+                provenance=Provenance("qa", m.start(), _snip(content, m.start())),
+            )
+        )
     return mentions
 
 
@@ -238,7 +247,9 @@ _RE_MGMT_HONORIFIC = re.compile(
 _RE_ROSTER_SEP = re.compile(r"[–—\-�]")
 
 
-def _extract_management_mentions(content: str, resolver: EntityResolver) -> list[EntityMention]:
+def _extract_management_mentions(
+    content: str, resolver: EntityResolver
+) -> list[EntityMention]:
     """Resolve the management team named in the transcript's roster block
     (role="management"; affiliation=company when the line states it). One
     EntityMention per distinct person; under-emit where no roster is printed."""
@@ -246,7 +257,7 @@ def _extract_management_mentions(content: str, resolver: EntityResolver) -> list
     if h is None:
         return []
     # Include the header line's own tail (SBI prints the first name on it).
-    tail = content[h.start():]
+    tail = content[h.start() :]
     end = _RE_ROSTER_END.search(tail, h.end() - h.start())
     region = tail[: end.start()] if end else tail[:1200]
 
@@ -259,12 +270,16 @@ def _extract_management_mentions(content: str, resolver: EntityResolver) -> list
         if entity.entity_id in seen:
             return
         seen.add(entity.entity_id)
-        mentions.append(EntityMention(
-            entity=entity,
-            role="management",
-            affiliation=affiliation,
-            provenance=Provenance("roster", h.start() + offset, _snip(region, offset)),
-        ))
+        mentions.append(
+            EntityMention(
+                entity=entity,
+                role="management",
+                affiliation=affiliation,
+                provenance=Provenance(
+                    "roster", h.start() + offset, _snip(region, offset)
+                ),
+            )
+        )
 
     for m in _RE_MGMT_COMMA.finditer(region):
         parts = _RE_ROSTER_SEP.split(m.group(2))
@@ -299,7 +314,7 @@ _QUARTER_END_MONTH_DAY = {1: (6, 30), 2: (9, 30), 3: (12, 31), 4: (3, 31)}
 
 
 def _period_type_from_phrase(cadence_phrase: str) -> str:
-    """"half year" contains the substring "year" — must not read as annual.
+    """ "half year" contains the substring "year" — must not read as annual.
 
     Mirrors investor_presentation.py's identical fix for the same bug.
     """
@@ -405,7 +420,8 @@ _RE_SENIOR_ROLE = re.compile(
 #   "T V Narendran, CEO & MD - Tata Steel Limited"      (one line, comma)
 #   "MR. C S SETTY" / "CHAIRMAN, STATE BANK OF INDIA"   (two lines)
 _RE_DIRECTORY_ONE_LINE = re.compile(
-    r"^([A-Z][A-Za-z .]{2,40}),\s*([^\n]{3,80})$", re.MULTILINE,
+    r"^([A-Z][A-Za-z .]{2,40}),\s*([^\n]{3,80})$",
+    re.MULTILINE,
 )
 
 
@@ -456,7 +472,12 @@ def _detect_senior_speaker_tag(content: str) -> str | None:
         )
         if not name_m:
             continue
-        name = re.sub(r"^(?:Mr|Ms|Dr|Mrs|Prof)\.?\s*", "", name_m.group(1).strip(), flags=re.IGNORECASE)
+        name = re.sub(
+            r"^(?:Mr|Ms|Dr|Mrs|Prof)\.?\s*",
+            "",
+            name_m.group(1).strip(),
+            flags=re.IGNORECASE,
+        )
         tag = name + ":"
         if tag in content:
             return tag
@@ -470,7 +491,9 @@ def _speaker_section(content: str, tag: str, end: int) -> str:
         return ""
     second = content.find(tag, first + len(tag))
     start = second if 0 <= second < end else first
-    offsets = [m.start() for m in _RE_ANY_SPEAKER.finditer(content, start + len(tag), end)]
+    offsets = [
+        m.start() for m in _RE_ANY_SPEAKER.finditer(content, start + len(tag), end)
+    ]
     section_end = offsets[0] if offsets else min(start + 6000, end)
     return content[start:section_end]
 
@@ -512,8 +535,7 @@ _RE_MARGIN = re.compile(
 
 # IT-services specific; simply will not match outside that sector.
 _RE_TCV = re.compile(
-    r"TCV\s+(?:of\s+)?\$([\d.]+)\s*billion"
-    r"|\$([\d.]+)\s*billion\s+(?:in\s+)?TCV",
+    r"TCV\s+(?:of\s+)?\$([\d.]+)\s*billion" r"|\$([\d.]+)\s*billion\s+(?:in\s+)?TCV",
     re.IGNORECASE,
 )
 
@@ -534,6 +556,7 @@ _RE_FEMALE_PCT = re.compile(
 # ---------------------------------------------------------------------------
 # Fact construction helper
 # ---------------------------------------------------------------------------
+
 
 def _pf(
     kind: FactKind,
@@ -573,6 +596,7 @@ def _usd_from_match(m: re.Match[str]) -> float | None:
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
+
 
 def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     """Extract structured facts from an earnings call / analyst meet transcript.
@@ -616,14 +640,28 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
         )
         return result
 
-    result.facts.append(_pf(
-        FactKind.REPORT_PERIOD_END, period, FactUnit.ISO_DATE,
-        period, "cover_letter", period_offset, period,
-    ))
-    result.facts.append(_pf(
-        FactKind.REPORT_PERIOD_TYPE, period_type, None,
-        period, "cover_letter", period_offset, period_type or "",
-    ))
+    result.facts.append(
+        _pf(
+            FactKind.REPORT_PERIOD_END,
+            period,
+            FactUnit.ISO_DATE,
+            period,
+            "cover_letter",
+            period_offset,
+            period,
+        )
+    )
+    result.facts.append(
+        _pf(
+            FactKind.REPORT_PERIOD_TYPE,
+            period_type,
+            None,
+            period,
+            "cover_letter",
+            period_offset,
+            period_type or "",
+        )
+    )
     is_annual = period_type == "annual"
 
     # ------------------------------------------------------------------
@@ -654,20 +692,34 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     m_inr = _RE_REVENUE_INR.search(remarks)
     if m_inr:
         financial_offset = m_inr.start()
-        result.facts.append(_pf(
-            FactKind.FINANCIAL_REVENUE, _parse_inr(m_inr.group(1)), FactUnit.CRORE_INR,
-            period, "quarterly", m_inr.start(), m_inr.group(0),
-        ))
+        result.facts.append(
+            _pf(
+                FactKind.FINANCIAL_REVENUE,
+                _parse_inr(m_inr.group(1)),
+                FactUnit.CRORE_INR,
+                period,
+                "quarterly",
+                m_inr.start(),
+                m_inr.group(0),
+            )
+        )
 
     m_usd = _RE_REVENUE_USD.search(remarks)
     if m_usd:
         usd_val = _usd_from_match(m_usd)
         if usd_val is not None:
             financial_offset = financial_offset or m_usd.start()
-            result.facts.append(_pf(
-                FactKind.FINANCIAL_REVENUE, usd_val, FactUnit.USD_BILLION,
-                period, "quarterly", m_usd.start(), m_usd.group(0),
-            ))
+            result.facts.append(
+                _pf(
+                    FactKind.FINANCIAL_REVENUE,
+                    usd_val,
+                    FactUnit.USD_BILLION,
+                    period,
+                    "quarterly",
+                    m_usd.start(),
+                    m_usd.group(0),
+                )
+            )
 
     if is_annual:
         # The second distinct revenue mention in the CFO's remarks is the
@@ -678,10 +730,17 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
         quarterly_start = m_inr.start() if m_inr else -1
         for m in _RE_REVENUE_INR.finditer(remarks):
             if m.start() != quarterly_start:
-                result.facts.append(_pf(
-                    FactKind.FINANCIAL_REVENUE, _parse_inr(m.group(1)), FactUnit.CRORE_INR,
-                    period, "annual", m.start(), m.group(0),
-                ))
+                result.facts.append(
+                    _pf(
+                        FactKind.FINANCIAL_REVENUE,
+                        _parse_inr(m.group(1)),
+                        FactUnit.CRORE_INR,
+                        period,
+                        "annual",
+                        m.start(),
+                        m.group(0),
+                    )
+                )
                 break
 
     # ------------------------------------------------------------------
@@ -707,19 +766,34 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     seen_margin_kinds: set[FactKind] = set()
     for m in margin_matches:
         is_net = bool(m.group(1))
-        kind = FactKind.FINANCIAL_NET_MARGIN if is_net else FactKind.FINANCIAL_OPERATING_MARGIN
+        kind = (
+            FactKind.FINANCIAL_NET_MARGIN
+            if is_net
+            else FactKind.FINANCIAL_OPERATING_MARGIN
+        )
         if kind in seen_margin_kinds:
             continue
         seen_margin_kinds.add(kind)
-        financial_offset = financial_offset if financial_offset is not None else m.start()
-        result.facts.append(_pf(
-            kind, float(m.group(2)), FactUnit.PERCENT,
-            period, "quarterly", m.start(), m.group(0),
-        ))
+        financial_offset = (
+            financial_offset if financial_offset is not None else m.start()
+        )
+        result.facts.append(
+            _pf(
+                kind,
+                float(m.group(2)),
+                FactUnit.PERCENT,
+                period,
+                "quarterly",
+                m.start(),
+                m.group(0),
+            )
+        )
 
     if financial_offset is not None:
         window_start = max(0, financial_offset - 200)
-        result.excerpts["financial_commentary"] = remarks[window_start: window_start + 2000].strip()
+        result.excerpts["financial_commentary"] = remarks[
+            window_start : window_start + 2000
+        ].strip()
 
     # ------------------------------------------------------------------
     # 5. TCV (IT-services specific; searched over prepared remarks only)
@@ -727,19 +801,33 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     m_tcv = _RE_TCV.search(remarks)
     if m_tcv:
         tcv_raw = m_tcv.group(1) or m_tcv.group(2)
-        result.facts.append(_pf(
-            FactKind.FINANCIAL_TCV, float(tcv_raw), FactUnit.USD_BILLION,
-            period, "quarterly", m_tcv.start(), m_tcv.group(0),
-        ))
+        result.facts.append(
+            _pf(
+                FactKind.FINANCIAL_TCV,
+                float(tcv_raw),
+                FactUnit.USD_BILLION,
+                period,
+                "quarterly",
+                m_tcv.start(),
+                m_tcv.group(0),
+            )
+        )
 
     # ------------------------------------------------------------------
     # 6. Forward guidance (shared pattern with investor_presentation.py)
     # ------------------------------------------------------------------
     for text, offset in find_guidance_statements(normalized_remarks, max_count=3):
-        result.facts.append(_pf(
-            FactKind.STRATEGY_GUIDANCE, text, None, None,
-            "guidance", offset, text,
-        ))
+        result.facts.append(
+            _pf(
+                FactKind.STRATEGY_GUIDANCE,
+                text,
+                None,
+                None,
+                "guidance",
+                offset,
+                text,
+            )
+        )
 
     # ------------------------------------------------------------------
     # 7. Workforce (reused ESG FactKinds; quarterly refresh of BRSR's
@@ -748,25 +836,40 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     m_headcount = _RE_HEADCOUNT.search(remarks)
     if m_headcount:
         raw = m_headcount.group(1) or m_headcount.group(2)
-        result.facts.append(_pf(
-            FactKind.ESG_WORKFORCE_HEADCOUNT, _parse_inr(raw), FactUnit.COUNT,
-            period, "workforce", m_headcount.start(), m_headcount.group(0),
-        ))
+        result.facts.append(
+            _pf(
+                FactKind.ESG_WORKFORCE_HEADCOUNT,
+                _parse_inr(raw),
+                FactUnit.COUNT,
+                period,
+                "workforce",
+                m_headcount.start(),
+                m_headcount.group(0),
+            )
+        )
 
     m_female = _RE_FEMALE_PCT.search(remarks)
     if m_female:
         raw = m_female.group(1) or m_female.group(2)
-        result.facts.append(_pf(
-            FactKind.ESG_WORKFORCE_FEMALE_PCT, float(raw), FactUnit.PERCENT,
-            period, "workforce", m_female.start(), m_female.group(0),
-        ))
+        result.facts.append(
+            _pf(
+                FactKind.ESG_WORKFORCE_FEMALE_PCT,
+                float(raw),
+                FactUnit.PERCENT,
+                period,
+                "workforce",
+                m_female.start(),
+                m_female.group(0),
+            )
+        )
 
     # ------------------------------------------------------------------
     # 8. Result-level confidence — breadth of distinct categories found,
     #    not raw fact count (matches investor_presentation.py's model).
     # ------------------------------------------------------------------
     categories = {
-        f.kind for f in result.facts
+        f.kind
+        for f in result.facts
         if f.kind not in (FactKind.REPORT_PERIOD_END, FactKind.REPORT_PERIOD_TYPE)
     }
     core = {FactKind.FINANCIAL_REVENUE, FactKind.FINANCIAL_OPERATING_MARGIN}

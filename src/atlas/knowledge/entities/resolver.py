@@ -25,6 +25,7 @@ matching is exact normalized-token equality only (suffix handling like
 "Ltd"/"Limited" is deliberately deferred — collapsing it risks over-merging
 "Acme Ltd" with "Acme Services Ltd").
 """
+
 from __future__ import annotations
 
 import re
@@ -63,7 +64,7 @@ def _person_compatible(a: tuple[str, ...], b: tuple[str, ...]) -> bool:
     """
     if not a or not b:
         return False
-    if a[-1] != b[-1]:                 # surnames must match exactly
+    if a[-1] != b[-1]:  # surnames must match exactly
         return False
     ga, gb = a[:-1], b[:-1]
     if len(ga) != len(gb):
@@ -82,8 +83,10 @@ def _person_compatible(a: tuple[str, ...], b: tuple[str, ...]) -> bool:
 def _more_specific(candidate: tuple[str, ...], current: tuple[str, ...]) -> bool:
     """Whether *candidate* is a more complete form than *current* (more full,
     non-initial tokens; tie-break on total token count)."""
+
     def fulls(toks: tuple[str, ...]) -> int:
         return sum(1 for t in toks if not _is_initial(t))
+
     if fulls(candidate) != fulls(current):
         return fulls(candidate) > fulls(current)
     return len(candidate) > len(current)
@@ -98,7 +101,7 @@ class EntityResolver:
 
     def __init__(self) -> None:
         self._entities: list[Entity] = []
-        self._tokens: dict[str, tuple[str, ...]] = {}   # entity_id -> canonical tokens
+        self._tokens: dict[str, tuple[str, ...]] = {}  # entity_id -> canonical tokens
         self._ids: set[str] = set()
 
     def entities(self) -> list[Entity]:
@@ -127,8 +130,7 @@ class EntityResolver:
                 continue
             cur = self._tokens[e.entity_id]
             same = (
-                _person_compatible(tokens, cur) if kind == "person"
-                else tokens == cur
+                _person_compatible(tokens, cur) if kind == "person" else tokens == cur
             )
             if same:
                 out.append(i)
@@ -146,7 +148,7 @@ class EntityResolver:
             canonical_tokens = tokens
         aliases.discard(canonical)
         updated = Entity(
-            entity_id=e.entity_id,          # STABILITY: id never changes on merge
+            entity_id=e.entity_id,  # STABILITY: id never changes on merge
             kind=e.kind,
             canonical_name=canonical,
             aliases=frozenset(aliases),

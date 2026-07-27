@@ -34,6 +34,7 @@ types rather than reasoning ones: this module has never imported
 ``eval/runner.py`` (which already imports the reasoning contracts) projects
 the fixture into a real ``RecalledView`` at run time.
 """
+
 from __future__ import annotations
 
 import json
@@ -43,7 +44,11 @@ from pathlib import Path
 from typing import Any, Literal
 
 from atlas.benchmark.provenance import CaseProvenance, RetrievalLabel
-from atlas.benchmark.taxonomy import ALL_CAPABILITY_IDS, ALL_SCENARIO_IDS, DifficultyClass
+from atlas.benchmark.taxonomy import (
+    ALL_CAPABILITY_IDS,
+    ALL_SCENARIO_IDS,
+    DifficultyClass,
+)
 
 _SUITE_PATH = Path(__file__).parent / "data" / "acceptance_v2_1.json"
 
@@ -165,7 +170,9 @@ class EvalCase:
 
     def __post_init__(self) -> None:
         if self.scenario is not None and self.scenario not in ALL_SCENARIO_IDS:
-            raise ValueError(f"EvalCase.scenario {self.scenario!r} is not a valid RetrievalScenario")
+            raise ValueError(
+                f"EvalCase.scenario {self.scenario!r} is not a valid RetrievalScenario"
+            )
         if self.difficulty is not None and self.difficulty not in _VALID_DIFFICULTIES:
             raise ValueError(
                 f"EvalCase.difficulty {self.difficulty!r} must be one of {sorted(_VALID_DIFFICULTIES)}"

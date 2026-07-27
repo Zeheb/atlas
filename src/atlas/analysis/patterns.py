@@ -38,6 +38,7 @@ find_guidance_statements  Sentences containing a forward-looking cue
                         forward targets the same way ("targeting Rs 7,140
                         crores in FY2027", "guidance to maintain NIM above 3%").
 """
+
 from __future__ import annotations
 
 import re
@@ -56,9 +57,18 @@ from atlas.analysis.base import (
 # ---------------------------------------------------------------------------
 
 _MONTH_ABBR: dict[str, int] = {
-    "january": 1, "february": 2, "march": 3, "april": 4,
-    "may": 5, "june": 6, "july": 7, "august": 8,
-    "september": 9, "october": 10, "november": 11, "december": 12,
+    "january": 1,
+    "february": 2,
+    "march": 3,
+    "april": 4,
+    "may": 5,
+    "june": 6,
+    "july": 7,
+    "august": 8,
+    "september": 9,
+    "october": 10,
+    "november": 11,
+    "december": 12,
 }
 _RE_MONTH_D_Y = re.compile(r"(\w+)\s+(\d{1,2}),?\s+(\d{4})", re.IGNORECASE)
 
@@ -104,13 +114,14 @@ def split_reg30_sections(text: str) -> tuple[str, str, str]:
     m_b = _RE_ANNEXURE_B.search(text, m_a.end())
     cover = text[: m_a.start()]
     if m_b is None:
-        return cover, text[m_a.start():], ""
-    return cover, text[m_a.start(): m_b.start()], text[m_b.start():]
+        return cover, text[m_a.start() :], ""
+    return cover, text[m_a.start() : m_b.start()], text[m_b.start() :]
 
 
 # ---------------------------------------------------------------------------
 # fiscal_year_end
 # ---------------------------------------------------------------------------
+
 
 def fiscal_year_end(source_date: str) -> str:
     """Return the Indian FY end date (March 31) for the year containing source_date.
@@ -183,22 +194,26 @@ def extract_dividend_facts(
             char_offset=m.start(),
             excerpt=_snip(cover_text, m.start()),
         )
-        facts.append(AnalysisFact(
-            kind=FactKind.CAPITAL_DIVIDEND_PER_SHARE,
-            value=amount,
-            unit=FactUnit.RUPEES_PER_SHARE,
-            period=period,
-            confidence="high",
-            provenance=prov,
-        ))
-        facts.append(AnalysisFact(
-            kind=FactKind.CAPITAL_DIVIDEND_TYPE,
-            value=div_type,
-            unit=None,
-            period=period,
-            confidence="high",
-            provenance=prov,
-        ))
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.CAPITAL_DIVIDEND_PER_SHARE,
+                value=amount,
+                unit=FactUnit.RUPEES_PER_SHARE,
+                period=period,
+                confidence="high",
+                provenance=prov,
+            )
+        )
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.CAPITAL_DIVIDEND_TYPE,
+                value=div_type,
+                unit=None,
+                period=period,
+                confidence="high",
+                provenance=prov,
+            )
+        )
 
     m_rec = _RE_DIV_RECORD.search(cover_text)
     if m_rec:
@@ -206,18 +221,20 @@ def extract_dividend_facts(
         try:
             raw = re.sub(r"\s+", " ", raw_date)
             rec_date = datetime.strptime(raw, _DATE_FMT).date().isoformat()
-            facts.append(AnalysisFact(
-                kind=FactKind.CAPITAL_DIVIDEND_RECORD_DATE,
-                value=rec_date,
-                unit=FactUnit.ISO_DATE,
-                period=period,
-                confidence="high",
-                provenance=Provenance(
-                    section="cover_letter",
-                    char_offset=m_rec.start(),
-                    excerpt=_snip(cover_text, m_rec.start()),
-                ),
-            ))
+            facts.append(
+                AnalysisFact(
+                    kind=FactKind.CAPITAL_DIVIDEND_RECORD_DATE,
+                    value=rec_date,
+                    unit=FactUnit.ISO_DATE,
+                    period=period,
+                    confidence="high",
+                    provenance=Provenance(
+                        section="cover_letter",
+                        char_offset=m_rec.start(),
+                        excerpt=_snip(cover_text, m_rec.start()),
+                    ),
+                )
+            )
         except ValueError:
             pass
 
@@ -226,18 +243,20 @@ def extract_dividend_facts(
         try:
             raw = re.sub(r"\s+", " ", m_pay.group(1))
             pay_date = datetime.strptime(raw, _DATE_FMT).date().isoformat()
-            facts.append(AnalysisFact(
-                kind=FactKind.CAPITAL_DIVIDEND_PAYMENT_DATE,
-                value=pay_date,
-                unit=FactUnit.ISO_DATE,
-                period=period,
-                confidence="high",
-                provenance=Provenance(
-                    section="cover_letter",
-                    char_offset=m_pay.start(),
-                    excerpt=_snip(cover_text, m_pay.start()),
-                ),
-            ))
+            facts.append(
+                AnalysisFact(
+                    kind=FactKind.CAPITAL_DIVIDEND_PAYMENT_DATE,
+                    value=pay_date,
+                    unit=FactUnit.ISO_DATE,
+                    period=period,
+                    confidence="high",
+                    provenance=Provenance(
+                        section="cover_letter",
+                        char_offset=m_pay.start(),
+                        excerpt=_snip(cover_text, m_pay.start()),
+                    ),
+                )
+            )
         except ValueError:
             pass
 
@@ -247,6 +266,7 @@ def extract_dividend_facts(
 # ---------------------------------------------------------------------------
 # parse_indian_int / parse_indian_float
 # ---------------------------------------------------------------------------
+
 
 def parse_indian_int(s: str) -> int | None:
     """Parse an integer from Indian-format text by stripping all commas.
@@ -279,9 +299,9 @@ _MAX_VALUE_SCAN = 1500
 
 # Matches: (123) for negatives, - for nil, or Indian-format numbers like 1,26,872
 _RE_NUM_TOKEN = re.compile(
-    r"\([\d,]+(?:\.\d+)?\)"   # (123) = negative
-    r"|(?<!\w)-(?!\w)"        # standalone dash = nil/zero
-    r"|[\d,]+(?:\.\d+)?"      # positive number with optional decimal
+    r"\([\d,]+(?:\.\d+)?\)"  # (123) = negative
+    r"|(?<!\w)-(?!\w)"  # standalone dash = nil/zero
+    r"|[\d,]+(?:\.\d+)?"  # positive number with optional decimal
 )
 
 # OCR artifact patterns: some PDFs replace comma thousands-separators with
@@ -294,15 +314,9 @@ _RE_OCR_MIX_PERIOD_COMMA = re.compile(
     # First separator corrupted: X.XX,XXX.XX
     r"(?<!\d)(\d{1,2})\.(\d{2}),(\d{3})\.(\d{2})(?!\d)"
 )
-_RE_OCR_TRIPLE_PERIOD = re.compile(
-    r"(?<!\d)(\d{1,2})\.(\d{2})\.(\d{3})\.(\d{2})(?!\d)"
-)
-_RE_OCR_DOUBLE_PERIOD = re.compile(
-    r"(?<!\d)(\d+)\.(\d{3})\.(\d{2})(?!\d)"
-)
-_RE_OCR_SPACE_DECIMAL = re.compile(
-    r"(?<!\d)(\d+)\.(\d{3}) (\d{2})(?!\d)"
-)
+_RE_OCR_TRIPLE_PERIOD = re.compile(r"(?<!\d)(\d{1,2})\.(\d{2})\.(\d{3})\.(\d{2})(?!\d)")
+_RE_OCR_DOUBLE_PERIOD = re.compile(r"(?<!\d)(\d+)\.(\d{3})\.(\d{2})(?!\d)")
+_RE_OCR_SPACE_DECIMAL = re.compile(r"(?<!\d)(\d+)\.(\d{3}) (\d{2})(?!\d)")
 # "68.55L.81" is OCR for "68,551.81": the digit "1" was read as "L".
 # Match: a digit immediately followed by L and then a digit-or-period.
 _RE_OCR_L_AS_1 = re.compile(r"(?<=\d)L(?=[.\d])")
@@ -354,7 +368,7 @@ def extract_n_values(text: str, after: int, n: int = 6) -> list[float | None]:
     fragment large numbers into spurious decimals.
     """
     values: list[float | None] = []
-    segment = fix_ocr_numbers(text[after: after + _MAX_VALUE_SCAN])
+    segment = fix_ocr_numbers(text[after : after + _MAX_VALUE_SCAN])
     collecting = False
 
     for line in segment.split("\n"):
@@ -415,7 +429,8 @@ _RE_GUIDANCE_STATEMENT = re.compile(
 
 
 def find_guidance_statements(
-    normalized_text: str, max_count: int = 3,
+    normalized_text: str,
+    max_count: int = 3,
 ) -> list[tuple[str, int]]:
     """Find up to max_count forward-guidance sentences, deduplicated.
 

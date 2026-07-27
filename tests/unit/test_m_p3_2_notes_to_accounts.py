@@ -6,13 +6,23 @@ Contingent liabilities is evidence-deferred (narrative prose in the corpus,
 no clean aggregate found even with a targeted search) -- explicitly not
 attempted here.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
 
 from atlas.analysis.annual_report import _extract_gross_block
-from atlas.analysis.base import AnalysisFact, AnalysisResult, FactKind, FactUnit, Provenance
-from atlas.analysis.financial_results import _extract_balance_sheet_facts, _extract_cashflow_facts
+from atlas.analysis.base import (
+    AnalysisFact,
+    AnalysisResult,
+    FactKind,
+    FactUnit,
+    Provenance,
+)
+from atlas.analysis.financial_results import (
+    _extract_balance_sheet_facts,
+    _extract_cashflow_facts,
+)
 from atlas.company.builder import build_profile
 from atlas.company.model import AuditorEntry, CompanyProfile, GovernanceProfile
 from atlas.company.store import CompanyStore
@@ -100,23 +110,46 @@ def test_gross_block_rejects_zero_or_negative() -> None:
 
 
 # --- auditor history: builder wiring (AUDIT_FIRM/AUDIT_OPINION already extracted) --
-def _result_with_audit(firm: str | None, opinion: str | None, evidence_id: str = "bse-fr-1") -> AnalysisResult:
+def _result_with_audit(
+    firm: str | None, opinion: str | None, evidence_id: str = "bse-fr-1"
+) -> AnalysisResult:
     facts: list[AnalysisFact] = []
     if firm is not None:
-        facts.append(AnalysisFact(kind=FactKind.AUDIT_FIRM, value=firm, unit=None, period=None,
-                                   confidence="high", provenance=None))
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.AUDIT_FIRM,
+                value=firm,
+                unit=None,
+                period=None,
+                confidence="high",
+                provenance=None,
+            )
+        )
     if opinion is not None:
-        facts.append(AnalysisFact(kind=FactKind.AUDIT_OPINION, value=opinion, unit=None, period=None,
-                                   confidence="high", provenance=None))
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.AUDIT_OPINION,
+                value=opinion,
+                unit=None,
+                period=None,
+                confidence="high",
+                provenance=None,
+            )
+        )
     return AnalysisResult(
-        evidence_id=evidence_id, kind="financial_results", analyzer_version="1.2",
-        confidence="high", source_date=datetime(2026, 4, 9, tzinfo=timezone.utc),
+        evidence_id=evidence_id,
+        kind="financial_results",
+        analyzer_version="1.2",
+        confidence="high",
+        source_date=datetime(2026, 4, 9, tzinfo=timezone.utc),
         facts=facts,
     )
 
 
 def test_auditor_history_ingested_from_existing_facts() -> None:
-    profile = build_profile("TCS", [_result_with_audit("B S R & Co. LLP", "unmodified")])
+    profile = build_profile(
+        "TCS", [_result_with_audit("B S R & Co. LLP", "unmodified")]
+    )
     assert len(profile.governance.auditor_history) == 1
     entry = profile.governance.auditor_history[0]
     assert entry.firm == "B S R & Co. LLP"
@@ -128,7 +161,11 @@ def test_auditor_history_uses_result_source_date_not_fact_period() -> None:
     # AUDIT_FIRM/AUDIT_OPINION carry period=None -- source_date must come
     # from the AnalysisResult, not the fact.
     profile = build_profile("TCS", [_result_with_audit("Deloitte LLP", None)])
-    assert profile.governance.auditor_history[0].source_date.isoformat().startswith("2026-04-09")
+    assert (
+        profile.governance.auditor_history[0]
+        .source_date.isoformat()
+        .startswith("2026-04-09")
+    )
 
 
 def test_auditor_history_skipped_when_neither_fact_present() -> None:
@@ -145,7 +182,9 @@ def test_auditor_history_multiple_filings_multiple_entries() -> None:
 
 # --- store round-trip -------------------------------------------------------------
 def test_auditor_history_survives_store_round_trip(tmp_path) -> None:
-    profile = build_profile("TCS", [_result_with_audit("B S R & Co. LLP", "unmodified")])
+    profile = build_profile(
+        "TCS", [_result_with_audit("B S R & Co. LLP", "unmodified")]
+    )
     store = CompanyStore(tmp_path / "TCS" / "profile.json", "TCS")
     store.save(profile, [_result_with_audit("B S R & Co. LLP", "unmodified")])
     loaded = store.load()
@@ -161,13 +200,21 @@ def test_empty_auditor_history_round_trips(tmp_path) -> None:
 
 def test_gross_block_survives_store_round_trip(tmp_path) -> None:
     result = AnalysisResult(
-        evidence_id="bse-ar-1", kind="annual_report", analyzer_version="3.2",
-        confidence="high", source_date=datetime(2025, 6, 1, tzinfo=timezone.utc),
-        facts=[AnalysisFact(
-            kind=FactKind.FINANCIAL_GROSS_BLOCK, value=37277.0, unit=FactUnit.CRORE_INR,
-            period="2025-03-31", confidence="high",
-            provenance=Provenance(section="financial_highlights"),
-        )],
+        evidence_id="bse-ar-1",
+        kind="annual_report",
+        analyzer_version="3.2",
+        confidence="high",
+        source_date=datetime(2025, 6, 1, tzinfo=timezone.utc),
+        facts=[
+            AnalysisFact(
+                kind=FactKind.FINANCIAL_GROSS_BLOCK,
+                value=37277.0,
+                unit=FactUnit.CRORE_INR,
+                period="2025-03-31",
+                confidence="high",
+                provenance=Provenance(section="financial_highlights"),
+            )
+        ],
     )
     profile = build_profile("TCS", [result])
     store = CompanyStore(tmp_path / "TCS" / "profile.json", "TCS")
@@ -180,8 +227,11 @@ def test_gross_block_survives_store_round_trip(tmp_path) -> None:
 # --- query registration ------------------------------------------------------------
 def test_auditor_history_query_registered_and_dispatchable() -> None:
     from atlas.query.engine import available_queries, run_query
+
     assert "auditor_history" in available_queries()
-    profile = build_profile("TCS", [_result_with_audit("B S R & Co. LLP", "unmodified")])
+    profile = build_profile(
+        "TCS", [_result_with_audit("B S R & Co. LLP", "unmodified")]
+    )
     result = run_query("auditor_history", profile)
     assert result.query == "auditor_history"
     assert result.sections[0].rows[0][1] == "B S R & Co. LLP"
@@ -189,6 +239,7 @@ def test_auditor_history_query_registered_and_dispatchable() -> None:
 
 def test_auditor_history_query_empty_result_honest() -> None:
     from atlas.query.engine import auditor_history
+
     result = auditor_history(CompanyProfile(company_id="TCS"))
     assert result.sections[0].rows == []
     assert any("no auditor" in n.lower() for n in result.notes)
@@ -196,6 +247,7 @@ def test_auditor_history_query_empty_result_honest() -> None:
 
 def test_new_metrics_registered() -> None:
     from atlas.query.metrics import get_metric
+
     for key in ("cash_tax_paid", "intangible_assets", "gross_block"):
         spec = get_metric(key)
         assert spec.fact_kind is not None

@@ -30,6 +30,7 @@ automatically with no version bump needed): a mismatched or missing version
 is treated as a cold cache rather than an attempt to interpret
 possibly-incompatible entries.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -90,11 +91,13 @@ class EvalCache:
                 # else: unversioned or incompatible file -> start cold rather
                 # than risk misinterpreting entries written under a different
                 # on-disk schema.
-            except (json.JSONDecodeError, OSError):
+            except json.JSONDecodeError, OSError:
                 self._entries = {}
 
     @staticmethod
-    def make_key(model: str, fingerprint: str, prompt_hash: str, context_hash: str) -> str:
+    def make_key(
+        model: str, fingerprint: str, prompt_hash: str, context_hash: str
+    ) -> str:
         return f"{model}::{fingerprint}::{prompt_hash}::{context_hash}"
 
     def get(self, key: str) -> str | None:
@@ -106,20 +109,32 @@ class EvalCache:
         return entry["response"]
 
     def put(
-        self, key: str, *, model: str, fingerprint: str, prompt_hash: str,
-        context_hash: str, question: str, response: str,
+        self,
+        key: str,
+        *,
+        model: str,
+        fingerprint: str,
+        prompt_hash: str,
+        context_hash: str,
+        question: str,
+        response: str,
     ) -> None:
         self._entries[key] = {
-            "model": model, "fingerprint": fingerprint,
-            "prompt_hash": prompt_hash, "context_hash": context_hash,
-            "question": question, "response": response,
+            "model": model,
+            "fingerprint": fingerprint,
+            "prompt_hash": prompt_hash,
+            "context_hash": context_hash,
+            "question": question,
+            "response": response,
         }
         self.save()
 
     def save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.path.write_text(
-            json.dumps({"cache_version": CACHE_VERSION, "entries": self._entries}, indent=2),
+            json.dumps(
+                {"cache_version": CACHE_VERSION, "entries": self._entries}, indent=2
+            ),
             encoding="utf-8",
         )
 
@@ -143,7 +158,12 @@ class CachingLLMClient:
     """
 
     def __init__(
-        self, inner: "LLMClient", cache: EvalCache, *, model: str, fingerprint: str = "",
+        self,
+        inner: "LLMClient",
+        cache: EvalCache,
+        *,
+        model: str,
+        fingerprint: str = "",
     ) -> None:
         self._inner = inner
         self._cache = cache
@@ -153,7 +173,9 @@ class CachingLLMClient:
     def complete(self, *, system: str, user: str) -> str:
         prompt_hash = _hash(system)
         context_hash = _hash(user)
-        key = EvalCache.make_key(self._model, self._fingerprint, prompt_hash, context_hash)
+        key = EvalCache.make_key(
+            self._model, self._fingerprint, prompt_hash, context_hash
+        )
 
         cached = self._cache.get(key)
         if cached is not None:
@@ -161,8 +183,12 @@ class CachingLLMClient:
 
         response = self._inner.complete(system=system, user=user)
         self._cache.put(
-            key, model=self._model, fingerprint=self._fingerprint,
-            prompt_hash=prompt_hash, context_hash=context_hash,
-            question=_extract_question_label(user), response=response,
+            key,
+            model=self._model,
+            fingerprint=self._fingerprint,
+            prompt_hash=prompt_hash,
+            context_hash=context_hash,
+            question=_extract_question_label(user),
+            response=response,
         )
         return response

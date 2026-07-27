@@ -78,6 +78,7 @@ Excerpts
 management_commentary   CEO/CFO named-quote block, when present
 aspiration               Text window around the vision/mission statement
 """
+
 from __future__ import annotations
 
 import re
@@ -91,7 +92,11 @@ from atlas.analysis.base import (
     Provenance,
     _snip,
 )
-from atlas.analysis.patterns import extract_n_values, find_guidance_statements, parse_iso_date
+from atlas.analysis.patterns import (
+    extract_n_values,
+    find_guidance_statements,
+    parse_iso_date,
+)
 from atlas.knowledge.base import KnowledgeBase
 
 ANALYZER_VERSION = "2.0"
@@ -210,11 +215,20 @@ def _extract_aspiration(normalized: str, result: AnalysisResult) -> None:
     if cut != -1:
         span = span[:cut]
     value = span.strip()
-    result.facts.append(_pf(
-        FactKind.STRATEGY_ASPIRATION, value, None, None,
-        "aspiration", m.start(), value,
-    ))
-    result.excerpts["aspiration"] = normalized[max(0, m.start() - 80): m.start() + len(span) + 100]
+    result.facts.append(
+        _pf(
+            FactKind.STRATEGY_ASPIRATION,
+            value,
+            None,
+            None,
+            "aspiration",
+            m.start(),
+            value,
+        )
+    )
+    result.excerpts["aspiration"] = normalized[
+        max(0, m.start() - 80) : m.start() + len(span) + 100
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -241,7 +255,7 @@ def _extract_priorities(content: str, result: AnalysisResult) -> None:
     m = _RE_PRIORITIES_HEADING.search(content)
     if not m:
         return  # Not every presentation restates priorities; no warning needed.
-    window = content[m.end(): m.end() + 1500]
+    window = content[m.end() : m.end() + 1500]
     seen: set[str] = set()
     count = 0
     for bm in _RE_BULLET_LINE.finditer(window):
@@ -253,10 +267,17 @@ def _extract_priorities(content: str, result: AnalysisResult) -> None:
             continue
         seen.add(key)
         count += 1
-        result.facts.append(_pf(
-            FactKind.STRATEGY_PRIORITY, text, None, None,
-            "priorities", m.end() + bm.start(), text,
-        ))
+        result.facts.append(
+            _pf(
+                FactKind.STRATEGY_PRIORITY,
+                text,
+                None,
+                None,
+                "priorities",
+                m.end() + bm.start(),
+                text,
+            )
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -288,24 +309,38 @@ def _extract_guidance(normalized: str, content: str, result: AnalysisResult) -> 
     for text, offset in find_guidance_statements(normalized, _MAX_GUIDANCE):
         seen.add(text.lower())
         count += 1
-        result.facts.append(_pf(
-            FactKind.STRATEGY_GUIDANCE, text, None, None,
-            "guidance", offset, text,
-        ))
+        result.facts.append(
+            _pf(
+                FactKind.STRATEGY_GUIDANCE,
+                text,
+                None,
+                None,
+                "guidance",
+                offset,
+                text,
+            )
+        )
 
     m_heading = _RE_GUIDANCE_HEADING.search(content)
     if m_heading:
-        window = content[m_heading.end(): m_heading.end() + 800]
+        window = content[m_heading.end() : m_heading.end() + 800]
         m_range = _RE_GUIDANCE_RANGE.search(window)
         if m_range:
             text = f"{m_heading.group(0).strip()}: {m_range.group(1)}%"
             key = text.lower()
             if key not in seen:
                 count += 1
-                result.facts.append(_pf(
-                    FactKind.STRATEGY_GUIDANCE, text, None, None,
-                    "guidance", m_heading.end() + m_range.start(), text,
-                ))
+                result.facts.append(
+                    _pf(
+                        FactKind.STRATEGY_GUIDANCE,
+                        text,
+                        None,
+                        None,
+                        "guidance",
+                        m_heading.end() + m_range.start(),
+                        text,
+                    )
+                )
 
     if count == 0:
         result.warnings.append("No forward guidance statement found")
@@ -316,8 +351,7 @@ def _extract_guidance(normalized: str, content: str, result: AnalysisResult) -> 
 # ---------------------------------------------------------------------------
 
 _RE_ROE_INLINE = re.compile(
-    r"(?:Return\s+on\s+Equity|\bROE\b)[^.\n]{0,40}?"
-    r"(\d{1,2}(?:\.\d+)?)\s*%",
+    r"(?:Return\s+on\s+Equity|\bROE\b)[^.\n]{0,40}?" r"(\d{1,2}(?:\.\d+)?)\s*%",
     re.IGNORECASE,
 )
 _RE_FCF_INLINE = re.compile(
@@ -328,7 +362,9 @@ _RE_FCF_INLINE = re.compile(
 _RE_FY_YEAR = re.compile(r"FY\s?(\d{2,4})\b", re.IGNORECASE)
 
 
-def _nearest_fy_period(content: str, offset: int, source_period: str | None) -> str | None:
+def _nearest_fy_period(
+    content: str, offset: int, source_period: str | None
+) -> str | None:
     """Infer a fiscal-year-end period for a value near *offset*.
 
     Looks for the nearest "FYxx" token within a short window before the
@@ -342,7 +378,7 @@ def _nearest_fy_period(content: str, offset: int, source_period: str | None) -> 
     reporting period, which is correct for the common case where the
     surrounding paragraph never restates the year at all.
     """
-    window = content[max(0, offset - 60): offset]
+    window = content[max(0, offset - 60) : offset]
     matches = list(_RE_FY_YEAR.finditer(window))
     if matches:
         raw = matches[-1].group(1)
@@ -360,7 +396,8 @@ def _nearest_fy_period(content: str, offset: int, source_period: str | None) -> 
 # left-to-right chart.
 _RE_ROE_HEADING = re.compile(r"Return\s+on\s+Equity\s*\n", re.IGNORECASE)
 _RE_FCF_HEADING = re.compile(
-    r"Capital\s+Allocation\s*\n|Free\s+Cash\s*[Ff]low\s*\n", re.IGNORECASE,
+    r"Capital\s+Allocation\s*\n|Free\s+Cash\s*[Ff]low\s*\n",
+    re.IGNORECASE,
 )
 _RE_PCT_TOKEN = re.compile(r"(?<!\d)(\d{1,3}(?:\.\d+)?)\s*%")
 _RE_CRORE_TOKEN = re.compile(r"\b(\d{2,3}),(\d{3})\b")
@@ -374,7 +411,9 @@ _MAX_YEAR_TO_VALUE_GAP = 40
 
 
 def _year_value_pairs(
-    window: str, year_re: re.Pattern[str], value_re: re.Pattern[str],
+    window: str,
+    year_re: re.Pattern[str],
+    value_re: re.Pattern[str],
 ) -> list[tuple[str, tuple[str, ...]]]:
     """Pair FY-year labels with chart values via greedy FIFO over position order.
 
@@ -438,33 +477,51 @@ def _extract_roe_fcf_block(content: str, result: AnalysisResult) -> set[str]:
 
     m = _RE_ROE_HEADING.search(content)
     if m:
-        window = content[m.end(): m.end() + _BLOCK_WINDOW]
+        window = content[m.end() : m.end() + _BLOCK_WINDOW]
         for year, (pct,) in _year_value_pairs(window, _RE_FY_YEAR, _RE_PCT_TOKEN):
             yr = int(year) if len(year) == 4 else 2000 + int(year)
             period = f"{yr}-03-31"
-            result.facts.append(_pf(
-                FactKind.FINANCIAL_ROE, float(pct), FactUnit.PERCENT,
-                period, "roe", m.start(), f"FY {year}: {pct}%",
-            ))
+            result.facts.append(
+                _pf(
+                    FactKind.FINANCIAL_ROE,
+                    float(pct),
+                    FactUnit.PERCENT,
+                    period,
+                    "roe",
+                    m.start(),
+                    f"FY {year}: {pct}%",
+                )
+            )
             periods_found.add(period)
 
     m = _RE_FCF_HEADING.search(content)
     if m:
-        window = content[m.end(): m.end() + _BLOCK_WINDOW]
-        for year, (thousands, hundreds) in _year_value_pairs(window, _RE_FY_YEAR, _RE_CRORE_TOKEN):
+        window = content[m.end() : m.end() + _BLOCK_WINDOW]
+        for year, (thousands, hundreds) in _year_value_pairs(
+            window, _RE_FY_YEAR, _RE_CRORE_TOKEN
+        ):
             yr = int(year) if len(year) == 4 else 2000 + int(year)
             period = f"{yr}-03-31"
             value = int(thousands + hundreds)
-            result.facts.append(_pf(
-                FactKind.FINANCIAL_FCF, value, FactUnit.CRORE_INR,
-                period, "fcf", m.start(), f"FY {year}: Rs {value} cr",
-            ))
+            result.facts.append(
+                _pf(
+                    FactKind.FINANCIAL_FCF,
+                    value,
+                    FactUnit.CRORE_INR,
+                    period,
+                    "fcf",
+                    m.start(),
+                    f"FY {year}: Rs {value} cr",
+                )
+            )
             periods_found.add(period)
 
     return periods_found
 
 
-def _extract_roe_fcf(normalized: str, content: str, result: AnalysisResult, source_period: str | None) -> None:
+def _extract_roe_fcf(
+    normalized: str, content: str, result: AnalysisResult, source_period: str | None
+) -> None:
     block_periods = _extract_roe_fcf_block(content, result)
 
     # Dedup key is period alone (not period+value): a presentation can mention
@@ -477,10 +534,17 @@ def _extract_roe_fcf(normalized: str, content: str, result: AnalysisResult, sour
         if period in block_periods or period in seen_roe:
             continue
         seen_roe.add(period)
-        result.facts.append(_pf(
-            FactKind.FINANCIAL_ROE, float(m.group(1)), FactUnit.PERCENT,
-            period, "roe", m.start(), m.group(0),
-        ))
+        result.facts.append(
+            _pf(
+                FactKind.FINANCIAL_ROE,
+                float(m.group(1)),
+                FactUnit.PERCENT,
+                period,
+                "roe",
+                m.start(),
+                m.group(0),
+            )
+        )
 
     seen_fcf: set[str | None] = set()
     for m in _RE_FCF_INLINE.finditer(normalized):
@@ -489,10 +553,17 @@ def _extract_roe_fcf(normalized: str, content: str, result: AnalysisResult, sour
             continue
         value = float(m.group(1).replace(",", ""))
         seen_fcf.add(period)
-        result.facts.append(_pf(
-            FactKind.FINANCIAL_FCF, value, FactUnit.CRORE_INR,
-            period, "fcf", m.start(), m.group(0),
-        ))
+        result.facts.append(
+            _pf(
+                FactKind.FINANCIAL_FCF,
+                value,
+                FactUnit.CRORE_INR,
+                period,
+                "fcf",
+                m.start(),
+                m.group(0),
+            )
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -525,7 +596,7 @@ def _extract_csat(content: str, result: AnalysisResult) -> None:
     period label; a marker without one is not treated as a failure.
     """
     for m_marker in _RE_CSAT_MARKER.finditer(content):
-        window = content[max(0, m_marker.start() - 1200): m_marker.start() + 200]
+        window = content[max(0, m_marker.start() - 1200) : m_marker.start() + 200]
         vals = _RE_CSAT_VALUE.findall(window)
         periods = _RE_CSAT_PERIOD.findall(window)
         if not periods:
@@ -537,16 +608,23 @@ def _extract_csat(content: str, result: AnalysisResult) -> None:
         # labels (closest to the marker) — take the tail of the list, not
         # the head, so a positional zip does not mis-pair noise with the
         # real periods.
-        vals = vals[-len(periods):] if len(vals) >= len(periods) else vals
+        vals = vals[-len(periods) :] if len(vals) >= len(periods) else vals
         pairs = list(zip(vals, periods))
         if not pairs:
             continue
         latest_val, latest_label = pairs[-1]
         period = _half_year_period(latest_label)
-        result.facts.append(_pf(
-            FactKind.STRATEGY_CSAT, float(latest_val), FactUnit.PERCENT,
-            period, "csat", m_marker.start(), f"CSAT {latest_val}% {latest_label}",
-        ))
+        result.facts.append(
+            _pf(
+                FactKind.STRATEGY_CSAT,
+                float(latest_val),
+                FactUnit.PERCENT,
+                period,
+                "csat",
+                m_marker.start(),
+                f"CSAT {latest_val}% {latest_label}",
+            )
+        )
         return
 
 
@@ -565,19 +643,57 @@ _RE_KPI_TABLE_HEADING = re.compile(
 # (Net Interest Margin) must be tried before their substrings would otherwise
 # ambiguously match a shorter pattern.
 _BANK_RATIO_ROWS: list[tuple[re.Pattern[str], FactKind, FactUnit]] = [
-    (re.compile(r"^Net\s+Interest\s+Margin", re.IGNORECASE), FactKind.FINANCIAL_NET_INTEREST_MARGIN, FactUnit.PERCENT),
-    (re.compile(r"^Net\s+Interest\s+Income", re.IGNORECASE), FactKind.FINANCIAL_NET_INTEREST_INCOME, FactUnit.CRORE_INR),
-    (re.compile(r"^Gross\s+NPA", re.IGNORECASE), FactKind.FINANCIAL_GROSS_NPA_RATIO, FactUnit.PERCENT),
-    (re.compile(r"^Net\s+NPA", re.IGNORECASE), FactKind.FINANCIAL_NET_NPA_RATIO, FactUnit.PERCENT),
-    (re.compile(r"^Provision\s+Coverage|^PCR\b", re.IGNORECASE), FactKind.FINANCIAL_PROVISION_COVERAGE_RATIO, FactUnit.PERCENT),
-    (re.compile(r"^Credit\s+Cost", re.IGNORECASE), FactKind.FINANCIAL_CREDIT_COST, FactUnit.PERCENT),
-    (re.compile(r"^CASA\b", re.IGNORECASE), FactKind.FINANCIAL_CASA_RATIO, FactUnit.PERCENT),
-    (re.compile(r"^Capital\s+Adequacy", re.IGNORECASE), FactKind.FINANCIAL_CAPITAL_ADEQUACY_RATIO, FactUnit.PERCENT),
-    (re.compile(r"^Slippage\s+Ratio", re.IGNORECASE), FactKind.FINANCIAL_SLIPPAGE_RATIO, FactUnit.PERCENT),
+    (
+        re.compile(r"^Net\s+Interest\s+Margin", re.IGNORECASE),
+        FactKind.FINANCIAL_NET_INTEREST_MARGIN,
+        FactUnit.PERCENT,
+    ),
+    (
+        re.compile(r"^Net\s+Interest\s+Income", re.IGNORECASE),
+        FactKind.FINANCIAL_NET_INTEREST_INCOME,
+        FactUnit.CRORE_INR,
+    ),
+    (
+        re.compile(r"^Gross\s+NPA", re.IGNORECASE),
+        FactKind.FINANCIAL_GROSS_NPA_RATIO,
+        FactUnit.PERCENT,
+    ),
+    (
+        re.compile(r"^Net\s+NPA", re.IGNORECASE),
+        FactKind.FINANCIAL_NET_NPA_RATIO,
+        FactUnit.PERCENT,
+    ),
+    (
+        re.compile(r"^Provision\s+Coverage|^PCR\b", re.IGNORECASE),
+        FactKind.FINANCIAL_PROVISION_COVERAGE_RATIO,
+        FactUnit.PERCENT,
+    ),
+    (
+        re.compile(r"^Credit\s+Cost", re.IGNORECASE),
+        FactKind.FINANCIAL_CREDIT_COST,
+        FactUnit.PERCENT,
+    ),
+    (
+        re.compile(r"^CASA\b", re.IGNORECASE),
+        FactKind.FINANCIAL_CASA_RATIO,
+        FactUnit.PERCENT,
+    ),
+    (
+        re.compile(r"^Capital\s+Adequacy", re.IGNORECASE),
+        FactKind.FINANCIAL_CAPITAL_ADEQUACY_RATIO,
+        FactUnit.PERCENT,
+    ),
+    (
+        re.compile(r"^Slippage\s+Ratio", re.IGNORECASE),
+        FactKind.FINANCIAL_SLIPPAGE_RATIO,
+        FactUnit.PERCENT,
+    ),
 ]
 
 
-def _extract_banking_ratios(content: str, result: AnalysisResult, source_period: str | None) -> None:
+def _extract_banking_ratios(
+    content: str, result: AnalysisResult, source_period: str | None
+) -> None:
     """Populate the banking ratio family from a labelled KPI table, when present.
 
     Absence of any matching row is expected and unremarkable for the large
@@ -588,7 +704,7 @@ def _extract_banking_ratios(content: str, result: AnalysisResult, source_period:
     m_heading = _RE_KPI_TABLE_HEADING.search(content)
     if not m_heading:
         return
-    region = content[m_heading.end(): m_heading.end() + 4000]
+    region = content[m_heading.end() : m_heading.end() + 4000]
 
     # Presentations often restate the same ratio in more than one section
     # (a summary "Key indicators" table, then a detailed "Capital Adequacy"
@@ -613,10 +729,17 @@ def _extract_banking_ratios(content: str, result: AnalysisResult, source_period:
             # Table layout observed: [prior_period, current_period, yoy_delta%].
             # Two-column layout: [prior_period, current_period].
             current = numeric[1] if len(numeric) >= 2 else numeric[0]
-            result.facts.append(_pf(
-                kind, current, unit, source_period,
-                "kpi_table", m_heading.end() + line_start, stripped,
-            ))
+            result.facts.append(
+                _pf(
+                    kind,
+                    current,
+                    unit,
+                    source_period,
+                    "kpi_table",
+                    m_heading.end() + line_start,
+                    stripped,
+                )
+            )
             seen_kinds.add(kind)
             break
 
@@ -626,15 +749,20 @@ def _extract_banking_ratios(content: str, result: AnalysisResult, source_period:
 # ---------------------------------------------------------------------------
 
 _RE_PRODUCTION_ROW = re.compile(
-    r"^Production\s*\(m[n.]?\s*tons?\)", re.IGNORECASE | re.MULTILINE,
+    r"^Production\s*\(m[n.]?\s*tons?\)",
+    re.IGNORECASE | re.MULTILINE,
 )
 _RE_DELIVERY_ROW = re.compile(
-    r"^Deliveries\s*\(m[n.]?\s*tons?\)", re.IGNORECASE | re.MULTILINE,
+    r"^Deliveries\s*\(m[n.]?\s*tons?\)",
+    re.IGNORECASE | re.MULTILINE,
 )
 
 
 def _extract_volume_row(
-    content: str, pattern: re.Pattern[str], kind: FactKind, result: AnalysisResult,
+    content: str,
+    pattern: re.Pattern[str],
+    kind: FactKind,
+    result: AnalysisResult,
     source_period: str | None,
 ) -> None:
     m = pattern.search(content)
@@ -651,11 +779,18 @@ def _extract_volume_row(
     numeric = [v for v in values if v is not None]
     if not numeric:
         return
-    result.facts.append(_pf(
-        kind, numeric[0], FactUnit.MILLION_TONNES, source_period,
-        "operating_volume", m.start(), m.group(0),
-        confidence="medium",  # column position within a multi-scope table is a best-effort guess
-    ))
+    result.facts.append(
+        _pf(
+            kind,
+            numeric[0],
+            FactUnit.MILLION_TONNES,
+            source_period,
+            "operating_volume",
+            m.start(),
+            m.group(0),
+            confidence="medium",  # column position within a multi-scope table is a best-effort guess
+        )
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -678,18 +813,36 @@ def _extract_segment_growth(content: str, result: AnalysisResult) -> None:
     seen: set[str] = set()
     for m in _RE_SERVICE_GROWTH.finditer(content):
         seg_name = m.group(2).strip()
-        if seg_name.lower() in seen or not seg_name or seg_name.lower() in _SEGMENT_STOPWORDS:
+        if (
+            seg_name.lower() in seen
+            or not seg_name
+            or seg_name.lower() in _SEGMENT_STOPWORDS
+        ):
             continue
         seen.add(seg_name.lower())
         pct_val = float(m.group(1))
-        result.facts.append(_pf(
-            FactKind.SEGMENT_NAME, seg_name, None, None,
-            "service_growth", m.start(), m.group(0),
-        ))
-        result.facts.append(_pf(
-            FactKind.SEGMENT_GROWTH_PCT, pct_val, FactUnit.PERCENT, None,
-            "service_growth", m.start(), m.group(0),
-        ))
+        result.facts.append(
+            _pf(
+                FactKind.SEGMENT_NAME,
+                seg_name,
+                None,
+                None,
+                "service_growth",
+                m.start(),
+                m.group(0),
+            )
+        )
+        result.facts.append(
+            _pf(
+                FactKind.SEGMENT_GROWTH_PCT,
+                pct_val,
+                FactUnit.PERCENT,
+                None,
+                "service_growth",
+                m.start(),
+                m.group(0),
+            )
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -751,14 +904,28 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
 
     period, period_type, period_offset = _detect_period(normalized[:3000])
     if period:
-        result.facts.append(_pf(
-            FactKind.REPORT_PERIOD_END, period, FactUnit.ISO_DATE,
-            period, "cover_letter", period_offset or 0, period,
-        ))
-        result.facts.append(_pf(
-            FactKind.REPORT_PERIOD_TYPE, period_type, None,
-            period, "cover_letter", period_offset or 0, period_type or "",
-        ))
+        result.facts.append(
+            _pf(
+                FactKind.REPORT_PERIOD_END,
+                period,
+                FactUnit.ISO_DATE,
+                period,
+                "cover_letter",
+                period_offset or 0,
+                period,
+            )
+        )
+        result.facts.append(
+            _pf(
+                FactKind.REPORT_PERIOD_TYPE,
+                period_type,
+                None,
+                period,
+                "cover_letter",
+                period_offset or 0,
+                period_type or "",
+            )
+        )
     else:
         result.warnings.append("Could not detect reporting period from cover letter")
 
@@ -768,20 +935,33 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     _extract_roe_fcf(normalized, content, result, period)
     _extract_csat(content, result)
     _extract_banking_ratios(content, result, period)
-    _extract_volume_row(content, _RE_PRODUCTION_ROW, FactKind.FINANCIAL_PRODUCTION_VOLUME, result, period)
-    _extract_volume_row(content, _RE_DELIVERY_ROW, FactKind.FINANCIAL_DELIVERY_VOLUME, result, period)
+    _extract_volume_row(
+        content,
+        _RE_PRODUCTION_ROW,
+        FactKind.FINANCIAL_PRODUCTION_VOLUME,
+        result,
+        period,
+    )
+    _extract_volume_row(
+        content, _RE_DELIVERY_ROW, FactKind.FINANCIAL_DELIVERY_VOLUME, result, period
+    )
     _extract_segment_growth(content, result)
     _extract_management_commentary(content, result)
 
     # Confidence reflects breadth: how many independent fact *categories*
     # were found, not raw fact count (a single category firing 8 times should
     # not outrank three categories firing once each).
-    categories_found = len({
-        f.kind.name.split("_")[0] if not f.kind.name.startswith(("STRATEGY", "SEGMENT", "FINANCIAL"))
-        else f.kind.name
-        for f in result.facts
-        if f.kind not in (FactKind.REPORT_PERIOD_END, FactKind.REPORT_PERIOD_TYPE)
-    })
+    categories_found = len(
+        {
+            (
+                f.kind.name.split("_")[0]
+                if not f.kind.name.startswith(("STRATEGY", "SEGMENT", "FINANCIAL"))
+                else f.kind.name
+            )
+            for f in result.facts
+            if f.kind not in (FactKind.REPORT_PERIOD_END, FactKind.REPORT_PERIOD_TYPE)
+        }
+    )
     if categories_found >= 3:
         result.confidence = "high"
     elif categories_found >= 1:

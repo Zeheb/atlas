@@ -18,6 +18,7 @@ Frozen and self-validating, matching ``reasoning.plan``'s own discipline
 (reproduced locally rather than imported, since this package has no
 dependency on ``reasoning.plan`` beyond what it needs for validation).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -55,7 +56,9 @@ class CaseProvenance:
     verified_by: str = ""
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "supporting_evidence_ids", _tuple(self.supporting_evidence_ids))
+        object.__setattr__(
+            self, "supporting_evidence_ids", _tuple(self.supporting_evidence_ids)
+        )
         if self.origin not in _VALID_ORIGINS:
             raise ValueError(
                 f"CaseProvenance.origin {self.origin!r} must be one of {sorted(_VALID_ORIGINS)}"
@@ -84,7 +87,9 @@ class RetrievalLabel:
     must_not_retrieve: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
-        object.__setattr__(self, "relevant_evidence_ids", _tuple(self.relevant_evidence_ids))
+        object.__setattr__(
+            self, "relevant_evidence_ids", _tuple(self.relevant_evidence_ids)
+        )
         object.__setattr__(self, "relevant_kinds", _tuple(self.relevant_kinds))
         object.__setattr__(self, "must_not_retrieve", _tuple(self.must_not_retrieve))
         if not self.relevant_evidence_ids and not self.relevant_kinds:

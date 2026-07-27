@@ -27,6 +27,7 @@ earnings_transcript and investor_presentation results use setdefault() so that
 authoritative XBRL data from financial_results is never overwritten by spoken
 or presentation numbers.
 """
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -158,15 +159,21 @@ def _ingest_financial_result(result: AnalysisResult, profile: CompanyProfile) ->
     # their own (categorical, excluded from FinancialSnapshot.facts) --
     # source_date is the filing's own date, matching CreditRatingEntry's
     # convention for the same kind of timeless-fact-tracked-per-document.
-    firm = next((str(f.value) for f in result.facts if f.kind == FactKind.AUDIT_FIRM), None)
-    opinion = next((str(f.value) for f in result.facts if f.kind == FactKind.AUDIT_OPINION), None)
+    firm = next(
+        (str(f.value) for f in result.facts if f.kind == FactKind.AUDIT_FIRM), None
+    )
+    opinion = next(
+        (str(f.value) for f in result.facts if f.kind == FactKind.AUDIT_OPINION), None
+    )
     if firm is not None or opinion is not None:
-        profile.governance.auditor_history.append(AuditorEntry(
-            source_date=result.source_date,
-            firm=firm,
-            opinion=opinion,
-            evidence_id=result.evidence_id,
-        ))
+        profile.governance.auditor_history.append(
+            AuditorEntry(
+                source_date=result.source_date,
+                firm=firm,
+                opinion=opinion,
+                evidence_id=result.evidence_id,
+            )
+        )
 
 
 def _ingest_transcript_result(result: AnalysisResult, profile: CompanyProfile) -> None:
@@ -225,7 +232,11 @@ def _ingest_transcript_result(result: AnalysisResult, profile: CompanyProfile) -
             # found in this particular transcript).
             fact_scope = snap_period_type.get(period)
             for fk, fv in facts.items():
-                if fk == FactKind.FINANCIAL_REVENUE and fact_scope and fact_scope != target.period_type:
+                if (
+                    fk == FactKind.FINANCIAL_REVENUE
+                    and fact_scope
+                    and fact_scope != target.period_type
+                ):
                     continue
                 target.facts.setdefault(fk, fv)
             if result.evidence_id not in target.sources:
@@ -244,13 +255,19 @@ def _ingest_transcript_result(result: AnalysisResult, profile: CompanyProfile) -
     # 2. Spoken forward guidance -> StrategyProfile.entries (reuses the same
     # FactKind and destination as investor_presentation.py's guidance facts)
     for fact in result.facts:
-        if fact.kind == FactKind.STRATEGY_GUIDANCE and isinstance(fact.value, str) and fact.value:
-            profile.strategy.entries.append(StrategyEntry(
-                source_date=result.source_date,
-                kind="guidance",
-                text=fact.value,
-                evidence_id=result.evidence_id,
-            ))
+        if (
+            fact.kind == FactKind.STRATEGY_GUIDANCE
+            and isinstance(fact.value, str)
+            and fact.value
+        ):
+            profile.strategy.entries.append(
+                StrategyEntry(
+                    source_date=result.source_date,
+                    kind="guidance",
+                    text=fact.value,
+                    evidence_id=result.evidence_id,
+                )
+            )
 
     # 3. Workforce facts (quarterly headcount/diversity refresh of BRSR's
     # annual figures) -> ESGTimeSeries, supplement only — BRSR's audited
@@ -285,15 +302,19 @@ def _ingest_transcript_result(result: AnalysisResult, profile: CompanyProfile) -
     # what any producer happens to set on the transport field.
     source_date = result.source_date.date().isoformat()
     for mention in result.entities:
-        profile.participants.append(ParticipantAppearance(
-            entity_id=mention.entity.entity_id,
-            canonical_name=mention.entity.canonical_name,
-            role=mention.role,
-            affiliation=mention.affiliation,
-            evidence_id=result.evidence_id,
-            source_date=source_date,
-            question_text=mention.question_text if mention.role == "analyst" else None,
-        ))
+        profile.participants.append(
+            ParticipantAppearance(
+                entity_id=mention.entity.entity_id,
+                canonical_name=mention.entity.canonical_name,
+                role=mention.role,
+                affiliation=mention.affiliation,
+                evidence_id=result.evidence_id,
+                source_date=source_date,
+                question_text=(
+                    mention.question_text if mention.role == "analyst" else None
+                ),
+            )
+        )
 
 
 def _ingest_investor_presentation_result(
@@ -303,22 +324,26 @@ def _ingest_investor_presentation_result(
     for fact in result.facts:
         key = _STRATEGY_KIND_TO_KEY.get(fact.kind)
         if key and isinstance(fact.value, str) and fact.value:
-            profile.strategy.entries.append(StrategyEntry(
-                source_date=result.source_date,
-                kind=key,
-                text=fact.value,
-                evidence_id=result.evidence_id,
-            ))
+            profile.strategy.entries.append(
+                StrategyEntry(
+                    source_date=result.source_date,
+                    kind=key,
+                    text=fact.value,
+                    evidence_id=result.evidence_id,
+                )
+            )
         elif (
             fact.kind == FactKind.STRATEGY_CSAT
             and isinstance(fact.value, (int, float))
             and fact.period
         ):
-            profile.strategy.csat.append(CSATEntry(
-                period=fact.period,
-                score=float(fact.value),
-                evidence_id=result.evidence_id,
-            ))
+            profile.strategy.csat.append(
+                CSATEntry(
+                    period=fact.period,
+                    score=float(fact.value),
+                    evidence_id=result.evidence_id,
+                )
+            )
 
     # 2. Numeric financial facts → FinancialTimeSeries (supplement only)
     #
@@ -365,12 +390,16 @@ def _ingest_investor_presentation_result(
             existing[key] = snap
 
 
-_ANNUAL_REPORT_AUTHORITATIVE_ESG: frozenset[FactKind] = frozenset({
-    FactKind.ESG_CSR_SPEND,
-})
+_ANNUAL_REPORT_AUTHORITATIVE_ESG: frozenset[FactKind] = frozenset(
+    {
+        FactKind.ESG_CSR_SPEND,
+    }
+)
 
 
-def _ingest_annual_report_result(result: AnalysisResult, profile: CompanyProfile) -> None:
+def _ingest_annual_report_result(
+    result: AnalysisResult, profile: CompanyProfile
+) -> None:
     """Ingest an annual_report AnalysisResult into the CompanyProfile.
 
     ESG_CSR_SPEND is authoritative (update) — the mandatory s.135 disclosure
@@ -421,12 +450,18 @@ def _ingest_annual_report_result(result: AnalysisResult, profile: CompanyProfile
                 profile.governance.audit_kams.append(title)
 
     for fact in result.facts:
-        if fact.kind == FactKind.RISK_FACTOR and isinstance(fact.value, str) and fact.period:
-            profile.governance.risk_factors.append(RiskEntry(
-                period=fact.period,
-                text=fact.value,
-                evidence_id=result.evidence_id,
-            ))
+        if (
+            fact.kind == FactKind.RISK_FACTOR
+            and isinstance(fact.value, str)
+            and fact.period
+        ):
+            profile.governance.risk_factors.append(
+                RiskEntry(
+                    period=fact.period,
+                    text=fact.value,
+                    evidence_id=result.evidence_id,
+                )
+            )
 
     # Directors resolved by name + DIN (M-P1.4). Identity only; age/tenure
     # deferred. A DIN with no identifier is skipped (under-emit).
@@ -434,13 +469,15 @@ def _ingest_annual_report_result(result: AnalysisResult, profile: CompanyProfile
     for mention in result.entities:
         if mention.identifier is None:
             continue
-        profile.directors.append(DirectorIdentity(
-            entity_id=mention.entity.entity_id,
-            canonical_name=mention.entity.canonical_name,
-            din=mention.identifier,
-            evidence_id=result.evidence_id,
-            source_date=source_date,
-        ))
+        profile.directors.append(
+            DirectorIdentity(
+                entity_id=mention.entity.entity_id,
+                canonical_name=mention.entity.canonical_name,
+                din=mention.identifier,
+                evidence_id=result.evidence_id,
+                source_date=source_date,
+            )
+        )
 
     # Gross block of PP&E (M-P3.2) -> FinancialTimeSeries. financial_results
     # has no competing source for this fact, but supplement (setdefault) is
@@ -489,14 +526,20 @@ def _ingest_annual_report_result(result: AnalysisResult, profile: CompanyProfile
         category_fact = facts.get(FactKind.GOVERNANCE_RPT_CATEGORY)
         if amount_fact is None or amount_fact.period is None:
             continue
-        profile.governance.related_parties.append(RelatedPartyEntry(
-            period=amount_fact.period,
-            kind="balance",
-            category=str(category_fact.value) if category_fact else "",
-            amount=float(amount_fact.value) if isinstance(amount_fact.value, (int, float)) else 0.0,
-            counterparty=None,
-            evidence_id=result.evidence_id,
-        ))
+        profile.governance.related_parties.append(
+            RelatedPartyEntry(
+                period=amount_fact.period,
+                kind="balance",
+                category=str(category_fact.value) if category_fact else "",
+                amount=(
+                    float(amount_fact.value)
+                    if isinstance(amount_fact.value, (int, float))
+                    else 0.0
+                ),
+                counterparty=None,
+                evidence_id=result.evidence_id,
+            )
+        )
 
 
 def _ingest_brsr_result(result: AnalysisResult, profile: CompanyProfile) -> None:
@@ -551,17 +594,21 @@ def _ingest_shp_result(result: AnalysisResult, profile: CompanyProfile) -> None:
     # Named >1% public shareholders (M-P1.3, Q24).
     source_date = result.source_date.date().isoformat()
     for mention in result.entities:
-        profile.named_shareholders.append(NamedShareholder(
-            entity_id=mention.entity.entity_id,
-            canonical_name=mention.entity.canonical_name,
-            kind=mention.entity.kind,
-            category=mention.role or "",
-            evidence_id=result.evidence_id,
-            source_date=source_date,
-        ))
+        profile.named_shareholders.append(
+            NamedShareholder(
+                entity_id=mention.entity.entity_id,
+                canonical_name=mention.entity.canonical_name,
+                kind=mention.entity.kind,
+                category=mention.role or "",
+                evidence_id=result.evidence_id,
+                source_date=source_date,
+            )
+        )
 
 
-def _ingest_credit_rating_result(result: AnalysisResult, profile: CompanyProfile) -> None:
+def _ingest_credit_rating_result(
+    result: AnalysisResult, profile: CompanyProfile
+) -> None:
     agency = next(
         (str(f.value) for f in result.facts if f.kind == FactKind.CREDIT_AGENCY),
         "",
@@ -574,7 +621,7 @@ def _ingest_credit_rating_result(result: AnalysisResult, profile: CompanyProfile
     for inst_fact in instrument_facts:
         inst_name = str(inst_fact.value)
         inst_sec = inst_fact.provenance.section if inst_fact.provenance else ""
-        is_esg = (inst_name == "ESG")
+        is_esg = inst_name == "ESG"
 
         def _match(f: AnalysisFact, s: str = inst_sec, esg: bool = is_esg) -> bool:
             sec = f.provenance.section if f.provenance else ""
@@ -583,15 +630,27 @@ def _ingest_credit_rating_result(result: AnalysisResult, profile: CompanyProfile
             return sec == s
 
         rating = next(
-            (str(f.value) for f in result.facts if f.kind == FactKind.CREDIT_RATING and _match(f)),
+            (
+                str(f.value)
+                for f in result.facts
+                if f.kind == FactKind.CREDIT_RATING and _match(f)
+            ),
             None,
         )
         outlook = next(
-            (str(f.value) for f in result.facts if f.kind == FactKind.CREDIT_OUTLOOK and _match(f)),
+            (
+                str(f.value)
+                for f in result.facts
+                if f.kind == FactKind.CREDIT_OUTLOOK and _match(f)
+            ),
             None,
         )
         action = next(
-            (str(f.value) for f in result.facts if f.kind == FactKind.CREDIT_ACTION and _match(f)),
+            (
+                str(f.value)
+                for f in result.facts
+                if f.kind == FactKind.CREDIT_ACTION and _match(f)
+            ),
             None,
         )
         amount_fact = next(
@@ -638,24 +697,27 @@ def _ingest_agm_notice_result(result: AnalysisResult, profile: CompanyProfile) -
         pct_for_fact = facts.get(FactKind.GOVERNANCE_VOTE_PCT_FOR)
         pct_against_fact = facts.get(FactKind.GOVERNANCE_VOTE_PCT_AGAINST)
 
-        profile.governance.resolutions.append(AGMResolution(
-            source_date=result.source_date,
-            period=title_fact.period,
-            title=str(title_fact.value),
-            resolution_type=str(res_type_fact.value) if res_type_fact else "",
-            outcome=str(outcome_fact.value) if outcome_fact else None,
-            pct_for=(
-                float(pct_for_fact.value)
-                if pct_for_fact and isinstance(pct_for_fact.value, (int, float))
-                else None
-            ),
-            pct_against=(
-                float(pct_against_fact.value)
-                if pct_against_fact and isinstance(pct_against_fact.value, (int, float))
-                else None
-            ),
-            evidence_id=result.evidence_id,
-        ))
+        profile.governance.resolutions.append(
+            AGMResolution(
+                source_date=result.source_date,
+                period=title_fact.period,
+                title=str(title_fact.value),
+                resolution_type=str(res_type_fact.value) if res_type_fact else "",
+                outcome=str(outcome_fact.value) if outcome_fact else None,
+                pct_for=(
+                    float(pct_for_fact.value)
+                    if pct_for_fact and isinstance(pct_for_fact.value, (int, float))
+                    else None
+                ),
+                pct_against=(
+                    float(pct_against_fact.value)
+                    if pct_against_fact
+                    and isinstance(pct_against_fact.value, (int, float))
+                    else None
+                ),
+                evidence_id=result.evidence_id,
+            )
+        )
 
 
 def _ingest_dividend_facts(result: AnalysisResult, profile: CompanyProfile) -> None:
@@ -666,11 +728,19 @@ def _ingest_dividend_facts(result: AnalysisResult, profile: CompanyProfile) -> N
             type_by_offset[off] = str(fact.value)
 
     record_date = next(
-        (str(f.value) for f in result.facts if f.kind == FactKind.CAPITAL_DIVIDEND_RECORD_DATE),
+        (
+            str(f.value)
+            for f in result.facts
+            if f.kind == FactKind.CAPITAL_DIVIDEND_RECORD_DATE
+        ),
         None,
     )
     payment_date = next(
-        (str(f.value) for f in result.facts if f.kind == FactKind.CAPITAL_DIVIDEND_PAYMENT_DATE),
+        (
+            str(f.value)
+            for f in result.facts
+            if f.kind == FactKind.CAPITAL_DIVIDEND_PAYMENT_DATE
+        ),
         None,
     )
 
@@ -680,50 +750,70 @@ def _ingest_dividend_facts(result: AnalysisResult, profile: CompanyProfile) -> N
         if not isinstance(fact.value, (int, float)):
             continue
         off = fact.provenance.char_offset if fact.provenance else None
-        profile.capital_events.dividends.append(DividendEvent(
-            source_date=result.source_date,
-            per_share=float(fact.value),
-            dividend_type=type_by_offset.get(off, ""),
-            record_date=record_date,
-            payment_date=payment_date,
-            evidence_id=result.evidence_id,
-        ))
+        profile.capital_events.dividends.append(
+            DividendEvent(
+                source_date=result.source_date,
+                per_share=float(fact.value),
+                dividend_type=type_by_offset.get(off, ""),
+                record_date=record_date,
+                payment_date=payment_date,
+                evidence_id=result.evidence_id,
+            )
+        )
 
 
 def _ingest_acquisition_facts(result: AnalysisResult, profile: CompanyProfile) -> None:
     consideration = next(
-        (str(f.value) for f in result.facts if f.kind == FactKind.CAPITAL_ACQ_CONSIDERATION_TYPE),
+        (
+            str(f.value)
+            for f in result.facts
+            if f.kind == FactKind.CAPITAL_ACQ_CONSIDERATION_TYPE
+        ),
         None,
     )
     stake = next(
-        (float(f.value) for f in result.facts
-         if f.kind == FactKind.CAPITAL_ACQ_STAKE_PCT and isinstance(f.value, (int, float))),
+        (
+            float(f.value)
+            for f in result.facts
+            if f.kind == FactKind.CAPITAL_ACQ_STAKE_PCT
+            and isinstance(f.value, (int, float))
+        ),
         None,
     )
     expected = next(
-        (str(f.value) for f in result.facts if f.kind == FactKind.CAPITAL_ACQ_EXPECTED_COMPLETION),
+        (
+            str(f.value)
+            for f in result.facts
+            if f.kind == FactKind.CAPITAL_ACQ_EXPECTED_COMPLETION
+        ),
         None,
     )
     ev_fact = next(
         (f for f in result.facts if f.kind == FactKind.CAPITAL_ACQ_ENTERPRISE_VALUE),
         None,
     )
-    ev_value = float(ev_fact.value) if ev_fact and isinstance(ev_fact.value, (int, float)) else None
+    ev_value = (
+        float(ev_fact.value)
+        if ev_fact and isinstance(ev_fact.value, (int, float))
+        else None
+    )
     ev_unit = ev_fact.unit if ev_fact else None
 
     for fact in result.facts:
         if fact.kind != FactKind.CAPITAL_ACQ_TARGET_NAME:
             continue
-        profile.capital_events.acquisitions.append(AcquisitionEvent(
-            source_date=result.source_date,
-            target_name=str(fact.value),
-            consideration_type=consideration,
-            enterprise_value=ev_value,
-            enterprise_value_unit=ev_unit,
-            stake_pct=stake,
-            expected_completion=expected,
-            evidence_id=result.evidence_id,
-        ))
+        profile.capital_events.acquisitions.append(
+            AcquisitionEvent(
+                source_date=result.source_date,
+                target_name=str(fact.value),
+                consideration_type=consideration,
+                enterprise_value=ev_value,
+                enterprise_value_unit=ev_unit,
+                stake_pct=stake,
+                expected_completion=expected,
+                evidence_id=result.evidence_id,
+            )
+        )
 
 
 def _ingest_buyback_result(result: AnalysisResult, profile: CompanyProfile) -> None:
@@ -748,33 +838,50 @@ def _ingest_buyback_result(result: AnalysisResult, profile: CompanyProfile) -> N
     else:
         sub_type = "unknown"
 
-    profile.capital_events.buybacks.append(BuybackEvent(
-        source_date=result.source_date,
-        sub_type=sub_type,
-        amount=_fval(FactKind.CAPITAL_BUYBACK_AMOUNT),
-        price_per_share=_fval(FactKind.CAPITAL_BUYBACK_PRICE_PER_SHARE),
-        shares_offered=int(shares_offered) if shares_offered is not None else None,
-        shares_bought=int(shares_bought) if shares_bought is not None else None,
-        record_date=str(record_fact.value) if record_fact else None,
-        evidence_id=result.evidence_id,
-    ))
+    profile.capital_events.buybacks.append(
+        BuybackEvent(
+            source_date=result.source_date,
+            sub_type=sub_type,
+            amount=_fval(FactKind.CAPITAL_BUYBACK_AMOUNT),
+            price_per_share=_fval(FactKind.CAPITAL_BUYBACK_PRICE_PER_SHARE),
+            shares_offered=int(shares_offered) if shares_offered is not None else None,
+            shares_bought=int(shares_bought) if shares_bought is not None else None,
+            record_date=str(record_fact.value) if record_fact else None,
+            evidence_id=result.evidence_id,
+        )
+    )
 
 
-def _ingest_board_outcome_buyback(result: AnalysisResult, profile: CompanyProfile) -> None:
+def _ingest_board_outcome_buyback(
+    result: AnalysisResult, profile: CompanyProfile
+) -> None:
     """Create a BuybackEvent(sub_type='announcement') from board_outcome buyback facts."""
     first: dict[FactKind, AnalysisFact] = {}
     for fact in result.facts:
-        if fact.kind in (FactKind.CAPITAL_BUYBACK_AMOUNT, FactKind.CAPITAL_BUYBACK_PRICE_PER_SHARE):
+        if fact.kind in (
+            FactKind.CAPITAL_BUYBACK_AMOUNT,
+            FactKind.CAPITAL_BUYBACK_PRICE_PER_SHARE,
+        ):
             first.setdefault(fact.kind, fact)
     amount_fact = first.get(FactKind.CAPITAL_BUYBACK_AMOUNT)
     price_fact = first.get(FactKind.CAPITAL_BUYBACK_PRICE_PER_SHARE)
-    profile.capital_events.buybacks.append(BuybackEvent(
-        source_date=result.source_date,
-        sub_type="announcement",
-        amount=float(amount_fact.value) if amount_fact and isinstance(amount_fact.value, (int, float)) else None,
-        price_per_share=float(price_fact.value) if price_fact and isinstance(price_fact.value, (int, float)) else None,
-        evidence_id=result.evidence_id,
-    ))
+    profile.capital_events.buybacks.append(
+        BuybackEvent(
+            source_date=result.source_date,
+            sub_type="announcement",
+            amount=(
+                float(amount_fact.value)
+                if amount_fact and isinstance(amount_fact.value, (int, float))
+                else None
+            ),
+            price_per_share=(
+                float(price_fact.value)
+                if price_fact and isinstance(price_fact.value, (int, float))
+                else None
+            ),
+            evidence_id=result.evidence_id,
+        )
+    )
 
 
 def _ingest_fundraise_facts(result: AnalysisResult, profile: CompanyProfile) -> None:
@@ -796,12 +903,14 @@ def _ingest_fundraise_facts(result: AnalysisResult, profile: CompanyProfile) -> 
             if ftype in seen_types:
                 continue
             seen_types.add(ftype)
-            profile.capital_events.fundraises.append(FundraisingEvent(
-                source_date=result.source_date,
-                fundraise_type=ftype,
-                amount=amount,
-                evidence_id=result.evidence_id,
-            ))
+            profile.capital_events.fundraises.append(
+                FundraisingEvent(
+                    source_date=result.source_date,
+                    fundraise_type=ftype,
+                    amount=amount,
+                    evidence_id=result.evidence_id,
+                )
+            )
 
 
 def _ingest_director_changes(result: AnalysisResult, profile: CompanyProfile) -> None:
@@ -818,16 +927,20 @@ def _ingest_director_changes(result: AnalysisResult, profile: CompanyProfile) ->
         if name_fact is None or type_fact is None:
             continue
         role_fact = facts.get(FactKind.GOVERNANCE_DIRECTOR_CHANGE_ROLE)
-        profile.governance.director_changes.append(DirectorChange(
-            source_date=result.source_date,
-            change_type=str(type_fact.value),
-            name=str(name_fact.value),
-            role=str(role_fact.value) if role_fact else None,
-            evidence_id=result.evidence_id,
-        ))
+        profile.governance.director_changes.append(
+            DirectorChange(
+                source_date=result.source_date,
+                change_type=str(type_fact.value),
+                name=str(name_fact.value),
+                role=str(role_fact.value) if role_fact else None,
+                evidence_id=result.evidence_id,
+            )
+        )
 
 
-def _ingest_board_outcome_result(result: AnalysisResult, profile: CompanyProfile) -> None:
+def _ingest_board_outcome_result(
+    result: AnalysisResult, profile: CompanyProfile
+) -> None:
     kinds = {f.kind for f in result.facts}
 
     if FactKind.CAPITAL_DIVIDEND_PER_SHARE in kinds:
@@ -850,17 +963,23 @@ def _ingest_board_outcome_result(result: AnalysisResult, profile: CompanyProfile
             (f for f in result.facts if f.kind == FactKind.CAPITAL_INVEST_AMOUNT),
             None,
         )
-        amount = float(amount_fact.value) if amount_fact and isinstance(amount_fact.value, (int, float)) else None
+        amount = (
+            float(amount_fact.value)
+            if amount_fact and isinstance(amount_fact.value, (int, float))
+            else None
+        )
         amount_unit = amount_fact.unit if amount_fact else None
         for fact in result.facts:
             if fact.kind == FactKind.CAPITAL_INVEST_TARGET_NAME:
-                profile.capital_events.investments.append(InvestmentEvent(
-                    source_date=result.source_date,
-                    target_name=str(fact.value),
-                    amount=amount,
-                    amount_unit=amount_unit,
-                    evidence_id=result.evidence_id,
-                ))
+                profile.capital_events.investments.append(
+                    InvestmentEvent(
+                        source_date=result.source_date,
+                        target_name=str(fact.value),
+                        amount=amount,
+                        amount_unit=amount_unit,
+                        evidence_id=result.evidence_id,
+                    )
+                )
 
 
 def _ingest_segment_facts(result: AnalysisResult, profile: CompanyProfile) -> None:
@@ -950,17 +1069,17 @@ def _finalize_profile(profile: CompanyProfile) -> None:
 # ---------------------------------------------------------------------------
 
 _DISPATCH = {
-    "financial_results":      _ingest_financial_result,
-    "earnings_transcript":    _ingest_transcript_result,
-    "investor_presentation":  _ingest_investor_presentation_result,
-    "brsr":                   _ingest_brsr_result,
-    "shareholding_pattern":   _ingest_shp_result,
-    "credit_rating_report":   _ingest_credit_rating_result,
-    "buyback":                _ingest_buyback_result,
-    "acquisition":            _ingest_acquisition_facts,
-    "board_outcome":          _ingest_board_outcome_result,
-    "agm_notice":             _ingest_agm_notice_result,
-    "annual_report":          _ingest_annual_report_result,
+    "financial_results": _ingest_financial_result,
+    "earnings_transcript": _ingest_transcript_result,
+    "investor_presentation": _ingest_investor_presentation_result,
+    "brsr": _ingest_brsr_result,
+    "shareholding_pattern": _ingest_shp_result,
+    "credit_rating_report": _ingest_credit_rating_result,
+    "buyback": _ingest_buyback_result,
+    "acquisition": _ingest_acquisition_facts,
+    "board_outcome": _ingest_board_outcome_result,
+    "agm_notice": _ingest_agm_notice_result,
+    "annual_report": _ingest_annual_report_result,
 }
 
 

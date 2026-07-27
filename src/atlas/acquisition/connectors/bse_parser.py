@@ -77,9 +77,18 @@ class BSEParser:
     }
 
     _MONTH_MAP: dict[str, int] = {
-        "January": 1, "February": 2, "March": 3, "April": 4,
-        "May": 5, "June": 6, "July": 7, "August": 8,
-        "September": 9, "October": 10, "November": 11, "December": 12,
+        "January": 1,
+        "February": 2,
+        "March": 3,
+        "April": 4,
+        "May": 5,
+        "June": 6,
+        "July": 7,
+        "August": 8,
+        "September": 9,
+        "October": 10,
+        "November": 11,
+        "December": 12,
     }
 
     _ATTACH_LIVE = "https://www.bseindia.com/xml-data/corpfiling/AttachLive/{}"
@@ -102,7 +111,9 @@ class BSEParser:
     # Verified against TCS, Tata Steel, and SBI (all three affected
     # identically): both templates return real application/pdf bytes for
     # every entry when matched to the right filename generation.
-    _ANNUAL_REPORT_LEGACY_CDN = "https://www.bseindia.com/bseplus/AnnualReport/{scrip_code}/{fname}"
+    _ANNUAL_REPORT_LEGACY_CDN = (
+        "https://www.bseindia.com/bseplus/AnnualReport/{scrip_code}/{fname}"
+    )
     _RE_UUID_FILENAME = re.compile(
         r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.pdf",
         re.IGNORECASE,
@@ -197,7 +208,9 @@ class BSEParser:
             filing_dt = str(rec.get("filing_date_time") or "")
             revised_dt = str(rec.get("revised_date_time") or "")
             dt_str = revised_dt if revised_dt else filing_dt
-            qtrid_str = str(int(qtrid)) if qtrid == int(qtrid) else str(qtrid).replace(".", "_")
+            qtrid_str = (
+                str(int(qtrid)) if qtrid == int(qtrid) else str(qtrid).replace(".", "_")
+            )
             result.append(
                 Evidence(
                     evidence_id=f"bse-shp-{scrip_code}-{qtrid_str}",
@@ -357,7 +370,10 @@ class BSEParser:
         subcategory.
         """
         kind = self._to_kind(subcatname)
-        if kind == EvidenceKind.INVESTOR_PRESENTATION and self._RE_TRANSCRIPT_TITLE.search(title):
+        if (
+            kind == EvidenceKind.INVESTOR_PRESENTATION
+            and self._RE_TRANSCRIPT_TITLE.search(title)
+        ):
             return EvidenceKind.EARNINGS_TRANSCRIPT
         return kind
 
@@ -387,7 +403,7 @@ class BSEParser:
                 clean = dt_str.split(".")[0] if "." in dt_str else dt_str
                 naive = datetime.fromisoformat(clean)
                 return naive.replace(tzinfo=self._BSE_TZ).astimezone(timezone.utc)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 pass
         # Fall back: last day of the quarter month, e.g. "March 2026" → 2026-03-31
         parts = qtr_label.strip().split()
@@ -398,7 +414,7 @@ class BSEParser:
                 if month:
                     last_day = calendar.monthrange(year, month)[1]
                     return datetime(year, month, last_day, tzinfo=timezone.utc)
-            except (ValueError, TypeError):
+            except ValueError, TypeError:
                 pass
         return datetime.now(timezone.utc)
 
@@ -411,7 +427,7 @@ class BSEParser:
             parts = fin_year.split("-")
             start_year = int(parts[0].strip())
             end_year = int(parts[1].strip())
-        except (ValueError, IndexError):
+        except ValueError, IndexError:
             return datetime.now(timezone.utc)
         quarter_ends = {
             "Q1": (start_year, 6, 30),
@@ -438,9 +454,9 @@ class BSEParser:
                 else:
                     naive = datetime.fromisoformat(clean)
                 return naive.replace(tzinfo=timezone.utc)
-            except (ValueError, TypeError, IndexError):
+            except ValueError, TypeError, IndexError:
                 pass
         try:
             return datetime(int(year_str), 4, 1, tzinfo=timezone.utc)
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             return datetime.now(timezone.utc)

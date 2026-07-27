@@ -13,6 +13,7 @@ shape and sector:
 
 Run with: pytest -m integration -v -s
 """
+
 from __future__ import annotations
 
 from collections.abc import Generator
@@ -90,7 +91,9 @@ class TestTCSAnalystDay2025:
         assert len(facts) == 1
         assert "largest" in facts[0].value
 
-    def test_aspiration_not_truncated_by_recurring_header(self, tcs_result: AnalysisResult):
+    def test_aspiration_not_truncated_by_recurring_header(
+        self, tcs_result: AnalysisResult
+    ):
         # The real deck repeats this sentence before every slide's own
         # "Our Aspiration" heading — must not bleed into the capture.
         facts = _facts(tcs_result, FactKind.STRATEGY_ASPIRATION)
@@ -120,11 +123,19 @@ class TestTCSAnalystDay2025:
         assert len(facts) == 5, f"expected 5 ROE years, got {len(facts)}"
 
     def test_roe_fy2021(self, tcs_result: AnalysisResult):
-        fy21 = next(f for f in _facts(tcs_result, FactKind.FINANCIAL_ROE) if f.period == "2021-03-31")
+        fy21 = next(
+            f
+            for f in _facts(tcs_result, FactKind.FINANCIAL_ROE)
+            if f.period == "2021-03-31"
+        )
         assert fy21.value == pytest.approx(38.2)
 
     def test_roe_fy2025(self, tcs_result: AnalysisResult):
-        fy25 = next(f for f in _facts(tcs_result, FactKind.FINANCIAL_ROE) if f.period == "2025-03-31")
+        fy25 = next(
+            f
+            for f in _facts(tcs_result, FactKind.FINANCIAL_ROE)
+            if f.period == "2025-03-31"
+        )
         assert fy25.value == pytest.approx(51.2)
 
     def test_peer_average_not_in_roe(self, tcs_result: AnalysisResult):
@@ -141,11 +152,19 @@ class TestTCSAnalystDay2025:
         # adjacent pair, then groups the remaining 4 years and values
         # separately — an off-by-one year/value pairing bug produced
         # 31424 here (FY2022's real value) before the FIFO-pairing fix.
-        fy21 = next(f for f in _facts(tcs_result, FactKind.FINANCIAL_FCF) if f.period == "2021-03-31")
+        fy21 = next(
+            f
+            for f in _facts(tcs_result, FactKind.FINANCIAL_FCF)
+            if f.period == "2021-03-31"
+        )
         assert fy21.value == 30664
 
     def test_fcf_fy2025(self, tcs_result: AnalysisResult):
-        fy25 = next(f for f in _facts(tcs_result, FactKind.FINANCIAL_FCF) if f.period == "2025-03-31")
+        fy25 = next(
+            f
+            for f in _facts(tcs_result, FactKind.FINANCIAL_FCF)
+            if f.period == "2025-03-31"
+        )
         assert fy25.value == 44962
 
     def test_fcf_units_crore_inr(self, tcs_result: AnalysisResult):
@@ -339,10 +358,14 @@ class TestSBIQ2FY2025:
         assert facts[0].value == pytest.approx(3.14)
 
     def test_credit_cost(self, sbin_result: AnalysisResult):
-        assert _facts(sbin_result, FactKind.FINANCIAL_CREDIT_COST)[0].value == pytest.approx(0.38)
+        assert _facts(sbin_result, FactKind.FINANCIAL_CREDIT_COST)[
+            0
+        ].value == pytest.approx(0.38)
 
     def test_net_npa_ratio(self, sbin_result: AnalysisResult):
-        assert _facts(sbin_result, FactKind.FINANCIAL_NET_NPA_RATIO)[0].value == pytest.approx(0.53)
+        assert _facts(sbin_result, FactKind.FINANCIAL_NET_NPA_RATIO)[
+            0
+        ].value == pytest.approx(0.53)
 
     def test_provision_coverage_ratio(self, sbin_result: AnalysisResult):
         facts = _facts(sbin_result, FactKind.FINANCIAL_PROVISION_COVERAGE_RATIO)

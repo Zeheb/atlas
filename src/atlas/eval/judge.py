@@ -18,6 +18,7 @@ Freeze amendments (§12.6):
   well-explained refusal scores high on reasoning_quality; refusing when the
   evidence clearly contains the answer scores 1 on evidence_use.
 """
+
 from __future__ import annotations
 
 import json
@@ -74,7 +75,11 @@ class Judge:
     """Scores an Answer's subjective quality via an injected LLM client."""
 
     def __init__(
-        self, client: LLMClient, *, cache: EvalCache | None = None, model: str | None = None,
+        self,
+        client: LLMClient,
+        *,
+        cache: EvalCache | None = None,
+        model: str | None = None,
         fingerprint: str = "",
     ) -> None:
         # Free-tier operation: an unchanged (case, answer, context) triple
@@ -83,7 +88,9 @@ class Judge:
         # derives everything else (including a human-readable question
         # label) from the system/user text it receives.
         self._client = (
-            CachingLLMClient(client, cache, model=model or "unknown", fingerprint=fingerprint)
+            CachingLLMClient(
+                client, cache, model=model or "unknown", fingerprint=fingerprint
+            )
             if cache is not None
             else client
         )
@@ -106,8 +113,12 @@ class Judge:
         )
 
     @staticmethod
-    def _prompt(case: EvalCase, answer: Answer, context: GroundingContext | None) -> str:
-        body = answer.prose if not answer.refused else f"[REFUSED] {answer.refusal_reason}"
+    def _prompt(
+        case: EvalCase, answer: Answer, context: GroundingContext | None
+    ) -> str:
+        body = (
+            answer.prose if not answer.refused else f"[REFUSED] {answer.refusal_reason}"
+        )
         lines = [
             f"QUESTION: {case.question}",
             f"INTENDED GOOD BEHAVIOR: {case.rubric}",
@@ -136,7 +147,7 @@ class Judge:
 def _clamp(value: Any) -> int:
     try:
         n = int(value)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return 1
     return max(1, min(5, n))
 

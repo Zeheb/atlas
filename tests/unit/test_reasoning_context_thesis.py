@@ -6,6 +6,7 @@ M2.3-equivalent behavior exactly (checked against the pre-M2.4 call shape,
 which every existing test in this file's siblings already exercises without
 this parameter).
 """
+
 from __future__ import annotations
 
 from atlas.company.model import CompanyProfile, FinancialSnapshot, FinancialTimeSeries
@@ -18,20 +19,31 @@ SUBJECT = SubjectRef(subject_id="TCS", display="Tata Consultancy Services")
 def _profile() -> CompanyProfile:
     return CompanyProfile(
         company_id="TCS",
-        financial=FinancialTimeSeries(snapshots=[FinancialSnapshot(
-            period="2026-03-31", period_type="annual", basis="consolidated",
-            facts={}, sources=["ev-1"],
-        )]),
+        financial=FinancialTimeSeries(
+            snapshots=[
+                FinancialSnapshot(
+                    period="2026-03-31",
+                    period_type="annual",
+                    basis="consolidated",
+                    facts={},
+                    sources=["ev-1"],
+                )
+            ]
+        ),
     )
 
 
 def _view() -> RecalledView:
     return RecalledView(
-        view_id="view-1", question="Should I invest in TCS?",
-        claims=(RecalledClaim(
-            statement="Margins were improving.", evidence_ids=frozenset({"ev-OLD"}),
-            confidence="medium",
-        ),),
+        view_id="view-1",
+        question="Should I invest in TCS?",
+        claims=(
+            RecalledClaim(
+                statement="Margins were improving.",
+                evidence_ids=frozenset({"ev-OLD"}),
+                confidence="medium",
+            ),
+        ),
         as_of="2026-01-01T00:00:00+00:00",
     )
 
@@ -63,7 +75,9 @@ def test_build_context_delegates_thesis_identically_to_diagnostics() -> None:
     """build_context is a thin delegate (M1.8) -- this parameter must not
     break that equivalence."""
     via_build_context = build_context(_profile(), SUBJECT, thesis=_view())
-    via_diagnostics = build_context_with_diagnostics(_profile(), SUBJECT, thesis=_view()).context
+    via_diagnostics = build_context_with_diagnostics(
+        _profile(), SUBJECT, thesis=_view()
+    ).context
     assert via_build_context.thesis == via_diagnostics.thesis
 
 

@@ -6,6 +6,7 @@ constructions sharing one EvalCache — the exact scenario two separate
 prompt.py, context.py) is untouched; only LiveReasoningRunner's optional
 `cache` parameter is exercised.
 """
+
 from __future__ import annotations
 
 import json
@@ -24,28 +25,50 @@ from atlas.reasoning.llm import FakeLLMClient
 def _seed(base: Path) -> None:
     profile = CompanyProfile(
         company_id="TCS",
-        financial=FinancialTimeSeries(snapshots=[FinancialSnapshot(
-            period="2026-03-31", period_type="annual", basis="consolidated",
-            facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2}, sources=["ev-1"],
-        )]),
+        financial=FinancialTimeSeries(
+            snapshots=[
+                FinancialSnapshot(
+                    period="2026-03-31",
+                    period_type="annual",
+                    basis="consolidated",
+                    facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2},
+                    sources=["ev-1"],
+                )
+            ]
+        ),
     )
     CompanyStore(base / "TCS" / "profile.json", "TCS").save(profile)
 
 
 def _case() -> EvalCase:
-    return EvalCase(id="t01", category="A", question="How stable are margins?",
-                    subject="TCS", expected_behavior="answer", rubric="synthesize")
+    return EvalCase(
+        id="t01",
+        category="A",
+        question="How stable are margins?",
+        subject="TCS",
+        expected_behavior="answer",
+        rubric="synthesize",
+    )
 
 
 def _fake_client() -> FakeLLMClient:
-    return FakeLLMClient(response=json.dumps({
-        "refused": False, "overall_confidence": "high",
-        "findings": [{
-            "statement": "Operating margin has held near 24%.",
-            "assertability": "judgment", "confidence": "high",
-            "supporting_evidence_ids": ["ev-1"], "known_unknowns": [],
-        }],
-    }))
+    return FakeLLMClient(
+        response=json.dumps(
+            {
+                "refused": False,
+                "overall_confidence": "high",
+                "findings": [
+                    {
+                        "statement": "Operating margin has held near 24%.",
+                        "assertability": "judgment",
+                        "confidence": "high",
+                        "supporting_evidence_ids": ["ev-1"],
+                        "known_unknowns": [],
+                    }
+                ],
+            }
+        )
+    )
 
 
 def test_second_run_of_unchanged_case_does_not_call_the_llm(tmp_path: Path) -> None:

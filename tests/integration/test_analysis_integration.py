@@ -5,6 +5,7 @@ Run with: pytest -m integration -v -s
 
 Run with -s to see the full structured result printed to stdout.
 """
+
 from __future__ import annotations
 
 from collections.abc import Generator
@@ -44,6 +45,7 @@ def kb(tcs_root: Path) -> Generator[KnowledgeBase, None, None]:
     instance = KnowledgeBase(tcs_root)
 
     from atlas.acquisition.repository import Repository
+
     repo = Repository(tcs_root)
     entry = repo.get(_AR_2024_ID)
     if entry is None:
@@ -81,6 +83,7 @@ class TestAnalyzeContract:
 
     def test_analyzer_version_present(self, result: AnalysisResult) -> None:
         from atlas.analysis.annual_report import ANALYZER_VERSION
+
         assert result.analyzer_version == ANALYZER_VERSION
 
     def test_confidence_is_valid(self, result: AnalysisResult) -> None:
@@ -89,7 +92,9 @@ class TestAnalyzeContract:
     def test_analyzed_at_is_utc(self, result: AnalysisResult) -> None:
         assert result.analyzed_at.tzinfo is not None
 
-    def test_char_count_substantial(self, result: AnalysisResult, kb: KnowledgeBase) -> None:
+    def test_char_count_substantial(
+        self, result: AnalysisResult, kb: KnowledgeBase
+    ) -> None:
         doc = kb.get(_AR_2024_ID)
         assert doc is not None
         assert doc.char_count is not None and doc.char_count >= 500_000
@@ -129,9 +134,9 @@ class TestCsrSpend:
             pytest.skip("CSR spend fact not found")
         # FY2024: ₹813 crore — allow ±5 crore tolerance for text extraction
         assert isinstance(csr[0].value, (int, float))
-        assert 800 <= float(csr[0].value) <= 830, (
-            f"Expected FY2024 CSR spend ~813 crore; got {csr[0].value}"
-        )
+        assert (
+            800 <= float(csr[0].value) <= 830
+        ), f"Expected FY2024 CSR spend ~813 crore; got {csr[0].value}"
 
     def test_csr_spend_confidence_high(self, result: AnalysisResult) -> None:
         csr = _facts(result, FactKind.ESG_CSR_SPEND)
@@ -166,9 +171,9 @@ class TestKamTitles:
 
     def test_revenue_recognition_in_kams(self, result: AnalysisResult) -> None:
         titles = [str(f.value) for f in _facts(result, FactKind.AUDIT_KAM_TITLE)]
-        assert any("Revenue recognition" in t or "revenue recognition" in t for t in titles), (
-            f"Expected 'Revenue recognition' KAM; got: {titles}"
-        )
+        assert any(
+            "Revenue recognition" in t or "revenue recognition" in t for t in titles
+        ), f"Expected 'Revenue recognition' KAM; got: {titles}"
 
 
 # ---------------------------------------------------------------------------
@@ -222,7 +227,9 @@ class TestResultDemo:
         def _trunc(text: str | None, limit: int = 300) -> str:
             if text is None:
                 return "(not found)"
-            return text[:limit].replace("\n", " ") + ("..." if len(text) > limit else "")
+            return text[:limit].replace("\n", " ") + (
+                "..." if len(text) > limit else ""
+            )
 
         doc = kb.get(_AR_2024_ID)
         assert doc is not None

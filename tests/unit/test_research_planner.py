@@ -9,6 +9,7 @@ Two tests here are architectural gates rather than behavior checks:
   form. The suite-level entropy version lands in commit 5; this is the
   minimum bar that must hold from the moment the planner exists.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -56,14 +57,22 @@ def test_planner_imports_no_forbidden_module() -> None:
     from atlas.research import planner as planner_mod
 
     forbidden_prefixes = (
-        "atlas.knowledge", "atlas.reasoning", "atlas.acquisition", "atlas.eval",
-        "requests", "httpx", "sqlite3", "pathlib", "os", "subprocess",
+        "atlas.knowledge",
+        "atlas.reasoning",
+        "atlas.acquisition",
+        "atlas.eval",
+        "requests",
+        "httpx",
+        "sqlite3",
+        "pathlib",
+        "os",
+        "subprocess",
     )
     for name in _imported_modules(planner_mod):
         for prefix in forbidden_prefixes:
-            assert not (name == prefix or name.startswith(prefix + ".")), (
-                f"research/planner.py must not import {name!r}"
-            )
+            assert not (
+                name == prefix or name.startswith(prefix + ".")
+            ), f"research/planner.py must not import {name!r}"
 
 
 def test_planner_only_imports_plan_from_atlas() -> None:
@@ -99,16 +108,19 @@ def test_no_plan_is_the_full_checklist() -> None:
 
 
 # --- Intent classification -------------------------------------------------------
-@pytest.mark.parametrize("question,expected", [
-    ("Should I invest in TCS?", "invest_decision"),
-    ("Is TCS worth buying at this level?", "invest_decision"),
-    ("What are the key risks to SBI?", "risk_assessment"),
-    ("What could go wrong with this company?", "risk_assessment"),
-    ("Compare Tata Steel with JSW Steel.", "comparison"),
-    ("How does TCS look relative to its peers?", "comparison"),
-    ("How exposed is TCS to currency movements?", "thematic"),
-    ("What was the dividend in FY24?", "targeted"),
-])
+@pytest.mark.parametrize(
+    "question,expected",
+    [
+        ("Should I invest in TCS?", "invest_decision"),
+        ("Is TCS worth buying at this level?", "invest_decision"),
+        ("What are the key risks to SBI?", "risk_assessment"),
+        ("What could go wrong with this company?", "risk_assessment"),
+        ("Compare Tata Steel with JSW Steel.", "comparison"),
+        ("How does TCS look relative to its peers?", "comparison"),
+        ("How exposed is TCS to currency movements?", "thematic"),
+        ("What was the dividend in FY24?", "targeted"),
+    ],
+)
 def test_intent_classification(question: str, expected: str) -> None:
     assert _plan(question).intent == expected
 
@@ -183,7 +195,9 @@ def test_competitive_position_dropped_for_single_subject() -> None:
     """
     single = _plan("Compare TCS against its peers.", ("TCS",))
     assert "competitive_position" not in single.dimensions
-    assert [d.rule for d in single.decisions if d.rule == "dimension_dropped_single_subject"]
+    assert [
+        d.rule for d in single.decisions if d.rule == "dimension_dropped_single_subject"
+    ]
 
 
 def test_competitive_position_kept_for_multi_subject() -> None:

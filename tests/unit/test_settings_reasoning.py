@@ -8,6 +8,7 @@ two guarantees M0 relies on:
     every non-reasoning command keeps working when no key is configured; and
   * both fields are overridable via the ATLAS_ environment prefix.
 """
+
 from __future__ import annotations
 
 from atlas.config.settings import Settings

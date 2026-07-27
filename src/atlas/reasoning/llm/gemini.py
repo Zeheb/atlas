@@ -11,6 +11,7 @@ ADC wiring and verification against a live Vertex project, out of scope for
 this task) — ``from_settings`` already threads the ``provider`` distinction
 through, so building it later touches only this file, not the factory.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

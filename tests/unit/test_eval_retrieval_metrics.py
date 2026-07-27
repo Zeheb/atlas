@@ -5,6 +5,7 @@ metrics), the suite-level aggregates (dead-rule detection, intent/top_k
 distributions, doc-type distribution, refusal_rate), and backward
 compatibility: an M1.7-era report JSON with neither field must still load.
 """
+
 from __future__ import annotations
 
 import json
@@ -31,18 +32,29 @@ SUBJECT_PLAN = SearchPlan(
     top_k=5,
     periods=("FY2024",),
     decisions=(
-        PlanningDecision(rule="intent_keyword_match", input="what did management", output="narrative"),
+        PlanningDecision(
+            rule="intent_keyword_match", input="what did management", output="narrative"
+        ),
         PlanningDecision(rule="period_extraction", input="q", output="FY2024"),
         PlanningDecision(rule="top_k_default", input="", output="5"),
     ),
 )
 
 
-def _breakdown(doc_id: str, char_offset: int, total: int, kind: str | None = "annual_report") -> ScoreBreakdown:
+def _breakdown(
+    doc_id: str, char_offset: int, total: int, kind: str | None = "annual_report"
+) -> ScoreBreakdown:
     return ScoreBreakdown(
-        doc_id=doc_id, char_offset=char_offset, base=total // 100,
-        doc_type=10, date_window=0, period=40, recency=0, numeric=0,
-        total=total, kind=kind,
+        doc_id=doc_id,
+        char_offset=char_offset,
+        base=total // 100,
+        doc_type=10,
+        date_window=0,
+        period=40,
+        recency=0,
+        numeric=0,
+        total=total,
+        kind=kind,
     )
 
 
@@ -53,9 +65,14 @@ def test_build_retrieval_metrics_none_when_no_retrieval() -> None:
 
 def test_build_retrieval_metrics_shape() -> None:
     retrieval = RetrievalResult(
-        matches=(), plan=SUBJECT_PLAN, candidates_considered=7,
+        matches=(),
+        plan=SUBJECT_PLAN,
+        candidates_considered=7,
         docs_missing_metadata=("ev-ghost",),
-        breakdowns=(_breakdown("ev-1", 10, 250), _breakdown("ev-2", 20, 150, kind="earnings_transcript")),
+        breakdowns=(
+            _breakdown("ev-1", 10, 250),
+            _breakdown("ev-2", 20, 150, kind="earnings_transcript"),
+        ),
         docs_searched=4,
     )
     metrics = build_retrieval_metrics(retrieval)
@@ -71,8 +88,12 @@ def test_build_retrieval_metrics_shape() -> None:
 
 def test_build_retrieval_metrics_no_selected_candidates() -> None:
     retrieval = RetrievalResult(
-        matches=(), plan=SUBJECT_PLAN, candidates_considered=0,
-        docs_missing_metadata=(), breakdowns=(), docs_searched=2,
+        matches=(),
+        plan=SUBJECT_PLAN,
+        candidates_considered=0,
+        docs_missing_metadata=(),
+        breakdowns=(),
+        docs_searched=2,
     )
     metrics = build_retrieval_metrics(retrieval)
     assert metrics is not None
@@ -83,8 +104,12 @@ def test_build_retrieval_metrics_no_selected_candidates() -> None:
 
 def test_build_retrieval_metrics_zero_docs_searched_gives_none_coverage() -> None:
     retrieval = RetrievalResult(
-        matches=(), plan=SUBJECT_PLAN, candidates_considered=0,
-        docs_missing_metadata=(), breakdowns=(), docs_searched=0,
+        matches=(),
+        plan=SUBJECT_PLAN,
+        candidates_considered=0,
+        docs_missing_metadata=(),
+        breakdowns=(),
+        docs_searched=0,
     )
     metrics = build_retrieval_metrics(retrieval)
     assert metrics is not None
@@ -93,8 +118,11 @@ def test_build_retrieval_metrics_zero_docs_searched_gives_none_coverage() -> Non
 
 def test_build_retrieval_metrics_unknown_kind_bucketed() -> None:
     retrieval = RetrievalResult(
-        matches=(), plan=SUBJECT_PLAN, candidates_considered=1,
-        docs_missing_metadata=(), breakdowns=(_breakdown("ev-1", 0, 100, kind=None),),
+        matches=(),
+        plan=SUBJECT_PLAN,
+        candidates_considered=1,
+        docs_missing_metadata=(),
+        breakdowns=(_breakdown("ev-1", 0, 100, kind=None),),
         docs_searched=1,
     )
     metrics = build_retrieval_metrics(retrieval)
@@ -113,17 +141,28 @@ def test_build_planner_metrics_shape() -> None:
     assert metrics.intent == "narrative"
     assert metrics.top_k == 5
     assert metrics.periods_found == ("FY2024",)
-    assert metrics.rules_fired == ("intent_keyword_match", "period_extraction", "top_k_default")
+    assert metrics.rules_fired == (
+        "intent_keyword_match",
+        "period_extraction",
+        "top_k_default",
+    )
     assert metrics.preferred_kinds == ()
 
 
 # --- Suite-level aggregates: dead rules -------------------------------------------
-def _case_with_planner(rules_fired: tuple[str, ...], intent: str = "narrative", top_k: int = 5) -> CaseResult:
+def _case_with_planner(
+    rules_fired: tuple[str, ...], intent: str = "narrative", top_k: int = 5
+) -> CaseResult:
     return CaseResult(
-        case_id="t01", category="A", status="active",
+        case_id="t01",
+        category="A",
+        status="active",
         planner_metrics=PlannerCaseMetrics(
-            intent=intent, preferred_kinds=(), top_k=top_k,
-            periods_found=(), rules_fired=rules_fired,
+            intent=intent,
+            preferred_kinds=(),
+            top_k=top_k,
+            periods_found=(),
+            rules_fired=rules_fired,
         ),
     )
 
@@ -162,15 +201,23 @@ def test_planner_aggregate_none_when_no_case_has_a_plan() -> None:
 
 # --- Suite-level aggregates: retrieval ----------------------------------------------
 def _case_with_retrieval(
-    candidates: int, coverage: float | None, boost_share: float | None,
+    candidates: int,
+    coverage: float | None,
+    boost_share: float | None,
     doc_type_counts: tuple[tuple[str, int], ...],
 ) -> CaseResult:
     return CaseResult(
-        case_id="t01", category="A", status="active",
+        case_id="t01",
+        category="A",
+        status="active",
         retrieval_metrics=RetrievalCaseMetrics(
-            candidates_considered=candidates, docs_searched=3, selected=(),
-            doc_type_counts=doc_type_counts, metadata_coverage=coverage,
-            boost_totals=(), boost_share=boost_share,
+            candidates_considered=candidates,
+            docs_searched=3,
+            selected=(),
+            doc_type_counts=doc_type_counts,
+            metadata_coverage=coverage,
+            boost_totals=(),
+            boost_share=boost_share,
         ),
     )
 
@@ -196,7 +243,9 @@ def test_retrieval_aggregate_none_when_no_case_has_retrieval() -> None:
 
 
 # --- refusal_rate -------------------------------------------------------------------
-def test_refusal_rate_computed_over_active_cases_with_a_definite_refused_value() -> None:
+def test_refusal_rate_computed_over_active_cases_with_a_definite_refused_value() -> (
+    None
+):
     results = (
         CaseResult(case_id="t01", category="A", status="active", refused=True),
         CaseResult(case_id="t02", category="A", status="active", refused=False),
@@ -207,7 +256,9 @@ def test_refusal_rate_computed_over_active_cases_with_a_definite_refused_value()
 
 
 def test_refusal_rate_none_when_no_case_has_a_definite_refused_value() -> None:
-    results = (CaseResult(case_id="t01", category="A", status="active"),)  # retrieval-only case
+    results = (
+        CaseResult(case_id="t01", category="A", status="active"),
+    )  # retrieval-only case
     agg = aggregate(results)
     assert agg["refusal_rate"] is None
 
@@ -215,11 +266,19 @@ def test_refusal_rate_none_when_no_case_has_a_definite_refused_value() -> None:
 # --- Backward compatibility: old reports without these fields still load -----------
 def test_old_report_json_without_new_fields_still_loads() -> None:
     old_style = {
-        "milestone": "M0", "created_at": "2026-01-01T00:00:00+00:00", "model": "fake",
+        "milestone": "M0",
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "model": "fake",
         "capabilities": ["single_name"],
         "results": [
-            {"case_id": "t01", "category": "A", "status": "active", "refused": False,
-             "correctness_pass": True, "grounding_pass": True},
+            {
+                "case_id": "t01",
+                "category": "A",
+                "status": "active",
+                "refused": False,
+                "correctness_pass": True,
+                "grounding_pass": True,
+            },
         ],
     }
     report = Report.from_dict(old_style)
@@ -232,12 +291,23 @@ def test_old_report_json_without_new_fields_still_loads() -> None:
 
 def test_new_report_round_trips_nested_metrics_through_json() -> None:
     result = _case_with_planner(("intent_keyword_match",))
-    result = CaseResult(**{**result.__dict__, "retrieval_metrics": _case_with_retrieval(
-        5, 1.0, 0.1, (("annual_report", 1),),
-    ).retrieval_metrics})
+    result = CaseResult(
+        **{
+            **result.__dict__,
+            "retrieval_metrics": _case_with_retrieval(
+                5,
+                1.0,
+                0.1,
+                (("annual_report", 1),),
+            ).retrieval_metrics,
+        }
+    )
     report = Report(
-        milestone="M1.8", created_at="2026-01-01T00:00:00+00:00", model="fake",
-        capabilities=("single_name",), results=(result,),
+        milestone="M1.8",
+        created_at="2026-01-01T00:00:00+00:00",
+        model="fake",
+        capabilities=("single_name",),
+        results=(result,),
     )
     restored = Report.from_json(report.to_json())
     assert restored.results[0].planner_metrics == result.planner_metrics
@@ -245,12 +315,21 @@ def test_new_report_round_trips_nested_metrics_through_json() -> None:
 
 
 # --- retrieval_quality aggregate (M1.8.5 / ADR-0005) --------------------------------
-def _case_with_quality(precision: float | None, recall: float | None, mrr: float | None,
-                        forbidden: tuple[str, ...] = ()) -> CaseResult:
+def _case_with_quality(
+    precision: float | None,
+    recall: float | None,
+    mrr: float | None,
+    forbidden: tuple[str, ...] = (),
+) -> CaseResult:
     return CaseResult(
-        case_id="t01", category="A", status="active",
+        case_id="t01",
+        category="A",
+        status="active",
         retrieval_quality=RetrievalQualityScore(
-            precision_at_k=precision, recall_at_k=recall, mrr=mrr, forbidden_retrieved=forbidden,
+            precision_at_k=precision,
+            recall_at_k=recall,
+            mrr=mrr,
+            forbidden_retrieved=forbidden,
         ),
     )
 
@@ -297,8 +376,11 @@ def test_retrieval_quality_aggregate_none_when_no_case_labelled() -> None:
 def test_retrieval_quality_round_trips_through_json() -> None:
     result = _case_with_quality(0.5, 0.75, 1.0, forbidden=("ev-bad",))
     report = Report(
-        milestone="M1.8.5", created_at="2026-01-01T00:00:00+00:00", model="fake",
-        capabilities=("single_name",), results=(result,),
+        milestone="M1.8.5",
+        created_at="2026-01-01T00:00:00+00:00",
+        model="fake",
+        capabilities=("single_name",),
+        results=(result,),
     )
     restored = Report.from_json(report.to_json())
     assert restored.results[0].retrieval_quality == result.retrieval_quality
@@ -306,7 +388,9 @@ def test_retrieval_quality_round_trips_through_json() -> None:
 
 def test_old_report_without_retrieval_quality_key_still_loads() -> None:
     old_style = {
-        "milestone": "M1.8", "created_at": "2026-01-01T00:00:00+00:00", "model": "fake",
+        "milestone": "M1.8",
+        "created_at": "2026-01-01T00:00:00+00:00",
+        "model": "fake",
         "capabilities": ["single_name"],
         "results": [{"case_id": "t01", "category": "A", "status": "active"}],
     }

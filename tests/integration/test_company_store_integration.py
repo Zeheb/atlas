@@ -10,6 +10,7 @@ Proves that:
 
 Run with: pytest -m integration -v -s
 """
+
 from __future__ import annotations
 
 import json
@@ -30,10 +31,10 @@ _PROJECT_ROOT = Path(__file__).parents[2]
 _TCS_REPO = _PROJECT_ROOT / "repositories" / "TCS"
 
 # Evidence IDs used across tests
-_ANN_ID = "bse-news-e4ffa3fc-e4f0-4da0-89fe-75d2f7b7b956"   # FY2026 annual results
-_Q2_ID = "bse-news-373a3674-df22-42d5-ac50-1d77941355cd"    # Q2 FY2025 quarterly results
-_SHP_ID = "bse-shp-532540-129"                                # Q4 FY26 shareholding
-_CREDIT_ID = "bse-news-f5e7effc-aded-46c5-acad-a9c72a80da77" # NSE ESG credit rating
+_ANN_ID = "bse-news-e4ffa3fc-e4f0-4da0-89fe-75d2f7b7b956"  # FY2026 annual results
+_Q2_ID = "bse-news-373a3674-df22-42d5-ac50-1d77941355cd"  # Q2 FY2025 quarterly results
+_SHP_ID = "bse-shp-532540-129"  # Q4 FY26 shareholding
+_CREDIT_ID = "bse-news-f5e7effc-aded-46c5-acad-a9c72a80da77"  # NSE ESG credit rating
 _BUYBACK_ID = "bse-news-e2b7edf6-e25b-4a08-a7da-cdb7f6e7befa"
 
 # Split the evidence into an "initial" set (saved to disk) and one "new" result
@@ -60,6 +61,7 @@ def tcs_root(isolated_repo_factory) -> Path:
 def kb(tcs_root: Path):
     instance = KnowledgeBase(tcs_root)
     from atlas.acquisition.repository import Repository
+
     repo = Repository(tcs_root)
     for eid in (_ANN_ID, _Q2_ID, _SHP_ID, _CREDIT_ID, _BUYBACK_ID):
         entry = repo.get(eid)
@@ -128,7 +130,9 @@ def test_loaded_financial_snapshots_count(
 def test_loaded_financial_revenue_preserved(
     tmp_path: Path, initial_profile: CompanyProfile, initial_results
 ) -> None:
-    annual_snaps = [s for s in initial_profile.financial.snapshots if s.period_type == "annual"]
+    annual_snaps = [
+        s for s in initial_profile.financial.snapshots if s.period_type == "annual"
+    ]
     if not annual_snaps:
         pytest.skip("No annual snapshot in initial profile")
     orig_rev = annual_snaps[0].facts.get(FactKind.FINANCIAL_REVENUE)
@@ -234,8 +238,14 @@ def test_store_envelope_has_required_keys(
     store = CompanyStore(tmp_path / "TCS.json", "TCS")
     store.save(initial_profile, initial_results)
     raw = json.loads(store._path.read_text())
-    for key in ("store_version", "builder_version", "company_id", "built_at",
-                 "ingested_results", "profile"):
+    for key in (
+        "store_version",
+        "builder_version",
+        "company_id",
+        "built_at",
+        "ingested_results",
+        "profile",
+    ):
         assert key in raw, f"Missing key: {key}"
 
 
@@ -255,7 +265,13 @@ def test_ingested_results_have_required_fields(
     store.save(initial_profile, initial_results)
     raw = json.loads(store._path.read_text())
     for rec in raw["ingested_results"]:
-        for field in ("evidence_id", "kind", "analyzer_version", "source_date", "analyzed_at"):
+        for field in (
+            "evidence_id",
+            "kind",
+            "analyzer_version",
+            "source_date",
+            "analyzed_at",
+        ):
             assert field in rec, f"Missing field {field!r} in ingested result record"
 
 

@@ -10,6 +10,7 @@ Synthetic fixtures mirror the structure of real BSE Reg 33 filings:
 
 Tests do NOT use real PDFs (those live in integration tests).
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -49,7 +50,6 @@ from atlas.analysis.base import (
 )
 from atlas.knowledge.base import KnowledgeBase, ParsedDocument
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -88,13 +88,19 @@ def _facts(result: AnalysisResult, kind: FactKind) -> list[AnalysisFact]:
 
 
 def _con_facts(result: AnalysisResult, kind: FactKind) -> list[AnalysisFact]:
-    return [f for f in result.facts if f.kind == kind
-            and "consolidated" in f.provenance.section]
+    return [
+        f
+        for f in result.facts
+        if f.kind == kind and "consolidated" in f.provenance.section
+    ]
 
 
 def _sa_facts(result: AnalysisResult, kind: FactKind) -> list[AnalysisFact]:
-    return [f for f in result.facts if f.kind == kind
-            and "standalone" in f.provenance.section]
+    return [
+        f
+        for f in result.facts
+        if f.kind == kind and "standalone" in f.provenance.section
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -830,7 +836,9 @@ class TestExtractNValues:
         assert values[5] == 240893.0
 
     def test_values_on_single_line(self) -> None:
-        text = "TOTAL EXPENSES\n48,956 47,344 45,368 96,300 91,157\n1,82,360\nNext label\n"
+        text = (
+            "TOTAL EXPENSES\n48,956 47,344 45,368 96,300 91,157\n1,82,360\nNext label\n"
+        )
         values = _extract_n_values(text, len("TOTAL EXPENSES\n"), n=6)
         assert len(values) == 6
         assert values[0] == 48956.0
@@ -1056,10 +1064,18 @@ class TestExtractPlFacts:
         regions = _find_pl_regions(text)
         con_rev, con_end = regions["consolidated"]
         sa_rev, sa_end = regions["standalone"]
-        con_facts = _extract_pl_facts(text, con_rev, con_end, "2024-09-30", 0, "consolidated")
-        sa_facts = _extract_pl_facts(text, sa_rev, sa_end, "2024-09-30", 0, "standalone")
-        con_revenue = next(f.value for f in con_facts if f.kind == FactKind.FINANCIAL_REVENUE)
-        sa_revenue = next(f.value for f in sa_facts if f.kind == FactKind.FINANCIAL_REVENUE)
+        con_facts = _extract_pl_facts(
+            text, con_rev, con_end, "2024-09-30", 0, "consolidated"
+        )
+        sa_facts = _extract_pl_facts(
+            text, sa_rev, sa_end, "2024-09-30", 0, "standalone"
+        )
+        con_revenue = next(
+            f.value for f in con_facts if f.kind == FactKind.FINANCIAL_REVENUE
+        )
+        sa_revenue = next(
+            f.value for f in sa_facts if f.kind == FactKind.FINANCIAL_REVENUE
+        )
         assert con_revenue != sa_revenue
         assert con_revenue == pytest.approx(64259.0)
         assert sa_revenue == pytest.approx(53990.0)
@@ -1094,7 +1110,9 @@ class TestExtractEpsFacts:
         text = _build_quarterly_filing()
         regions = _find_pl_regions(text)
         rev, end = regions["consolidated"]
-        facts = _extract_eps_facts(text, "2024-09-30", 0, "consolidated", rev, end + 3000)
+        facts = _extract_eps_facts(
+            text, "2024-09-30", 0, "consolidated", rev, end + 3000
+        )
         assert len(facts) == 1
         assert facts[0].value == pytest.approx(32.92)
 
@@ -1102,14 +1120,18 @@ class TestExtractEpsFacts:
         text = _build_quarterly_filing()
         regions = _find_pl_regions(text)
         rev, end = regions["consolidated"]
-        facts = _extract_eps_facts(text, "2024-09-30", 0, "consolidated", rev, end + 3000)
+        facts = _extract_eps_facts(
+            text, "2024-09-30", 0, "consolidated", rev, end + 3000
+        )
         assert facts[0].unit == FactUnit.RUPEES
 
     def test_eps_annual_col3(self) -> None:
         text = _build_annual_filing()
         regions = _find_pl_regions(text)
         rev, end = regions["consolidated"]
-        facts = _extract_eps_facts(text, "2026-03-31", 3, "consolidated", rev, end + 3000)
+        facts = _extract_eps_facts(
+            text, "2026-03-31", 3, "consolidated", rev, end + 3000
+        )
         assert len(facts) == 1
         assert facts[0].value == pytest.approx(135.70)
 
@@ -1128,24 +1150,33 @@ class TestExtractSegmentFacts:
     def test_finds_all_six_segments(self) -> None:
         text = _build_quarterly_filing()
         regions = _find_pl_regions(text)
-        facts = _extract_segment_facts(text, "2024-09-30", 0, regions["consolidated"][0])
+        facts = _extract_segment_facts(
+            text, "2024-09-30", 0, regions["consolidated"][0]
+        )
         names = [f for f in facts if f.kind == FactKind.SEGMENT_NAME]
         assert len(names) == 6
 
     def test_segment_revenues_present(self) -> None:
         text = _build_quarterly_filing()
         regions = _find_pl_regions(text)
-        facts = _extract_segment_facts(text, "2024-09-30", 0, regions["consolidated"][0])
+        facts = _extract_segment_facts(
+            text, "2024-09-30", 0, regions["consolidated"][0]
+        )
         revenues = [f for f in facts if f.kind == FactKind.SEGMENT_REVENUE]
         assert len(revenues) == 6
 
     def test_bfsi_revenue(self) -> None:
         text = _build_quarterly_filing()
         regions = _find_pl_regions(text)
-        facts = _extract_segment_facts(text, "2024-09-30", 0, regions["consolidated"][0])
+        facts = _extract_segment_facts(
+            text, "2024-09-30", 0, regions["consolidated"][0]
+        )
         # Find BFSI name + its paired revenue
-        name_facts = [f for f in facts if f.kind == FactKind.SEGMENT_NAME
-                      and "Banking" in str(f.value)]
+        name_facts = [
+            f
+            for f in facts
+            if f.kind == FactKind.SEGMENT_NAME and "Banking" in str(f.value)
+        ]
         rev_facts = [f for f in facts if f.kind == FactKind.SEGMENT_REVENUE]
         assert len(name_facts) == 1
         assert rev_facts[0].value == pytest.approx(23785.0)
@@ -1153,21 +1184,27 @@ class TestExtractSegmentFacts:
     def test_segment_name_unit_is_none(self) -> None:
         text = _build_quarterly_filing()
         regions = _find_pl_regions(text)
-        facts = _extract_segment_facts(text, "2024-09-30", 0, regions["consolidated"][0])
+        facts = _extract_segment_facts(
+            text, "2024-09-30", 0, regions["consolidated"][0]
+        )
         names = [f for f in facts if f.kind == FactKind.SEGMENT_NAME]
         assert all(f.unit is None for f in names)
 
     def test_segment_revenue_unit_is_crore_inr(self) -> None:
         text = _build_quarterly_filing()
         regions = _find_pl_regions(text)
-        facts = _extract_segment_facts(text, "2024-09-30", 0, regions["consolidated"][0])
+        facts = _extract_segment_facts(
+            text, "2024-09-30", 0, regions["consolidated"][0]
+        )
         revenues = [f for f in facts if f.kind == FactKind.SEGMENT_REVENUE]
         assert all(f.unit == FactUnit.CRORE_INR for f in revenues)
 
     def test_provenance_section_is_segment_table(self) -> None:
         text = _build_quarterly_filing()
         regions = _find_pl_regions(text)
-        facts = _extract_segment_facts(text, "2024-09-30", 0, regions["consolidated"][0])
+        facts = _extract_segment_facts(
+            text, "2024-09-30", 0, regions["consolidated"][0]
+        )
         assert all(f.provenance.section == "segment_table" for f in facts)
 
     def test_no_segment_table_returns_empty(self) -> None:
@@ -1213,7 +1250,10 @@ class TestExtractDividendFacts:
 
     def test_record_and_payment_unit_is_iso_date(self) -> None:
         facts = _extract_dividend_facts(_COVER_QUARTERLY, "2024-09-30")
-        for kind in (FactKind.CAPITAL_DIVIDEND_RECORD_DATE, FactKind.CAPITAL_DIVIDEND_PAYMENT_DATE):
+        for kind in (
+            FactKind.CAPITAL_DIVIDEND_RECORD_DATE,
+            FactKind.CAPITAL_DIVIDEND_PAYMENT_DATE,
+        ):
             f_list = [f for f in facts if f.kind == kind]
             assert all(f.unit == FactUnit.ISO_DATE for f in f_list)
 
@@ -1372,8 +1412,10 @@ class TestAnalyzeQuarterly:
         content = _build_quarterly_filing()
         kb = _make_kb(_make_doc(char_count=len(content)), content)
         result = analyze("fr-001", kb)
-        assert all(isinstance(f.provenance.section, str) and f.provenance.section
-                   for f in result.facts)
+        assert all(
+            isinstance(f.provenance.section, str) and f.provenance.section
+            for f in result.facts
+        )
 
     def test_warnings_is_list(self) -> None:
         content = _build_quarterly_filing()
@@ -1390,14 +1432,18 @@ class TestAnalyzeQuarterly:
 class TestAnalyzeAnnual:
     def test_period_type_annual(self) -> None:
         content = _build_annual_filing()
-        kb = _make_kb(_make_doc(char_count=len(content), source_date="2026-04-09"), content)
+        kb = _make_kb(
+            _make_doc(char_count=len(content), source_date="2026-04-09"), content
+        )
         result = analyze("fr-002", kb)
         pt = _facts(result, FactKind.REPORT_PERIOD_TYPE)
         assert pt[0].value == "annual"
 
     def test_annual_revenue_is_full_year(self) -> None:
         content = _build_annual_filing()
-        kb = _make_kb(_make_doc(char_count=len(content), source_date="2026-04-09"), content)
+        kb = _make_kb(
+            _make_doc(char_count=len(content), source_date="2026-04-09"), content
+        )
         result = analyze("fr-002", kb)
         rev = _con_facts(result, FactKind.FINANCIAL_REVENUE)
         assert len(rev) == 1
@@ -1406,7 +1452,9 @@ class TestAnalyzeAnnual:
 
     def test_annual_eps_is_full_year(self) -> None:
         content = _build_annual_filing()
-        kb = _make_kb(_make_doc(char_count=len(content), source_date="2026-04-09"), content)
+        kb = _make_kb(
+            _make_doc(char_count=len(content), source_date="2026-04-09"), content
+        )
         result = analyze("fr-002", kb)
         eps = _con_facts(result, FactKind.FINANCIAL_EPS_BASIC)
         assert len(eps) == 1
@@ -1414,7 +1462,9 @@ class TestAnalyzeAnnual:
 
     def test_annual_standalone_revenue(self) -> None:
         content = _build_annual_filing()
-        kb = _make_kb(_make_doc(char_count=len(content), source_date="2026-04-09"), content)
+        kb = _make_kb(
+            _make_doc(char_count=len(content), source_date="2026-04-09"), content
+        )
         result = analyze("fr-002", kb)
         rev = _sa_facts(result, FactKind.FINANCIAL_REVENUE)
         assert len(rev) == 1
@@ -1487,12 +1537,17 @@ class TestExceptionalItems:
         result = analyze("fr-001", kb)
         exc_amounts = _con_facts(result, FactKind.EXCEPTIONAL_AMOUNT)
         # Column 0 = current quarter = dash (0); should not emit
-        assert all(f.value == 0.0 or f.value is None for f in exc_amounts) or exc_amounts == []
+        assert (
+            all(f.value == 0.0 or f.value is None for f in exc_amounts)
+            or exc_amounts == []
+        )
 
     def test_annual_exceptional_in_current_year(self) -> None:
         """Annual FY26 restructuring of 1,388 crore appears in col 3 (FY2026 full year)."""
         content = _build_annual_filing()
-        kb = _make_kb(_make_doc(char_count=len(content), source_date="2026-04-09"), content)
+        kb = _make_kb(
+            _make_doc(char_count=len(content), source_date="2026-04-09"), content
+        )
         result = analyze("fr-002", kb)
         exc_amounts = _con_facts(result, FactKind.EXCEPTIONAL_AMOUNT)
         # Col 3 (FY2026) has restructuring (1388) and labour codes (2128) — both non-zero
@@ -1627,12 +1682,15 @@ class TestExtractBalanceSheetFacts:
         assert all(f.provenance.section == "balance_sheet" for f in facts)
 
     def test_returns_empty_when_no_bs_region(self) -> None:
-        assert _extract_balance_sheet_facts("No balance sheet here.", "2026-03-31") == []
+        assert (
+            _extract_balance_sheet_facts("No balance sheet here.", "2026-03-31") == []
+        )
 
 
 # ---------------------------------------------------------------------------
 # Regression: _extract_n_values must ignore mixed numeric+text lines
 # ---------------------------------------------------------------------------
+
 
 class TestExtractNValuesPureNumericCheck:
     """Section markers and headers that contain digits must not trigger
@@ -1671,6 +1729,7 @@ class TestExtractNValuesPureNumericCheck:
 # ---------------------------------------------------------------------------
 # Regression: OCR "L as 1" correction in _fix_ocr_numbers
 # ---------------------------------------------------------------------------
+
 
 class TestOcrLAs1:
     def test_l_between_digit_and_period(self) -> None:
@@ -1981,21 +2040,27 @@ class TestWorkingCapitalPlausibilityFloor:
         assert [f for f in facts if f.kind == FactKind.FINANCIAL_INVENTORIES] == []
 
     def test_negative_value_dropped_not_emitted(self) -> None:
-        text = _BS_TEXT.replace("Inventories\n1,200\n1,050", "Inventories\n(1,200)\n1,050")
+        text = _BS_TEXT.replace(
+            "Inventories\n1,200\n1,050", "Inventories\n(1,200)\n1,050"
+        )
         facts = _extract_balance_sheet_facts(text, "2026-03-31")
         assert [f for f in facts if f.kind == FactKind.FINANCIAL_INVENTORIES] == []
 
     def test_positive_value_retained(self) -> None:
         facts = _extract_balance_sheet_facts(_BS_TEXT, "2026-03-31")
-        assert [f for f in facts if f.kind == FactKind.FINANCIAL_INVENTORIES][0].value > 0
+        assert [f for f in facts if f.kind == FactKind.FINANCIAL_INVENTORIES][
+            0
+        ].value > 0
 
 
 class TestWorkingCapitalProvenanceAndPeriod:
     def test_new_facts_carry_balance_sheet_section(self) -> None:
         facts = _extract_balance_sheet_facts(_BS_DIRECT_BILLED_UNBILLED, "2026-03-31")
         new_kinds = {
-            FactKind.FINANCIAL_INVENTORIES, FactKind.FINANCIAL_TRADE_RECEIVABLES,
-            FactKind.FINANCIAL_TRADE_PAYABLES, FactKind.FINANCIAL_UNBILLED_REVENUE,
+            FactKind.FINANCIAL_INVENTORIES,
+            FactKind.FINANCIAL_TRADE_RECEIVABLES,
+            FactKind.FINANCIAL_TRADE_PAYABLES,
+            FactKind.FINANCIAL_UNBILLED_REVENUE,
         }
         for f in facts:
             if f.kind in new_kinds:
@@ -2092,38 +2157,50 @@ class TestExtractSegmentEbitFacts:
     def test_finds_six_ebit_facts(self) -> None:
         text = _build_quarterly_filing()
         regions = _find_pl_regions(text)
-        facts = _extract_segment_ebit_facts(text, "2024-09-30", 0, regions["consolidated"][0])
+        facts = _extract_segment_ebit_facts(
+            text, "2024-09-30", 0, regions["consolidated"][0]
+        )
         assert len(facts) == 6
 
     def test_ebit_unit_is_crore_inr(self) -> None:
         text = _build_quarterly_filing()
         regions = _find_pl_regions(text)
-        facts = _extract_segment_ebit_facts(text, "2024-09-30", 0, regions["consolidated"][0])
+        facts = _extract_segment_ebit_facts(
+            text, "2024-09-30", 0, regions["consolidated"][0]
+        )
         assert all(f.unit == FactUnit.CRORE_INR for f in facts)
 
     def test_bfsi_ebit_value(self) -> None:
         text = _build_quarterly_filing()
         regions = _find_pl_regions(text)
-        facts = _extract_segment_ebit_facts(text, "2024-09-30", 0, regions["consolidated"][0])
+        facts = _extract_segment_ebit_facts(
+            text, "2024-09-30", 0, regions["consolidated"][0]
+        )
         assert facts[0].value == pytest.approx(6345.0)
 
     def test_manufacturing_ebit_value(self) -> None:
         text = _build_quarterly_filing()
         regions = _find_pl_regions(text)
-        facts = _extract_segment_ebit_facts(text, "2024-09-30", 0, regions["consolidated"][0])
+        facts = _extract_segment_ebit_facts(
+            text, "2024-09-30", 0, regions["consolidated"][0]
+        )
         mfg = [f for f in facts if f.value == pytest.approx(2063.0)]
         assert len(mfg) == 1
 
     def test_all_ebit_facts_have_segment_table_provenance(self) -> None:
         text = _build_quarterly_filing()
         regions = _find_pl_regions(text)
-        facts = _extract_segment_ebit_facts(text, "2024-09-30", 0, regions["consolidated"][0])
+        facts = _extract_segment_ebit_facts(
+            text, "2024-09-30", 0, regions["consolidated"][0]
+        )
         assert all(f.provenance.section == "segment_table" for f in facts)
 
     def test_fact_kind_is_segment_ebit(self) -> None:
         text = _build_quarterly_filing()
         regions = _find_pl_regions(text)
-        facts = _extract_segment_ebit_facts(text, "2024-09-30", 0, regions["consolidated"][0])
+        facts = _extract_segment_ebit_facts(
+            text, "2024-09-30", 0, regions["consolidated"][0]
+        )
         assert all(f.kind == FactKind.SEGMENT_EBIT for f in facts)
 
     def test_returns_empty_when_no_segment_result(self) -> None:
@@ -2156,13 +2233,18 @@ class TestAnalyzeQuarterlySegmentEbit:
         content = _build_quarterly_filing()
         kb = _make_kb(_make_doc(char_count=len(content)), content)
         result = analyze("fr-001", kb)
-        bs_facts = [f for f in result.facts if f.kind in (
-            FactKind.FINANCIAL_CASH_AND_EQUIVALENTS,
-            FactKind.FINANCIAL_TOTAL_EQUITY,
-            FactKind.FINANCIAL_TOTAL_DEBT,
-            FactKind.FINANCIAL_OPERATING_CASH_FLOW,
-            FactKind.FINANCIAL_CAPEX,
-        )]
+        bs_facts = [
+            f
+            for f in result.facts
+            if f.kind
+            in (
+                FactKind.FINANCIAL_CASH_AND_EQUIVALENTS,
+                FactKind.FINANCIAL_TOTAL_EQUITY,
+                FactKind.FINANCIAL_TOTAL_DEBT,
+                FactKind.FINANCIAL_OPERATING_CASH_FLOW,
+                FactKind.FINANCIAL_CAPEX,
+            )
+        ]
         assert bs_facts == []
 
 
@@ -2174,7 +2256,9 @@ class TestAnalyzeQuarterlySegmentEbit:
 class TestAnalyzeAnnualBalanceSheetAndCashFlow:
     def test_cash_extracted_from_annual(self) -> None:
         content = _build_annual_filing()
-        kb = _make_kb(_make_doc(char_count=len(content), source_date="2026-04-09"), content)
+        kb = _make_kb(
+            _make_doc(char_count=len(content), source_date="2026-04-09"), content
+        )
         result = analyze("fr-002", kb)
         cash = _facts(result, FactKind.FINANCIAL_CASH_AND_EQUIVALENTS)
         assert len(cash) == 1
@@ -2182,7 +2266,9 @@ class TestAnalyzeAnnualBalanceSheetAndCashFlow:
 
     def test_equity_extracted_from_annual(self) -> None:
         content = _build_annual_filing()
-        kb = _make_kb(_make_doc(char_count=len(content), source_date="2026-04-09"), content)
+        kb = _make_kb(
+            _make_doc(char_count=len(content), source_date="2026-04-09"), content
+        )
         result = analyze("fr-002", kb)
         eq = _facts(result, FactKind.FINANCIAL_TOTAL_EQUITY)
         assert len(eq) == 1
@@ -2190,14 +2276,18 @@ class TestAnalyzeAnnualBalanceSheetAndCashFlow:
 
     def test_no_debt_fact_for_debt_free_annual(self) -> None:
         content = _build_annual_filing()
-        kb = _make_kb(_make_doc(char_count=len(content), source_date="2026-04-09"), content)
+        kb = _make_kb(
+            _make_doc(char_count=len(content), source_date="2026-04-09"), content
+        )
         result = analyze("fr-002", kb)
         debt = _facts(result, FactKind.FINANCIAL_TOTAL_DEBT)
         assert debt == []
 
     def test_operating_cash_flow_extracted(self) -> None:
         content = _build_annual_filing()
-        kb = _make_kb(_make_doc(char_count=len(content), source_date="2026-04-09"), content)
+        kb = _make_kb(
+            _make_doc(char_count=len(content), source_date="2026-04-09"), content
+        )
         result = analyze("fr-002", kb)
         cfo = _facts(result, FactKind.FINANCIAL_OPERATING_CASH_FLOW)
         assert len(cfo) == 1
@@ -2205,7 +2295,9 @@ class TestAnalyzeAnnualBalanceSheetAndCashFlow:
 
     def test_capex_extracted(self) -> None:
         content = _build_annual_filing()
-        kb = _make_kb(_make_doc(char_count=len(content), source_date="2026-04-09"), content)
+        kb = _make_kb(
+            _make_doc(char_count=len(content), source_date="2026-04-09"), content
+        )
         result = analyze("fr-002", kb)
         capex = _facts(result, FactKind.FINANCIAL_CAPEX)
         assert len(capex) == 1
@@ -2213,7 +2305,9 @@ class TestAnalyzeAnnualBalanceSheetAndCashFlow:
 
     def test_capex_is_positive(self) -> None:
         content = _build_annual_filing()
-        kb = _make_kb(_make_doc(char_count=len(content), source_date="2026-04-09"), content)
+        kb = _make_kb(
+            _make_doc(char_count=len(content), source_date="2026-04-09"), content
+        )
         result = analyze("fr-002", kb)
         capex = _facts(result, FactKind.FINANCIAL_CAPEX)
         assert capex[0].value > 0
@@ -2371,6 +2465,7 @@ class TestBankingFormatDetection:
 
 class TestBankingFactKindsPresent:
     """Smoke-test that the new banking FactKind members exist in the ontology."""
+
     def test_nii_kind_exists(self) -> None:
         assert hasattr(FactKind, "FINANCIAL_NET_INTEREST_INCOME")
 

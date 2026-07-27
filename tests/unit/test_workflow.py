@@ -233,7 +233,9 @@ class TestAcquisitionProfileFiltering:
 class TestCatalogUpdates:
     def test_successful_downloads_added_to_catalog(self, tmp_path: Path) -> None:
         root = _make_repo(tmp_path)
-        run_acquisition(root, _mock_connector(evidence=[_make_evidence("bse-news-001")]))
+        run_acquisition(
+            root, _mock_connector(evidence=[_make_evidence("bse-news-001")])
+        )
         data = json.loads((root / "catalog.json").read_text(encoding="utf-8"))
         ids = [item["evidence_id"] for item in data.get("items", [])]
         assert "bse-news-001" in ids
@@ -386,9 +388,7 @@ class TestIdempotency:
 
 
 class TestAcquisitionRunPersistence:
-    def test_run_file_written_to_acquisitions_directory(
-        self, tmp_path: Path
-    ) -> None:
+    def test_run_file_written_to_acquisitions_directory(self, tmp_path: Path) -> None:
         root = _make_repo(tmp_path)
         report = run_acquisition(root, _mock_connector())
         save_acquisition_run(report, root)
@@ -518,6 +518,7 @@ class TestAcquisitionWarnings:
 
 def _pdf_bytes(text: str) -> bytes:
     import fitz
+
     pdf = fitz.open()
     page = pdf.new_page()
     page.insert_text((72, 72), text)
@@ -542,6 +543,7 @@ class TestInlineClassification:
 
         assert report.reclassified == 1
         from atlas.acquisition.catalog import RepositoryCatalog
+
         catalog = RepositoryCatalog(root)
         assert catalog.get_entry("bse-news-rp1").kind == "regulatory_filing"
 
@@ -558,6 +560,7 @@ class TestInlineClassification:
         assert report.classified == 1
         assert report.reclassified == 0
         from atlas.acquisition.catalog import RepositoryCatalog
+
         catalog = RepositoryCatalog(root)
         assert catalog.get_entry("bse-news-fr1").kind == "financial_results"
 
@@ -571,8 +574,12 @@ class TestInlineClassification:
 
         def _fetch(url: str) -> bytes:
             if "rp2" in url:
-                return _pdf_bytes("Sub: Disclosure of Related Party Transactions pursuant to Regulation 23(9)")
-            return _pdf_bytes("Sub: Financial Results for the year ended March 31, 2026")
+                return _pdf_bytes(
+                    "Sub: Disclosure of Related Party Transactions pursuant to Regulation 23(9)"
+                )
+            return _pdf_bytes(
+                "Sub: Financial Results for the year ended March 31, 2026"
+            )
 
         connector.fetch_bytes.side_effect = _fetch
 
@@ -595,6 +602,7 @@ class TestInlineClassification:
         assert report.downloaded == 1
         assert report.classified == 0
         from atlas.acquisition.catalog import RepositoryCatalog
+
         catalog = RepositoryCatalog(root)
         assert catalog.get_entry("bse-news-bad1").kind == "financial_results"
 
@@ -623,18 +631,20 @@ class TestMultiConnectorOrchestration:
     def test_evidence_from_second_connector_is_downloaded(self, tmp_path: Path) -> None:
         root = _make_repo(tmp_path)
         primary = _mock_connector(evidence=[_make_evidence("bse-news-p1")])
-        second = _mock_connector(evidence=[
-            Evidence(
-                evidence_id="nse-news-s1",
-                company_id="cmp_test123",
-                source=EvidenceSource.NSE,
-                kind=EvidenceKind.FINANCIAL_RESULTS,
-                title="Financial Results from a second source",
-                source_date=datetime(2025, 6, 1, tzinfo=timezone.utc),
-                document_url="https://example.com/nse-news-s1.pdf",
-                file_size_bytes=2_000,
-            )
-        ])
+        second = _mock_connector(
+            evidence=[
+                Evidence(
+                    evidence_id="nse-news-s1",
+                    company_id="cmp_test123",
+                    source=EvidenceSource.NSE,
+                    kind=EvidenceKind.FINANCIAL_RESULTS,
+                    title="Financial Results from a second source",
+                    source_date=datetime(2025, 6, 1, tzinfo=timezone.utc),
+                    document_url="https://example.com/nse-news-s1.pdf",
+                    file_size_bytes=2_000,
+                )
+            ]
+        )
 
         report = run_acquisition(root, primary, additional_connectors=[second])
 
@@ -646,15 +656,23 @@ class TestMultiConnectorOrchestration:
         root = _make_repo(tmp_path)
         same_date = datetime(2026, 4, 9, tzinfo=timezone.utc)
         bse_copy = Evidence(
-            evidence_id="bse-news-dup", company_id="cmp_test123", source=EvidenceSource.BSE,
-            kind=EvidenceKind.FINANCIAL_RESULTS, title="Q4 Results",
-            source_date=same_date, document_url="https://bse.example.com/dup.pdf",
+            evidence_id="bse-news-dup",
+            company_id="cmp_test123",
+            source=EvidenceSource.BSE,
+            kind=EvidenceKind.FINANCIAL_RESULTS,
+            title="Q4 Results",
+            source_date=same_date,
+            document_url="https://bse.example.com/dup.pdf",
             file_size_bytes=100,
         )
         nse_copy = Evidence(
-            evidence_id="nse-news-dup", company_id="cmp_test123", source=EvidenceSource.NSE,
-            kind=EvidenceKind.FINANCIAL_RESULTS, title="Q4 Results",
-            source_date=same_date, document_url="https://nse.example.com/dup.pdf",
+            evidence_id="nse-news-dup",
+            company_id="cmp_test123",
+            source=EvidenceSource.NSE,
+            kind=EvidenceKind.FINANCIAL_RESULTS,
+            title="Q4 Results",
+            source_date=same_date,
+            document_url="https://nse.example.com/dup.pdf",
             file_size_bytes=500,  # larger -> preferred by the default tiebreak
         )
         primary = _mock_connector(evidence=[bse_copy])
@@ -667,10 +685,14 @@ class TestMultiConnectorOrchestration:
         assert report.downloaded == 1
         assert report.results[0].evidence.evidence_id == "nse-news-dup"
         primary.fetch_bytes.assert_not_called()
-        dedup_warnings = [w for w in report.warnings if w.code == "duplicate_across_exchanges"]
+        dedup_warnings = [
+            w for w in report.warnings if w.code == "duplicate_across_exchanges"
+        ]
         assert len(dedup_warnings) == 1
 
-    def test_no_additional_connectors_behaves_exactly_as_before(self, tmp_path: Path) -> None:
+    def test_no_additional_connectors_behaves_exactly_as_before(
+        self, tmp_path: Path
+    ) -> None:
         # The default (no additional_connectors) must be indistinguishable
         # from every pre-multi-source-sprint acquisition run.
         root = _make_repo(tmp_path)

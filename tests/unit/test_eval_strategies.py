@@ -8,6 +8,7 @@ two ever diverge, the baseline measurement is invalid -- so this test pins
 byte-identical output across the golden-corpus-shaped fixtures used elsewhere
 in this test suite, and must be re-verified whenever either function changes.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -22,7 +23,9 @@ from atlas.reasoning.retrieval import retrieve_passages, retrieve_with_plan
 _MARGIN_TEXT = "Operating margin stood at 24.2% in FY26, an improvement over last year."
 _RISK_TEXT = "Currency fluctuation risk affects our overseas operations significantly."
 _IRRELEVANT_TEXT = "The quarterly board meeting discussed general governance policies."
-_NARRATIVE_TEXT = "Management said bookings benefited from a favourable pricing mix this quarter."
+_NARRATIVE_TEXT = (
+    "Management said bookings benefited from a favourable pricing mix this quarter."
+)
 
 _QUESTIONS = [
     "What was the operating margin 24.2 and the currency fluctuation risk?",
@@ -38,10 +41,15 @@ def _kb_with_docs(tmp_path: Path, docs: dict[str, str]) -> KnowledgeBase:
         rel = f"{evidence_id}.txt"
         (tmp_path / rel).write_text(content, encoding="utf-8")
         entry = CatalogEntry(
-            evidence_id=evidence_id, source=EvidenceSource.BSE.value,
-            kind=EvidenceKind.ANNUAL_REPORT.value, title="Test doc",
-            source_date="2026-03-31T00:00:00+00:00", document_url=None,
-            local_path=rel, file_size_bytes=None, acquired_at="2026-04-01T00:00:00+00:00",
+            evidence_id=evidence_id,
+            source=EvidenceSource.BSE.value,
+            kind=EvidenceKind.ANNUAL_REPORT.value,
+            title="Test doc",
+            source_date="2026-03-31T00:00:00+00:00",
+            document_url=None,
+            local_path=rel,
+            file_size_bytes=None,
+            acquired_at="2026-04-01T00:00:00+00:00",
         )
         kb.parse(entry)
     return kb
@@ -49,9 +57,15 @@ def _kb_with_docs(tmp_path: Path, docs: dict[str, str]) -> KnowledgeBase:
 
 # --- Mandatory equivalence: baseline null plan == retrieve_passages -------------
 def test_baseline_null_plan_matches_retrieve_passages_exactly(tmp_path: Path) -> None:
-    kb = _kb_with_docs(tmp_path, {
-        "ev-1": _MARGIN_TEXT, "ev-2": _RISK_TEXT, "ev-3": _IRRELEVANT_TEXT, "ev-4": _NARRATIVE_TEXT,
-    })
+    kb = _kb_with_docs(
+        tmp_path,
+        {
+            "ev-1": _MARGIN_TEXT,
+            "ev-2": _RISK_TEXT,
+            "ev-3": _IRRELEVANT_TEXT,
+            "ev-4": _NARRATIVE_TEXT,
+        },
+    )
     doc_ids = ["ev-1", "ev-2", "ev-3", "ev-4"]
     strategy = BaselineStrategy()
     for question in _QUESTIONS:
@@ -103,7 +117,9 @@ def test_planned_strategy_uses_heuristic_planner() -> None:
 
 def test_planned_strategy_produces_doc_type_preferences() -> None:
     plan = PlannedStrategy().plan_for("What are the key risk factors disclosed?")
-    assert plan.preferred_doc_types  # unlike the baseline, planned expresses a preference
+    assert (
+        plan.preferred_doc_types
+    )  # unlike the baseline, planned expresses a preference
 
 
 # --- Registry ---------------------------------------------------------------------

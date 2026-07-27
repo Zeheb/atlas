@@ -4,6 +4,7 @@ All fixtures use synthetic CompanyProfile objects — no real PDFs, no KB.
 Tests verify that each query function returns the right columns, row counts,
 note messages, and formatted values for known inputs.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -87,35 +88,52 @@ def _own_snap(period: str, facts: dict) -> OwnershipSnapshot:
 
 def _profile_with_financials() -> CompanyProfile:
     snaps = [
-        _snap("2023-03-31", facts={
-            "financial_revenue": 225458.0,
-            "financial_pat": 42303.0,
-            "financial_profit_before_exceptional": 56890.0,
-            "financial_finance_cost": 456.0,
-            "financial_depreciation": 5210.0,
-        }),
-        _snap("2024-03-31", facts={
-            "financial_revenue": 240893.0,
-            "financial_pat": 46099.0,
-            "financial_profit_before_exceptional": 61150.0,
-            "financial_finance_cost": 480.0,
-            "financial_depreciation": 5600.0,
-        }),
-        _snap("2025-03-31", facts={
-            "financial_revenue": 255324.0,
-            "financial_pat": 48553.0,
-            "financial_profit_before_exceptional": 64100.0,
-            "financial_finance_cost": 490.0,
-            "financial_depreciation": 5800.0,
-        }),
+        _snap(
+            "2023-03-31",
+            facts={
+                "financial_revenue": 225458.0,
+                "financial_pat": 42303.0,
+                "financial_profit_before_exceptional": 56890.0,
+                "financial_finance_cost": 456.0,
+                "financial_depreciation": 5210.0,
+            },
+        ),
+        _snap(
+            "2024-03-31",
+            facts={
+                "financial_revenue": 240893.0,
+                "financial_pat": 46099.0,
+                "financial_profit_before_exceptional": 61150.0,
+                "financial_finance_cost": 480.0,
+                "financial_depreciation": 5600.0,
+            },
+        ),
+        _snap(
+            "2025-03-31",
+            facts={
+                "financial_revenue": 255324.0,
+                "financial_pat": 48553.0,
+                "financial_profit_before_exceptional": 64100.0,
+                "financial_finance_cost": 490.0,
+                "financial_depreciation": 5800.0,
+            },
+        ),
         # Standalone row — should not appear in consolidated query
-        _snap("2024-03-31", basis="standalone", facts={
-            "financial_revenue": 198000.0,
-        }),
+        _snap(
+            "2024-03-31",
+            basis="standalone",
+            facts={
+                "financial_revenue": 198000.0,
+            },
+        ),
         # Quarterly row — should not appear in annual query
-        _snap("2024-12-31", period_type="quarterly", facts={
-            "financial_revenue": 63000.0,
-        }),
+        _snap(
+            "2024-12-31",
+            period_type="quarterly",
+            facts={
+                "financial_revenue": 63000.0,
+            },
+        ),
     ]
     p = _empty_profile("TCS")
     p.financial = FinancialTimeSeries(snapshots=snaps)
@@ -218,47 +236,66 @@ def _profile_with_strategy() -> CompanyProfile:
 
 def _profile_with_ownership() -> CompanyProfile:
     p = _empty_profile("TCS")
-    p.ownership = OwnershipTimeSeries(snapshots=[
-        _own_snap("2024-03-31", {
-            "ownership_promoter_pct": 72.30,
-            "ownership_fpi_pct": 12.50,
-            "ownership_dii_pct": 5.20,
-            "ownership_mf_pct": 3.80,
-            "ownership_public_pct": 9.40,
-            "ownership_promoter_pledged_pct": 0.0,
-        }),
-        _own_snap("2024-06-30", {
-            "ownership_promoter_pct": 72.25,
-            "ownership_fpi_pct": 12.65,
-            "ownership_dii_pct": 5.15,
-            "ownership_mf_pct": 3.90,
-            "ownership_public_pct": 9.40,
-            "ownership_promoter_pledged_pct": 0.0,
-        }),
-        _own_snap("2024-09-30", {
-            "ownership_promoter_pct": 72.20,
-            "ownership_fpi_pct": 12.80,
-            "ownership_dii_pct": 5.10,
-            "ownership_mf_pct": 4.00,
-            "ownership_public_pct": 9.50,
-            "ownership_promoter_pledged_pct": 0.0,
-        }),
-    ])
+    p.ownership = OwnershipTimeSeries(
+        snapshots=[
+            _own_snap(
+                "2024-03-31",
+                {
+                    "ownership_promoter_pct": 72.30,
+                    "ownership_fpi_pct": 12.50,
+                    "ownership_dii_pct": 5.20,
+                    "ownership_mf_pct": 3.80,
+                    "ownership_public_pct": 9.40,
+                    "ownership_promoter_pledged_pct": 0.0,
+                },
+            ),
+            _own_snap(
+                "2024-06-30",
+                {
+                    "ownership_promoter_pct": 72.25,
+                    "ownership_fpi_pct": 12.65,
+                    "ownership_dii_pct": 5.15,
+                    "ownership_mf_pct": 3.90,
+                    "ownership_public_pct": 9.40,
+                    "ownership_promoter_pledged_pct": 0.0,
+                },
+            ),
+            _own_snap(
+                "2024-09-30",
+                {
+                    "ownership_promoter_pct": 72.20,
+                    "ownership_fpi_pct": 12.80,
+                    "ownership_dii_pct": 5.10,
+                    "ownership_mf_pct": 4.00,
+                    "ownership_public_pct": 9.50,
+                    "ownership_promoter_pledged_pct": 0.0,
+                },
+            ),
+        ]
+    )
     return p
 
 
 def _profile_with_leverage() -> CompanyProfile:
     p = _empty_profile("TCS")
-    p.financial = FinancialTimeSeries(snapshots=[
-        _snap("2023-03-31", facts={
-            "financial_cash_and_equivalents": 12000.0,
-            "financial_total_debt": 0.0,
-        }),
-        _snap("2024-03-31", facts={
-            "financial_cash_and_equivalents": 14500.0,
-            "financial_total_debt": 0.0,
-        }),
-    ])
+    p.financial = FinancialTimeSeries(
+        snapshots=[
+            _snap(
+                "2023-03-31",
+                facts={
+                    "financial_cash_and_equivalents": 12000.0,
+                    "financial_total_debt": 0.0,
+                },
+            ),
+            _snap(
+                "2024-03-31",
+                facts={
+                    "financial_cash_and_equivalents": 14500.0,
+                    "financial_total_debt": 0.0,
+                },
+            ),
+        ]
+    )
     return p
 
 
@@ -301,9 +338,19 @@ def _profile_with_risks() -> CompanyProfile:
     p = _empty_profile("TCS")
     p.governance = GovernanceProfile(
         risk_factors=[
-            RiskEntry(period="2024-03-31", text="Cybersecurity and data privacy threats", evidence_id="e1"),
-            RiskEntry(period="2024-03-31", text="Currency fluctuation risk", evidence_id="e1"),
-            RiskEntry(period="2025-03-31", text="Cybersecurity and data privacy threats", evidence_id="e2"),
+            RiskEntry(
+                period="2024-03-31",
+                text="Cybersecurity and data privacy threats",
+                evidence_id="e1",
+            ),
+            RiskEntry(
+                period="2024-03-31", text="Currency fluctuation risk", evidence_id="e1"
+            ),
+            RiskEntry(
+                period="2025-03-31",
+                text="Cybersecurity and data privacy threats",
+                evidence_id="e2",
+            ),
             RiskEntry(period="2025-03-31", text="Geopolitical risk", evidence_id="e2"),
         ],
     )
@@ -647,12 +694,17 @@ class TestOwnershipSignals:
 
     def test_no_signals_section_single_snapshot(self) -> None:
         p = _empty_profile()
-        p.ownership = OwnershipTimeSeries(snapshots=[
-            _own_snap("2024-03-31", {
-                "ownership_promoter_pct": 72.30,
-                "ownership_fpi_pct": 12.50,
-            }),
-        ])
+        p.ownership = OwnershipTimeSeries(
+            snapshots=[
+                _own_snap(
+                    "2024-03-31",
+                    {
+                        "ownership_promoter_pct": 72.30,
+                        "ownership_fpi_pct": 12.50,
+                    },
+                ),
+            ]
+        )
         result = ownership(p)
         headings = [s.heading for s in result.sections]
         assert "Ownership Signals" not in headings
@@ -660,12 +712,26 @@ class TestOwnershipSignals:
     def test_streak_signal_detected(self) -> None:
         # FPI rises >0.5pp for 3+ consecutive quarters → streak signal
         p = _empty_profile()
-        p.ownership = OwnershipTimeSeries(snapshots=[
-            _own_snap("2023-06-30", {"ownership_fpi_pct": 10.00, "ownership_promoter_pct": 72.0}),
-            _own_snap("2023-09-30", {"ownership_fpi_pct": 10.80, "ownership_promoter_pct": 72.0}),
-            _own_snap("2023-12-31", {"ownership_fpi_pct": 11.60, "ownership_promoter_pct": 72.0}),
-            _own_snap("2024-03-31", {"ownership_fpi_pct": 12.40, "ownership_promoter_pct": 72.0}),
-        ])
+        p.ownership = OwnershipTimeSeries(
+            snapshots=[
+                _own_snap(
+                    "2023-06-30",
+                    {"ownership_fpi_pct": 10.00, "ownership_promoter_pct": 72.0},
+                ),
+                _own_snap(
+                    "2023-09-30",
+                    {"ownership_fpi_pct": 10.80, "ownership_promoter_pct": 72.0},
+                ),
+                _own_snap(
+                    "2023-12-31",
+                    {"ownership_fpi_pct": 11.60, "ownership_promoter_pct": 72.0},
+                ),
+                _own_snap(
+                    "2024-03-31",
+                    {"ownership_fpi_pct": 12.40, "ownership_promoter_pct": 72.0},
+                ),
+            ]
+        )
         result = ownership(p)
         sig_sec = next(s for s in result.sections if s.heading == "Ownership Signals")
         all_text = " ".join(row[0] for row in sig_sec.rows)
@@ -673,16 +739,24 @@ class TestOwnershipSignals:
 
     def test_pledging_appearance_signal(self) -> None:
         p = _empty_profile()
-        p.ownership = OwnershipTimeSeries(snapshots=[
-            _own_snap("2024-03-31", {
-                "ownership_promoter_pct": 72.0,
-                "ownership_promoter_pledged_pct": 0.0,
-            }),
-            _own_snap("2024-06-30", {
-                "ownership_promoter_pct": 72.0,
-                "ownership_promoter_pledged_pct": 1.5,
-            }),
-        ])
+        p.ownership = OwnershipTimeSeries(
+            snapshots=[
+                _own_snap(
+                    "2024-03-31",
+                    {
+                        "ownership_promoter_pct": 72.0,
+                        "ownership_promoter_pledged_pct": 0.0,
+                    },
+                ),
+                _own_snap(
+                    "2024-06-30",
+                    {
+                        "ownership_promoter_pct": 72.0,
+                        "ownership_promoter_pledged_pct": 1.5,
+                    },
+                ),
+            ]
+        )
         result = ownership(p)
         sig_sec = next(s for s in result.sections if s.heading == "Ownership Signals")
         all_text = " ".join(row[0] for row in sig_sec.rows)
@@ -690,16 +764,24 @@ class TestOwnershipSignals:
 
     def test_pledging_cleared_signal(self) -> None:
         p = _empty_profile()
-        p.ownership = OwnershipTimeSeries(snapshots=[
-            _own_snap("2024-03-31", {
-                "ownership_promoter_pct": 72.0,
-                "ownership_promoter_pledged_pct": 2.0,
-            }),
-            _own_snap("2024-06-30", {
-                "ownership_promoter_pct": 72.0,
-                "ownership_promoter_pledged_pct": 0.0,
-            }),
-        ])
+        p.ownership = OwnershipTimeSeries(
+            snapshots=[
+                _own_snap(
+                    "2024-03-31",
+                    {
+                        "ownership_promoter_pct": 72.0,
+                        "ownership_promoter_pledged_pct": 2.0,
+                    },
+                ),
+                _own_snap(
+                    "2024-06-30",
+                    {
+                        "ownership_promoter_pct": 72.0,
+                        "ownership_promoter_pledged_pct": 0.0,
+                    },
+                ),
+            ]
+        )
         result = ownership(p)
         sig_sec = next(s for s in result.sections if s.heading == "Ownership Signals")
         all_text = " ".join(row[0] for row in sig_sec.rows)
@@ -709,16 +791,24 @@ class TestOwnershipSignals:
         # FPI moves 0.10pp — below 0.50pp threshold → no single-period FPI signal
         # Promoter flat → no signal
         p = _empty_profile()
-        p.ownership = OwnershipTimeSeries(snapshots=[
-            _own_snap("2024-03-31", {
-                "ownership_fpi_pct": 12.00,
-                "ownership_promoter_pct": 72.00,
-            }),
-            _own_snap("2024-06-30", {
-                "ownership_fpi_pct": 12.10,
-                "ownership_promoter_pct": 72.00,
-            }),
-        ])
+        p.ownership = OwnershipTimeSeries(
+            snapshots=[
+                _own_snap(
+                    "2024-03-31",
+                    {
+                        "ownership_fpi_pct": 12.00,
+                        "ownership_promoter_pct": 72.00,
+                    },
+                ),
+                _own_snap(
+                    "2024-06-30",
+                    {
+                        "ownership_fpi_pct": 12.10,
+                        "ownership_promoter_pct": 72.00,
+                    },
+                ),
+            ]
+        )
         result = ownership(p)
         headings = [s.heading for s in result.sections]
         assert "Ownership Signals" not in headings
@@ -726,17 +816,21 @@ class TestOwnershipSignals:
     def test_signals_use_all_snapshots_not_just_last_n(self) -> None:
         # Create 4 snapshots with a streak over all 4; last_n=2 would miss it
         p = _empty_profile()
-        p.ownership = OwnershipTimeSeries(snapshots=[
-            _own_snap("2023-06-30", {"ownership_fpi_pct": 10.00}),
-            _own_snap("2023-09-30", {"ownership_fpi_pct": 10.80}),
-            _own_snap("2023-12-31", {"ownership_fpi_pct": 11.60}),
-            _own_snap("2024-03-31", {"ownership_fpi_pct": 12.40}),
-        ])
+        p.ownership = OwnershipTimeSeries(
+            snapshots=[
+                _own_snap("2023-06-30", {"ownership_fpi_pct": 10.00}),
+                _own_snap("2023-09-30", {"ownership_fpi_pct": 10.80}),
+                _own_snap("2023-12-31", {"ownership_fpi_pct": 11.60}),
+                _own_snap("2024-03-31", {"ownership_fpi_pct": 12.40}),
+            ]
+        )
         # last_n=2 limits the visible table but signals use all 4 snapshots
         result = ownership(p, last_n=2)
         assert len(result.sections[0].rows) == 2  # table still limited
         headings = [s.heading for s in result.sections]
-        assert "Ownership Signals" in headings  # signals still detected from full history
+        assert (
+            "Ownership Signals" in headings
+        )  # signals still detected from full history
 
 
 # ---------------------------------------------------------------------------
@@ -766,9 +860,9 @@ class TestLeverageQuery:
     def test_no_cash_data_shows_dash(self) -> None:
         # Snap without cash/debt data
         p = _empty_profile()
-        p.financial = FinancialTimeSeries(snapshots=[
-            _snap("2024-03-31", facts={"financial_revenue": 100.0})
-        ])
+        p.financial = FinancialTimeSeries(
+            snapshots=[_snap("2024-03-31", facts={"financial_revenue": 100.0})]
+        )
         result = leverage(p)
         assert result.sections[0].rows[0][1] == "-"
         assert result.sections[0].rows[0][3] == "-"
@@ -911,7 +1005,16 @@ class TestAvailableQueries:
 
     def test_contains_all_eight(self) -> None:
         qs = available_queries()
-        for q in ("revenue", "capital", "strategy", "acquisitions", "ownership", "leverage", "ratings", "risks"):
+        for q in (
+            "revenue",
+            "capital",
+            "strategy",
+            "acquisitions",
+            "ownership",
+            "leverage",
+            "ratings",
+            "risks",
+        ):
             assert q in qs
 
     def test_contains_v2_queries(self) -> None:
@@ -949,8 +1052,12 @@ class TestEdgeCases:
         p = _empty_profile()
         p.governance = GovernanceProfile(
             risk_factors=[
-                RiskEntry(period="2024-03-31", text="Cybersecurity risk", evidence_id="e1"),
-                RiskEntry(period="2025-03-31", text="CYBERSECURITY RISK", evidence_id="e2"),
+                RiskEntry(
+                    period="2024-03-31", text="Cybersecurity risk", evidence_id="e1"
+                ),
+                RiskEntry(
+                    period="2025-03-31", text="CYBERSECURITY RISK", evidence_id="e2"
+                ),
             ]
         )
         result = risks(p)
@@ -959,9 +1066,9 @@ class TestEdgeCases:
 
     def test_ownership_empty_facts(self) -> None:
         p = _empty_profile()
-        p.ownership = OwnershipTimeSeries(snapshots=[
-            OwnershipSnapshot(period="2024-03-31", facts={}, sources=["e1"])
-        ])
+        p.ownership = OwnershipTimeSeries(
+            snapshots=[OwnershipSnapshot(period="2024-03-31", facts={}, sources=["e1"])]
+        )
         result = ownership(p)
         # Row exists but all values are "-"
         assert len(result.sections[0].rows) == 1
@@ -970,11 +1077,16 @@ class TestEdgeCases:
 
     def test_leverage_net_debt_when_debt_exceeds_cash(self) -> None:
         p = _empty_profile()
-        p.financial = FinancialTimeSeries(snapshots=[
-            _snap("2024-03-31", facts={
-                "financial_cash_and_equivalents": 500.0,
-                "financial_total_debt": 2000.0,
-            })
-        ])
+        p.financial = FinancialTimeSeries(
+            snapshots=[
+                _snap(
+                    "2024-03-31",
+                    facts={
+                        "financial_cash_and_equivalents": 500.0,
+                        "financial_total_debt": 2000.0,
+                    },
+                )
+            ]
+        )
         result = leverage(p)
         assert "net debt" in result.sections[0].rows[0][3]

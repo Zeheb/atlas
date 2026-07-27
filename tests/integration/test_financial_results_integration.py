@@ -6,6 +6,7 @@ Validates against two real filings:
   Q2 FY2025 (quarterly, 6 columns)  — bse-news-373a3674-...
   Annual FY2026 (5 columns)         — bse-news-e4ffa3fc-...
 """
+
 from __future__ import annotations
 
 from collections.abc import Generator
@@ -45,6 +46,7 @@ def tcs_root(isolated_repo_factory) -> Path:
 def kb(tcs_root: Path) -> Generator[KnowledgeBase, None, None]:
     instance = KnowledgeBase(tcs_root)
     from atlas.acquisition.repository import Repository
+
     repo = Repository(tcs_root)
     for eid in (_Q2_ID, _ANN_ID):
         entry = repo.get(eid)
@@ -72,8 +74,11 @@ def _facts(result: AnalysisResult, kind: FactKind) -> list[AnalysisFact]:
 
 
 def _con(result: AnalysisResult, kind: FactKind) -> list[AnalysisFact]:
-    return [f for f in result.facts if f.kind == kind
-            and "consolidated" in f.provenance.section]
+    return [
+        f
+        for f in result.facts
+        if f.kind == kind and "consolidated" in f.provenance.section
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -142,7 +147,9 @@ class TestQ2Contract:
     def test_manufacturing_segment_revenue(self, q2_result: AnalysisResult) -> None:
         name_facts = _facts(q2_result, FactKind.SEGMENT_NAME)
         rev_facts = _facts(q2_result, FactKind.SEGMENT_REVENUE)
-        mfg_idx = next(i for i, f in enumerate(name_facts) if "Manufacturing" in str(f.value))
+        mfg_idx = next(
+            i for i, f in enumerate(name_facts) if "Manufacturing" in str(f.value)
+        )
         assert rev_facts[mfg_idx].value == pytest.approx(6310.0)
 
     def test_six_segment_ebit_facts(self, q2_result: AnalysisResult) -> None:
@@ -245,7 +252,11 @@ class TestAnnualContract:
 
     def test_segment_warning_on_annual(self, ann_result: AnalysisResult) -> None:
         """Annual PDF layout prevents segment alignment — exactly one warning expected."""
-        seg_warnings = [w for w in ann_result.warnings if "annual PDF layout" in w or "Segment" in w.lower()]
+        seg_warnings = [
+            w
+            for w in ann_result.warnings
+            if "annual PDF layout" in w or "Segment" in w.lower()
+        ]
         assert len(seg_warnings) == 1
 
     def test_confidence_high(self, ann_result: AnalysisResult) -> None:
@@ -316,8 +327,12 @@ class TestDemo:
             print(f"  {n.value}: {r.value} crore")
 
         print("\n--- CAPITAL ALLOCATION ---")
-        for kind in (FactKind.CAPITAL_DIVIDEND_PER_SHARE, FactKind.CAPITAL_DIVIDEND_TYPE,
-                     FactKind.CAPITAL_DIVIDEND_RECORD_DATE, FactKind.CAPITAL_DIVIDEND_PAYMENT_DATE):
+        for kind in (
+            FactKind.CAPITAL_DIVIDEND_PER_SHARE,
+            FactKind.CAPITAL_DIVIDEND_TYPE,
+            FactKind.CAPITAL_DIVIDEND_RECORD_DATE,
+            FactKind.CAPITAL_DIVIDEND_PAYMENT_DATE,
+        ):
             for f in _facts(result, kind):
                 print(f"  {kind.value}: {f.value}")
 

@@ -13,6 +13,7 @@ whether these metrics predict retrieval quality at all; enforcing a
 threshold derived from the same data used to validate it would be circular.
 Treat the numbers as a starting hypothesis, not policy.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -40,9 +41,15 @@ class Recommendation:
     criteria: dict[str, Any]
 
 
-def _agg_delta(base_agg: dict[str, Any], cand_agg: dict[str, Any], key: str) -> float | None:
+def _agg_delta(
+    base_agg: dict[str, Any], cand_agg: dict[str, Any], key: str
+) -> float | None:
     b, c = base_agg.get(key), cand_agg.get(key)
-    return round(c - b, 3) if isinstance(b, (int, float)) and isinstance(c, (int, float)) else None
+    return (
+        round(c - b, 3)
+        if isinstance(b, (int, float)) and isinstance(c, (int, float))
+        else None
+    )
 
 
 def _grounding_regressions(baseline: Report, candidate: Report) -> list[str]:
@@ -78,7 +85,9 @@ def recommend(baseline: Report, candidate: Report) -> Recommendation:
     by default, comparing *candidate* (planned) against *baseline*.
     """
     active_with_answers = sum(
-        1 for r in candidate.results if r.status == "active" and r.correctness_pass is not None
+        1
+        for r in candidate.results
+        if r.status == "active" and r.correctness_pass is not None
     )
     if active_with_answers < _MIN_ACTIVE_CASES_WITH_ANSWERS:
         return Recommendation(
@@ -114,26 +123,33 @@ def recommend(baseline: Report, candidate: Report) -> Recommendation:
 
     if grounding_regressions:
         ok = False
-        reasons.append(f"grounding regressed on {len(grounding_regressions)} case(s): {grounding_regressions}")
+        reasons.append(
+            f"grounding regressed on {len(grounding_regressions)} case(s): {grounding_regressions}"
+        )
     else:
         reasons.append("no grounding regressions")
 
     if correctness_delta is None or correctness_delta < 0:
         ok = False
-        reasons.append(f"correctness_pass_rate delta is {correctness_delta} (need >= 0)")
+        reasons.append(
+            f"correctness_pass_rate delta is {correctness_delta} (need >= 0)"
+        )
     else:
         reasons.append(f"correctness_pass_rate delta {correctness_delta} >= 0")
 
     if refusal_delta is not None and refusal_delta > _MAX_REFUSAL_RATE_INCREASE:
         ok = False
-        reasons.append(f"refusal_rate delta {refusal_delta} exceeds +{_MAX_REFUSAL_RATE_INCREASE}")
+        reasons.append(
+            f"refusal_rate delta {refusal_delta} exceeds +{_MAX_REFUSAL_RATE_INCREASE}"
+        )
     else:
-        reasons.append(f"refusal_rate delta {refusal_delta} within +{_MAX_REFUSAL_RATE_INCREASE}")
+        reasons.append(
+            f"refusal_rate delta {refusal_delta} within +{_MAX_REFUSAL_RATE_INCREASE}"
+        )
 
     evidence_or_usefulness_ok = (
-        (evidence_use_delta is not None and evidence_use_delta >= 0)
-        or (usefulness_delta is not None and usefulness_delta >= 0)
-    )
+        evidence_use_delta is not None and evidence_use_delta >= 0
+    ) or (usefulness_delta is not None and usefulness_delta >= 0)
     if not evidence_or_usefulness_ok:
         ok = False
         reasons.append(
@@ -153,5 +169,7 @@ def recommend(baseline: Report, candidate: Report) -> Recommendation:
         reasons.append(f"{changed_fraction} of cases show a changed passage selection")
 
     return Recommendation(
-        verdict=("SAFE_TO_ENABLE" if ok else "NOT_READY"), reasons=tuple(reasons), criteria=criteria,
+        verdict=("SAFE_TO_ENABLE" if ok else "NOT_READY"),
+        reasons=tuple(reasons),
+        criteria=criteria,
     )

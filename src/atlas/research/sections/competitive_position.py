@@ -9,6 +9,7 @@ limited when they aren't (e.g. TCS/Tata Steel/SBI span three different
 sectors today) — the section always states which peers it checked rather
 than presenting a cross-sector ranking as if it meant something it doesn't.
 """
+
 from __future__ import annotations
 
 from atlas.acquisition.repository import Repository
@@ -41,7 +42,9 @@ def build(
             "positioning limited to management's own stated market-share or "
             "competitive commentary (see Management Credibility / Business Quality)."
         )
-        return ReportSection(key="competitive_position", title="Competitive Position", notes=notes)
+        return ReportSection(
+            key="competitive_position", title="Competitive Position", notes=notes
+        )
 
     all_profiles = {ticker: profile, **peers}
     for metric_key in _CROSS_SECTOR_METRICS:

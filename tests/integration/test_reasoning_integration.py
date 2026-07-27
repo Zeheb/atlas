@@ -2,6 +2,7 @@
 default; skipped without a key or the TCS profile. Hitting the live model, the
 one invariant that must always hold is closed-world grounding (G1/G10).
 """
+
 from __future__ import annotations
 
 import os
@@ -32,9 +33,12 @@ def test_ask_real_api_stays_within_closed_world() -> None:
     client = build_llm_client(Settings(), role="reasoning")
 
     result = ask(
-        Question(raw_text="How consistent has ROE been over the available history?",
-                 subject_ref=subject),
-        context, client,
+        Question(
+            raw_text="How consistent has ROE been over the available history?",
+            subject_ref=subject,
+        ),
+        context,
+        client,
     )
     # Whatever the model says, every surviving citation is in the closed world.
     assert result.citations <= context.evidence_index

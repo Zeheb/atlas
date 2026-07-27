@@ -3,6 +3,7 @@
 Not a general utility dumping ground — a function only belongs here once a
 second section builder actually needs it.
 """
+
 from __future__ import annotations
 
 import re
@@ -117,7 +118,9 @@ def group_risks_by_text(profile: CompanyProfile) -> dict[str, list[RiskEntry]]:
     return by_text
 
 
-def collect_dated_events(profile: CompanyProfile) -> list[tuple[datetime, str, str, list[str]]]:
+def collect_dated_events(
+    profile: CompanyProfile,
+) -> list[tuple[datetime, str, str, list[str]]]:
     """Every capital-event and governance event as (date, category,
     description, evidence_ids), unsorted and deduplicated.
 
@@ -140,21 +143,49 @@ def collect_dated_events(profile: CompanyProfile) -> list[tuple[datetime, str, s
     ce = profile.capital_events
 
     for e in ce.dividends:
-        raw.append((e.source_date, "Dividend", f"{e.dividend_type} {e.per_share:.2f}/share", e.evidence_id))
+        raw.append(
+            (
+                e.source_date,
+                "Dividend",
+                f"{e.dividend_type} {e.per_share:.2f}/share",
+                e.evidence_id,
+            )
+        )
     for e in ce.buybacks:
         amt = f" ({e.amount:,.0f} cr)" if e.amount else ""
         raw.append((e.source_date, "Buyback", f"{e.sub_type}{amt}", e.evidence_id))
     for e in ce.acquisitions:
-        raw.append((e.source_date, "Acquisition", " ".join(e.target_name.split()), e.evidence_id))
+        raw.append(
+            (
+                e.source_date,
+                "Acquisition",
+                " ".join(e.target_name.split()),
+                e.evidence_id,
+            )
+        )
     for e in ce.investments:
-        raw.append((e.source_date, "Investment", " ".join(e.target_name.split()), e.evidence_id))
+        raw.append(
+            (
+                e.source_date,
+                "Investment",
+                " ".join(e.target_name.split()),
+                e.evidence_id,
+            )
+        )
     for e in ce.fundraises:
         raw.append((e.source_date, "Fundraise", e.fundraise_type, e.evidence_id))
-    for r in (profile.credit_history.debt_ratings + profile.credit_history.esg_ratings):
+    for r in profile.credit_history.debt_ratings + profile.credit_history.esg_ratings:
         desc = f"{r.agency}: {r.action or 'rating'} {r.rating or ''}".strip()
         raw.append((r.source_date, "Rating Action", desc, r.evidence_id))
     for d in profile.governance.director_changes:
-        raw.append((d.source_date, "Board Change", f"{d.change_type} — {' '.join(d.name.split())}", d.evidence_id))
+        raw.append(
+            (
+                d.source_date,
+                "Board Change",
+                f"{d.change_type} — {' '.join(d.name.split())}",
+                d.evidence_id,
+            )
+        )
     for s in profile.strategy.entries:
         if s.kind == "guidance":
             raw.append((s.source_date, "Guidance", s.text, s.evidence_id))
@@ -185,7 +216,9 @@ def collect_dated_events(profile: CompanyProfile) -> list[tuple[datetime, str, s
     return [(representative_date[key], key[1], key[2], merged[key]) for key in order]
 
 
-def drop_empty_rows(table: TableSection, value_columns: slice = slice(1, None)) -> TableSection:
+def drop_empty_rows(
+    table: TableSection, value_columns: slice = slice(1, None)
+) -> TableSection:
     """Drop any row whose value columns are entirely "-".
 
     Found necessary during validation: engine.revenue()/leverage() build one
@@ -199,8 +232,7 @@ def drop_empty_rows(table: TableSection, value_columns: slice = slice(1, None)) 
     reflective of a real embedded zero (a real 0 renders as "0", never "-").
     """
     kept_rows = [
-        row for row in table.rows
-        if any(cell != "-" for cell in row[value_columns])
+        row for row in table.rows if any(cell != "-" for cell in row[value_columns])
     ]
     return TableSection(heading=table.heading, columns=table.columns, rows=kept_rows)
 
@@ -249,7 +281,9 @@ def detect_repeated_targets(profile: CompanyProfile) -> list[RepeatedTarget]:
     for pattern, occurrences in by_pattern.items():
         distinct_dates = {d.date() for d, _ in occurrences}
         if len(distinct_dates) >= 2:
-            results.append(RepeatedTarget(pattern=pattern, occurrences=sorted(occurrences)))
+            results.append(
+                RepeatedTarget(pattern=pattern, occurrences=sorted(occurrences))
+            )
     return sorted(results, key=lambda r: len(r.occurrences), reverse=True)
 
 

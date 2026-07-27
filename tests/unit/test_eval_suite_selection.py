@@ -4,6 +4,7 @@ core/grounding/refusals/full select subsets of the bundled §8.6 acceptance
 set; anything else is treated as a custom suite file path, preserving the
 pre-existing `--suite <path>` behavior.
 """
+
 from __future__ import annotations
 
 import json
@@ -51,15 +52,28 @@ def test_grounding_and_refusals_are_not_identical_sets() -> None:
 
 
 def test_preset_name_is_case_insensitive() -> None:
-    assert [c.id for c in resolve_suite("CORE")] == [c.id for c in resolve_suite("core")]
+    assert [c.id for c in resolve_suite("CORE")] == [
+        c.id for c in resolve_suite("core")
+    ]
 
 
 def test_non_preset_value_falls_back_to_file_path(tmp_path) -> None:
     custom = tmp_path / "custom.json"
-    custom.write_text(json.dumps([
-        {"id": "x1", "category": "A", "question": "q", "subject": "TCS",
-         "expected_behavior": "answer", "rubric": "r"},
-    ]), encoding="utf-8")
+    custom.write_text(
+        json.dumps(
+            [
+                {
+                    "id": "x1",
+                    "category": "A",
+                    "question": "q",
+                    "subject": "TCS",
+                    "expected_behavior": "answer",
+                    "rubric": "r",
+                },
+            ]
+        ),
+        encoding="utf-8",
+    )
     cases = resolve_suite(str(custom))
     assert [c.id for c in cases] == ["x1"]
 

@@ -20,6 +20,7 @@ Two invariants govern ``entity_id`` (both test-enforced):
   resolver guarantees this with a disambiguation suffix when a distinct entity
   would otherwise collide (see ``resolver.py``).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -39,15 +40,17 @@ class Entity:
     id is a separate, already-frozen field.
     """
 
-    entity_id: str            # immutable; independent of canonical_name (see module docstring)
+    entity_id: str  # immutable; independent of canonical_name (see module docstring)
     kind: EntityKind
-    canonical_name: str       # most complete display form seen so far
+    canonical_name: str  # most complete display form seen so far
     aliases: frozenset[str] = field(default_factory=frozenset)
 
     def __post_init__(self) -> None:
         if not self.entity_id:
             raise ValueError("Entity.entity_id must be non-empty")
         if self.kind not in ("person", "organization"):
-            raise ValueError(f"Entity.kind {self.kind!r} must be 'person' or 'organization'")
+            raise ValueError(
+                f"Entity.kind {self.kind!r} must be 'person' or 'organization'"
+            )
         if not self.canonical_name.strip():
             raise ValueError("Entity.canonical_name must be non-empty")

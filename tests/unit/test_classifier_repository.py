@@ -4,6 +4,7 @@ Fully synthetic tmp_path fixtures (a real catalog.json + knowledge.db built
 from scratch) — isolated from any real repository, so these are safe to run
 regardless of what else is touching repositories/ elsewhere.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -28,7 +29,9 @@ def _make_catalog_entry(evidence_id: str, kind: str, local_path: str) -> Catalog
     )
 
 
-def _seed_parsed_document(kb: KnowledgeBase, evidence_id: str, kind: str, text: str, page_count: int) -> None:
+def _seed_parsed_document(
+    kb: KnowledgeBase, evidence_id: str, kind: str, text: str, page_count: int
+) -> None:
     doc = ParsedDocument(
         evidence_id=evidence_id,
         kind=kind,
@@ -45,14 +48,20 @@ def _seed_parsed_document(kb: KnowledgeBase, evidence_id: str, kind: str, text: 
 
 
 class TestReclassifyRepository:
-    def test_related_party_document_reclassified_in_catalog(self, tmp_path: Path) -> None:
+    def test_related_party_document_reclassified_in_catalog(
+        self, tmp_path: Path
+    ) -> None:
         catalog = RepositoryCatalog(tmp_path)
-        catalog.add(_make_catalog_entry("bse-news-e1", "financial_results", "other/e1.pdf"))
+        catalog.add(
+            _make_catalog_entry("bse-news-e1", "financial_results", "other/e1.pdf")
+        )
         catalog.save()
 
         kb = KnowledgeBase(tmp_path)
         _seed_parsed_document(
-            kb, "bse-news-e1", "financial_results",
+            kb,
+            "bse-news-e1",
+            "financial_results",
             "Sub: Disclosure of Related Party Transactions pursuant to Regulation 23(9)",
             page_count=10,
         )
@@ -62,14 +71,20 @@ class TestReclassifyRepository:
         reloaded = RepositoryCatalog(tmp_path)
         assert reloaded.get_entry("bse-news-e1").kind == "regulatory_filing"
 
-    def test_reclassification_also_updates_knowledge_db_kind(self, tmp_path: Path) -> None:
+    def test_reclassification_also_updates_knowledge_db_kind(
+        self, tmp_path: Path
+    ) -> None:
         catalog = RepositoryCatalog(tmp_path)
-        catalog.add(_make_catalog_entry("bse-news-e1", "financial_results", "other/e1.pdf"))
+        catalog.add(
+            _make_catalog_entry("bse-news-e1", "financial_results", "other/e1.pdf")
+        )
         catalog.save()
 
         kb = KnowledgeBase(tmp_path)
         _seed_parsed_document(
-            kb, "bse-news-e1", "financial_results",
+            kb,
+            "bse-news-e1",
+            "financial_results",
             "Sub: Disclosure of Related Party Transactions pursuant to Regulation 23(9)",
             page_count=10,
         )
@@ -85,12 +100,16 @@ class TestReclassifyRepository:
 
     def test_real_financial_results_not_touched(self, tmp_path: Path) -> None:
         catalog = RepositoryCatalog(tmp_path)
-        catalog.add(_make_catalog_entry("bse-news-e1", "financial_results", "other/e1.pdf"))
+        catalog.add(
+            _make_catalog_entry("bse-news-e1", "financial_results", "other/e1.pdf")
+        )
         catalog.save()
 
         kb = KnowledgeBase(tmp_path)
         _seed_parsed_document(
-            kb, "bse-news-e1", "financial_results",
+            kb,
+            "bse-news-e1",
+            "financial_results",
             "Sub: Financial Results for the year ended March 31, 2026",
             page_count=25,
         )
@@ -107,14 +126,18 @@ class TestReclassifyRepository:
         catalog.save()
 
         kb = KnowledgeBase(tmp_path)
-        _seed_parsed_document(kb, "bse-news-e1", "board_outcome", "any content", page_count=1)
+        _seed_parsed_document(
+            kb, "bse-news-e1", "board_outcome", "any content", page_count=1
+        )
 
         records = reclassify_repository(tmp_path)
         assert records == []
 
     def test_unparsed_document_skipped(self, tmp_path: Path) -> None:
         catalog = RepositoryCatalog(tmp_path)
-        catalog.add(_make_catalog_entry("bse-news-e1", "financial_results", "other/e1.pdf"))
+        catalog.add(
+            _make_catalog_entry("bse-news-e1", "financial_results", "other/e1.pdf")
+        )
         catalog.save()
         # No corresponding KnowledgeBase entry at all.
         KnowledgeBase(tmp_path)
@@ -124,13 +147,29 @@ class TestReclassifyRepository:
 
     def test_returns_record_for_every_examined_document(self, tmp_path: Path) -> None:
         catalog = RepositoryCatalog(tmp_path)
-        catalog.add(_make_catalog_entry("bse-news-e1", "investor_presentation", "other/e1.pdf"))
-        catalog.add(_make_catalog_entry("bse-news-e2", "investor_presentation", "other/e2.pdf"))
+        catalog.add(
+            _make_catalog_entry("bse-news-e1", "investor_presentation", "other/e1.pdf")
+        )
+        catalog.add(
+            _make_catalog_entry("bse-news-e2", "investor_presentation", "other/e2.pdf")
+        )
         catalog.save()
 
         kb = KnowledgeBase(tmp_path)
-        _seed_parsed_document(kb, "bse-news-e1", "investor_presentation", "Sub: Schedule of Analyst Meetings", page_count=2)
-        _seed_parsed_document(kb, "bse-news-e2", "investor_presentation", "Sub: Submission of presentation" + "x" * 3000, page_count=50)
+        _seed_parsed_document(
+            kb,
+            "bse-news-e1",
+            "investor_presentation",
+            "Sub: Schedule of Analyst Meetings",
+            page_count=2,
+        )
+        _seed_parsed_document(
+            kb,
+            "bse-news-e2",
+            "investor_presentation",
+            "Sub: Submission of presentation" + "x" * 3000,
+            page_count=50,
+        )
 
         records = reclassify_repository(tmp_path)
         assert len(records) == 2

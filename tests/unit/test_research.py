@@ -5,6 +5,7 @@ Synthetic Repository/CompanyProfile via a stub — no real PDFs needed since
 this module only ever reads CatalogEntry metadata + citation resolution,
 both already covered by test_citation.py.
 """
+
 from __future__ import annotations
 
 from atlas.acquisition.catalog import CatalogEntry
@@ -37,14 +38,24 @@ def _entry(evidence_id: str, kind: str, source_date: str) -> CatalogEntry:
 
 
 def _fsnap(period, sources) -> FinancialSnapshot:
-    return FinancialSnapshot(period=period, period_type="annual", basis="consolidated", facts={}, sources=sources)
+    return FinancialSnapshot(
+        period=period,
+        period_type="annual",
+        basis="consolidated",
+        facts={},
+        sources=sources,
+    )
 
 
 class TestRenderFindingSingleSource:
     def _setup(self):
-        repo = _StubRepo({"e1": _entry("e1", "annual_report", "2026-05-15T00:00:00+00:00")})
+        repo = _StubRepo(
+            {"e1": _entry("e1", "annual_report", "2026-05-15T00:00:00+00:00")}
+        )
         profile = CompanyProfile(company_id="TCS")
-        profile.financial = FinancialTimeSeries(snapshots=[_fsnap("2026-03-31", ["e1"])])
+        profile.financial = FinancialTimeSeries(
+            snapshots=[_fsnap("2026-03-31", ["e1"])]
+        )
         return repo, profile
 
     def test_uses_source_singular_label(self):
@@ -63,13 +74,17 @@ class TestRenderFindingSingleSource:
 
     def test_section_included_for_single_source(self):
         repo, profile = self._setup()
-        finding = Finding(text="Claim.", evidence_ids=["e1"], section="Business Outlook")
+        finding = Finding(
+            text="Claim.", evidence_ids=["e1"], section="Business Outlook"
+        )
         out = render_finding(finding, "TCS", repo, profile)
         assert "Section: Business Outlook" in out
 
     def test_page_included_for_single_source(self):
         repo, profile = self._setup()
-        finding = Finding(text="Claim.", evidence_ids=["e1"], section="Business Outlook", page=143)
+        finding = Finding(
+            text="Claim.", evidence_ids=["e1"], section="Business Outlook", page=143
+        )
         out = render_finding(finding, "TCS", repo, profile)
         assert "Page 143" in out
 
@@ -88,16 +103,22 @@ class TestRenderFindingSingleSource:
 
 class TestRenderFindingMultipleSources:
     def _setup(self):
-        repo = _StubRepo({
-            "e1": _entry("e1", "earnings_transcript", "2026-04-14T00:00:00+00:00"),
-            "e2": _entry("e2", "investor_presentation", "2025-12-17T00:00:00+00:00"),
-        })
+        repo = _StubRepo(
+            {
+                "e1": _entry("e1", "earnings_transcript", "2026-04-14T00:00:00+00:00"),
+                "e2": _entry(
+                    "e2", "investor_presentation", "2025-12-17T00:00:00+00:00"
+                ),
+            }
+        )
         profile = CompanyProfile(company_id="TCS")
-        profile.financial = FinancialTimeSeries(snapshots=[
-            _fsnap("2026-03-31", ["e1"]),
-            _fsnap("2021-03-31", ["e2"]),
-            _fsnap("2025-03-31", ["e2"]),
-        ])
+        profile.financial = FinancialTimeSeries(
+            snapshots=[
+                _fsnap("2026-03-31", ["e1"]),
+                _fsnap("2021-03-31", ["e2"]),
+                _fsnap("2025-03-31", ["e2"]),
+            ]
+        )
         return repo, profile
 
     def test_uses_supporting_evidence_label(self):
@@ -141,7 +162,9 @@ class TestRenderFindingMissingEvidence:
         assert "Source: (evidence unavailable)" in out
 
     def test_partial_resolution_shows_only_resolved(self):
-        repo = _StubRepo({"e1": _entry("e1", "board_outcome", "2026-04-09T00:00:00+00:00")})
+        repo = _StubRepo(
+            {"e1": _entry("e1", "board_outcome", "2026-04-09T00:00:00+00:00")}
+        )
         finding = Finding(text="Claim.", evidence_ids=["e1", "missing"])
         out = render_finding(finding, "TCS", repo, None)
         # Only one resolves -> single-source "Source:" framing, not "Supporting evidence"
@@ -151,7 +174,9 @@ class TestRenderFindingMissingEvidence:
 
 class TestRenderReport:
     def test_includes_title_and_all_findings(self):
-        repo = _StubRepo({"e1": _entry("e1", "board_outcome", "2026-04-09T00:00:00+00:00")})
+        repo = _StubRepo(
+            {"e1": _entry("e1", "board_outcome", "2026-04-09T00:00:00+00:00")}
+        )
         findings = [
             Finding(text="First claim.", evidence_ids=["e1"]),
             Finding(text="Second claim.", evidence_ids=["e1"]),

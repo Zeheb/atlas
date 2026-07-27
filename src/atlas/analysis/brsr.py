@@ -40,6 +40,7 @@ construction-waste entry in the PDF — the total is suppressed and a warning
 is added instead. The recovery percentage is extracted independently via
 narrative text and remains available for all years.
 """
+
 from __future__ import annotations
 
 import re
@@ -59,6 +60,7 @@ ANALYZER_VERSION = "1.0"
 # ---------------------------------------------------------------------------
 # Shared helpers
 # ---------------------------------------------------------------------------
+
 
 def _parse_num(text: str) -> float | None:
     """Parse a comma-formatted number (Indian or international) to float."""
@@ -158,13 +160,15 @@ def _extract_ghg(content: str, period: str, result: AnalysisResult) -> None:
         if not m:
             result.warnings.append(f"GHG {label}: label not found")
             continue
-        value = _first_number_line(content[m.start():])
+        value = _first_number_line(content[m.start() :])
         if value is None:
             result.warnings.append(f"GHG {label}: could not parse value")
             continue
         excerpt = f"{label}: {value:,.1f} tCO2e"
-        result.facts.append(_pf(kind, value, FactUnit.TCO2E, period, section_name, m.start(), excerpt))
-        result.excerpts[section_name] = content[m.start():m.start() + 200]
+        result.facts.append(
+            _pf(kind, value, FactUnit.TCO2E, period, section_name, m.start(), excerpt)
+        )
+        result.excerpts[section_name] = content[m.start() : m.start() + 200]
 
 
 # ---------------------------------------------------------------------------
@@ -191,36 +195,48 @@ def _extract_energy(content: str, period: str, result: AnalysisResult) -> None:
 
     m_total = _RE_ENERGY_TOTAL.search(content)
     if m_total:
-        total = _first_number_line(content[m_total.start():])
+        total = _first_number_line(content[m_total.start() :])
 
     m_ren = _RE_ENERGY_RENEWABLE.search(content)
     if m_ren:
-        renewable = _first_number_line(content[m_ren.start():])
+        renewable = _first_number_line(content[m_ren.start() :])
 
     if total is None and renewable is not None:
         # FY23 format: no total line — compute from renewable + non-renewable
         m_non = _RE_ENERGY_NONRENEWABLE.search(content)
         if m_non:
-            non_renewable = _first_number_line(content[m_non.start():])
+            non_renewable = _first_number_line(content[m_non.start() :])
             if non_renewable is not None:
                 total = renewable + non_renewable
 
     if total is not None:
-        result.facts.append(_pf(
-            FactKind.ESG_ENERGY_TOTAL_MJ, total, FactUnit.MEGAJOULE, period,
-            "energy_total", m_total.start() if m_total else (m_ren.start() if m_ren else 0),
-            f"Total energy: {total:,.0f} MJ",
-        ))
+        result.facts.append(
+            _pf(
+                FactKind.ESG_ENERGY_TOTAL_MJ,
+                total,
+                FactUnit.MEGAJOULE,
+                period,
+                "energy_total",
+                m_total.start() if m_total else (m_ren.start() if m_ren else 0),
+                f"Total energy: {total:,.0f} MJ",
+            )
+        )
     else:
         result.warnings.append("energy: could not extract total energy consumption")
 
     if total is not None and renewable is not None and total > 0:
         pct = round(renewable / total * 100, 1)
-        result.facts.append(_pf(
-            FactKind.ESG_ENERGY_RENEWABLE_PCT, pct, FactUnit.PERCENT, period,
-            "energy_renewable", m_ren.start() if m_ren else 0,
-            f"Renewable: {pct}% of total",
-        ))
+        result.facts.append(
+            _pf(
+                FactKind.ESG_ENERGY_RENEWABLE_PCT,
+                pct,
+                FactUnit.PERCENT,
+                period,
+                "energy_renewable",
+                m_ren.start() if m_ren else 0,
+                f"Renewable: {pct}% of total",
+            )
+        )
     elif renewable is None:
         result.warnings.append("energy: could not extract renewable energy value")
 
@@ -237,15 +253,22 @@ def _extract_water(content: str, period: str, result: AnalysisResult) -> None:
     if not m:
         result.warnings.append("water: 'Total volume of water consumption' not found")
         return
-    value = _first_number_line(content[m.start():])
+    value = _first_number_line(content[m.start() :])
     if value is None:
         result.warnings.append("water: could not parse total water consumed")
         return
-    result.facts.append(_pf(
-        FactKind.ESG_WATER_CONSUMED_KL, value, FactUnit.KILOLITRE, period,
-        "water_consumed", m.start(), f"Water: {value:,.0f} KL",
-    ))
-    result.excerpts["water_consumed"] = content[m.start():m.start() + 200]
+    result.facts.append(
+        _pf(
+            FactKind.ESG_WATER_CONSUMED_KL,
+            value,
+            FactUnit.KILOLITRE,
+            period,
+            "water_consumed",
+            m.start(),
+            f"Water: {value:,.0f} KL",
+        )
+    )
+    result.excerpts["water_consumed"] = content[m.start() : m.start() + 200]
 
 
 # ---------------------------------------------------------------------------
@@ -271,7 +294,7 @@ def _extract_waste(content: str, period: str, result: AnalysisResult) -> None:
     # Total waste: sum of categories A–H
     m_hdr = _RE_WASTE_HEADER.search(content)
     if m_hdr:
-        section = content[m_hdr.start(): m_hdr.start() + 4500]
+        section = content[m_hdr.start() : m_hdr.start() + 4500]
         total = 0.0
         cat_count = 0
         for cat_m in _RE_WASTE_CATEGORY.finditer(section):
@@ -287,11 +310,17 @@ def _extract_waste(content: str, period: str, result: AnalysisResult) -> None:
                     "ESG_WASTE_GENERATED_MT suppressed"
                 )
             else:
-                result.facts.append(_pf(
-                    FactKind.ESG_WASTE_GENERATED_MT, round(total, 1), FactUnit.METRIC_TONNE,
-                    period, "waste_generated", m_hdr.start(),
-                    f"Waste: {total:,.1f} MT (sum of {cat_count} categories)",
-                ))
+                result.facts.append(
+                    _pf(
+                        FactKind.ESG_WASTE_GENERATED_MT,
+                        round(total, 1),
+                        FactUnit.METRIC_TONNE,
+                        period,
+                        "waste_generated",
+                        m_hdr.start(),
+                        f"Waste: {total:,.1f} MT (sum of {cat_count} categories)",
+                    )
+                )
         else:
             result.warnings.append(
                 f"waste: only {cat_count} categories found; total not reliable"
@@ -303,11 +332,17 @@ def _extract_waste(content: str, period: str, result: AnalysisResult) -> None:
     m_rec = _RE_WASTE_RECOVERY.search(content)
     if m_rec:
         pct = float(m_rec.group(1))
-        result.facts.append(_pf(
-            FactKind.ESG_WASTE_RECOVERY_PCT, pct, FactUnit.PERCENT, period,
-            "waste_recovery", m_rec.start(),
-            f"Waste recovery: {pct}%",
-        ))
+        result.facts.append(
+            _pf(
+                FactKind.ESG_WASTE_RECOVERY_PCT,
+                pct,
+                FactUnit.PERCENT,
+                period,
+                "waste_recovery",
+                m_rec.start(),
+                f"Waste recovery: {pct}%",
+            )
+        )
     else:
         result.warnings.append("waste: recovery % narrative not found")
 
@@ -331,7 +366,7 @@ def _extract_workforce(content: str, period: str, result: AnalysisResult) -> Non
     if m:
         # Line layout: Total, Male_Count, Male_Pct, Female_Count, Female_Pct
         nums = []
-        for line in content[m.start():m.start() + 300].split("\n")[1:]:
+        for line in content[m.start() : m.start() + 300].split("\n")[1:]:
             v = _parse_num(line.strip())
             if v is not None:
                 nums.append(v)
@@ -339,16 +374,30 @@ def _extract_workforce(content: str, period: str, result: AnalysisResult) -> Non
                 break
         if nums:
             headcount = int(nums[0])
-            result.facts.append(_pf(
-                FactKind.ESG_WORKFORCE_HEADCOUNT, headcount, FactUnit.COUNT, period,
-                "workforce_headcount", m.start(), f"Headcount: {headcount:,}",
-            ))
+            result.facts.append(
+                _pf(
+                    FactKind.ESG_WORKFORCE_HEADCOUNT,
+                    headcount,
+                    FactUnit.COUNT,
+                    period,
+                    "workforce_headcount",
+                    m.start(),
+                    f"Headcount: {headcount:,}",
+                )
+            )
         if len(nums) >= 5:
             female_pct = round(nums[4], 1)
-            result.facts.append(_pf(
-                FactKind.ESG_WORKFORCE_FEMALE_PCT, female_pct, FactUnit.PERCENT, period,
-                "workforce_female_pct", m.start(), f"Female: {female_pct}%",
-            ))
+            result.facts.append(
+                _pf(
+                    FactKind.ESG_WORKFORCE_FEMALE_PCT,
+                    female_pct,
+                    FactUnit.PERCENT,
+                    period,
+                    "workforce_female_pct",
+                    m.start(),
+                    f"Female: {female_pct}%",
+                )
+            )
     else:
         result.warnings.append("workforce: 'Total employees (D + E)' not found")
 
@@ -356,10 +405,17 @@ def _extract_workforce(content: str, period: str, result: AnalysisResult) -> Non
     m = _RE_FEMALE_WAGE.search(content)
     if m:
         pct = float(m.group(1))
-        result.facts.append(_pf(
-            FactKind.ESG_WORKFORCE_FEMALE_WAGE_PCT, pct, FactUnit.PERCENT, period,
-            "workforce_female_wage", m.start(), f"Female wage: {pct}% of total",
-        ))
+        result.facts.append(
+            _pf(
+                FactKind.ESG_WORKFORCE_FEMALE_WAGE_PCT,
+                pct,
+                FactUnit.PERCENT,
+                period,
+                "workforce_female_wage",
+                m.start(),
+                f"Female wage: {pct}% of total",
+            )
+        )
     else:
         result.warnings.append("workforce: female wage % not found")
 
@@ -369,11 +425,11 @@ def _extract_workforce(content: str, period: str, result: AnalysisResult) -> Non
         # Search window includes 800 chars BEFORE the label (FY26 puts the table
         # before the label due to PDF extraction ordering) and 600 chars AFTER.
         start = max(0, m_label.start() - 800)
-        window = content[start: m_label.end() + 600]
+        window = content[start : m_label.end() + 600]
         m_perm = _RE_PERM_EMPLOYEES.search(window)
         if m_perm:
             attrition_nums: list[float] = []
-            for line in window[m_perm.end():].split("\n"):
+            for line in window[m_perm.end() :].split("\n"):
                 stripped = line.strip().rstrip("%").strip()
                 v = _parse_num(stripped)
                 if v is not None and 0.0 < v < 100.0:
@@ -382,11 +438,17 @@ def _extract_workforce(content: str, period: str, result: AnalysisResult) -> Non
                     break
             if len(attrition_nums) >= 3:
                 total_pct = round(attrition_nums[2], 1)
-                result.facts.append(_pf(
-                    FactKind.ESG_WORKFORCE_ATTRITION_PCT, total_pct, FactUnit.PERCENT, period,
-                    "workforce_attrition", m_label.start(),
-                    f"Voluntary attrition: {total_pct}%",
-                ))
+                result.facts.append(
+                    _pf(
+                        FactKind.ESG_WORKFORCE_ATTRITION_PCT,
+                        total_pct,
+                        FactUnit.PERCENT,
+                        period,
+                        "workforce_attrition",
+                        m_label.start(),
+                        f"Voluntary attrition: {total_pct}%",
+                    )
+                )
             else:
                 result.warnings.append(
                     f"attrition: found {len(attrition_nums)} numbers, need 3"
@@ -394,7 +456,9 @@ def _extract_workforce(content: str, period: str, result: AnalysisResult) -> Non
         else:
             result.warnings.append("attrition: 'Permanent Employees' row not found")
     else:
-        result.warnings.append("attrition: 'Turnover rate for permanent employees' not found")
+        result.warnings.append(
+            "attrition: 'Turnover rate for permanent employees' not found"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -411,11 +475,17 @@ def _extract_safety(content: str, period: str, result: AnalysisResult) -> None:
     m = _RE_LTIFR.search(content)
     if m:
         value = float(m.group(1))
-        result.facts.append(_pf(
-            FactKind.ESG_SAFETY_LTIFR, value, None, period,
-            "safety_ltifr", m.start(),
-            f"LTIFR: {value} per million person-hours",
-        ))
+        result.facts.append(
+            _pf(
+                FactKind.ESG_SAFETY_LTIFR,
+                value,
+                None,
+                period,
+                "safety_ltifr",
+                m.start(),
+                f"LTIFR: {value} per million person-hours",
+            )
+        )
     else:
         result.warnings.append("safety: LTIFR not found")
 
@@ -444,11 +514,17 @@ def _extract_sbti(content: str, result: AnalysisResult) -> None:
             pct = float(m.group(1))
             target_year = int(m.group(2))
             target_period = f"{target_year}-03-31"
-            result.facts.append(_pf(
-                kind, pct, FactUnit.PERCENT, target_period,
-                "sbti_commitment", m.start(),
-                f"SBTi {label}: {pct:.0f}% reduction by FY{target_year}",
-            ))
+            result.facts.append(
+                _pf(
+                    kind,
+                    pct,
+                    FactUnit.PERCENT,
+                    target_period,
+                    "sbti_commitment",
+                    m.start(),
+                    f"SBTi {label}: {pct:.0f}% reduction by FY{target_year}",
+                )
+            )
         else:
             result.warnings.append(f"SBTi: {label} commitment not found")
 
@@ -456,6 +532,7 @@ def _extract_sbti(content: str, result: AnalysisResult) -> None:
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
+
 
 def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     """Extract ESG facts from one BRSR filing.

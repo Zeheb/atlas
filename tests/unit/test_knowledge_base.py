@@ -16,7 +16,6 @@ from atlas.knowledge.extractors import (
     score_text_quality,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -24,9 +23,12 @@ from atlas.knowledge.extractors import (
 
 def _raises(exc: Exception) -> Callable[[Path], str]:
     """Return an extractor that always raises exc. Used with monkeypatch.setitem."""
+
     def _extractor(_: Path) -> str:
         raise exc
+
     return _extractor
+
 
 _SOURCE_DATE = "2024-01-01T00:00:00+00:00"
 _ACQUIRED_AT = "2024-06-01T00:00:00+00:00"
@@ -92,7 +94,9 @@ class TestKnowledgeBaseKnownIds:
         kb.parse(_make_entry("bse-k-a", "docs/a.txt"))
         assert "bse-k-a" in kb.known_ids()
 
-    def test_contains_id_after_failed_parse(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_contains_id_after_failed_parse(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setitem(ext_mod._EXTRACTORS, "txt", _raises(RuntimeError("boom")))
         _write(tmp_path, "docs/a.txt")
         kb = KnowledgeBase(tmp_path)
@@ -121,7 +125,9 @@ class TestKnowledgeBaseOkIds:
         kb.parse(_make_entry("bse-k-a", "docs/a.txt"))
         assert "bse-k-a" in kb.ok_ids()
 
-    def test_excludes_id_after_failed_parse(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_excludes_id_after_failed_parse(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setitem(ext_mod._EXTRACTORS, "txt", _raises(RuntimeError("boom")))
         _write(tmp_path, "docs/a.txt")
         kb = KnowledgeBase(tmp_path)
@@ -134,7 +140,9 @@ class TestKnowledgeBaseOkIds:
         kb.parse(_make_entry("bse-k-a", "docs/a.zip"))
         assert "bse-k-a" not in kb.ok_ids()
 
-    def test_selects_only_ok_when_mixed(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_selects_only_ok_when_mixed(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         _write(tmp_path, "docs/good.txt")
         _write(tmp_path, "docs/bad.zip")
         kb = KnowledgeBase(tmp_path)
@@ -180,7 +188,10 @@ class TestKnowledgeBaseGetMany:
         assert KnowledgeBase(tmp_path).get_many([]) == {}
 
     def test_all_missing_ids_returns_empty_dict(self, tmp_path: Path) -> None:
-        assert KnowledgeBase(tmp_path).get_many(["bse-k-missing-1", "bse-k-missing-2"]) == {}
+        assert (
+            KnowledgeBase(tmp_path).get_many(["bse-k-missing-1", "bse-k-missing-2"])
+            == {}
+        )
 
     def test_returns_metadata_for_known_ids(self, tmp_path: Path) -> None:
         _write(tmp_path, "docs/a.txt")
@@ -209,7 +220,9 @@ class TestKnowledgeBaseGetMany:
     def test_parity_with_per_id_get(self, tmp_path: Path) -> None:
         _write(tmp_path, "docs/a.txt")
         kb = KnowledgeBase(tmp_path)
-        kb.parse(_make_entry("bse-k-a", "docs/a.txt", kind=EvidenceKind.EARNINGS_TRANSCRIPT))
+        kb.parse(
+            _make_entry("bse-k-a", "docs/a.txt", kind=EvidenceKind.EARNINGS_TRANSCRIPT)
+        )
         many = kb.get_many(["bse-k-a"])["bse-k-a"]
         single = kb.get("bse-k-a")
         assert single is not None
@@ -240,7 +253,9 @@ class TestKnowledgeBaseGetContent:
         kb.parse(_make_entry("bse-k-a", "docs/a.txt"))
         assert kb.get_content("bse-k-a") == "hello world"
 
-    def test_returns_none_after_failed_parse(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_returns_none_after_failed_parse(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setitem(ext_mod._EXTRACTORS, "txt", _raises(RuntimeError("boom")))
         _write(tmp_path, "docs/a.txt")
         kb = KnowledgeBase(tmp_path)
@@ -363,25 +378,33 @@ class TestKnowledgeBaseParseUnknownExtension:
 
 
 class TestKnowledgeBaseParseExtractorRaises:
-    def test_status_failed_on_exception(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_status_failed_on_exception(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setitem(ext_mod._EXTRACTORS, "txt", _raises(OSError("disk error")))
         _write(tmp_path, "docs/a.txt")
         doc = KnowledgeBase(tmp_path).parse(_make_entry("bse-k-a", "docs/a.txt"))
         assert doc.status == "failed"
 
-    def test_error_message_captured(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_error_message_captured(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setitem(ext_mod._EXTRACTORS, "txt", _raises(OSError("disk error")))
         _write(tmp_path, "docs/a.txt")
         doc = KnowledgeBase(tmp_path).parse(_make_entry("bse-k-a", "docs/a.txt"))
         assert doc.error == "disk error"
 
-    def test_char_count_is_none_on_failure(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_char_count_is_none_on_failure(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setitem(ext_mod._EXTRACTORS, "txt", _raises(ValueError("bad")))
         _write(tmp_path, "docs/a.txt")
         doc = KnowledgeBase(tmp_path).parse(_make_entry("bse-k-a", "docs/a.txt"))
         assert doc.char_count is None
 
-    def test_does_not_raise_to_caller(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_does_not_raise_to_caller(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setitem(ext_mod._EXTRACTORS, "txt", _raises(RuntimeError("crash")))
         _write(tmp_path, "docs/a.txt")
         # Must not propagate the exception.
@@ -403,7 +426,9 @@ class TestKnowledgeBaseParseidempotence:
         kb.parse(_make_entry("bse-k-a", "docs/a.txt"))
         assert kb.get_content("bse-k-a") == "v2"
 
-    def test_failed_becomes_ok_on_retry(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_failed_becomes_ok_on_retry(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.setitem(ext_mod._EXTRACTORS, "txt", _raises(RuntimeError("boom")))
         _write(tmp_path, "docs/a.txt", "recovered")
         kb = KnowledgeBase(tmp_path)
@@ -412,7 +437,9 @@ class TestKnowledgeBaseParseidempotence:
         assert kb.get("bse-k-a").status == "failed"  # type: ignore[union-attr]
 
         # Restore a working extractor and re-parse.
-        monkeypatch.setitem(ext_mod._EXTRACTORS, "txt", lambda p: p.read_text(encoding="utf-8"))
+        monkeypatch.setitem(
+            ext_mod._EXTRACTORS, "txt", lambda p: p.read_text(encoding="utf-8")
+        )
         doc = kb.parse(_make_entry("bse-k-a", "docs/a.txt"))
         assert doc.status == "ok"
         assert kb.get_content("bse-k-a") == "recovered"
@@ -442,7 +469,9 @@ class TestKnowledgeBaseTextExtractors:
         _write(tmp_path, "docs/report.txt", "annual revenue: 100")
         doc = KnowledgeBase(tmp_path).parse(_make_entry("bse-k-x", "docs/report.txt"))
         assert doc.status == "ok"
-        assert "annual revenue" in (KnowledgeBase(tmp_path).get_content("bse-k-x") or "")
+        assert "annual revenue" in (
+            KnowledgeBase(tmp_path).get_content("bse-k-x") or ""
+        )
 
     def test_xml_file_content_extracted(self, tmp_path: Path) -> None:
         xml = "<root><value>42</value></root>"
@@ -478,6 +507,7 @@ class TestKnowledgeBaseTextExtractors:
 # Regression: HTML-as-PDF detection (BSE serves HTML error pages with .pdf URL)
 # ---------------------------------------------------------------------------
 
+
 class TestHtmlAsPdfDetection:
     """BSE's AnnualReport API sometimes returns an HTML page instead of a PDF.
     Prior to the fix, this produced status='ok', char_count=0 — silently hiding
@@ -489,14 +519,16 @@ class TestHtmlAsPdfDetection:
         (tmp_path / "docs").mkdir(parents=True, exist_ok=True)
         (tmp_path / "docs" / filename).write_bytes(
             b'<!DOCTYPE html><html lang="en"><head><title>BSE India</title></head>'
-            b'<body><p>Page not found</p></body></html>'
+            b"<body><p>Page not found</p></body></html>"
         )
 
     def test_html_file_with_pdf_extension_fails(self, tmp_path: Path) -> None:
         self._write_html_pdf(tmp_path, "annual_report.pdf")
         entry = _make_entry("bse-html-001", "docs/annual_report.pdf")
         doc = KnowledgeBase(tmp_path).parse(entry)
-        assert doc.status == "failed", "HTML disguised as PDF must not produce status='ok'"
+        assert (
+            doc.status == "failed"
+        ), "HTML disguised as PDF must not produce status='ok'"
         assert doc.error is not None
         assert "HTML" in doc.error
 
@@ -509,6 +541,7 @@ class TestHtmlAsPdfDetection:
     def test_real_pdf_still_works(self, tmp_path: Path) -> None:
         """Ensure the HTML guard doesn't break legitimate PDF parsing."""
         import fitz
+
         (tmp_path / "docs").mkdir(parents=True, exist_ok=True)
         doc_pdf = fitz.open()
         page = doc_pdf.new_page()
@@ -612,15 +645,19 @@ class TestScoreTextQuality:
         assert score < QUALITY_THRESHOLD
 
     def test_rupee_symbol_not_penalised(self) -> None:
-        text = ("₹20,160 crore Net Profit increased 9.97 percent quarter-on-quarter "
-                "₹41620 NII ₹42984 crore ") * 10
+        text = (
+            "₹20,160 crore Net Profit increased 9.97 percent quarter-on-quarter "
+            "₹41620 NII ₹42984 crore "
+        ) * 10
         score = score_text_quality(text, 1)
         assert score >= QUALITY_THRESHOLD
 
     def test_unicode_dashes_not_penalised(self) -> None:
         # en-dash and em-dash in financial ranges/context.
-        text = ("Revenue 267021–280000 crore EBITDA margin 25–30 percent "
-                "Net worth 500000 crores ") * 20
+        text = (
+            "Revenue 267021–280000 crore EBITDA margin 25–30 percent "
+            "Net worth 500000 crores "
+        ) * 20
         score = score_text_quality(text, 2)
         assert score >= QUALITY_THRESHOLD
 
@@ -631,8 +668,10 @@ class TestScoreTextQuality:
     def test_sbi_style_garbled_ratio_triggers_fallback(self) -> None:
         # Calibrated on real SBI data: garbled_ratio ≈ 0.013–0.019.
         # Inject 2 garbled words per 100 total (2 %) → should score below threshold.
-        good_words = ("Revenue Profit Operations Income Total Interest "
-                      "Deposits Advances Capital Reserves ") * 10
+        good_words = (
+            "Revenue Profit Operations Income Total Interest "
+            "Deposits Advances Capital Reserves "
+        ) * 10
         garbled_words = "lnt€resU lUnaudlledl " * 2
         # 100 good + 4 garbled = 104 words, ~3.8 % garbled
         text = (garbled_words + good_words) * 1  # fits in 8 000-char sample
@@ -647,9 +686,14 @@ class TestScoreTextQuality:
 # ---------------------------------------------------------------------------
 
 
-def _make_pdf(tmp_path: Path, filename: str = "doc.pdf", text: str = "Real PDF content for unit test") -> Path:
+def _make_pdf(
+    tmp_path: Path,
+    filename: str = "doc.pdf",
+    text: str = "Real PDF content for unit test",
+) -> Path:
     """Create a minimal but valid PDF file with the given text."""
     import fitz
+
     (tmp_path / "docs").mkdir(parents=True, exist_ok=True)
     pdf = fitz.open()
     page = pdf.new_page()
@@ -690,7 +734,9 @@ class TestExtractPdfPipeline:
         garbled = "lnt€resU lUnaudlledl oPe6tlonE dlacounl lReseryes " * 10
 
         monkeypatch.setattr(ext_mod, "_native_extract", lambda p: (garbled, 5))
-        monkeypatch.setattr(ext_mod, "_ocr_extract", lambda p, n: "Clean OCR text " * 50)
+        monkeypatch.setattr(
+            ext_mod, "_ocr_extract", lambda p, n: "Clean OCR text " * 50
+        )
 
         result = ext_mod.extract_pdf(path)
         assert result.ocr_attempted is True
@@ -722,8 +768,11 @@ class TestExtractPdfPipeline:
 
         monkeypatch.setattr(ext_mod, "_native_extract", lambda p: (garbled, 5))
         monkeypatch.setattr(
-            ext_mod, "_ocr_extract",
-            lambda p, n: (_ for _ in ()).throw(RuntimeError("tesseract is not installed")),
+            ext_mod,
+            "_ocr_extract",
+            lambda p, n: (_ for _ in ()).throw(
+                RuntimeError("tesseract is not installed")
+            ),
         )
 
         result = ext_mod.extract_pdf(path)
@@ -737,7 +786,9 @@ class TestExtractPdfPipeline:
         """If OCR produces lower quality than native, native text is kept."""
         path = _make_pdf(tmp_path)
         # Native is mediocre but not garbled enough to score 0.
-        mediocre = "Revenue Profit Interest Operations " * 5  # clean but sparse (low density)
+        mediocre = (
+            "Revenue Profit Interest Operations " * 5
+        )  # clean but sparse (low density)
         # OCR returns something worse (more garbled).
         worse_ocr = "lnt€resU lUnaudlledl oPe6tlonE " * 5
 
@@ -751,7 +802,7 @@ class TestExtractPdfPipeline:
     def test_html_guard_raises_on_html_file(self, tmp_path: Path) -> None:
         (tmp_path / "docs").mkdir(parents=True, exist_ok=True)
         p = tmp_path / "docs" / "error.pdf"
-        p.write_bytes(b'<!DOCTYPE html><html><body>error</body></html>')
+        p.write_bytes(b"<!DOCTYPE html><html><body>error</body></html>")
         with pytest.raises(ValueError, match="HTML"):
             ext_mod.extract_pdf(p)
 
@@ -768,8 +819,10 @@ class TestExtractPdfPipeline:
         path = _make_pdf(tmp_path)
         monkeypatch.setattr(ext_mod, "_native_extract", lambda p: ("", 12))
         monkeypatch.setattr(
-            ext_mod, "_ocr_extract",
-            lambda p, n: "Revenue from operations 267021 crores Net profit 49454 crores " * 40,
+            ext_mod,
+            "_ocr_extract",
+            lambda p, n: "Revenue from operations 267021 crores Net profit 49454 crores "
+            * 40,
         )
 
         result = ext_mod.extract_pdf(path)
@@ -858,7 +911,9 @@ class TestDocumentLanguageDetection:
     """document_language — deterministic script-ratio detection, not ML."""
 
     def test_english_text_detected_as_en(self, tmp_path: Path) -> None:
-        path = _make_pdf(tmp_path, text="Revenue from operations increased significantly " * 10)
+        path = _make_pdf(
+            tmp_path, text="Revenue from operations increased significantly " * 10
+        )
         entry = _make_entry("bse-lang-001", "docs/doc.pdf")
         kb = KnowledgeBase(tmp_path)
         doc = kb.parse(entry)
@@ -866,20 +921,28 @@ class TestDocumentLanguageDetection:
 
     def test_devanagari_text_detected_as_other(self, tmp_path: Path) -> None:
         from atlas.knowledge.base import _detect_language
-        hindi_text = "यह कंपनी की वार्षिक रिपोर्ट है और इसमें वित्तीय विवरण शामिल हैं " * 10
+
+        hindi_text = (
+            "यह कंपनी की वार्षिक रिपोर्ट है और इसमें वित्तीय विवरण शामिल हैं " * 10
+        )
         assert _detect_language(hindi_text) == "other"
 
     def test_mostly_latin_with_few_non_latin_chars_still_en(self) -> None:
         from atlas.knowledge.base import _detect_language
-        text = "Annual Report 2025-26 for the company operations and results " * 20 + "अ"
+
+        text = (
+            "Annual Report 2025-26 for the company operations and results " * 20 + "अ"
+        )
         assert _detect_language(text) == "en"
 
     def test_short_text_returns_none(self) -> None:
         from atlas.knowledge.base import _detect_language
+
         assert _detect_language("short") is None
 
     def test_empty_text_returns_none(self) -> None:
         from atlas.knowledge.base import _detect_language
+
         assert _detect_language("") is None
 
     def test_failed_parse_has_none_language(self, tmp_path: Path) -> None:
@@ -890,7 +953,9 @@ class TestDocumentLanguageDetection:
         assert doc.document_language is None
 
     def test_get_returns_document_language(self, tmp_path: Path) -> None:
-        path = _make_pdf(tmp_path, text="Revenue from operations increased significantly " * 10)
+        path = _make_pdf(
+            tmp_path, text="Revenue from operations increased significantly " * 10
+        )
         entry = _make_entry("bse-lang-002", "docs/doc.pdf")
         kb = KnowledgeBase(tmp_path)
         kb.parse(entry)

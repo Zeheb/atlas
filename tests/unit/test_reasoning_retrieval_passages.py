@@ -4,6 +4,7 @@ retrieve_passages is question-conditioned (query = the user's question) across
 multiple documents, unlike find_excerpt/fetch_and_match (claim-conditioned,
 single document). Same hermetic-KB pattern as M1's retrieval tests.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -26,22 +27,35 @@ def _kb_with_docs(tmp_path: Path, docs: dict[str, str]) -> KnowledgeBase:
         rel = f"{evidence_id}.txt"
         (tmp_path / rel).write_text(content, encoding="utf-8")
         entry = CatalogEntry(
-            evidence_id=evidence_id, source=EvidenceSource.BSE.value,
-            kind=EvidenceKind.ANNUAL_REPORT.value, title="Test doc",
-            source_date="2026-03-31T00:00:00+00:00", document_url=None,
-            local_path=rel, file_size_bytes=None, acquired_at="2026-04-01T00:00:00+00:00",
+            evidence_id=evidence_id,
+            source=EvidenceSource.BSE.value,
+            kind=EvidenceKind.ANNUAL_REPORT.value,
+            title="Test doc",
+            source_date="2026-03-31T00:00:00+00:00",
+            document_url=None,
+            local_path=rel,
+            file_size_bytes=None,
+            acquired_at="2026-04-01T00:00:00+00:00",
         )
         kb.parse(entry)
     return kb
 
 
 def test_returns_passages_from_multiple_docs_ranked_by_score(tmp_path: Path) -> None:
-    kb = _kb_with_docs(tmp_path, {
-        "ev-1": _MARGIN_TEXT, "ev-2": _RISK_TEXT, "ev-3": _IRRELEVANT_TEXT,
-    })
+    kb = _kb_with_docs(
+        tmp_path,
+        {
+            "ev-1": _MARGIN_TEXT,
+            "ev-2": _RISK_TEXT,
+            "ev-3": _IRRELEVANT_TEXT,
+        },
+    )
     results = retrieve_passages(kb, ["ev-1", "ev-2", "ev-3"], _QUESTION, k=5)
     doc_ids = [doc_id for doc_id, _match in results]
-    assert doc_ids == ["ev-1", "ev-2"]  # ev-1 (numeric match) outranks ev-2 (word-only); ev-3 excluded
+    assert doc_ids == [
+        "ev-1",
+        "ev-2",
+    ]  # ev-1 (numeric match) outranks ev-2 (word-only); ev-3 excluded
 
 
 def test_k_limits_result_count(tmp_path: Path) -> None:
@@ -53,7 +67,9 @@ def test_k_limits_result_count(tmp_path: Path) -> None:
 
 def test_irrelevant_question_returns_empty() -> None:
     results = retrieve_passages(
-        KnowledgeBase(Path(".")), ["ev-1"], "quantum entanglement spacecraft telemetry",
+        KnowledgeBase(Path(".")),
+        ["ev-1"],
+        "quantum entanglement spacecraft telemetry",
     )
     assert results == []
 
@@ -82,7 +98,9 @@ def test_reuses_content_cache_across_calls(tmp_path: Path) -> None:
     assert "ev-1" in cache
 
     def _boom(_eid: str) -> str | None:
-        raise AssertionError("get_content should not be called again — cache hit expected")
+        raise AssertionError(
+            "get_content should not be called again — cache hit expected"
+        )
 
     kb.get_content = _boom  # type: ignore[method-assign]
     results = retrieve_passages(kb, ["ev-1"], _QUESTION, content_cache=cache)

@@ -1,4 +1,5 @@
 """Unit tests for atlas.research.signals — the generic metric-move classifier."""
+
 from __future__ import annotations
 
 from atlas.research.signals import classify_metric_moves, top_movers
@@ -17,7 +18,9 @@ class TestClassifyMetricMoves:
     def test_deteriorating_metric_classified_correctly(self) -> None:
         profile = make_profile()
         signals = classify_metric_moves(profile, domains=("esg",))
-        attrition = next(s for s in signals if s.metric_key == "workforce_attrition_pct")
+        attrition = next(
+            s for s in signals if s.metric_key == "workforce_attrition_pct"
+        )
         assert attrition.direction == "deteriorating"
 
     def test_metric_with_no_directional_hint_excluded(self) -> None:
@@ -35,10 +38,15 @@ class TestClassifyMetricMoves:
     def test_domain_filter_restricts_output(self) -> None:
         profile = make_profile()
         financial_only = classify_metric_moves(profile, domains=("financial",))
-        assert all(s.metric_key in ("revenue", "pat", "operating_margin") or True for s in financial_only)
+        assert all(
+            s.metric_key in ("revenue", "pat", "operating_margin") or True
+            for s in financial_only
+        )
         esg_only = classify_metric_moves(profile, domains=("esg",))
         assert not any(s.metric_key == "operating_margin" for s in esg_only)
-        assert not any(s.metric_key == "workforce_attrition_pct" for s in financial_only)
+        assert not any(
+            s.metric_key == "workforce_attrition_pct" for s in financial_only
+        )
 
     def test_empty_profile_returns_no_signals(self) -> None:
         assert classify_metric_moves(make_empty_profile()) == []
@@ -54,12 +62,24 @@ class TestClassifyMetricMoves:
         from atlas.company.model import FinancialSnapshot, FinancialTimeSeries
 
         profile = make_profile()
-        profile.financial = FinancialTimeSeries(snapshots=[
-            FinancialSnapshot(period="2025-03-31", period_type="annual", basis="consolidated",
-                               facts={FactKind.FINANCIAL_OPERATING_MARGIN: 20.00}, sources=["a"]),
-            FinancialSnapshot(period="2026-03-31", period_type="annual", basis="consolidated",
-                               facts={FactKind.FINANCIAL_OPERATING_MARGIN: 20.05}, sources=["b"]),
-        ])
+        profile.financial = FinancialTimeSeries(
+            snapshots=[
+                FinancialSnapshot(
+                    period="2025-03-31",
+                    period_type="annual",
+                    basis="consolidated",
+                    facts={FactKind.FINANCIAL_OPERATING_MARGIN: 20.00},
+                    sources=["a"],
+                ),
+                FinancialSnapshot(
+                    period="2026-03-31",
+                    period_type="annual",
+                    basis="consolidated",
+                    facts={FactKind.FINANCIAL_OPERATING_MARGIN: 20.05},
+                    sources=["b"],
+                ),
+            ]
+        )
         signals = classify_metric_moves(profile, domains=("financial",))
         margin = next(s for s in signals if s.metric_key == "operating_margin")
         assert margin.direction == "stable"

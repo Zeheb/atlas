@@ -5,6 +5,7 @@ Tests are parameterised over every domain (financial, ESG, ownership, segments,
 credit_history, capital_events, strategy, governance) to verify full roundtrip
 fidelity through JSON serialisation.
 """
+
 from __future__ import annotations
 
 import json
@@ -13,7 +14,13 @@ from pathlib import Path
 
 import pytest
 
-from atlas.analysis.base import AnalysisFact, AnalysisResult, FactKind, FactUnit, Provenance
+from atlas.analysis.base import (
+    AnalysisFact,
+    AnalysisResult,
+    FactKind,
+    FactUnit,
+    Provenance,
+)
 from atlas.company.builder import BUILDER_VERSION, build_profile
 from atlas.company.model import (
     AGMResolution,
@@ -91,12 +98,19 @@ def _financial_result(
     source_date: datetime = _DT,
 ) -> AnalysisResult:
     facts = [
-        _fact(FactKind.REPORT_PERIOD_END, period, FactUnit.ISO_DATE, section="cover_letter"),
+        _fact(
+            FactKind.REPORT_PERIOD_END,
+            period,
+            FactUnit.ISO_DATE,
+            section="cover_letter",
+        ),
         _fact(FactKind.REPORT_PERIOD_TYPE, "quarterly", section="cover_letter"),
         _fact(FactKind.FINANCIAL_REVENUE, revenue, FactUnit.CRORE_INR, period=period),
         _fact(FactKind.FINANCIAL_PAT, pat, FactUnit.CRORE_INR, period=period),
     ]
-    return _result("financial_results", facts, evidence_id=evidence_id, source_date=source_date)
+    return _result(
+        "financial_results", facts, evidence_id=evidence_id, source_date=source_date
+    )
 
 
 def _esg_result(
@@ -104,16 +118,40 @@ def _esg_result(
     evidence_id: str = "brsr-001",
 ) -> AnalysisResult:
     facts = [
-        _fact(FactKind.ESG_GHG_SCOPE1, 5000.0, FactUnit.TCO2E, period=period, section="emissions"),
-        _fact(FactKind.ESG_WORKFORCE_HEADCOUNT, 600000, FactUnit.COUNT, period=period, section="workforce"),
+        _fact(
+            FactKind.ESG_GHG_SCOPE1,
+            5000.0,
+            FactUnit.TCO2E,
+            period=period,
+            section="emissions",
+        ),
+        _fact(
+            FactKind.ESG_WORKFORCE_HEADCOUNT,
+            600000,
+            FactUnit.COUNT,
+            period=period,
+            section="workforce",
+        ),
     ]
     return _result("brsr", facts, evidence_id=evidence_id)
 
 
 def _shp_result(evidence_id: str = "shp-001") -> AnalysisResult:
     facts = [
-        _fact(FactKind.OWNERSHIP_PROMOTER_PCT, 71.8, FactUnit.PERCENT, period="2024-09-30", section="promoter"),
-        _fact(FactKind.OWNERSHIP_PUBLIC_PCT, 28.2, FactUnit.PERCENT, period="2024-09-30", section="public"),
+        _fact(
+            FactKind.OWNERSHIP_PROMOTER_PCT,
+            71.8,
+            FactUnit.PERCENT,
+            period="2024-09-30",
+            section="promoter",
+        ),
+        _fact(
+            FactKind.OWNERSHIP_PUBLIC_PCT,
+            28.2,
+            FactUnit.PERCENT,
+            period="2024-09-30",
+            section="public",
+        ),
     ]
     return _result("shareholding_pattern", facts, evidence_id=evidence_id)
 
@@ -129,8 +167,18 @@ def _credit_result(evidence_id: str = "cr-001") -> AnalysisResult:
 
 def _buyback_result(evidence_id: str = "bb-001") -> AnalysisResult:
     facts = [
-        _fact(FactKind.CAPITAL_BUYBACK_AMOUNT, 17000.0, FactUnit.CRORE_INR, section="buyback"),
-        _fact(FactKind.CAPITAL_BUYBACK_PRICE_PER_SHARE, 4150.0, FactUnit.RUPEES_PER_SHARE, section="buyback"),
+        _fact(
+            FactKind.CAPITAL_BUYBACK_AMOUNT,
+            17000.0,
+            FactUnit.CRORE_INR,
+            section="buyback",
+        ),
+        _fact(
+            FactKind.CAPITAL_BUYBACK_PRICE_PER_SHARE,
+            4150.0,
+            FactUnit.RUPEES_PER_SHARE,
+            section="buyback",
+        ),
         _fact(FactKind.CAPITAL_BUYBACK_SHARES_OFFERED, 40000000, section="buyback"),
     ]
     return _result("buyback", facts, evidence_id=evidence_id)
@@ -139,20 +187,45 @@ def _buyback_result(evidence_id: str = "bb-001") -> AnalysisResult:
 def _investor_presentation_result(evidence_id: str = "ip-001") -> AnalysisResult:
     facts = [
         _fact(FactKind.STRATEGY_PRIORITY, "Cloud leadership", section="strategy"),
-        _fact(FactKind.STRATEGY_CSAT, 78.5, FactUnit.PERCENT, period="2024-09-30", section="customer"),
-        _fact(FactKind.FINANCIAL_ROE, 52.0, FactUnit.PERCENT, period="2025-03-31", section="financial_highlights"),
+        _fact(
+            FactKind.STRATEGY_CSAT,
+            78.5,
+            FactUnit.PERCENT,
+            period="2024-09-30",
+            section="customer",
+        ),
+        _fact(
+            FactKind.FINANCIAL_ROE,
+            52.0,
+            FactUnit.PERCENT,
+            period="2025-03-31",
+            section="financial_highlights",
+        ),
     ]
     return _result("investor_presentation", facts, evidence_id=evidence_id)
 
 
 def _agm_result(evidence_id: str = "agm-001") -> AnalysisResult:
     facts = [
-        _fact(FactKind.GOVERNANCE_RESOLUTION_TITLE, "Re-appoint auditor",
-              period="2024-08-14", section="resolution_1"),
-        _fact(FactKind.GOVERNANCE_RESOLUTION_TYPE, "ordinary",
-              period="2024-08-14", section="resolution_1"),
-        _fact(FactKind.GOVERNANCE_VOTE_PCT_FOR, 99.12, FactUnit.PERCENT,
-              period="2024-08-14", section="resolution_1"),
+        _fact(
+            FactKind.GOVERNANCE_RESOLUTION_TITLE,
+            "Re-appoint auditor",
+            period="2024-08-14",
+            section="resolution_1",
+        ),
+        _fact(
+            FactKind.GOVERNANCE_RESOLUTION_TYPE,
+            "ordinary",
+            period="2024-08-14",
+            section="resolution_1",
+        ),
+        _fact(
+            FactKind.GOVERNANCE_VOTE_PCT_FOR,
+            99.12,
+            FactUnit.PERCENT,
+            period="2024-08-14",
+            section="resolution_1",
+        ),
     ]
     return _result("agm_notice", facts, evidence_id=evidence_id)
 
@@ -165,6 +238,7 @@ def store(tmp_path: Path) -> CompanyStore:
 def _profile_as_json(profile: CompanyProfile) -> dict:
     """Round-trip a profile through JSON for equality comparison."""
     from atlas.company.store import _serialize_profile
+
     return _serialize_profile(profile)
 
 
@@ -332,7 +406,9 @@ def test_roundtrip_credit_esg_in_esg_ratings(store: CompanyStore) -> None:
     assert entry.evidence_id == "cr-001"
 
 
-def test_roundtrip_credit_debt_ratings_empty_for_esg_filing(store: CompanyStore) -> None:
+def test_roundtrip_credit_debt_ratings_empty_for_esg_filing(
+    store: CompanyStore,
+) -> None:
     profile = build_profile("TCS", [_credit_result()])
     store.save(profile)
     loaded = store.load()
@@ -360,10 +436,19 @@ def test_roundtrip_buyback_event(store: CompanyStore) -> None:
 
 def test_roundtrip_dividend_event(store: CompanyStore) -> None:
     facts = [
-        _fact(FactKind.CAPITAL_DIVIDEND_PER_SHARE, 10.0, FactUnit.RUPEES_PER_SHARE,
-              section="consolidated_pl_table", char_offset=100),
-        _fact(FactKind.CAPITAL_DIVIDEND_TYPE, "interim",
-              section="consolidated_pl_table", char_offset=100),
+        _fact(
+            FactKind.CAPITAL_DIVIDEND_PER_SHARE,
+            10.0,
+            FactUnit.RUPEES_PER_SHARE,
+            section="consolidated_pl_table",
+            char_offset=100,
+        ),
+        _fact(
+            FactKind.CAPITAL_DIVIDEND_TYPE,
+            "interim",
+            section="consolidated_pl_table",
+            char_offset=100,
+        ),
     ]
     r = _result("financial_results", facts, evidence_id="div-001")
     profile = build_profile("TCS", [r])
@@ -379,7 +464,12 @@ def test_roundtrip_dividend_event(store: CompanyStore) -> None:
 def test_roundtrip_acquisition_event_with_unit(store: CompanyStore) -> None:
     facts = [
         _fact(FactKind.CAPITAL_ACQ_TARGET_NAME, "Acme Corp", section="acquisition"),
-        _fact(FactKind.CAPITAL_ACQ_ENTERPRISE_VALUE, 500.0, FactUnit.USD_MILLION, section="acquisition"),
+        _fact(
+            FactKind.CAPITAL_ACQ_ENTERPRISE_VALUE,
+            500.0,
+            FactUnit.USD_MILLION,
+            section="acquisition",
+        ),
         _fact(FactKind.CAPITAL_ACQ_CONSIDERATION_TYPE, "cash", section="acquisition"),
     ]
     r = _result("acquisition", facts, evidence_id="acq-001")
@@ -396,8 +486,15 @@ def test_roundtrip_acquisition_event_with_unit(store: CompanyStore) -> None:
 
 def test_roundtrip_investment_event_with_unit(store: CompanyStore) -> None:
     facts = [
-        _fact(FactKind.CAPITAL_INVEST_TARGET_NAME, "TCS Subsidiary", section="investments"),
-        _fact(FactKind.CAPITAL_INVEST_AMOUNT, 250.0, FactUnit.CRORE_INR, section="investments"),
+        _fact(
+            FactKind.CAPITAL_INVEST_TARGET_NAME, "TCS Subsidiary", section="investments"
+        ),
+        _fact(
+            FactKind.CAPITAL_INVEST_AMOUNT,
+            250.0,
+            FactUnit.CRORE_INR,
+            section="investments",
+        ),
     ]
     r = _result("board_outcome", facts, evidence_id="bo-001")
     profile = build_profile("TCS", [r])
@@ -462,10 +559,21 @@ def test_roundtrip_agm_resolutions(store: CompanyStore) -> None:
 
 def test_roundtrip_segment_entries(store: CompanyStore) -> None:
     facts = [
-        _fact(FactKind.SEGMENT_NAME, "BFSI", period="2024-09-30",
-              section="segment_table", char_offset=0),
-        _fact(FactKind.SEGMENT_REVENUE, 20000.0, FactUnit.CRORE_INR,
-              period="2024-09-30", section="segment_table", char_offset=0),
+        _fact(
+            FactKind.SEGMENT_NAME,
+            "BFSI",
+            period="2024-09-30",
+            section="segment_table",
+            char_offset=0,
+        ),
+        _fact(
+            FactKind.SEGMENT_REVENUE,
+            20000.0,
+            FactUnit.CRORE_INR,
+            period="2024-09-30",
+            section="segment_table",
+            char_offset=0,
+        ),
     ]
     r = _result("financial_results", facts, evidence_id="fr-seg-001")
     profile = build_profile("TCS", [r])
@@ -521,7 +629,9 @@ def test_merge_adds_new_snapshot(store: CompanyStore) -> None:
     profile = store.merge(r2)
     assert len(profile.financial.snapshots) == 2
     assert profile.financial.snapshots[1].period == "2024-12-31"
-    assert profile.financial.snapshots[1].facts[FactKind.FINANCIAL_REVENUE] == pytest.approx(62000.0)
+    assert profile.financial.snapshots[1].facts[
+        FactKind.FINANCIAL_REVENUE
+    ] == pytest.approx(62000.0)
 
 
 def test_merge_is_idempotent(store: CompanyStore) -> None:
@@ -547,7 +657,14 @@ def test_merge_raises_stale_result_error(store: CompanyStore) -> None:
 
     r1_new = _result(
         "financial_results",
-        [_fact(FactKind.FINANCIAL_REVENUE, 99999.0, FactUnit.CRORE_INR, period="2024-09-30")],
+        [
+            _fact(
+                FactKind.FINANCIAL_REVENUE,
+                99999.0,
+                FactUnit.CRORE_INR,
+                period="2024-09-30",
+            )
+        ],
         evidence_id="fr-001",
         analyzer_version="2.0",
     )
@@ -578,7 +695,9 @@ def test_merge_esg_result_populates_esg_snapshots(store: CompanyStore) -> None:
     store.save(build_profile("TCS", []), [])
     profile = store.merge(_esg_result(evidence_id="brsr-001"))
     assert len(profile.esg.snapshots) == 1
-    assert profile.esg.snapshots[0].facts[FactKind.ESG_GHG_SCOPE1] == pytest.approx(5000.0)
+    assert profile.esg.snapshots[0].facts[FactKind.ESG_GHG_SCOPE1] == pytest.approx(
+        5000.0
+    )
 
 
 def test_merge_strategy_result_populates_strategy_profile(store: CompanyStore) -> None:
@@ -601,11 +720,20 @@ def test_merge_unknown_kind_is_silently_skipped(store: CompanyStore) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_merge_matches_rebuild_from_scratch_financial(store: CompanyStore, tmp_path: Path) -> None:
+def test_merge_matches_rebuild_from_scratch_financial(
+    store: CompanyStore, tmp_path: Path
+) -> None:
     """Incrementally merging R2 must produce the same profile as rebuilding from [R1, R2]."""
-    r1 = _financial_result(period="2024-09-30", revenue=60000.0, pat=12000.0, evidence_id="fr-001")
-    r2 = _financial_result(period="2024-12-31", revenue=63000.0, pat=13500.0, evidence_id="fr-002",
-                           source_date=_DT2)
+    r1 = _financial_result(
+        period="2024-09-30", revenue=60000.0, pat=12000.0, evidence_id="fr-001"
+    )
+    r2 = _financial_result(
+        period="2024-12-31",
+        revenue=63000.0,
+        pat=13500.0,
+        evidence_id="fr-002",
+        source_date=_DT2,
+    )
 
     # Incremental path
     initial = build_profile("TCS", [r1])
@@ -618,13 +746,24 @@ def test_merge_matches_rebuild_from_scratch_financial(store: CompanyStore, tmp_p
     assert _profile_as_json(merged) == _profile_as_json(rebuilt)
 
 
-def test_merge_matches_rebuild_supplement_does_not_overwrite(store: CompanyStore) -> None:
+def test_merge_matches_rebuild_supplement_does_not_overwrite(
+    store: CompanyStore,
+) -> None:
     """A priority-2 (transcript) merged after priority-1 (financial_results) must
     not overwrite XBRL facts — consistent with batch build_profile() behaviour."""
-    r_fin = _financial_result(period="2024-09-30", revenue=60000.0, evidence_id="fr-001")
+    r_fin = _financial_result(
+        period="2024-09-30", revenue=60000.0, evidence_id="fr-001"
+    )
     r_tx = _result(
         "earnings_transcript",
-        [_fact(FactKind.FINANCIAL_REVENUE, 59000.0, FactUnit.CRORE_INR, period="2024-09-30")],
+        [
+            _fact(
+                FactKind.FINANCIAL_REVENUE,
+                59000.0,
+                FactUnit.CRORE_INR,
+                period="2024-09-30",
+            )
+        ],
         evidence_id="tx-001",
         source_date=_DT2,
     )

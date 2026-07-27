@@ -4,6 +4,7 @@ Checks behavioral expectations from the acceptance case: did Atlas refuse when i
 should (and answer when it should), and did it avoid forbidden fabrications /
 include a required fact. Pure function; no LLM.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -47,6 +48,8 @@ def score_correctness(
     # A required fact must appear when the case answered (non-refuse classes).
     if expected != "refuse" and not result.refused and case.must_contain_any:
         if not any(want.lower() in text for want in case.must_contain_any):
-            reasons.append(f"missing any of required text: {list(case.must_contain_any)}")
+            reasons.append(
+                f"missing any of required text: {list(case.must_contain_any)}"
+            )
 
     return CorrectnessScore(passed=not reasons, reasons=tuple(reasons))

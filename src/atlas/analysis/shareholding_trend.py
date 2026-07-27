@@ -15,6 +15,7 @@ by the shareholding_pattern analyzer — and computes:
 The public function ``analyze_trend`` works purely from AnalysisResult
 objects. No knowledge-base access or document re-reading is required.
 """
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -28,13 +29,14 @@ from atlas.analysis.base import AnalysisResult, FactKind
 # Output types
 # ---------------------------------------------------------------------------
 
+
 @dataclass
 class HoldingPoint:
     """Ownership snapshot extracted from one AnalysisResult."""
 
     evidence_id: str
-    period: str                          # ISO quarter-end date, e.g. "2026-03-31"
-    facts: dict[FactKind, float | int]   # kind → value (% on 0-100 scale, or count)
+    period: str  # ISO quarter-end date, e.g. "2026-03-31"
+    facts: dict[FactKind, float | int]  # kind → value (% on 0-100 scale, or count)
 
 
 @dataclass
@@ -44,7 +46,7 @@ class HoldingDelta:
     from_period: str
     to_period: str
     kind: FactKind
-    delta: float          # to_value - from_value; positive = metric increased
+    delta: float  # to_value - from_value; positive = metric increased
     from_value: float
     to_value: float
 
@@ -90,21 +92,22 @@ _TRACKED_KINDS: tuple[FactKind, ...] = (
 # Minimum absolute change (in percentage points) to generate a single-period signal.
 # Share count is excluded (it rarely changes; share splits/buybacks are a different signal).
 _SIGNAL_THRESHOLD: dict[FactKind, float] = {
-    FactKind.OWNERSHIP_FPI_PCT:              0.50,
-    FactKind.OWNERSHIP_DII_PCT:              0.50,
-    FactKind.OWNERSHIP_MF_PCT:               0.30,
-    FactKind.OWNERSHIP_INSURANCE_PCT:        0.30,
-    FactKind.OWNERSHIP_PROMOTER_PCT:         0.05,
+    FactKind.OWNERSHIP_FPI_PCT: 0.50,
+    FactKind.OWNERSHIP_DII_PCT: 0.50,
+    FactKind.OWNERSHIP_MF_PCT: 0.30,
+    FactKind.OWNERSHIP_INSURANCE_PCT: 0.30,
+    FactKind.OWNERSHIP_PROMOTER_PCT: 0.05,
     FactKind.OWNERSHIP_PROMOTER_PLEDGED_PCT: 0.001,  # any pledging change is notable
 }
 
-_STREAK_LENGTH = 3   # N consecutive same-direction moves triggers a trend signal
+_STREAK_LENGTH = 3  # N consecutive same-direction moves triggers a trend signal
 _YOY_WINDOW_DAYS = 45  # match same-quarter YoY within this tolerance
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def analyze_trend(results: Sequence[AnalysisResult]) -> TrendResult:
     """Compute longitudinal ownership trends from a sequence of AnalysisResults.
@@ -140,15 +143,15 @@ def analyze_trend(results: Sequence[AnalysisResult]) -> TrendResult:
             )
             continue
         facts: dict[FactKind, float | int] = {
-            f.kind: f.value
-            for f in result.facts
-            if f.kind in _TRACKED_KINDS
+            f.kind: f.value for f in result.facts if f.kind in _TRACKED_KINDS
         }
-        out.points.append(HoldingPoint(
-            evidence_id=result.evidence_id,
-            period=period,
-            facts=facts,
-        ))
+        out.points.append(
+            HoldingPoint(
+                evidence_id=result.evidence_id,
+                period=period,
+                facts=facts,
+            )
+        )
 
     out.points.sort(key=lambda p: p.period)
     _dedup_points(out.points, out.warnings)
@@ -162,14 +165,16 @@ def analyze_trend(results: Sequence[AnalysisResult]) -> TrendResult:
             v0 = prev.facts.get(kind)
             v1 = curr.facts.get(kind)
             if v0 is not None and v1 is not None:
-                out.qoq_deltas.append(HoldingDelta(
-                    from_period=prev.period,
-                    to_period=curr.period,
-                    kind=kind,
-                    delta=round(float(v1) - float(v0), 4),
-                    from_value=float(v0),
-                    to_value=float(v1),
-                ))
+                out.qoq_deltas.append(
+                    HoldingDelta(
+                        from_period=prev.period,
+                        to_period=curr.period,
+                        kind=kind,
+                        delta=round(float(v1) - float(v0), 4),
+                        from_value=float(v0),
+                        to_value=float(v1),
+                    )
+                )
 
     # YoY deltas (same-calendar-quarter, ≈1 year apart)
     _compute_yoy(out.points, out.yoy_deltas)
@@ -183,6 +188,7 @@ def analyze_trend(results: Sequence[AnalysisResult]) -> TrendResult:
 # ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
+
 
 def _extract_period(result: AnalysisResult) -> str | None:
     """Return the quarter-end date from facts in an SHP AnalysisResult."""
@@ -241,14 +247,16 @@ def _compute_yoy(
             v0 = best.facts.get(kind)
             v1 = curr.facts.get(kind)
             if v0 is not None and v1 is not None:
-                yoy_deltas.append(HoldingDelta(
-                    from_period=best.period,
-                    to_period=curr.period,
-                    kind=kind,
-                    delta=round(float(v1) - float(v0), 4),
-                    from_value=float(v0),
-                    to_value=float(v1),
-                ))
+                yoy_deltas.append(
+                    HoldingDelta(
+                        from_period=best.period,
+                        to_period=curr.period,
+                        kind=kind,
+                        delta=round(float(v1) - float(v0), 4),
+                        from_value=float(v0),
+                        to_value=float(v1),
+                    )
+                )
 
 
 def _label(kind: FactKind) -> str:
@@ -301,15 +309,12 @@ def _detect_signals(
 
     # Pledging transitions
     pledge = [
-        (p.period, p.facts.get(FactKind.OWNERSHIP_PROMOTER_PLEDGED_PCT))
-        for p in points
+        (p.period, p.facts.get(FactKind.OWNERSHIP_PROMOTER_PLEDGED_PCT)) for p in points
     ]
     for (p0, v0), (p1, v1) in zip(pledge, pledge[1:]):
         if v0 is not None and v1 is not None:
             if v0 == 0.0 and v1 > 0.0:
-                signals.append(
-                    f"promoter pledged pct appeared: {v1:.2f}% as of {p1}"
-                )
+                signals.append(f"promoter pledged pct appeared: {v1:.2f}% as of {p1}")
             elif v0 > 0.0 and v1 == 0.0:
                 signals.append(
                     f"promoter pledged pct cleared: was {v0:.2f}% as of {p0}"

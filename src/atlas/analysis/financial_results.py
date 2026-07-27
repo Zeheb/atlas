@@ -21,6 +21,7 @@ Known limitation: there is no explicit `basis` field on AnalysisFact. Consumers
 distinguish consolidated vs standalone facts by filtering on
 provenance.section.startswith("consolidated_") vs "standalone_".
 """
+
 from __future__ import annotations
 
 import re
@@ -50,46 +51,46 @@ ANALYZER_VERSION = "1.1"
 # ---------------------------------------------------------------------------
 
 _PL_ROWS: list[tuple[FactKind, re.Pattern[str]]] = [
-    (FactKind.FINANCIAL_REVENUE,
-     re.compile(r"Revenue from operations")),
-    (FactKind.FINANCIAL_OTHER_INCOME,
-     re.compile(r"^Other income\b", re.MULTILINE)),
-    (FactKind.FINANCIAL_TOTAL_INCOME,
-     re.compile(r"TOTAL INCOME")),
+    (FactKind.FINANCIAL_REVENUE, re.compile(r"Revenue from operations")),
+    (FactKind.FINANCIAL_OTHER_INCOME, re.compile(r"^Other income\b", re.MULTILINE)),
+    (FactKind.FINANCIAL_TOTAL_INCOME, re.compile(r"TOTAL INCOME")),
     # Input-cost components (M-P3.4, ADR-0012) -- manufacturer-specific
     # expense lines, absent for service companies (TCS) by business model,
     # same as FINANCIAL_TCV/FINANCIAL_UNBILLED_REVENUE. Reuses this exact
     # generic row mechanism -- no new extraction code.
-    (FactKind.FINANCIAL_COST_OF_MATERIALS,
-     re.compile(r"Cost of mat(?:erials|enals) consumed")),  # "matenals" is a real OCR typo, verified in Tata Steel filings
-    (FactKind.FINANCIAL_PURCHASES_STOCK_IN_TRADE,
-     re.compile(r"Purchases? of stock-in-trade")),
-    (FactKind.FINANCIAL_CHANGE_IN_INVENTORIES,
-     re.compile(r"Changes in inventories of finished")),
-    (FactKind.FINANCIAL_EMPLOYEE_COST,
-     re.compile(r"Employee benefit expenses")),
-    (FactKind.FINANCIAL_EQUIPMENT_SOFTWARE_COST,
-     re.compile(r"Cost of equipment and software licences")),
-    (FactKind.FINANCIAL_FINANCE_COST,
-     re.compile(r"^Finance costs?\b", re.MULTILINE)),
-    (FactKind.FINANCIAL_DEPRECIATION,
-     re.compile(r"Depreciation and amortisation expense")),
-    (FactKind.FINANCIAL_OTHER_EXPENSES,
-     re.compile(r"^Other expenses\b", re.MULTILINE)),
-    (FactKind.FINANCIAL_TOTAL_EXPENSES,
-     re.compile(r"TOTAL EXPENSES")),
-    (FactKind.FINANCIAL_PROFIT_BEFORE_EXCEPTIONAL,
-     re.compile(r"PROFIT BEFORE EXCEPTIONAL")),
-    (FactKind.FINANCIAL_PROFIT_BEFORE_TAX,
-     re.compile(r"PROFIT BEFORE TAX")),
-    (FactKind.FINANCIAL_CURRENT_TAX,
-     re.compile(r"^Current tax\b", re.MULTILINE)),
-    (FactKind.FINANCIAL_DEFERRED_TAX,
-     re.compile(r"^Deferred tax\b", re.MULTILINE)),
-    (FactKind.FINANCIAL_TOTAL_TAX,
-     re.compile(r"TOTAL TAX EXPENSE")),
-    (FactKind.FINANCIAL_PAT,
-     re.compile(r"PROFIT FOR THE (?:PERIOD|YEAR)")),
+    (
+        FactKind.FINANCIAL_COST_OF_MATERIALS,
+        re.compile(r"Cost of mat(?:erials|enals) consumed"),
+    ),  # "matenals" is a real OCR typo, verified in Tata Steel filings
+    (
+        FactKind.FINANCIAL_PURCHASES_STOCK_IN_TRADE,
+        re.compile(r"Purchases? of stock-in-trade"),
+    ),
+    (
+        FactKind.FINANCIAL_CHANGE_IN_INVENTORIES,
+        re.compile(r"Changes in inventories of finished"),
+    ),
+    (FactKind.FINANCIAL_EMPLOYEE_COST, re.compile(r"Employee benefit expenses")),
+    (
+        FactKind.FINANCIAL_EQUIPMENT_SOFTWARE_COST,
+        re.compile(r"Cost of equipment and software licences"),
+    ),
+    (FactKind.FINANCIAL_FINANCE_COST, re.compile(r"^Finance costs?\b", re.MULTILINE)),
+    (
+        FactKind.FINANCIAL_DEPRECIATION,
+        re.compile(r"Depreciation and amortisation expense"),
+    ),
+    (FactKind.FINANCIAL_OTHER_EXPENSES, re.compile(r"^Other expenses\b", re.MULTILINE)),
+    (FactKind.FINANCIAL_TOTAL_EXPENSES, re.compile(r"TOTAL EXPENSES")),
+    (
+        FactKind.FINANCIAL_PROFIT_BEFORE_EXCEPTIONAL,
+        re.compile(r"PROFIT BEFORE EXCEPTIONAL"),
+    ),
+    (FactKind.FINANCIAL_PROFIT_BEFORE_TAX, re.compile(r"PROFIT BEFORE TAX")),
+    (FactKind.FINANCIAL_CURRENT_TAX, re.compile(r"^Current tax\b", re.MULTILINE)),
+    (FactKind.FINANCIAL_DEFERRED_TAX, re.compile(r"^Deferred tax\b", re.MULTILINE)),
+    (FactKind.FINANCIAL_TOTAL_TAX, re.compile(r"TOTAL TAX EXPENSE")),
+    (FactKind.FINANCIAL_PAT, re.compile(r"PROFIT FOR THE (?:PERIOD|YEAR)")),
 ]
 
 # Dynamic segment-name detection: any line in the segment table that looks
@@ -119,6 +120,7 @@ def _is_segment_candidate(name: str) -> bool:
     if stripped == stripped.upper() and stripped.replace(" ", "").isalpha():
         return False
     return True
+
 
 # ---------------------------------------------------------------------------
 # Number parsing — shared with investor_presentation.py; see patterns.py
@@ -170,7 +172,7 @@ def _detect_filing(text: str) -> tuple[str, str | None]:
     annual_date = None
     for m in re.finditer(_RE_YEAR_PERIOD, cover):
         # Skip "half year ended" — "half " immediately precedes "year"
-        pre = cover[max(0, m.start() - 5): m.start()]
+        pre = cover[max(0, m.start() - 5) : m.start()]
         if pre.lower().endswith("half ") or pre.lower().endswith("half-"):
             continue
         try:
@@ -221,7 +223,7 @@ _LABEL_LOOKBACK = 600  # chars to scan before "Revenue from operations"
 def _detect_basis(text: str, rev_offset: int) -> str | None:
     """Return 'consolidated' or 'standalone' by looking for a statement label
     in the 600 chars before *rev_offset*.  Returns None when ambiguous."""
-    window = text[max(0, rev_offset - _LABEL_LOOKBACK): rev_offset]
+    window = text[max(0, rev_offset - _LABEL_LOOKBACK) : rev_offset]
     has_con = bool(_RE_CONSOLIDATED_LABEL.search(window))
     has_sa = bool(_RE_STANDALONE_LABEL.search(window))
     if has_con and not has_sa:
@@ -277,10 +279,18 @@ def _find_pl_regions(text: str) -> dict[str, tuple[int, int]]:
 
     regions: dict[str, tuple[int, int]] = {}
     if con_start is not None:
-        con_end = sa_start if (sa_start and sa_start > con_start) else _region_end(text, con_start)
+        con_end = (
+            sa_start
+            if (sa_start and sa_start > con_start)
+            else _region_end(text, con_start)
+        )
         regions["consolidated"] = (con_start, con_end)
     if sa_start is not None:
-        sa_end = con_start if (con_start and con_start > sa_start) else _region_end(text, sa_start)
+        sa_end = (
+            con_start
+            if (con_start and con_start > sa_start)
+            else _region_end(text, sa_start)
+        )
         regions["standalone"] = (sa_start, sa_end)
     return regions
 
@@ -312,6 +322,7 @@ def _detect_n_cols(text: str, rev_offset: int) -> int:
 # ---------------------------------------------------------------------------
 # P&L fact extraction
 # ---------------------------------------------------------------------------
+
 
 def _extract_pl_facts(
     text: str,
@@ -347,18 +358,20 @@ def _extract_pl_facts(
         val = chosen_values[idx]
         if val is None:
             continue
-        facts.append(AnalysisFact(
-            kind=kind,
-            value=val,
-            unit=FactUnit.CRORE_INR,
-            period=period,
-            confidence="high",
-            provenance=Provenance(
-                section=f"{basis}_pl_table",
-                char_offset=rev_offset + chosen_m.start(),
-                excerpt=_snip(region, chosen_m.start()),
-            ),
-        ))
+        facts.append(
+            AnalysisFact(
+                kind=kind,
+                value=val,
+                unit=FactUnit.CRORE_INR,
+                period=period,
+                confidence="high",
+                provenance=Provenance(
+                    section=f"{basis}_pl_table",
+                    char_offset=rev_offset + chosen_m.start(),
+                    excerpt=_snip(region, chosen_m.start()),
+                ),
+            )
+        )
     return facts
 
 
@@ -391,18 +404,20 @@ def _extract_eps_facts(
     val = values[idx]
     if val is None or val == 0.0:
         return []
-    return [AnalysisFact(
-        kind=FactKind.FINANCIAL_EPS_BASIC,
-        value=val,
-        unit=FactUnit.RUPEES,
-        period=period,
-        confidence="high",
-        provenance=Provenance(
-            section=f"{basis}_eps_row",
-            char_offset=search_start + m.start(),
-            excerpt=_snip(region, m.start()),
-        ),
-    )]
+    return [
+        AnalysisFact(
+            kind=FactKind.FINANCIAL_EPS_BASIC,
+            value=val,
+            unit=FactUnit.RUPEES,
+            period=period,
+            confidence="high",
+            provenance=Provenance(
+                section=f"{basis}_eps_row",
+                char_offset=search_start + m.start(),
+                excerpt=_snip(region, m.start()),
+            ),
+        )
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -448,22 +463,26 @@ def _extract_exceptional_facts(
             char_offset=block_abs + item_m.start(),
             excerpt=_snip(block, item_m.start()),
         )
-        facts.append(AnalysisFact(
-            kind=FactKind.EXCEPTIONAL_DESCRIPTION,
-            value=line,
-            unit=None,
-            period=period,
-            confidence="medium",
-            provenance=prov,
-        ))
-        facts.append(AnalysisFact(
-            kind=FactKind.EXCEPTIONAL_AMOUNT,
-            value=val,
-            unit=FactUnit.CRORE_INR,
-            period=period,
-            confidence="medium",
-            provenance=prov,
-        ))
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.EXCEPTIONAL_DESCRIPTION,
+                value=line,
+                unit=None,
+                period=period,
+                confidence="medium",
+                provenance=prov,
+            )
+        )
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.EXCEPTIONAL_AMOUNT,
+                value=val,
+                unit=FactUnit.CRORE_INR,
+                period=period,
+                confidence="medium",
+                provenance=prov,
+            )
+        )
     return facts
 
 
@@ -519,10 +538,14 @@ def _extract_bs_deferred_equity_debt(
     # --- Locate equity sub-total index algebraically ---
     # Primary check: vals[2] ≈ vals[0] + vals[1]  (equity attributable, consolidated)
     equity_idx: int | None = None
-    if len(vals) >= 3 and abs(vals[2] - (vals[0] + vals[1])) < max(5.0, 0.001 * abs(vals[2])):
+    if len(vals) >= 3 and abs(vals[2] - (vals[0] + vals[1])) < max(
+        5.0, 0.001 * abs(vals[2])
+    ):
         equity_idx = 2
         # Consolidated: check for a further sub-total at index 4
-        if len(vals) >= 5 and abs(vals[4] - (vals[2] + vals[3])) < max(5.0, 0.001 * abs(vals[4])):
+        if len(vals) >= 5 and abs(vals[4] - (vals[2] + vals[3])) < max(
+            5.0, 0.001 * abs(vals[4])
+        ):
             equity_idx = 4
     else:
         # Standalone: no equity-attributable row; sub-total at index 2
@@ -538,7 +561,9 @@ def _extract_bs_deferred_equity_debt(
             unit=FactUnit.CRORE_INR,
             period=period,
             confidence="medium",
-            provenance=Provenance(section="balance_sheet", char_offset=bs_start + m.start()),
+            provenance=Provenance(
+                section="balance_sheet", char_offset=bs_start + m.start()
+            ),
         )
     ]
 
@@ -562,16 +587,20 @@ def _extract_bs_deferred_equity_debt(
             break
 
     if total_debt > 0:
-        facts.append(AnalysisFact(
-            kind=FactKind.FINANCIAL_TOTAL_DEBT,
-            value=total_debt,
-            unit=FactUnit.CRORE_INR,
-            period=period,
-            confidence="medium",
-            provenance=Provenance(section="balance_sheet"),
-        ))
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.FINANCIAL_TOTAL_DEBT,
+                value=total_debt,
+                unit=FactUnit.CRORE_INR,
+                period=period,
+                confidence="medium",
+                provenance=Provenance(section="balance_sheet"),
+            )
+        )
 
     return facts
+
+
 _RE_BS_BORROWINGS = re.compile(r"^\s*(?:Long.term\s+)?[Bb]orrowings\b", re.MULTILINE)
 
 # Working-capital items (M-P3.1, ADR-0012).
@@ -600,10 +629,14 @@ _RE_BS_PAYABLES_OTHER = re.compile(
 # guessing one would risk exactly the misattribution this codebase avoids —
 # under-emit rather than speculate; deferred-layout intangibles are absent,
 # not zero, not wrong.
-_RE_BS_INTANGIBLE = re.compile(r"^\s*(?:Other )?[Ii]ntangible assets\b(?! under development)", re.MULTILINE)
+_RE_BS_INTANGIBLE = re.compile(
+    r"^\s*(?:Other )?[Ii]ntangible assets\b(?! under development)", re.MULTILINE
+)
 
 
-def _last_match_before(pattern: "re.Pattern[str]", text: str, before: int) -> "re.Match[str] | None":
+def _last_match_before(
+    pattern: "re.Pattern[str]", text: str, before: int
+) -> "re.Match[str] | None":
     """The LAST match of *pattern* strictly before offset *before*, or None.
 
     Current-assets lines (Inventories, Trade receivables) can appear twice in
@@ -642,8 +675,12 @@ def _find_bs_region(text: str) -> tuple[int, int] | None:
     m_start = re.search(r"\nASSETS\b", text)
     if m_start is None:
         return None
-    m_end = re.search(r"\bCASH FLOWS FROM OPERATING", text[m_start.start():], re.IGNORECASE)
-    end = m_start.start() + (m_end.start() if m_end else min(10_000, len(text) - m_start.start()))
+    m_end = re.search(
+        r"\bCASH FLOWS FROM OPERATING", text[m_start.start() :], re.IGNORECASE
+    )
+    end = m_start.start() + (
+        m_end.start() if m_end else min(10_000, len(text) - m_start.start())
+    )
     return m_start.start(), end
 
 
@@ -675,7 +712,7 @@ def _extract_balance_sheet_facts(text: str, period: str) -> list[AnalysisFact]:
         #     Investments, Trade receivables) → vals[3] is Cash.
         # Detection: if the text immediately after the Cash label starts with a
         # digit or negative-paren, it is direct format; otherwise deferred.
-        remainder = bs_text[m.end():m.end() + 12].lstrip()
+        remainder = bs_text[m.end() : m.end() + 12].lstrip()
         is_direct = bool(remainder) and (
             remainder[0].isdigit()
             or (remainder[0] == "(" and len(remainder) > 1 and remainder[1].isdigit())
@@ -683,18 +720,20 @@ def _extract_balance_sheet_facts(text: str, period: str) -> list[AnalysisFact]:
         vals = _extract_n_values(bs_text, m.end(), n=6)
         cash_idx = 0 if is_direct else 3
         if vals and len(vals) > cash_idx:
-            facts.append(AnalysisFact(
-                kind=FactKind.FINANCIAL_CASH_AND_EQUIVALENTS,
-                value=vals[cash_idx],
-                unit=FactUnit.CRORE_INR,
-                period=period,
-                confidence="high",
-                provenance=Provenance(
-                    section="balance_sheet",
-                    char_offset=bs_start + m.start(),
-                    excerpt=_snip(bs_text, m.start()),
-                ),
-            ))
+            facts.append(
+                AnalysisFact(
+                    kind=FactKind.FINANCIAL_CASH_AND_EQUIVALENTS,
+                    value=vals[cash_idx],
+                    unit=FactUnit.CRORE_INR,
+                    period=period,
+                    confidence="high",
+                    provenance=Provenance(
+                        section="balance_sheet",
+                        char_offset=bs_start + m.start(),
+                        excerpt=_snip(bs_text, m.start()),
+                    ),
+                )
+            )
 
     # 2 & 3. Equity + Debt: two paths depending on layout.
     if not is_direct:
@@ -709,18 +748,20 @@ def _extract_balance_sheet_facts(text: str, period: str) -> list[AnalysisFact]:
         if m:
             vals = _extract_n_values(bs_text, m.end(), n=2)
             if vals:
-                facts.append(AnalysisFact(
-                    kind=FactKind.FINANCIAL_TOTAL_EQUITY,
-                    value=vals[0],
-                    unit=FactUnit.CRORE_INR,
-                    period=period,
-                    confidence="high",
-                    provenance=Provenance(
-                        section="balance_sheet",
-                        char_offset=bs_start + m.start(),
-                        excerpt=_snip(bs_text, m.start()),
-                    ),
-                ))
+                facts.append(
+                    AnalysisFact(
+                        kind=FactKind.FINANCIAL_TOTAL_EQUITY,
+                        value=vals[0],
+                        unit=FactUnit.CRORE_INR,
+                        period=period,
+                        confidence="high",
+                        provenance=Provenance(
+                            section="balance_sheet",
+                            char_offset=bs_start + m.start(),
+                            excerpt=_snip(bs_text, m.start()),
+                        ),
+                    )
+                )
 
         total_debt = 0.0
         found_debt = False
@@ -730,14 +771,16 @@ def _extract_balance_sheet_facts(text: str, period: str) -> list[AnalysisFact]:
                 total_debt += vals[0]
                 found_debt = True
         if found_debt:
-            facts.append(AnalysisFact(
-                kind=FactKind.FINANCIAL_TOTAL_DEBT,
-                value=total_debt,
-                unit=FactUnit.CRORE_INR,
-                period=period,
-                confidence="high",
-                provenance=Provenance(section="balance_sheet"),
-            ))
+            facts.append(
+                AnalysisFact(
+                    kind=FactKind.FINANCIAL_TOTAL_DEBT,
+                    value=total_debt,
+                    unit=FactUnit.CRORE_INR,
+                    period=period,
+                    confidence="high",
+                    provenance=Provenance(section="balance_sheet"),
+                )
+            )
 
     # 4, 5, 6. Working-capital items: Inventories, Trade receivables (billed-
     # only), Unbilled revenue (M-P3.1, ADR-0012). Cash's own regex match (m,
@@ -754,17 +797,33 @@ def _extract_balance_sheet_facts(text: str, period: str) -> list[AnalysisFact]:
             # layout in any verified filing -- vals[2] is the whole figure.
             vals = _extract_n_values(bs_text, cash_m.end(), n=6)
             if vals and len(vals) > 0 and (v := _positive(vals[0])) is not None:
-                facts.append(AnalysisFact(
-                    kind=FactKind.FINANCIAL_INVENTORIES, value=v, unit=FactUnit.CRORE_INR,
-                    period=period, confidence="high",
-                    provenance=Provenance(section="balance_sheet", char_offset=bs_start + cash_m.start()),
-                ))
+                facts.append(
+                    AnalysisFact(
+                        kind=FactKind.FINANCIAL_INVENTORIES,
+                        value=v,
+                        unit=FactUnit.CRORE_INR,
+                        period=period,
+                        confidence="high",
+                        provenance=Provenance(
+                            section="balance_sheet",
+                            char_offset=bs_start + cash_m.start(),
+                        ),
+                    )
+                )
             if vals and len(vals) > 2 and (v := _positive(vals[2])) is not None:
-                facts.append(AnalysisFact(
-                    kind=FactKind.FINANCIAL_TRADE_RECEIVABLES, value=v, unit=FactUnit.CRORE_INR,
-                    period=period, confidence="high",
-                    provenance=Provenance(section="balance_sheet", char_offset=bs_start + cash_m.start()),
-                ))
+                facts.append(
+                    AnalysisFact(
+                        kind=FactKind.FINANCIAL_TRADE_RECEIVABLES,
+                        value=v,
+                        unit=FactUnit.CRORE_INR,
+                        period=period,
+                        confidence="high",
+                        provenance=Provenance(
+                            section="balance_sheet",
+                            char_offset=bs_start + cash_m.start(),
+                        ),
+                    )
+                )
         else:
             # Direct layout: each label has its own regex, anchored to the
             # occurrence closest to (immediately preceding) Cash, which
@@ -775,11 +834,19 @@ def _extract_balance_sheet_facts(text: str, period: str) -> list[AnalysisFact]:
             if inv_m:
                 vals = _extract_n_values(bs_text, inv_m.end(), n=2)
                 if vals and (v := _positive(vals[0])) is not None:
-                    facts.append(AnalysisFact(
-                        kind=FactKind.FINANCIAL_INVENTORIES, value=v, unit=FactUnit.CRORE_INR,
-                        period=period, confidence="high",
-                        provenance=Provenance(section="balance_sheet", char_offset=bs_start + inv_m.start()),
-                    ))
+                    facts.append(
+                        AnalysisFact(
+                            kind=FactKind.FINANCIAL_INVENTORIES,
+                            value=v,
+                            unit=FactUnit.CRORE_INR,
+                            period=period,
+                            confidence="high",
+                            provenance=Provenance(
+                                section="balance_sheet",
+                                char_offset=bs_start + inv_m.start(),
+                            ),
+                        )
+                    )
 
             tr_m = _last_match_before(_RE_BS_TRADE_RECEIVABLES, bs_text, cash_m.start())
             if tr_m:
@@ -790,21 +857,39 @@ def _extract_balance_sheet_facts(text: str, period: str) -> list[AnalysisFact]:
                 anchor = billed_m if billed_m else tr_m
                 vals = _extract_n_values(bs_text, anchor.end(), n=2)
                 if vals and (v := _positive(vals[0])) is not None:
-                    facts.append(AnalysisFact(
-                        kind=FactKind.FINANCIAL_TRADE_RECEIVABLES, value=v, unit=FactUnit.CRORE_INR,
-                        period=period, confidence="high",
-                        provenance=Provenance(section="balance_sheet", char_offset=bs_start + anchor.start()),
-                    ))
+                    facts.append(
+                        AnalysisFact(
+                            kind=FactKind.FINANCIAL_TRADE_RECEIVABLES,
+                            value=v,
+                            unit=FactUnit.CRORE_INR,
+                            period=period,
+                            confidence="high",
+                            provenance=Provenance(
+                                section="balance_sheet",
+                                char_offset=bs_start + anchor.start(),
+                            ),
+                        )
+                    )
                 if billed_m:
-                    unbilled_m = _RE_BS_UNBILLED.search(bs_text, billed_m.end(), billed_m.end() + 200)
+                    unbilled_m = _RE_BS_UNBILLED.search(
+                        bs_text, billed_m.end(), billed_m.end() + 200
+                    )
                     if unbilled_m:
                         vals = _extract_n_values(bs_text, unbilled_m.end(), n=2)
                         if vals and (v := _positive(vals[0])) is not None:
-                            facts.append(AnalysisFact(
-                                kind=FactKind.FINANCIAL_UNBILLED_REVENUE, value=v, unit=FactUnit.CRORE_INR,
-                                period=period, confidence="high",
-                                provenance=Provenance(section="balance_sheet", char_offset=bs_start + unbilled_m.start()),
-                            ))
+                            facts.append(
+                                AnalysisFact(
+                                    kind=FactKind.FINANCIAL_UNBILLED_REVENUE,
+                                    value=v,
+                                    unit=FactUnit.CRORE_INR,
+                                    period=period,
+                                    confidence="high",
+                                    provenance=Provenance(
+                                        section="balance_sheet",
+                                        char_offset=bs_start + unbilled_m.start(),
+                                    ),
+                                )
+                            )
 
     # 6b. Intangible assets (M-P3.2). Direct layout only -- see
     # _RE_BS_INTANGIBLE's docstring comment for why deferred layout is
@@ -815,11 +900,19 @@ def _extract_balance_sheet_facts(text: str, period: str) -> list[AnalysisFact]:
         if intangible_m:
             vals = _extract_n_values(bs_text, intangible_m.end(), n=2)
             if vals and (v := _positive(vals[0])) is not None:
-                facts.append(AnalysisFact(
-                    kind=FactKind.FINANCIAL_INTANGIBLE_ASSETS, value=v, unit=FactUnit.CRORE_INR,
-                    period=period, confidence="high",
-                    provenance=Provenance(section="balance_sheet", char_offset=bs_start + intangible_m.start()),
-                ))
+                facts.append(
+                    AnalysisFact(
+                        kind=FactKind.FINANCIAL_INTANGIBLE_ASSETS,
+                        value=v,
+                        unit=FactUnit.CRORE_INR,
+                        period=period,
+                        confidence="high",
+                        provenance=Provenance(
+                            section="balance_sheet",
+                            char_offset=bs_start + intangible_m.start(),
+                        ),
+                    )
+                )
 
     # 7. Trade payables: Schedule III's mandatory MSME + non-MSME split,
     # summed -- the same iterate-and-sum shape already used for debt above.
@@ -835,11 +928,19 @@ def _extract_balance_sheet_facts(text: str, period: str) -> list[AnalysisFact]:
         if msme_vals and other_vals:
             total_payables = msme_vals[0] + other_vals[0]
             if (v := _positive(total_payables)) is not None:
-                facts.append(AnalysisFact(
-                    kind=FactKind.FINANCIAL_TRADE_PAYABLES, value=v, unit=FactUnit.CRORE_INR,
-                    period=period, confidence="high",
-                    provenance=Provenance(section="balance_sheet", char_offset=bs_start + msme_m.start()),
-                ))
+                facts.append(
+                    AnalysisFact(
+                        kind=FactKind.FINANCIAL_TRADE_PAYABLES,
+                        value=v,
+                        unit=FactUnit.CRORE_INR,
+                        period=period,
+                        confidence="high",
+                        provenance=Provenance(
+                            section="balance_sheet",
+                            char_offset=bs_start + msme_m.start(),
+                        ),
+                    )
+                )
 
     return facts
 
@@ -858,7 +959,9 @@ _RE_CF_CAPEX = re.compile(
 )
 # Two observed phrasings: "Taxes paid (net of refunds)" (TCS) and "Income
 # taxes paid" (Tata Steel, no parenthetical) -- verified against real filings.
-_RE_CF_TAX_PAID = re.compile(r"(?:Income )?[Tt]axes? paid(?: \(net of refunds\))?", re.IGNORECASE)
+_RE_CF_TAX_PAID = re.compile(
+    r"(?:Income )?[Tt]axes? paid(?: \(net of refunds\))?", re.IGNORECASE
+)
 
 
 def _find_cf_region(text: str) -> tuple[int, int] | None:
@@ -867,9 +970,14 @@ def _find_cf_region(text: str) -> tuple[int, int] | None:
     if m_start is None:
         return None
     # End at balance sheet note or next major section
-    m_end = re.search(r"\bNotes? to (?:the )?(?:standalone|consolidated)? (?:Financial|Accounts)",
-                       text[m_start.start():], re.IGNORECASE)
-    end = m_start.start() + (m_end.start() if m_end else min(12_000, len(text) - m_start.start()))
+    m_end = re.search(
+        r"\bNotes? to (?:the )?(?:standalone|consolidated)? (?:Financial|Accounts)",
+        text[m_start.start() :],
+        re.IGNORECASE,
+    )
+    end = m_start.start() + (
+        m_end.start() if m_end else min(12_000, len(text) - m_start.start())
+    )
     return m_start.start(), end
 
 
@@ -896,54 +1004,60 @@ def _extract_cashflow_facts(text: str, period: str) -> list[AnalysisFact]:
     if m:
         vals = _extract_n_values(cf_text, m.end(), n=2)
         if vals:
-            facts.append(AnalysisFact(
-                kind=FactKind.FINANCIAL_OPERATING_CASH_FLOW,
-                value=vals[0],
-                unit=FactUnit.CRORE_INR,
-                period=period,
-                confidence="high",
-                provenance=Provenance(
-                    section="cash_flow_statement",
-                    char_offset=cf_start + m.start(),
-                    excerpt=_snip(cf_text, m.start()),
-                ),
-            ))
+            facts.append(
+                AnalysisFact(
+                    kind=FactKind.FINANCIAL_OPERATING_CASH_FLOW,
+                    value=vals[0],
+                    unit=FactUnit.CRORE_INR,
+                    period=period,
+                    confidence="high",
+                    provenance=Provenance(
+                        section="cash_flow_statement",
+                        char_offset=cf_start + m.start(),
+                        excerpt=_snip(cf_text, m.start()),
+                    ),
+                )
+            )
 
     # 2. Capital expenditure (PP&E purchases — absolute value; outflows are negative)
     m = _RE_CF_CAPEX.search(cf_text)
     if m:
         vals = _extract_n_values(cf_text, m.end(), n=2)
         if vals and vals[0] != 0.0:
-            facts.append(AnalysisFact(
-                kind=FactKind.FINANCIAL_CAPEX,
-                value=abs(vals[0]),
-                unit=FactUnit.CRORE_INR,
-                period=period,
-                confidence="high",
-                provenance=Provenance(
-                    section="cash_flow_statement",
-                    char_offset=cf_start + m.start(),
-                    excerpt=_snip(cf_text, m.start()),
-                ),
-            ))
+            facts.append(
+                AnalysisFact(
+                    kind=FactKind.FINANCIAL_CAPEX,
+                    value=abs(vals[0]),
+                    unit=FactUnit.CRORE_INR,
+                    period=period,
+                    confidence="high",
+                    provenance=Provenance(
+                        section="cash_flow_statement",
+                        char_offset=cf_start + m.start(),
+                        excerpt=_snip(cf_text, m.start()),
+                    ),
+                )
+            )
 
     # 3. Taxes paid, cash basis (M-P3.2)
     m = _RE_CF_TAX_PAID.search(cf_text)
     if m:
         vals = _extract_n_values(cf_text, m.end(), n=2)
         if vals and (v := _positive(abs(vals[0]))) is not None:
-            facts.append(AnalysisFact(
-                kind=FactKind.FINANCIAL_CASH_TAX_PAID,
-                value=v,
-                unit=FactUnit.CRORE_INR,
-                period=period,
-                confidence="high",
-                provenance=Provenance(
-                    section="cash_flow_statement",
-                    char_offset=cf_start + m.start(),
-                    excerpt=_snip(cf_text, m.start()),
-                ),
-            ))
+            facts.append(
+                AnalysisFact(
+                    kind=FactKind.FINANCIAL_CASH_TAX_PAID,
+                    value=v,
+                    unit=FactUnit.CRORE_INR,
+                    period=period,
+                    confidence="high",
+                    provenance=Provenance(
+                        section="cash_flow_statement",
+                        char_offset=cf_start + m.start(),
+                        excerpt=_snip(cf_text, m.start()),
+                    ),
+                )
+            )
 
     return facts
 
@@ -990,22 +1104,26 @@ def _extract_segment_facts(
             char_offset=seg_start + name_m.start(),
             excerpt=_snip(region, name_m.start()),
         )
-        facts.append(AnalysisFact(
-            kind=FactKind.SEGMENT_NAME,
-            value=seg_name,
-            unit=None,
-            period=period,
-            confidence="high",
-            provenance=prov,
-        ))
-        facts.append(AnalysisFact(
-            kind=FactKind.SEGMENT_REVENUE,
-            value=val,
-            unit=FactUnit.CRORE_INR,
-            period=period,
-            confidence="high",
-            provenance=prov,
-        ))
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.SEGMENT_NAME,
+                value=seg_name,
+                unit=None,
+                period=period,
+                confidence="high",
+                provenance=prov,
+            )
+        )
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.SEGMENT_REVENUE,
+                value=val,
+                unit=FactUnit.CRORE_INR,
+                period=period,
+                confidence="high",
+                provenance=prov,
+            )
+        )
     return facts
 
 
@@ -1023,7 +1141,9 @@ def _extract_segment_ebit_facts(
     ebit_start = text.find("SEGMENT RESULT", search_start)
     if ebit_start == -1:
         return []
-    m_end = re.search(r"(?:Unallocable expenses|Operating income)", text[ebit_start:], re.IGNORECASE)
+    m_end = re.search(
+        r"(?:Unallocable expenses|Operating income)", text[ebit_start:], re.IGNORECASE
+    )
     ebit_end = ebit_start + (m_end.start() if m_end else 3000)
     region = text[ebit_start:ebit_end]
 
@@ -1039,18 +1159,20 @@ def _extract_segment_ebit_facts(
         val = values[idx]
         if val is None:
             continue
-        facts.append(AnalysisFact(
-            kind=FactKind.SEGMENT_EBIT,
-            value=val,
-            unit=FactUnit.CRORE_INR,
-            period=period,
-            confidence="high",
-            provenance=Provenance(
-                section="segment_table",
-                char_offset=ebit_start + name_m.start(),
-                excerpt=_snip(region, name_m.start()),
-            ),
-        ))
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.SEGMENT_EBIT,
+                value=val,
+                unit=FactUnit.CRORE_INR,
+                period=period,
+                confidence="high",
+                provenance=Provenance(
+                    section="segment_table",
+                    char_offset=ebit_start + name_m.start(),
+                    excerpt=_snip(region, name_m.start()),
+                ),
+            )
+        )
     return facts
 
 
@@ -1069,32 +1191,36 @@ def _extract_audit_facts(text: str) -> list[AnalysisFact]:
     facts: list[AnalysisFact] = []
     m = _RE_UNMODIFIED.search(text)
     if m:
-        facts.append(AnalysisFact(
-            kind=FactKind.AUDIT_OPINION,
-            value="unmodified",
-            unit=None,
-            period=None,
-            confidence="high",
-            provenance=Provenance(
-                section="auditor_report",
-                char_offset=m.start(),
-                excerpt=_snip(text, m.start()),
-            ),
-        ))
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.AUDIT_OPINION,
+                value="unmodified",
+                unit=None,
+                period=None,
+                confidence="high",
+                provenance=Provenance(
+                    section="auditor_report",
+                    char_offset=m.start(),
+                    excerpt=_snip(text, m.start()),
+                ),
+            )
+        )
     m = _RE_AUDIT_FIRM.search(text[:5000])
     if m:
-        facts.append(AnalysisFact(
-            kind=FactKind.AUDIT_FIRM,
-            value=m.group(1).strip(),
-            unit=None,
-            period=None,
-            confidence="high",
-            provenance=Provenance(
-                section="auditor_report",
-                char_offset=m.start(),
-                excerpt=_snip(text, m.start()),
-            ),
-        ))
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.AUDIT_FIRM,
+                value=m.group(1).strip(),
+                unit=None,
+                period=None,
+                confidence="high",
+                provenance=Provenance(
+                    section="auditor_report",
+                    char_offset=m.start(),
+                    excerpt=_snip(text, m.start()),
+                ),
+            )
+        )
     return facts
 
 
@@ -1102,7 +1228,10 @@ def _extract_audit_facts(text: str) -> list[AnalysisFact]:
 # Report metadata facts
 # ---------------------------------------------------------------------------
 
-def _report_meta_facts(period_type: str, period_end: str, text: str) -> list[AnalysisFact]:
+
+def _report_meta_facts(
+    period_type: str, period_end: str, text: str
+) -> list[AnalysisFact]:
     cover_snip = _snip(text)
     facts: list[AnalysisFact] = [
         AnalysisFact(
@@ -1125,14 +1254,16 @@ def _report_meta_facts(period_type: str, period_end: str, text: str) -> list[Ana
     txt_lower = text.lower()
     for basis in ("consolidated", "standalone"):
         if basis in txt_lower:
-            facts.append(AnalysisFact(
-                kind=FactKind.REPORT_BASIS,
-                value=basis,
-                unit=None,
-                period=period_end,
-                confidence="high",
-                provenance=Provenance(section="cover_letter", excerpt=cover_snip),
-            ))
+            facts.append(
+                AnalysisFact(
+                    kind=FactKind.REPORT_BASIS,
+                    value=basis,
+                    unit=None,
+                    period=period_end,
+                    confidence="high",
+                    provenance=Provenance(section="cover_letter", excerpt=cover_snip),
+                )
+            )
     return facts
 
 
@@ -1187,7 +1318,9 @@ def _is_banking_filing(text: str) -> bool:
     2. Cover letter: entity identifies itself as a Bank and no "Revenue from
        operations" is present (catches OCR-corrupted banking PDFs).
     """
-    no_rev = not bool(re.search(r"Revenue from operations", text[:15000], re.IGNORECASE))
+    no_rev = not bool(
+        re.search(r"Revenue from operations", text[:15000], re.IGNORECASE)
+    )
     if not no_rev:
         return False
 
@@ -1219,24 +1352,27 @@ def _extract_banking_facts(
     col_idx = _primary_col(period_type, 6)
     vals = _extract_n_values(text, m.end(), n=8)
     if vals and len(vals) > col_idx and vals[col_idx] is not None:
-        facts.append(AnalysisFact(
-            kind=FactKind.FINANCIAL_PAT,
-            value=vals[col_idx],
-            unit=FactUnit.CRORE_INR,
-            period=period_end,
-            confidence="medium",
-            provenance=Provenance(
-                section="consolidated_pl_table",
-                char_offset=m.start(),
-                excerpt=_snip(text, m.start()),
-            ),
-        ))
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.FINANCIAL_PAT,
+                value=vals[col_idx],
+                unit=FactUnit.CRORE_INR,
+                period=period_end,
+                confidence="medium",
+                provenance=Provenance(
+                    section="consolidated_pl_table",
+                    char_offset=m.start(),
+                    excerpt=_snip(text, m.start()),
+                ),
+            )
+        )
     return facts
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     """Extract structured facts from a parsed quarterly or annual financial results filing.
@@ -1311,20 +1447,35 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
 
     # --- Consolidated ---
     con_rev, con_end = pl_regions["consolidated"]
-    excerpts["consolidated_pl_table"] = content[con_rev: min(con_rev + 3000, con_end)]
+    excerpts["consolidated_pl_table"] = content[con_rev : min(con_rev + 3000, con_end)]
 
-    con_pl = _extract_pl_facts(content, con_rev, con_end, period_end, col_idx, "consolidated")
+    con_pl = _extract_pl_facts(
+        content, con_rev, con_end, period_end, col_idx, "consolidated"
+    )
     facts.extend(con_pl)
     if not con_pl:
         warnings.append("No P&L line items extracted from consolidated table")
 
-    facts.extend(_extract_eps_facts(
-        content, period_end, col_idx, "consolidated",
-        con_rev, con_end + 3000,
-    ))
-    facts.extend(_extract_exceptional_facts(
-        content, period_end, col_idx, "consolidated", con_rev, con_end,
-    ))
+    facts.extend(
+        _extract_eps_facts(
+            content,
+            period_end,
+            col_idx,
+            "consolidated",
+            con_rev,
+            con_end + 3000,
+        )
+    )
+    facts.extend(
+        _extract_exceptional_facts(
+            content,
+            period_end,
+            col_idx,
+            "consolidated",
+            con_rev,
+            con_end,
+        )
+    )
 
     seg_facts = _extract_segment_facts(content, period_end, col_idx, con_rev)
     facts.extend(seg_facts)
@@ -1338,18 +1489,26 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     # --- Standalone ---
     if "standalone" in pl_regions:
         sa_rev, sa_end = pl_regions["standalone"]
-        excerpts["standalone_pl_table"] = content[sa_rev: min(sa_rev + 2000, sa_end)]
+        excerpts["standalone_pl_table"] = content[sa_rev : min(sa_rev + 2000, sa_end)]
 
         sa_n_cols = _detect_n_cols(content, sa_rev)
         sa_col = _primary_col(period_type, sa_n_cols)
 
-        sa_pl = _extract_pl_facts(content, sa_rev, sa_end, period_end, sa_col, "standalone")
+        sa_pl = _extract_pl_facts(
+            content, sa_rev, sa_end, period_end, sa_col, "standalone"
+        )
         facts.extend(sa_pl)
 
-        facts.extend(_extract_eps_facts(
-            content, period_end, sa_col, "standalone",
-            sa_rev, sa_end + 3000,
-        ))
+        facts.extend(
+            _extract_eps_facts(
+                content,
+                period_end,
+                sa_col,
+                "standalone",
+                sa_rev,
+                sa_end + 3000,
+            )
+        )
 
     # --- Balance sheet and cash flow (annual filings only) ---
     if period_type == "annual":

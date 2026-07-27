@@ -7,6 +7,7 @@ explicit as the question-answering prompt does -- the prompt is where the
 model learns what it may cite, and a synthesis prompt that forgot to say so
 would silently degrade grounding even though ask() would still catch it.
 """
+
 from __future__ import annotations
 
 from atlas.reasoning.contracts import (
@@ -26,8 +27,13 @@ from atlas.reasoning.prompt import (
 SUBJECT = SubjectRef(subject_id="TCS", display="Tata Consultancy Services")
 
 
-def _claim(statement: str, eid: str, confidence: str = "high",
-           assertability: str = "judgment", excerpt: str | None = None) -> Claim:
+def _claim(
+    statement: str,
+    eid: str,
+    confidence: str = "high",
+    assertability: str = "judgment",
+    excerpt: str | None = None,
+) -> Claim:
     return Claim(
         subject_ref=SUBJECT,
         statement=statement,
@@ -55,7 +61,8 @@ def test_synthesis_prompt_exposes_input_confidence() -> None:
     """Synthesis rule 4 ("cannot be more confident than its inputs") is
     unfollowable if the model cannot see each input's confidence."""
     rendered = build_synthesis_prompt(
-        _question(), _context(_claim("Margins improved.", "ev-1", confidence="low")),
+        _question(),
+        _context(_claim("Margins improved.", "ev-1", confidence="low")),
     )
     assert "confidence: low" in rendered
 
@@ -94,7 +101,8 @@ def test_synthesis_prompt_says_cite_only_these() -> None:
 
 def test_synthesis_prompt_carries_evidence_ids_per_input() -> None:
     rendered = build_synthesis_prompt(
-        _question(), _context(_claim("Margins improved.", "ev-42")),
+        _question(),
+        _context(_claim("Margins improved.", "ev-42")),
     )
     assert "[ev-42]" in rendered
 
@@ -135,8 +143,14 @@ def test_synthesis_system_prompt_forbids_ratings() -> None:
 
 def test_synthesis_system_prompt_requires_the_same_json_shape() -> None:
     """ask()'s parser is shared, so the schema must match exactly."""
-    for key in ('"refused"', '"overall_confidence"', '"findings"',
-                '"supporting_evidence_ids"', '"assertability"', '"known_unknowns"'):
+    for key in (
+        '"refused"',
+        '"overall_confidence"',
+        '"findings"',
+        '"supporting_evidence_ids"',
+        '"assertability"',
+        '"known_unknowns"',
+    ):
         assert key in SYNTHESIS_PROMPT
 
 

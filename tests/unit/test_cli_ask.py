@@ -4,6 +4,7 @@ Exercises the full slice — profile load -> context -> ask -> render -> print �
 with a FakeLLMClient injected in place of the Anthropic client, so no network
 or API key is needed. This is the walking skeleton of §8.2 W3.
 """
+
 from __future__ import annotations
 
 import json
@@ -25,20 +26,26 @@ from atlas.reasoning.llm import FakeLLMClient
 def _seed_profile(base: Path, ticker: str = "TCS") -> None:
     profile = CompanyProfile(
         company_id=ticker,
-        financial=FinancialTimeSeries(snapshots=[
-            FinancialSnapshot(
-                period="2026-03-31", period_type="annual", basis="consolidated",
-                facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2},
-                sources=["ev-1"],
-            )
-        ]),
+        financial=FinancialTimeSeries(
+            snapshots=[
+                FinancialSnapshot(
+                    period="2026-03-31",
+                    period_type="annual",
+                    basis="consolidated",
+                    facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2},
+                    sources=["ev-1"],
+                )
+            ]
+        ),
     )
     CompanyStore(base / ticker / "profile.json", ticker).save(profile)
 
 
 def _run(monkeypatch, tmp_path, response: str, args: list[str]):
     monkeypatch.setenv("ATLAS_REPOSITORY_BASE_PATH", str(tmp_path))
-    monkeypatch.setenv("ATLAS_ANTHROPIC_API_KEY", "sk-test")  # build_llm_client needs a key
+    monkeypatch.setenv(
+        "ATLAS_ANTHROPIC_API_KEY", "sk-test"
+    )  # build_llm_client needs a key
     # Patch the factory (the actual seam cli.py depends on), not a specific
     # adapter's classmethod — robust to which provider is configured.
     monkeypatch.setattr(
@@ -50,14 +57,21 @@ def _run(monkeypatch, tmp_path, response: str, args: list[str]):
 
 
 def test_ask_end_to_end_grounded_answer(monkeypatch, tmp_path) -> None:
-    response = json.dumps({
-        "refused": False, "overall_confidence": "high",
-        "findings": [{
-            "statement": "Operating margin has held near 24%.",
-            "assertability": "judgment", "confidence": "high",
-            "supporting_evidence_ids": ["ev-1"], "known_unknowns": [],
-        }],
-    })
+    response = json.dumps(
+        {
+            "refused": False,
+            "overall_confidence": "high",
+            "findings": [
+                {
+                    "statement": "Operating margin has held near 24%.",
+                    "assertability": "judgment",
+                    "confidence": "high",
+                    "supporting_evidence_ids": ["ev-1"],
+                    "known_unknowns": [],
+                }
+            ],
+        }
+    )
     result = _run(monkeypatch, tmp_path, response, ["ask", "TCS", "How are margins?"])
     assert result.exit_code == 0, result.output
     assert "JUDGMENT" in result.output
@@ -65,10 +79,14 @@ def test_ask_end_to_end_grounded_answer(monkeypatch, tmp_path) -> None:
 
 
 def test_ask_refuses_out_of_scope(monkeypatch, tmp_path) -> None:
-    response = json.dumps({
-        "refused": True, "refusal_reason": "No market price data in Atlas.",
-        "overall_confidence": "low", "findings": [],
-    })
+    response = json.dumps(
+        {
+            "refused": True,
+            "refusal_reason": "No market price data in Atlas.",
+            "overall_confidence": "low",
+            "findings": [],
+        }
+    )
     result = _run(monkeypatch, tmp_path, response, ["ask", "TCS", "What is it worth?"])
     assert result.exit_code == 0, result.output
     assert "cannot answer" in result.output.lower()
@@ -103,7 +121,9 @@ def test_ask_with_ollama_server_down_exits_cleanly(monkeypatch, tmp_path) -> Non
     monkeypatch.setenv("ATLAS_LLM_PROVIDER", "ollama")
     monkeypatch.setenv("ATLAS_OLLAMA_MODEL", "qwen3:8b")
 
-    def _connection_refused(url, *, json, timeout):  # noqa: ANN001, ANN202 - test double
+    def _connection_refused(
+        url, *, json, timeout
+    ):  # noqa: ANN001, ANN202 - test double
         raise requests.exceptions.ConnectionError("refused")
 
     monkeypatch.setattr("atlas.reasoning.llm.ollama.requests.post", _connection_refused)
@@ -122,10 +142,14 @@ def test_ask_with_omniroute_server_down_exits_cleanly(monkeypatch, tmp_path) -> 
     monkeypatch.setenv("ATLAS_LLM_PROVIDER", "omniroute")
     monkeypatch.setenv("ATLAS_REASONING_MODEL", "test_cc")
 
-    def _connection_refused(url, *, json, headers, timeout):  # noqa: ANN001, ANN202 - test double
+    def _connection_refused(
+        url, *, json, headers, timeout
+    ):  # noqa: ANN001, ANN202 - test double
         raise requests.exceptions.ConnectionError("refused")
 
-    monkeypatch.setattr("atlas.reasoning.llm.omniroute.requests.post", _connection_refused)
+    monkeypatch.setattr(
+        "atlas.reasoning.llm.omniroute.requests.post", _connection_refused
+    )
     _seed_profile(tmp_path)
     result = CliRunner().invoke(cli, ["ask", "TCS", "How are margins?"])
     assert result.exit_code == 1

@@ -323,7 +323,9 @@ class TestGetAnnualReports:
         result = BSEConnector(http=http)._get_annual_reports(COMPANY_ID, SCRIP_CODE)
         assert result[0].company_id == COMPANY_ID
 
-    def test_document_url_uses_bseplus_annual_report_cdn_for_legacy_filenames(self) -> None:
+    def test_document_url_uses_bseplus_annual_report_cdn_for_legacy_filenames(
+        self,
+    ) -> None:
         # "report2025.pdf" isn't the ~2023+ UUID generation, so it resolves
         # via the legacy "/bseplus/AnnualReport/" path — see bse_parser.py's
         # _annual_report_url() and its class-level comment for why this
@@ -574,21 +576,27 @@ class TestGetCorporateGovernanceReports:
     def test_calls_corporate_gov_report_endpoint(self) -> None:
         http = MagicMock()
         http.get_json.return_value = []
-        BSEConnector(http=http)._get_corporate_governance_reports(COMPANY_ID, SCRIP_CODE)
+        BSEConnector(http=http)._get_corporate_governance_reports(
+            COMPANY_ID, SCRIP_CODE
+        )
         path = http.get_json.call_args[0][0]
         assert path == "CorporateGovReport/w"
 
     def test_passes_scripcode_parameter(self) -> None:
         http = MagicMock()
         http.get_json.return_value = []
-        BSEConnector(http=http)._get_corporate_governance_reports(COMPANY_ID, SCRIP_CODE)
+        BSEConnector(http=http)._get_corporate_governance_reports(
+            COMPANY_ID, SCRIP_CODE
+        )
         params = http.get_json.call_args[0][1]
         assert params["scripcode"] == SCRIP_CODE
 
     def test_single_call_no_pagination(self) -> None:
         http = MagicMock()
         http.get_json.return_value = []
-        BSEConnector(http=http)._get_corporate_governance_reports(COMPANY_ID, SCRIP_CODE)
+        BSEConnector(http=http)._get_corporate_governance_reports(
+            COMPANY_ID, SCRIP_CODE
+        )
         assert http.get_json.call_count == 1
 
     def test_returns_evidence_list(self) -> None:

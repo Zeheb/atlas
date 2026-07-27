@@ -59,7 +59,11 @@ class AcquisitionReport:
 
     @property
     def reclassified(self) -> int:
-        return sum(1 for o in self.document_outcomes if o.classification is not None and o.classification.was_reclassified)
+        return sum(
+            1
+            for o in self.document_outcomes
+            if o.classification is not None and o.classification.was_reclassified
+        )
 
     @property
     def duration_seconds(self) -> float:

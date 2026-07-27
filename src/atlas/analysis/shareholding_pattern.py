@@ -32,6 +32,7 @@ extracted from the MainI context.  When false (most large caps), pledged_pct
 is emitted as 0.  When true, pledged shares and percentages are read from the
 promoter pledging sub-context; a warning is emitted if those values are absent.
 """
+
 from __future__ import annotations
 
 import re
@@ -110,13 +111,18 @@ def _extract_named_public_holders(
         if entity.entity_id in seen:
             continue
         seen.add(entity.entity_id)
-        mentions.append(EntityMention(
-            entity=entity,
-            role=category,
-            affiliation=None,
-            provenance=Provenance(section=ctx, char_offset=None, excerpt=value.strip()[:120]),
-        ))
+        mentions.append(
+            EntityMention(
+                entity=entity,
+                role=category,
+                affiliation=None,
+                provenance=Provenance(
+                    section=ctx, char_offset=None, excerpt=value.strip()[:120]
+                ),
+            )
+        )
     return mentions
+
 
 # ---------------------------------------------------------------------------
 # XBRL context IDs for the categories we extract
@@ -126,14 +132,13 @@ def _extract_named_public_holders(
 _CTX_TOTAL = "ShareholdingPattern_ContextI"
 _CTX_PROMOTER = "ShareholdingOfPromoterAndPromoterGroup_ContextI"
 _CTX_PUBLIC = "PublicShareholding_ContextI"
-_CTX_FPI = "InstitutionsForeign_ContextI"               # FPI Cat-I + Cat-II combined
+_CTX_FPI = "InstitutionsForeign_ContextI"  # FPI Cat-I + Cat-II combined
 _CTX_DII = "InstitutionsDomestic_ContextI"
 _CTX_MF = "MutualFundsOrUTI_ContextI"
 _CTX_INSURANCE = "InsuranceCompanies_ContextI"
 _CTX_NRI = "NonResidentIndians_ContextI"
 _CTX_RETAIL = (
-    "ResidentIndividualShareholdersHolding"
-    "NominalShareCapitalUpToRsTwoLakh_ContextI"
+    "ResidentIndividualShareholdersHolding" "NominalShareCapitalUpToRsTwoLakh_ContextI"
 )
 _CTX_HNI = (
     "ResidentIndividualShareholdersHolding"
@@ -182,6 +187,7 @@ def _detect_decimal_format(content: str) -> bool:
 # XBRL parsing helpers
 # ---------------------------------------------------------------------------
 
+
 def _build_fact_map(root: ET.Element) -> dict[tuple[str, str], str]:
     """Return {(local_tag, context_id): text_value} for all fact elements.
 
@@ -203,7 +209,9 @@ def _get(fmap: dict[tuple[str, str], str], tag: str, ctx: str) -> str | None:
     return fmap.get((tag, ctx))
 
 
-def _pct(fmap: dict[tuple[str, str], str], ctx: str, *, decimal_scale: bool) -> float | None:
+def _pct(
+    fmap: dict[tuple[str, str], str], ctx: str, *, decimal_scale: bool
+) -> float | None:
     """Return the shareholding percentage (0–100) for a context, or None.
 
     Args:
@@ -260,6 +268,7 @@ def _ownership_fact(
 # Public entry point
 # ---------------------------------------------------------------------------
 
+
 def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     """Extract structured ownership facts from a BSE XBRL shareholding pattern.
 
@@ -311,8 +320,11 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     total_shares = _shares(fmap, _CTX_TOTAL)
     if total_shares is not None:
         f = _ownership_fact(
-            FactKind.OWNERSHIP_TOTAL_SHARES, total_shares,
-            FactUnit.COUNT, _CTX_TOTAL, period,
+            FactKind.OWNERSHIP_TOTAL_SHARES,
+            total_shares,
+            FactUnit.COUNT,
+            _CTX_TOTAL,
+            period,
         )
         if f:
             result.facts.append(f)
@@ -320,24 +332,89 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
         result.warnings.append("Total shares not found in ShareholdingPattern_ContextI")
 
     # --- Category percentages ---
-    _add_pct(result, fmap, FactKind.OWNERSHIP_PROMOTER_PCT, _CTX_PROMOTER, period,
-             "Promoter and Promoter Group percentage not found", decimal_scale=decimal_scale)
-    _add_pct(result, fmap, FactKind.OWNERSHIP_PUBLIC_PCT, _CTX_PUBLIC, period,
-             "Public shareholding percentage not found", decimal_scale=decimal_scale)
-    _add_pct(result, fmap, FactKind.OWNERSHIP_FPI_PCT, _CTX_FPI, period,
-             "FPI percentage not found", decimal_scale=decimal_scale)
-    _add_pct(result, fmap, FactKind.OWNERSHIP_DII_PCT, _CTX_DII, period,
-             "DII percentage not found", decimal_scale=decimal_scale)
-    _add_pct(result, fmap, FactKind.OWNERSHIP_MF_PCT, _CTX_MF, period,
-             "Mutual funds percentage not found", decimal_scale=decimal_scale)
-    _add_pct(result, fmap, FactKind.OWNERSHIP_INSURANCE_PCT, _CTX_INSURANCE, period,
-             "Insurance companies percentage not found", decimal_scale=decimal_scale)
-    _add_pct(result, fmap, FactKind.OWNERSHIP_NRI_PCT, _CTX_NRI, period,
-             "NRI percentage not found", decimal_scale=decimal_scale)
-    _add_pct(result, fmap, FactKind.OWNERSHIP_RETAIL_PCT, _CTX_RETAIL, period,
-             "Retail individual percentage not found", warn_missing=False, decimal_scale=decimal_scale)
-    _add_pct(result, fmap, FactKind.OWNERSHIP_HNI_PCT, _CTX_HNI, period,
-             "HNI individual percentage not found", warn_missing=False, decimal_scale=decimal_scale)
+    _add_pct(
+        result,
+        fmap,
+        FactKind.OWNERSHIP_PROMOTER_PCT,
+        _CTX_PROMOTER,
+        period,
+        "Promoter and Promoter Group percentage not found",
+        decimal_scale=decimal_scale,
+    )
+    _add_pct(
+        result,
+        fmap,
+        FactKind.OWNERSHIP_PUBLIC_PCT,
+        _CTX_PUBLIC,
+        period,
+        "Public shareholding percentage not found",
+        decimal_scale=decimal_scale,
+    )
+    _add_pct(
+        result,
+        fmap,
+        FactKind.OWNERSHIP_FPI_PCT,
+        _CTX_FPI,
+        period,
+        "FPI percentage not found",
+        decimal_scale=decimal_scale,
+    )
+    _add_pct(
+        result,
+        fmap,
+        FactKind.OWNERSHIP_DII_PCT,
+        _CTX_DII,
+        period,
+        "DII percentage not found",
+        decimal_scale=decimal_scale,
+    )
+    _add_pct(
+        result,
+        fmap,
+        FactKind.OWNERSHIP_MF_PCT,
+        _CTX_MF,
+        period,
+        "Mutual funds percentage not found",
+        decimal_scale=decimal_scale,
+    )
+    _add_pct(
+        result,
+        fmap,
+        FactKind.OWNERSHIP_INSURANCE_PCT,
+        _CTX_INSURANCE,
+        period,
+        "Insurance companies percentage not found",
+        decimal_scale=decimal_scale,
+    )
+    _add_pct(
+        result,
+        fmap,
+        FactKind.OWNERSHIP_NRI_PCT,
+        _CTX_NRI,
+        period,
+        "NRI percentage not found",
+        decimal_scale=decimal_scale,
+    )
+    _add_pct(
+        result,
+        fmap,
+        FactKind.OWNERSHIP_RETAIL_PCT,
+        _CTX_RETAIL,
+        period,
+        "Retail individual percentage not found",
+        warn_missing=False,
+        decimal_scale=decimal_scale,
+    )
+    _add_pct(
+        result,
+        fmap,
+        FactKind.OWNERSHIP_HNI_PCT,
+        _CTX_HNI,
+        period,
+        "HNI individual percentage not found",
+        warn_missing=False,
+        decimal_scale=decimal_scale,
+    )
 
     # --- Promoter pledging ---
     pledged_raw = _get(fmap, _TAG_PLEDGED_BOOL, _CTX_MAIN_I)
@@ -345,14 +422,19 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
         result.warnings.append("Promoter pledge flag not found")
     elif pledged_raw.lower() == "false":
         pledged_fact = _ownership_fact(
-            FactKind.OWNERSHIP_PROMOTER_PLEDGED_PCT, 0.0,
-            FactUnit.PERCENT, _CTX_PROMOTER, period,
+            FactKind.OWNERSHIP_PROMOTER_PLEDGED_PCT,
+            0.0,
+            FactUnit.PERCENT,
+            _CTX_PROMOTER,
+            period,
         )
         if pledged_fact:
             result.facts.append(pledged_fact)
     else:
         # Pledges exist — try to extract actual percentage
-        pledged_pct = _pct(fmap, _CTX_PROMOTER + "_Pledged", decimal_scale=decimal_scale)
+        pledged_pct = _pct(
+            fmap, _CTX_PROMOTER + "_Pledged", decimal_scale=decimal_scale
+        )
         if pledged_pct is None:
             # Try the encumbered percentage tag in the promoter context
             raw = _get(fmap, _TAG_PCT_ENCUMBERED, _CTX_PROMOTER)
@@ -364,8 +446,11 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
                     pass
         if pledged_pct is not None:
             pledged_fact = _ownership_fact(
-                FactKind.OWNERSHIP_PROMOTER_PLEDGED_PCT, pledged_pct,
-                FactUnit.PERCENT, _CTX_PROMOTER, period,
+                FactKind.OWNERSHIP_PROMOTER_PLEDGED_PCT,
+                pledged_pct,
+                FactUnit.PERCENT,
+                _CTX_PROMOTER,
+                period,
             )
             if pledged_fact:
                 result.facts.append(pledged_fact)
@@ -385,7 +470,10 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     }
     if core_kinds.issubset(extracted_kinds):
         result.confidence = "high"
-    elif FactKind.OWNERSHIP_TOTAL_SHARES in extracted_kinds and FactKind.OWNERSHIP_PROMOTER_PCT in extracted_kinds:
+    elif (
+        FactKind.OWNERSHIP_TOTAL_SHARES in extracted_kinds
+        and FactKind.OWNERSHIP_PROMOTER_PCT in extracted_kinds
+    ):
         result.confidence = "medium"
 
     # Named >1% public shareholders -> resolved entity mentions (M-P1.3, Q24).

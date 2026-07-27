@@ -4,6 +4,7 @@ Independently verifies — from outside the engine — that the reasoning output
 obeys the grounding guarantees (G1/G10/G8): every citation resolves in the
 closed world, answers are cited, and refusals are clean. Pure function; no LLM.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -17,7 +18,9 @@ class GroundingScore:
     reasons: tuple[str, ...]  # failure descriptions; empty when passed
 
 
-def score_grounding(result: ReasoningResult, context: GroundingContext) -> GroundingScore:
+def score_grounding(
+    result: ReasoningResult, context: GroundingContext
+) -> GroundingScore:
     reasons: list[str] = []
 
     # G1/G10: nothing may be cited outside the closed world.

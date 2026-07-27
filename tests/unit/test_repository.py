@@ -5,9 +5,12 @@ import pytest
 
 from atlas.acquisition.catalog import CatalogEntry, RepositoryCatalog
 from atlas.acquisition.evidence import EvidenceKind, EvidenceSource
-from atlas.acquisition.profile import COMPREHENSIVE_PROFILE, DEFAULT_PROFILE, KindFilterProfile
+from atlas.acquisition.profile import (
+    COMPREHENSIVE_PROFILE,
+    DEFAULT_PROFILE,
+    KindFilterProfile,
+)
 from atlas.acquisition.repository import Repository
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -98,7 +101,9 @@ class TestRepositoryListEvidence:
         assert len(result) == 1
 
     def test_kind_filter_excludes_non_matching(self, tmp_path: Path) -> None:
-        _populate(tmp_path, [_make_entry("bse-r-fr", kind=EvidenceKind.FINANCIAL_RESULTS)])
+        _populate(
+            tmp_path, [_make_entry("bse-r-fr", kind=EvidenceKind.FINANCIAL_RESULTS)]
+        )
         result = Repository(tmp_path).list_evidence(kinds={EvidenceKind.ANNUAL_REPORT})
         assert result == []
 
@@ -296,9 +301,15 @@ class TestRepositoryLatest:
         _populate(
             tmp_path,
             [
-                _make_entry("bse-r-ar-2020", kind=EvidenceKind.ANNUAL_REPORT, source_date=_D2020),
-                _make_entry("bse-r-ar-2022", kind=EvidenceKind.ANNUAL_REPORT, source_date=_D2022),
-                _make_entry("bse-r-ar-2024", kind=EvidenceKind.ANNUAL_REPORT, source_date=_D2024),
+                _make_entry(
+                    "bse-r-ar-2020", kind=EvidenceKind.ANNUAL_REPORT, source_date=_D2020
+                ),
+                _make_entry(
+                    "bse-r-ar-2022", kind=EvidenceKind.ANNUAL_REPORT, source_date=_D2022
+                ),
+                _make_entry(
+                    "bse-r-ar-2024", kind=EvidenceKind.ANNUAL_REPORT, source_date=_D2024
+                ),
             ],
         )
         result = Repository(tmp_path).latest(EvidenceKind.ANNUAL_REPORT)
@@ -306,7 +317,9 @@ class TestRepositoryLatest:
         assert result.evidence_id == "bse-r-ar-2024"
 
     def test_returns_none_when_no_entries_of_kind(self, tmp_path: Path) -> None:
-        _populate(tmp_path, [_make_entry("bse-r-fr", kind=EvidenceKind.FINANCIAL_RESULTS)])
+        _populate(
+            tmp_path, [_make_entry("bse-r-fr", kind=EvidenceKind.FINANCIAL_RESULTS)]
+        )
         result = Repository(tmp_path).latest(EvidenceKind.ANNUAL_REPORT)
         assert result is None
 
@@ -318,8 +331,12 @@ class TestRepositoryLatest:
         _populate(
             tmp_path,
             [
-                _make_entry("bse-r-ar", kind=EvidenceKind.ANNUAL_REPORT, source_date=_D2020),
-                _make_entry("bse-r-fr", kind=EvidenceKind.FINANCIAL_RESULTS, source_date=_D2024),
+                _make_entry(
+                    "bse-r-ar", kind=EvidenceKind.ANNUAL_REPORT, source_date=_D2020
+                ),
+                _make_entry(
+                    "bse-r-fr", kind=EvidenceKind.FINANCIAL_RESULTS, source_date=_D2024
+                ),
             ],
         )
         result = Repository(tmp_path).latest(EvidenceKind.ANNUAL_REPORT)
@@ -336,8 +353,12 @@ class TestRepositoryLatest:
         _populate(
             tmp_path,
             [
-                _make_entry("bse-r-ar-2020", kind=EvidenceKind.ANNUAL_REPORT, source_date=_D2020),
-                _make_entry("bse-r-ar-2022", kind=EvidenceKind.ANNUAL_REPORT, source_date=_D2022),
+                _make_entry(
+                    "bse-r-ar-2020", kind=EvidenceKind.ANNUAL_REPORT, source_date=_D2020
+                ),
+                _make_entry(
+                    "bse-r-ar-2022", kind=EvidenceKind.ANNUAL_REPORT, source_date=_D2022
+                ),
             ],
         )
         result = Repository(tmp_path).latest(EvidenceKind.ANNUAL_REPORT, since=_D2023)
@@ -347,9 +368,15 @@ class TestRepositoryLatest:
         _populate(
             tmp_path,
             [
-                _make_entry("bse-r-ar-2020", kind=EvidenceKind.ANNUAL_REPORT, source_date=_D2020),
-                _make_entry("bse-r-ar-2022", kind=EvidenceKind.ANNUAL_REPORT, source_date=_D2022),
-                _make_entry("bse-r-ar-2024", kind=EvidenceKind.ANNUAL_REPORT, source_date=_D2024),
+                _make_entry(
+                    "bse-r-ar-2020", kind=EvidenceKind.ANNUAL_REPORT, source_date=_D2020
+                ),
+                _make_entry(
+                    "bse-r-ar-2022", kind=EvidenceKind.ANNUAL_REPORT, source_date=_D2022
+                ),
+                _make_entry(
+                    "bse-r-ar-2024", kind=EvidenceKind.ANNUAL_REPORT, source_date=_D2024
+                ),
             ],
         )
         result = Repository(tmp_path).latest(EvidenceKind.ANNUAL_REPORT, since=_D2022)

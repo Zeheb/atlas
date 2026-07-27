@@ -5,6 +5,7 @@ the retype intact: field name unchanged, default unchanged, and every
 existing GroundingContext construction site (which never passed `thesis=`)
 still constructs with no change at all.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -23,16 +24,22 @@ from atlas.reasoning.contracts import (
 SUBJECT = SubjectRef(subject_id="TCS", display="TCS")
 
 
-def _recalled_claim(statement: str = "Margins are durable.", eid: str = "ev-1") -> RecalledClaim:
+def _recalled_claim(
+    statement: str = "Margins are durable.", eid: str = "ev-1"
+) -> RecalledClaim:
     return RecalledClaim(
-        statement=statement, evidence_ids=frozenset({eid}), confidence="medium",
+        statement=statement,
+        evidence_ids=frozenset({eid}),
+        confidence="medium",
     )
 
 
 def _view(*claims: RecalledClaim, view_id: str = "view-1") -> RecalledView:
     return RecalledView(
-        view_id=view_id, question="Should I invest in TCS?",
-        claims=claims or (_recalled_claim(),), as_of="2026-07-22T00:00:00+00:00",
+        view_id=view_id,
+        question="Should I invest in TCS?",
+        claims=claims or (_recalled_claim(),),
+        as_of="2026-07-22T00:00:00+00:00",
     )
 
 
@@ -54,7 +61,10 @@ def test_field_name_is_still_thesis_not_recalled_view() -> None:
 
 def test_grounding_context_accepts_a_recalled_view() -> None:
     ctx = GroundingContext(
-        subject_ref=SUBJECT, claims=(), evidence_index=frozenset(), thesis=_view(),
+        subject_ref=SUBJECT,
+        claims=(),
+        evidence_index=frozenset(),
+        thesis=_view(),
     )
     assert ctx.thesis is not None
     assert ctx.thesis.question == "Should I invest in TCS?"
@@ -64,11 +74,16 @@ def test_pre_m24_construction_is_completely_unaffected() -> None:
     """The exact call shape every existing GroundingContext construction site
     uses, unmodified."""
     claim = Claim(
-        subject_ref=SUBJECT, statement="Revenue grew.", assertability="fact",
-        confidence="high", evidence=[EvidenceReference(evidence_id="ev-1")],
+        subject_ref=SUBJECT,
+        statement="Revenue grew.",
+        assertability="fact",
+        confidence="high",
+        evidence=[EvidenceReference(evidence_id="ev-1")],
     )
     ctx = GroundingContext(
-        subject_ref=SUBJECT, claims=[claim], evidence_index=frozenset({"ev-1"}),
+        subject_ref=SUBJECT,
+        claims=[claim],
+        evidence_index=frozenset({"ev-1"}),
     )
     assert ctx.thesis is None
     assert ctx.claims == (claim,)
@@ -81,7 +96,9 @@ def test_recalled_claim_requires_a_statement() -> None:
 
 
 def test_recalled_claim_coerces_evidence_ids_to_frozenset() -> None:
-    claim = RecalledClaim(statement="x", evidence_ids={"ev-1", "ev-2"}, confidence="high")
+    claim = RecalledClaim(
+        statement="x", evidence_ids={"ev-1", "ev-2"}, confidence="high"
+    )
     assert claim.evidence_ids == frozenset({"ev-1", "ev-2"})
 
 
@@ -89,7 +106,9 @@ def test_recalled_claim_permits_zero_evidence_ids() -> None:
     """Unlike Claim (G10: >=1 EvidenceReference required), a recalled claim
     may have none -- its evidence may have been withdrawn since it was formed,
     and it must still be representable."""
-    RecalledClaim(statement="x", evidence_ids=frozenset(), confidence="low")  # must not raise
+    RecalledClaim(
+        statement="x", evidence_ids=frozenset(), confidence="low"
+    )  # must not raise
 
 
 def test_recalled_claim_has_no_period_value_unit_or_assertability() -> None:
@@ -103,39 +122,49 @@ def test_recalled_claim_has_no_period_value_unit_or_assertability() -> None:
 def test_recalled_view_requires_at_least_one_claim() -> None:
     with pytest.raises(ValueError, match="claims must not be empty"):
         RecalledView(
-            view_id="v", question="q",
-            claims=(), as_of="2026-07-22T00:00:00+00:00",
+            view_id="v",
+            question="q",
+            claims=(),
+            as_of="2026-07-22T00:00:00+00:00",
         )
 
 
 def test_recalled_view_requires_a_question() -> None:
     with pytest.raises(ValueError, match="question must be non-empty"):
         RecalledView(
-            view_id="v", question="  ",
-            claims=(_recalled_claim(),), as_of="2026-07-22T00:00:00+00:00",
+            view_id="v",
+            question="  ",
+            claims=(_recalled_claim(),),
+            as_of="2026-07-22T00:00:00+00:00",
         )
 
 
 def test_recalled_view_requires_a_view_id() -> None:
     with pytest.raises(ValueError, match="view_id must be non-empty"):
         RecalledView(
-            view_id="", question="q",
-            claims=(_recalled_claim(),), as_of="2026-07-22T00:00:00+00:00",
+            view_id="",
+            question="q",
+            claims=(_recalled_claim(),),
+            as_of="2026-07-22T00:00:00+00:00",
         )
 
 
 def test_recalled_view_requires_as_of() -> None:
     with pytest.raises(ValueError, match="as_of must be non-empty"):
         RecalledView(
-            view_id="v", question="q",
-            claims=(_recalled_claim(),), as_of="",
+            view_id="v",
+            question="q",
+            claims=(_recalled_claim(),),
+            as_of="",
         )
 
 
 def test_recalled_view_coerces_claims_to_tuple() -> None:
     view = RecalledView(
-        view_id="v", question="q",
-        claims=[_recalled_claim()], as_of="2026-07-22T00:00:00+00:00",
+        view_id="v",
+        question="q",
+        claims=[_recalled_claim()],
+        as_of="2026-07-22T00:00:00+00:00",
     )
     assert isinstance(view.claims, tuple)
 
@@ -146,8 +175,11 @@ def test_recalled_view_defaults_origin_to_atlas() -> None:
 
 def test_recalled_view_accepts_user_origin() -> None:
     view = RecalledView(
-        view_id="v", question="q",
-        claims=(_recalled_claim(),), as_of="2026-07-22T00:00:00+00:00", origin="user",
+        view_id="v",
+        question="q",
+        claims=(_recalled_claim(),),
+        as_of="2026-07-22T00:00:00+00:00",
+        origin="user",
     )
     assert view.origin == "user"
 

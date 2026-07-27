@@ -3,6 +3,7 @@ commit 1/2). The atlas.reasoning.client compatibility shim used during the
 migration (commit 1) has been fully removed (commit 2); atlas.reasoning.llm
 is now the only location for this seam.
 """
+
 from __future__ import annotations
 
 from typing import get_args
@@ -38,5 +39,9 @@ def test_llm_provider_names_transports_not_model_families() -> None:
     # omniroute is a cloud-style aggregator gateway that reuses the shared
     # reasoning_model/judge_model identity (no model namespace of its own).
     assert set(get_args(LLMProvider)) == {
-        "anthropic", "google_ai_studio", "vertex_ai", "ollama", "omniroute",
+        "anthropic",
+        "google_ai_studio",
+        "vertex_ai",
+        "ollama",
+        "omniroute",
     }

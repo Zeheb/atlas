@@ -90,7 +90,7 @@ _EPOCH = datetime(1970, 1, 1, tzinfo=timezone.utc)
 def _parse_date(date_str: str) -> datetime | None:
     try:
         return datetime.fromisoformat(date_str)
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return None
 
 
@@ -109,10 +109,10 @@ class HistoryDepth:
     thesis-specific question, answered via ``reaches()``.
     """
 
-    entry_count: int              # total catalog entries considered
-    dated_count: int              # entries with a parseable source_date
-    earliest: datetime | None     # oldest source_date (UTC), None if none dated
-    latest: datetime | None       # newest source_date (UTC)
+    entry_count: int  # total catalog entries considered
+    dated_count: int  # entries with a parseable source_date
+    earliest: datetime | None  # oldest source_date (UTC), None if none dated
+    latest: datetime | None  # newest source_date (UTC)
     earliest_by_kind: dict[str, datetime] = field(default_factory=dict)
 
     @property

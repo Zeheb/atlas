@@ -14,6 +14,7 @@ individually queryable via `atlas query <TICKER> summary`, and every
 evidence_id still appears in the Appendix — this section is a deliberately
 narrow, prioritized front door, not the only way to see history.
 """
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -28,7 +29,9 @@ from atlas.research.sections._shared import collect_dated_events
 _WINDOW_DAYS = 120  # roughly one fiscal quarter plus reporting lag
 
 
-def build(profile: CompanyProfile, repo: Repository | None, ticker: str) -> ReportSection:
+def build(
+    profile: CompanyProfile, repo: Repository | None, ticker: str
+) -> ReportSection:
     events = collect_dated_events(profile)
     if not events:
         return ReportSection(

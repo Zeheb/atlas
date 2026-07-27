@@ -3,6 +3,7 @@
 Covers all four document sub-types plus error cases. Uses entirely synthetic
 fixtures — no real repository access required.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -10,7 +11,6 @@ from unittest.mock import MagicMock
 
 from atlas.analysis.buyback import ANALYZER_VERSION, analyze
 from atlas.analysis.base import AnalysisFact, AnalysisResult, FactKind, FactUnit
-
 
 # ---------------------------------------------------------------------------
 # Synthetic fixtures
@@ -141,6 +141,7 @@ For Tata Consultancy Services Limited
 # KB mock factory
 # ---------------------------------------------------------------------------
 
+
 def _make_kb(eid: str, content: str, kind: str = "buyback") -> MagicMock:
     entry = MagicMock()
     entry.kind = kind
@@ -159,6 +160,7 @@ def _facts(result: AnalysisResult, kind: FactKind) -> list[AnalysisFact]:
 # ---------------------------------------------------------------------------
 # Common result structure
 # ---------------------------------------------------------------------------
+
 
 class TestResultStructure:
     def test_returns_analysis_result(self) -> None:
@@ -179,6 +181,7 @@ class TestResultStructure:
 
     def test_analyzed_at_is_utc(self) -> None:
         from datetime import timezone
+
         result = analyze("eid-a", _make_kb("eid-a", _COVER_ANNOUNCEMENT))
         assert result.analyzed_at.tzinfo == timezone.utc
 
@@ -195,6 +198,7 @@ class TestResultStructure:
 # ---------------------------------------------------------------------------
 # Error cases
 # ---------------------------------------------------------------------------
+
 
 class TestErrors:
     def test_raises_for_missing_entry(self) -> None:
@@ -224,6 +228,7 @@ class TestErrors:
 # ---------------------------------------------------------------------------
 # Type: Announcement (with terms)
 # ---------------------------------------------------------------------------
+
 
 class TestAnnouncement:
     def test_confidence_high(self) -> None:
@@ -286,6 +291,7 @@ class TestAnnouncement:
 # Type: Announcement (opaque — terms in enclosed newspaper only)
 # ---------------------------------------------------------------------------
 
+
 class TestAnnouncementOpaque:
     def test_low_confidence(self) -> None:
         result = analyze("eid-op", _make_kb("eid-op", _COVER_ANNOUNCEMENT_OPAQUE))
@@ -307,6 +313,7 @@ class TestAnnouncementOpaque:
 # ---------------------------------------------------------------------------
 # Type: Post-announcement
 # ---------------------------------------------------------------------------
+
 
 class TestPostAnnouncement:
     def test_confidence_high(self) -> None:
@@ -345,6 +352,7 @@ class TestPostAnnouncement:
 # Type: Schedule / timeline update
 # ---------------------------------------------------------------------------
 
+
 class TestSchedule:
     def test_confidence_high(self) -> None:
         result = analyze("eid-sch", _make_kb("eid-sch", _COVER_SCHEDULE))
@@ -365,6 +373,7 @@ class TestSchedule:
 # ---------------------------------------------------------------------------
 # Type: Extinguishment notice
 # ---------------------------------------------------------------------------
+
 
 class TestExtinguishment:
     def test_confidence_high(self) -> None:

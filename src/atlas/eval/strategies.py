@@ -13,6 +13,7 @@ Adding a third strategy (hybrid retrieval, a reranked variant, an LLM planner)
 means adding one class here and one entry in ``STRATEGIES`` — nothing in
 ``LiveReasoningRunner`` or the comparison engine needs to change.
 """
+
 from __future__ import annotations
 
 from typing import Protocol

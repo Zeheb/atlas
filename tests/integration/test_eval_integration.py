@@ -3,6 +3,7 @@ without a key or the TCS profile. Runs the deterministic dimensions of the real
 suite (no judge) against TCS and asserts a well-formed report is produced with
 grounding scored — the harness works end to end on the live system.
 """
+
 from __future__ import annotations
 
 import os
@@ -29,8 +30,12 @@ def test_eval_suite_runs_against_real_tcs() -> None:
     # Only the always-available single-name cases; no judge (deterministic dims).
     cases = [c for c in load_cases() if c.is_available(frozenset({"single_name"}))]
     report = run_suite(
-        cases[:3], LiveReasoningRunner(settings, client), None, {"single_name"},
-        milestone="integration", model=settings.reasoning_model,
+        cases[:3],
+        LiveReasoningRunner(settings, client),
+        None,
+        {"single_name"},
+        milestone="integration",
+        model=settings.reasoning_model,
     )
     agg = report.to_dict()["aggregates"]
     assert agg["active_cases"] == 3

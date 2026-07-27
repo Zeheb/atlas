@@ -9,7 +9,6 @@ from atlas.acquisition.repository import Repository
 from atlas.knowledge.base import KnowledgeBase
 from atlas.knowledge.pipeline import parse_incremental
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -128,20 +127,28 @@ class TestParseIncrementalSkipsOk:
 
 
 class TestParseIncrementalRetryFailed:
-    def test_retries_failed_entry(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_retries_failed_entry(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         _write(tmp_path, "docs/a.txt", "recovered content")
         entry = _make_entry("bse-p-a", "docs/a.txt")
         _populate_catalog(tmp_path, [entry])
         kb = KnowledgeBase(tmp_path)
 
         # First run: extractor fails.
-        monkeypatch.setitem(ext_mod._EXTRACTORS, "txt", lambda p: (_ for _ in ()).throw(RuntimeError("boom")))
+        monkeypatch.setitem(
+            ext_mod._EXTRACTORS,
+            "txt",
+            lambda p: (_ for _ in ()).throw(RuntimeError("boom")),
+        )
         parse_incremental(Repository(tmp_path), kb)
         assert kb.get("bse-p-a") is not None
         assert kb.get("bse-p-a").status == "failed"  # type: ignore[union-attr]
 
         # Second run: extractor fixed.
-        monkeypatch.setitem(ext_mod._EXTRACTORS, "txt", lambda p: p.read_text(encoding="utf-8"))
+        monkeypatch.setitem(
+            ext_mod._EXTRACTORS, "txt", lambda p: p.read_text(encoding="utf-8")
+        )
         results = parse_incremental(Repository(tmp_path), kb)
         assert len(results) == 1
         assert results[0].status == "ok"
@@ -160,7 +167,9 @@ class TestParseIncrementalRetryFailed:
         assert kb.get("bse-p-a").status == "failed"  # type: ignore[union-attr]
 
         # Second run: extractor registered.
-        monkeypatch.setitem(ext_mod._EXTRACTORS, "zip", lambda p: p.read_text(encoding="utf-8"))
+        monkeypatch.setitem(
+            ext_mod._EXTRACTORS, "zip", lambda p: p.read_text(encoding="utf-8")
+        )
         results = parse_incremental(Repository(tmp_path), kb)
         assert len(results) == 1
         assert results[0].status == "ok"

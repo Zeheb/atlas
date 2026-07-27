@@ -27,6 +27,7 @@ prompt), so this is additive: every pre-M2.4 fake-LLM response in this
 codebase's tests, none of which emit these keys, produces the exact same
 Finding as before.
 """
+
 from __future__ import annotations
 
 import json
@@ -133,7 +134,8 @@ def _build_finding(
 
     # Keep only cited ids that exist in the closed world (G10).
     valid_ids = [
-        eid for eid in _as_list(raw.get("supporting_evidence_ids"))
+        eid
+        for eid in _as_list(raw.get("supporting_evidence_ids"))
         if isinstance(eid, str) and eid in context.evidence_index
     ]
     supporting: list[Claim] = []

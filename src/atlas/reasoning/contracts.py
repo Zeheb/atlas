@@ -27,6 +27,7 @@ type-level facts, not conventions:
 All types are frozen; sequence fields are coerced to tuples / frozensets so the
 objects are immutable and hashable-friendly while callers may pass plain lists.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -324,15 +325,11 @@ class Finding:
         if not self.statement:
             raise ValueError("Finding.statement must be non-empty")
         if self.assertability == "judgment" and len(self.supporting_claims) < 1:
-            raise ValueError(
-                "A judgment Finding requires >=1 supporting claim (G3/G4)"
-            )
+            raise ValueError("A judgment Finding requires >=1 supporting claim (G3/G4)")
 
     @property
     def evidence_ids(self) -> frozenset[str]:
-        return frozenset(
-            eid for c in self.supporting_claims for eid in c.evidence_ids
-        )
+        return frozenset(eid for c in self.supporting_claims for eid in c.evidence_ids)
 
 
 # --- C8 ReasoningResult ------------------------------------------------------
@@ -364,7 +361,9 @@ class ReasoningResult:
             if self.findings:
                 raise ValueError("A refused ReasoningResult must have no findings (G8)")
             if not self.refusal_reason:
-                raise ValueError("A refused ReasoningResult must set refusal_reason (G8)")
+                raise ValueError(
+                    "A refused ReasoningResult must set refusal_reason (G8)"
+                )
         finding_ids = {eid for f in self.findings for eid in f.evidence_ids}
         uncited = finding_ids - self.citations
         if uncited:
@@ -397,6 +396,8 @@ class Answer:
         object.__setattr__(self, "citations", _tuple(self.citations))
         object.__setattr__(self, "fact_lines", _tuple(self.fact_lines))
         object.__setattr__(self, "judgment_lines", _tuple(self.judgment_lines))
-        object.__setattr__(self, "follow_up_suggestions", _tuple(self.follow_up_suggestions))
+        object.__setattr__(
+            self, "follow_up_suggestions", _tuple(self.follow_up_suggestions)
+        )
         if self.refused and not self.refusal_reason:
             raise ValueError("A refused Answer must set refusal_reason (G8)")

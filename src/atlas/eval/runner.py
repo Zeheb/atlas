@@ -42,6 +42,7 @@ commit (5/9) adds two independent runner-mode switches:
   ``None``, and ``client`` becomes optional (``None`` is valid) since the CLI
   builds no LLM client at all for a retrieval-only run.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -142,8 +143,7 @@ class RunOutcome:
 class ReasoningRunner(Protocol):
     """Runs one case through the system under test."""
 
-    def run(self, case: EvalCase) -> RunOutcome:
-        ...
+    def run(self, case: EvalCase) -> RunOutcome: ...
 
 
 class LiveReasoningRunner:
@@ -177,9 +177,15 @@ class LiveReasoningRunner:
     """
 
     def __init__(
-        self, settings: Settings, client: LLMClient | None, *, capabilities: frozenset[str] = frozenset(),
-        cache: EvalCache | None = None, fingerprint: str = "",
-        strategy: RetrievalStrategy | None = None, retrieval_only: bool = False,
+        self,
+        settings: Settings,
+        client: LLMClient | None,
+        *,
+        capabilities: frozenset[str] = frozenset(),
+        cache: EvalCache | None = None,
+        fingerprint: str = "",
+        strategy: RetrievalStrategy | None = None,
+        retrieval_only: bool = False,
     ) -> None:
         self._settings = settings
         # Free-tier operation: an unchanged (model, fingerprint, prompt,
@@ -188,7 +194,9 @@ class LiveReasoningRunner:
         # A None client (retrieval-only mode) is never wrapped -- there is
         # nothing to cache calls to.
         self._client: LLMClient | None = (
-            CachingLLMClient(client, cache, model=settings.reasoning_model, fingerprint=fingerprint)
+            CachingLLMClient(
+                client, cache, model=settings.reasoning_model, fingerprint=fingerprint
+            )
             if (cache is not None and client is not None)
             else client
         )
@@ -214,7 +222,9 @@ class LiveReasoningRunner:
             question: str | None = case.question
             plan = self._strategy.plan_for(case.question)
         else:
-            question = case.question if CAP_QUESTION_RETRIEVAL in self._capabilities else None
+            question = (
+                case.question if CAP_QUESTION_RETRIEVAL in self._capabilities else None
+            )
             # M1.7: planning is a no-op unless question-conditioned retrieval is
             # ALSO active -- a plan with nothing to merge it into would never be
             # consumed by build_context().
@@ -225,13 +235,20 @@ class LiveReasoningRunner:
             )
 
         build_result = build_context_with_diagnostics(
-            profile, subject, kb=kb, question=question, plan=plan, thesis=thesis,
+            profile,
+            subject,
+            kb=kb,
+            question=question,
+            plan=plan,
+            thesis=thesis,
         )
         context = build_result.context
 
         if self._retrieval_only:
             # No LLM call at all -- retrieval/planner metrics need none.
-            return RunOutcome(context=context, plan=plan, retrieval=build_result.retrieval)
+            return RunOutcome(
+                context=context, plan=plan, retrieval=build_result.retrieval
+            )
 
         assert self._client is not None  # only None is valid in retrieval_only mode
         result = ask(
@@ -239,8 +256,11 @@ class LiveReasoningRunner:
         )
         answer = to_answer(result, context=context)
         return RunOutcome(
-            context=context, result=result, answer=answer,
-            plan=plan, retrieval=build_result.retrieval,
+            context=context,
+            result=result,
+            answer=answer,
+            plan=plan,
+            retrieval=build_result.retrieval,
         )
 
 
@@ -268,7 +288,9 @@ def resolve_judge_sample(
     value = value.strip()
     if value.isdigit():
         n = int(value)
-        ranked = sorted(active_ids, key=lambda cid: hashlib.sha256(cid.encode("utf-8")).hexdigest())
+        ranked = sorted(
+            active_ids, key=lambda cid: hashlib.sha256(cid.encode("utf-8")).hexdigest()
+        )
         return frozenset(ranked[:n])
     return frozenset(tok.strip() for tok in value.split(",") if tok.strip())
 
@@ -295,9 +317,13 @@ def run_suite(
     active_ids = [c.id for c in cases if c.is_available(caps)]
     sample = resolve_judge_sample(judge_sample, active_ids)
     results = [
-        CaseResult(case_id=c.id, category=c.category, status="pending")
-        if not c.is_available(caps)
-        else _run_case(c, runner, judge if (sample is None or c.id in sample) else None)
+        (
+            CaseResult(case_id=c.id, category=c.category, status="pending")
+            if not c.is_available(caps)
+            else _run_case(
+                c, runner, judge if (sample is None or c.id in sample) else None
+            )
+        )
         for c in cases
     ]
     return Report(
@@ -315,11 +341,17 @@ def run_suite(
     )
 
 
-def _run_case(case: EvalCase, runner: ReasoningRunner, judge: Judge | None) -> CaseResult:
+def _run_case(
+    case: EvalCase, runner: ReasoningRunner, judge: Judge | None
+) -> CaseResult:
     try:
         outcome = runner.run(case)
-    except Exception as exc:  # noqa: BLE001 - batch robustness: one case must not abort the suite
-        return CaseResult(case_id=case.id, category=case.category, status="active", error=str(exc))
+    except (
+        Exception
+    ) as exc:  # noqa: BLE001 - batch robustness: one case must not abort the suite
+        return CaseResult(
+            case_id=case.id, category=case.category, status="active", error=str(exc)
+        )
 
     # M1.8 (ADR-0004): retrieval/planner metrics need no LLM, so they are
     # computed unconditionally from RunOutcome -- present even in
@@ -335,15 +367,20 @@ def _run_case(case: EvalCase, runner: ReasoningRunner, judge: Judge | None) -> C
         # --retrieval-only mode: no LLM call was made, so no answer-dependent
         # dimension can be scored -- but retrieval/planner metrics still are.
         return CaseResult(
-            case_id=case.id, category=case.category, status="active",
-            retrieval_metrics=retrieval_metrics, planner_metrics=planner_metrics,
+            case_id=case.id,
+            category=case.category,
+            status="active",
+            retrieval_metrics=retrieval_metrics,
+            planner_metrics=planner_metrics,
             retrieval_quality=retrieval_quality,
         )
 
     # M1.8 (ADR-0004): kept only for the comparison engine's human
     # side-by-side read-through, matching judge.py's own refusal formatting
     # convention exactly (judge.py's Judge._prompt uses the identical shape).
-    answer_prose = answer.prose if not answer.refused else f"[REFUSED] {answer.refusal_reason}"
+    answer_prose = (
+        answer.prose if not answer.refused else f"[REFUSED] {answer.refusal_reason}"
+    )
 
     corr = score_correctness(case, result, answer)
     grnd = score_grounding(result, context)
@@ -358,23 +395,34 @@ def _run_case(case: EvalCase, runner: ReasoningRunner, judge: Judge | None) -> C
         try:
             verdict = judge.evaluate(case, answer, context)  # amendment 2: context
             quality, usefulness, evidence_use, notes = (
-                verdict.reasoning_quality, verdict.usefulness,
-                verdict.evidence_use, verdict.notes,
+                verdict.reasoning_quality,
+                verdict.usefulness,
+                verdict.evidence_use,
+                verdict.notes,
             )
-        except Exception as exc:  # noqa: BLE001 - a judge failure must not abort the case
+        except (
+            Exception
+        ) as exc:  # noqa: BLE001 - a judge failure must not abort the case
             notes = f"judge error: {exc}"
 
     return CaseResult(
-        case_id=case.id, category=case.category, status="active",
+        case_id=case.id,
+        category=case.category,
+        status="active",
         refused=result.refused,
-        correctness_pass=corr.passed, correctness_reasons=corr.reasons,
-        grounding_pass=grnd.passed, grounding_reasons=grnd.reasons,
-        reasoning_quality=quality, usefulness=usefulness,
+        correctness_pass=corr.passed,
+        correctness_reasons=corr.reasons,
+        grounding_pass=grnd.passed,
+        grounding_reasons=grnd.reasons,
+        reasoning_quality=quality,
+        usefulness=usefulness,
         evidence_use=evidence_use,
         distinct_docs_cited=len(result.citations),
         judge_notes=notes,
-        retrieval_metrics=retrieval_metrics, planner_metrics=planner_metrics,
-        answer_prose=answer_prose, retrieval_quality=retrieval_quality,
+        retrieval_metrics=retrieval_metrics,
+        planner_metrics=planner_metrics,
+        answer_prose=answer_prose,
+        retrieval_quality=retrieval_quality,
     )
 
 
@@ -383,6 +431,6 @@ def _git_commit() -> str | None:
         out = subprocess.run(
             ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True
         )
-    except (FileNotFoundError, subprocess.CalledProcessError):
+    except FileNotFoundError, subprocess.CalledProcessError:
         return None
     return out.stdout.strip() or None

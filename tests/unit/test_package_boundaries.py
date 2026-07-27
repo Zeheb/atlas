@@ -25,6 +25,7 @@ exception to "no research import" in this codebase -- but staleness.py lives
 in atlas.research, not atlas.reasoning, so it is out of this test's scope
 entirely and untouched by it.
 """
+
 from __future__ import annotations
 
 import ast

@@ -5,6 +5,7 @@ ZERO LLM calls -- so the central proof here is a client whose complete()
 raises, confirming it is genuinely never touched, not just "happens not to
 be called by coincidence in this fixture."
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -23,30 +24,48 @@ class _ExplodingLLMClient:
     mode's central guarantee is that this never happens."""
 
     def complete(self, *, system: str, user: str) -> str:
-        raise AssertionError("LLM client.complete() must never be called in retrieval_only mode")
+        raise AssertionError(
+            "LLM client.complete() must never be called in retrieval_only mode"
+        )
 
 
 def _seed(base: Path) -> None:
     profile = CompanyProfile(
         company_id="TCS",
-        financial=FinancialTimeSeries(snapshots=[FinancialSnapshot(
-            period="2026-03-31", period_type="annual", basis="consolidated",
-            facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2}, sources=["ev-1"],
-        )]),
+        financial=FinancialTimeSeries(
+            snapshots=[
+                FinancialSnapshot(
+                    period="2026-03-31",
+                    period_type="annual",
+                    basis="consolidated",
+                    facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2},
+                    sources=["ev-1"],
+                )
+            ]
+        ),
     )
     CompanyStore(base / "TCS" / "profile.json", "TCS").save(profile)
 
 
 def _case() -> EvalCase:
-    return EvalCase(id="t01", category="A", question="How stable are margins?",
-                    subject="TCS", expected_behavior="answer", rubric="synthesize")
+    return EvalCase(
+        id="t01",
+        category="A",
+        question="How stable are margins?",
+        subject="TCS",
+        expected_behavior="answer",
+        rubric="synthesize",
+    )
 
 
 def test_retrieval_only_never_calls_the_llm_client(tmp_path: Path) -> None:
     _seed(tmp_path)
     settings = Settings(_env_file=None, repository_base_path=tmp_path)
     runner = LiveReasoningRunner(
-        settings, _ExplodingLLMClient(), strategy=STRATEGIES["baseline"], retrieval_only=True,
+        settings,
+        _ExplodingLLMClient(),
+        strategy=STRATEGIES["baseline"],
+        retrieval_only=True,
     )
     outcome = runner.run(_case())  # must not raise
     assert outcome.result is None
@@ -60,7 +79,10 @@ def test_retrieval_only_works_with_no_client_at_all(tmp_path: Path) -> None:
     _seed(tmp_path)
     settings = Settings(_env_file=None, repository_base_path=tmp_path)
     runner = LiveReasoningRunner(
-        settings, None, strategy=STRATEGIES["planned"], retrieval_only=True,
+        settings,
+        None,
+        strategy=STRATEGIES["planned"],
+        retrieval_only=True,
     )
     outcome = runner.run(_case())
     assert outcome.result is None
@@ -71,7 +93,10 @@ def test_retrieval_only_still_populates_plan_and_context(tmp_path: Path) -> None
     _seed(tmp_path)
     settings = Settings(_env_file=None, repository_base_path=tmp_path)
     runner = LiveReasoningRunner(
-        settings, None, strategy=STRATEGIES["planned"], retrieval_only=True,
+        settings,
+        None,
+        strategy=STRATEGIES["planned"],
+        retrieval_only=True,
     )
     outcome = runner.run(_case())
     assert outcome.plan is not None
@@ -79,13 +104,20 @@ def test_retrieval_only_still_populates_plan_and_context(tmp_path: Path) -> None
     assert outcome.context.claims  # profile-derived claims still assembled
 
 
-def test_run_suite_handles_retrieval_only_outcomes_without_crashing(tmp_path: Path) -> None:
+def test_run_suite_handles_retrieval_only_outcomes_without_crashing(
+    tmp_path: Path,
+) -> None:
     _seed(tmp_path)
     settings = Settings(_env_file=None, repository_base_path=tmp_path)
     runner = LiveReasoningRunner(
-        settings, None, strategy=STRATEGIES["baseline"], retrieval_only=True,
+        settings,
+        None,
+        strategy=STRATEGIES["baseline"],
+        retrieval_only=True,
     )
-    report = run_suite([_case()], runner, None, {"single_name"}, milestone="M1.8", model="none")
+    report = run_suite(
+        [_case()], runner, None, {"single_name"}, milestone="M1.8", model="none"
+    )
     result = report.results[0]
     assert result.status == "active"
     assert result.correctness_pass is None  # nothing answer-dependent was scored

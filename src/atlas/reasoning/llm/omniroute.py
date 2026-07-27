@@ -5,6 +5,7 @@ Talks to an external OmniRoute HTTP gateway at ``http://localhost:20128``
 This is the one thing in Atlas that knows OmniRoute's request/response shape;
 everything above it (reasoning, eval) depends only on the ``LLMClient`` Protocol.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -47,7 +48,9 @@ class OmniRouteClient:
         self._timeout = timeout
 
     @classmethod
-    def from_settings(cls, settings: "Settings", *, model: str | None = None) -> "OmniRouteClient":
+    def from_settings(
+        cls, settings: "Settings", *, model: str | None = None
+    ) -> "OmniRouteClient":
         """Build from Settings.
 
         Reuses Atlas's shared model identity exactly like ``AnthropicClient``:
@@ -96,5 +99,9 @@ class OmniRouteClient:
         # Parse text blocks, mirroring AnthropicClient. Follow the sibling
         # adapters' "empty rather than None" contract: a well-formed reply always
         # carries "content", but guard its absence so complete() always returns str.
-        parts = [block["text"] for block in data.get("content", []) if block["type"] == "text"]
+        parts = [
+            block["text"]
+            for block in data.get("content", [])
+            if block["type"] == "text"
+        ]
         return "".join(parts)

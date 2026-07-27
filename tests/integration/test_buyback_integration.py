@@ -9,6 +9,7 @@ Validates all five buyback documents in the TCS repository:
   4d4a5575  2023 Post Buyback Public Announcement — terms + record date
   8b2b0027  2023 Extinguishment notice — shares bought back
 """
+
 from __future__ import annotations
 
 from collections.abc import Generator
@@ -27,11 +28,11 @@ pytestmark = pytest.mark.integration
 _PROJECT_ROOT = Path(__file__).parents[2]
 _TCS_REPO = _PROJECT_ROOT / "repositories" / "TCS"
 
-_ID_2020_PA       = "bse-news-853000ae-953d-4891-a58d-074e435e0de5"
+_ID_2020_PA = "bse-news-853000ae-953d-4891-a58d-074e435e0de5"
 _ID_2020_SCHEDULE = "bse-news-b1dc2c18-b69e-41c1-8e44-0614630cea37"
-_ID_2023_PA       = "bse-news-6233389e-6f1b-4545-a03b-d3fca0b40cfb"
-_ID_2023_POST_PA  = "bse-news-4d4a5575-3bbf-40c5-9e32-613f51c84105"
-_ID_2023_EXT      = "bse-news-8b2b0027-67c5-4eb6-8012-153d22b30750"
+_ID_2023_PA = "bse-news-6233389e-6f1b-4545-a03b-d3fca0b40cfb"
+_ID_2023_POST_PA = "bse-news-4d4a5575-3bbf-40c5-9e32-613f51c84105"
+_ID_2023_EXT = "bse-news-8b2b0027-67c5-4eb6-8012-153d22b30750"
 
 _ALL_IDS = [_ID_2020_PA, _ID_2020_SCHEDULE, _ID_2023_PA, _ID_2023_POST_PA, _ID_2023_EXT]
 
@@ -67,6 +68,7 @@ def _skip_if_not_parsed(kb: KnowledgeBase, eid: str) -> None:
 # ---------------------------------------------------------------------------
 # 2020 Public Announcement — opaque (terms in enclosed newspaper, not cover)
 # ---------------------------------------------------------------------------
+
 
 class Test2020PA:
     @pytest.fixture(scope="class")
@@ -104,6 +106,7 @@ class Test2020PA:
 # 2020 Schedule of Activities — record date update
 # ---------------------------------------------------------------------------
 
+
 class Test2020Schedule:
     @pytest.fixture(scope="class")
     def result(self, kb: KnowledgeBase) -> AnalysisResult:
@@ -134,6 +137,7 @@ class Test2020Schedule:
 # ---------------------------------------------------------------------------
 # 2023 Public Announcement — terms in cover letter
 # ---------------------------------------------------------------------------
+
 
 class Test2023PA:
     @pytest.fixture(scope="class")
@@ -187,6 +191,7 @@ class Test2023PA:
 # 2023 Post Buyback Public Announcement
 # ---------------------------------------------------------------------------
 
+
 class Test2023PostPA:
     @pytest.fixture(scope="class")
     def result(self, kb: KnowledgeBase) -> AnalysisResult:
@@ -222,6 +227,7 @@ class Test2023PostPA:
 # ---------------------------------------------------------------------------
 # 2023 Extinguishment / completion notice
 # ---------------------------------------------------------------------------
+
 
 class Test2023Extinguishment:
     @pytest.fixture(scope="class")

@@ -4,6 +4,7 @@ Covers: every registered metric resolves to a real FactKind or derive_fn,
 get_metric()/metrics_by_domain() behave correctly, domain_snapshots()/
 snapshot_value()/format_value() read profiles correctly for each domain.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -26,7 +27,9 @@ class TestRegistryIntegrity:
         for spec in metrics.METRICS.values():
             has_kind = spec.fact_kind is not None
             has_fn = spec.derive_fn is not None
-            assert has_kind != has_fn, f"{spec.key} must set exactly one of fact_kind/derive_fn"
+            assert (
+                has_kind != has_fn
+            ), f"{spec.key} must set exactly one of fact_kind/derive_fn"
 
     def test_every_fact_kind_metric_resolves(self) -> None:
         for spec in metrics.METRICS.values():
@@ -110,15 +113,27 @@ class TestMetricsByDomain:
 class TestDomainSnapshots:
     def _profile(self) -> CompanyProfile:
         p = CompanyProfile(company_id="TEST")
-        p.financial = FinancialTimeSeries(snapshots=[
-            FinancialSnapshot(period="2026-03-31", period_type="annual", basis="consolidated", facts={}, sources=[]),
-        ])
-        p.esg = ESGTimeSeries(snapshots=[
-            ESGSnapshot(period="2026-03-31", facts={}, sources=[]),
-        ])
-        p.ownership = OwnershipTimeSeries(snapshots=[
-            OwnershipSnapshot(period="2026-03-31", facts={}, sources=[]),
-        ])
+        p.financial = FinancialTimeSeries(
+            snapshots=[
+                FinancialSnapshot(
+                    period="2026-03-31",
+                    period_type="annual",
+                    basis="consolidated",
+                    facts={},
+                    sources=[],
+                ),
+            ]
+        )
+        p.esg = ESGTimeSeries(
+            snapshots=[
+                ESGSnapshot(period="2026-03-31", facts={}, sources=[]),
+            ]
+        )
+        p.ownership = OwnershipTimeSeries(
+            snapshots=[
+                OwnershipSnapshot(period="2026-03-31", facts={}, sources=[]),
+            ]
+        )
         return p
 
     def test_financial_domain(self) -> None:
@@ -142,28 +157,48 @@ class TestSnapshotValue:
     def test_fact_kind_metric_reads_facts_dict(self) -> None:
         spec = metrics.get_metric("gross_npa_ratio")
         snap = FinancialSnapshot(
-            period="2026-03-31", period_type="quarterly", basis="consolidated",
-            facts={FactKind.FINANCIAL_GROSS_NPA_RATIO: 1.73}, sources=[],
+            period="2026-03-31",
+            period_type="quarterly",
+            basis="consolidated",
+            facts={FactKind.FINANCIAL_GROSS_NPA_RATIO: 1.73},
+            sources=[],
         )
         assert metrics.snapshot_value(spec, snap) == 1.73
 
     def test_fact_kind_metric_missing_returns_none(self) -> None:
         spec = metrics.get_metric("gross_npa_ratio")
-        snap = FinancialSnapshot(period="2026-03-31", period_type="quarterly", basis="consolidated", facts={}, sources=[])
+        snap = FinancialSnapshot(
+            period="2026-03-31",
+            period_type="quarterly",
+            basis="consolidated",
+            facts={},
+            sources=[],
+        )
         assert metrics.snapshot_value(spec, snap) is None
 
     def test_derived_metric_computes_from_snapshot(self) -> None:
         spec = metrics.get_metric("net_debt")
         snap = FinancialSnapshot(
-            period="2026-03-31", period_type="annual", basis="consolidated",
-            facts={FactKind.FINANCIAL_TOTAL_DEBT: 1000.0, FactKind.FINANCIAL_CASH_AND_EQUIVALENTS: 300.0},
+            period="2026-03-31",
+            period_type="annual",
+            basis="consolidated",
+            facts={
+                FactKind.FINANCIAL_TOTAL_DEBT: 1000.0,
+                FactKind.FINANCIAL_CASH_AND_EQUIVALENTS: 300.0,
+            },
             sources=[],
         )
         assert metrics.snapshot_value(spec, snap) == 700.0
 
     def test_derived_metric_missing_inputs_returns_none(self) -> None:
         spec = metrics.get_metric("net_debt")
-        snap = FinancialSnapshot(period="2026-03-31", period_type="annual", basis="consolidated", facts={}, sources=[])
+        snap = FinancialSnapshot(
+            period="2026-03-31",
+            period_type="annual",
+            basis="consolidated",
+            facts={},
+            sources=[],
+        )
         assert metrics.snapshot_value(spec, snap) is None
 
 

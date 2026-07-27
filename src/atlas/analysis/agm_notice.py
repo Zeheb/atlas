@@ -28,6 +28,7 @@ Vote percentage extraction:
   Both formats are tried in order; the first whose pair sums to ~100 is used.
   If neither yields a valid pair, a warning is added and vote % is skipped.
 """
+
 from __future__ import annotations
 
 import re
@@ -46,9 +47,18 @@ from atlas.knowledge.base import KnowledgeBase
 ANALYZER_VERSION = "1.0"
 
 _MONTH_MAP = {
-    "january": "01", "february": "02", "march": "03", "april": "04",
-    "may": "05", "june": "06", "july": "07", "august": "08",
-    "september": "09", "october": "10", "november": "11", "december": "12",
+    "january": "01",
+    "february": "02",
+    "march": "03",
+    "april": "04",
+    "may": "05",
+    "june": "06",
+    "july": "07",
+    "august": "08",
+    "september": "09",
+    "october": "10",
+    "november": "11",
+    "december": "12",
 }
 
 # ---------------------------------------------------------------------------
@@ -122,6 +132,7 @@ _HEADER_STRIP = re.compile(
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _parse_date(date_str: str) -> str | None:
     """'June 19, 2025' → '2025-06-19'; returns None on failure."""
     date_str = re.sub(r",", "", date_str.strip())
@@ -135,7 +146,7 @@ def _parse_date(date_str: str) -> str | None:
         day = int(parts[1])
         year = int(parts[2])
         return f"{year}-{_MONTH_MAP[month_key]}-{day:02d}"
-    except (ValueError, IndexError):
+    except ValueError, IndexError:
         return None
 
 
@@ -187,9 +198,12 @@ def _clean_description(raw: str) -> str:
 # Sub-type detection
 # ---------------------------------------------------------------------------
 
+
 def _detect_subtype(content: str) -> str:
     """'voting_results' if post-AGM outcome filing; else 'notice'."""
-    if _RE_VOTING_RESULTS_SECTION.search(content) or _RE_ALL_PASSED.search(content[:8000]):
+    if _RE_VOTING_RESULTS_SECTION.search(content) or _RE_ALL_PASSED.search(
+        content[:8000]
+    ):
         return "voting_results"
     return "notice"
 
@@ -197,6 +211,7 @@ def _detect_subtype(content: str) -> str:
 # ---------------------------------------------------------------------------
 # Resolution summary extraction
 # ---------------------------------------------------------------------------
+
 
 def _extract_format_a(content: str) -> list[tuple[int, str, str, str]]:
     """Format A (2024/2025): numbered entries in 'VOTING RESULTS OF THE MEETING' section.
@@ -210,7 +225,7 @@ def _extract_format_a(content: str) -> list[tuple[int, str, str, str]]:
     # Section ends at the first "Resolution (1)" detailed block
     detail_m = _RE_RES_BLOCK.search(content, m.end())
     end = detail_m.start() if detail_m else len(content)
-    section_text = content[m.end():end]
+    section_text = content[m.end() : end]
 
     # Split on numbered resolution markers "N.\n" or "N.  \n"
     parts = re.split(r"\n(\d{1,2})\.\s+\n", section_text)
@@ -233,7 +248,7 @@ def _extract_format_a(content: str) -> list[tuple[int, str, str, str]]:
             continue
 
         res_type = type_m.group(1).lower()
-        remaining = entry_text[type_m.end():]
+        remaining = entry_text[type_m.end() :]
         outcome = "passed" if _RE_PASSED.search(remaining) else "not_passed"
         results.append((res_num, description, res_type, outcome))
 
@@ -251,12 +266,12 @@ def _extract_format_b(content: str) -> list[tuple[int, str, str, str]]:
         return []
 
     # Section ends at next blank-line block or "Members who attended"
-    section_end_m = re.search(r"\nMembers\s+who\s+attended", content[m.end():], re.I)
+    section_end_m = re.search(r"\nMembers\s+who\s+attended", content[m.end() :], re.I)
     end = m.end() + section_end_m.start() if section_end_m else m.end() + 3000
-    section_text = content[m.end():end]
+    section_text = content[m.end() : end]
 
     # Global outcome from proceedings paragraph
-    global_passed = bool(_RE_ALL_PASSED.search(content[m.end(): m.end() + 5000]))
+    global_passed = bool(_RE_ALL_PASSED.search(content[m.end() : m.end() + 5000]))
 
     # Match numbered entries: single digit or double digit NOT followed by period
     # pattern: "\n1\nTo receive..." — number on its own line before description
@@ -283,6 +298,7 @@ def _extract_format_b(content: str) -> list[tuple[int, str, str, str]]:
 # Vote percentage extraction from Resolution (N) detailed blocks
 # ---------------------------------------------------------------------------
 
+
 def _extract_vote_pcts(block_text: str) -> tuple[float | None, float | None]:
     """Return (pct_for, pct_against) grand totals from one resolution's detail block.
 
@@ -304,7 +320,7 @@ def _extract_vote_pcts(block_text: str) -> tuple[float | None, float | None]:
     if not whether_m:
         return None, None
 
-    tail = block_text[whether_m.end():]
+    tail = block_text[whether_m.end() :]
     yes_m = _RE_YES.search(tail)
 
     # ---- Layouts A / A-robust (column-split format, tail contains col 6+7) ----
@@ -318,7 +334,9 @@ def _extract_vote_pcts(block_text: str) -> tuple[float | None, float | None]:
             # Layout A: clean col (7) header separates col 6 from col 7
             col7_m = _RE_COL7_HEADER.search(before_yes)
             if col7_m:
-                before_col7_pcts = [float(p) for p in _RE_PCT4.findall(before_yes[: col7_m.start()])]
+                before_col7_pcts = [
+                    float(p) for p in _RE_PCT4.findall(before_yes[: col7_m.start()])
+                ]
                 if before_col7_pcts:
                     pct_for = before_col7_pcts[-1]
                     if abs(pct_for + pct_against - 100.0) < 0.05:
@@ -338,7 +356,7 @@ def _extract_vote_pcts(block_text: str) -> tuple[float | None, float | None]:
     before_whether = block_text[: whether_m.start()]
     pcts_bw = [float(p) for p in _RE_PCT4.findall(before_whether)]
     if len(pcts_bw) >= 2:
-        pct_for     = pcts_bw[-2]
+        pct_for = pcts_bw[-2]
         pct_against = pcts_bw[-1]
         if abs(pct_for + pct_against - 100.0) < 0.05:
             return pct_for, pct_against
@@ -349,6 +367,7 @@ def _extract_vote_pcts(block_text: str) -> tuple[float | None, float | None]:
 # ---------------------------------------------------------------------------
 # Main extraction
 # ---------------------------------------------------------------------------
+
 
 def _extract_voting_results(
     content: str,
@@ -367,11 +386,15 @@ def _extract_voting_results(
     }
 
     # 2. Find all Resolution (N) detailed blocks for vote percentages
-    block_starts = [(int(m.group(1)), m.start()) for m in _RE_RES_BLOCK.finditer(content)]
+    block_starts = [
+        (int(m.group(1)), m.start()) for m in _RE_RES_BLOCK.finditer(content)
+    ]
     vote_pcts: dict[int, tuple[float, float]] = {}
 
     for idx, (res_num, block_start) in enumerate(block_starts):
-        next_start = block_starts[idx + 1][1] if idx + 1 < len(block_starts) else len(content)
+        next_start = (
+            block_starts[idx + 1][1] if idx + 1 < len(block_starts) else len(content)
+        )
         block_text = content[block_start:next_start]
         pct_for, pct_against = _extract_vote_pcts(block_text)
         if pct_for is not None and pct_against is not None:
@@ -387,34 +410,69 @@ def _extract_voting_results(
             desc, res_type, outcome = summary_map[res_num]
             offset = content.find(desc[:30]) if desc else 0
 
-            result.facts.append(_pf(
-                FactKind.GOVERNANCE_RESOLUTION_TITLE, desc, None,
-                agm_date, section, offset, desc[:80],
-            ))
-            result.facts.append(_pf(
-                FactKind.GOVERNANCE_RESOLUTION_TYPE, res_type, None,
-                agm_date, section, offset, res_type,
-            ))
-            result.facts.append(_pf(
-                FactKind.GOVERNANCE_RESOLUTION_OUTCOME, outcome, None,
-                agm_date, section, offset, outcome,
-            ))
+            result.facts.append(
+                _pf(
+                    FactKind.GOVERNANCE_RESOLUTION_TITLE,
+                    desc,
+                    None,
+                    agm_date,
+                    section,
+                    offset,
+                    desc[:80],
+                )
+            )
+            result.facts.append(
+                _pf(
+                    FactKind.GOVERNANCE_RESOLUTION_TYPE,
+                    res_type,
+                    None,
+                    agm_date,
+                    section,
+                    offset,
+                    res_type,
+                )
+            )
+            result.facts.append(
+                _pf(
+                    FactKind.GOVERNANCE_RESOLUTION_OUTCOME,
+                    outcome,
+                    None,
+                    agm_date,
+                    section,
+                    offset,
+                    outcome,
+                )
+            )
 
         if res_num in vote_pcts:
             pct_for, pct_against = vote_pcts[res_num]
             block_starts_dict = dict(block_starts)
             vote_offset = block_starts_dict.get(res_num, 0)
 
-            result.facts.append(_pf(
-                FactKind.GOVERNANCE_VOTE_PCT_FOR, round(pct_for, 4), FactUnit.PERCENT,
-                agm_date, section, vote_offset, f"{pct_for:.4f}%",
-                confidence="medium",
-            ))
-            result.facts.append(_pf(
-                FactKind.GOVERNANCE_VOTE_PCT_AGAINST, round(pct_against, 4), FactUnit.PERCENT,
-                agm_date, section, vote_offset, f"{pct_against:.4f}%",
-                confidence="medium",
-            ))
+            result.facts.append(
+                _pf(
+                    FactKind.GOVERNANCE_VOTE_PCT_FOR,
+                    round(pct_for, 4),
+                    FactUnit.PERCENT,
+                    agm_date,
+                    section,
+                    vote_offset,
+                    f"{pct_for:.4f}%",
+                    confidence="medium",
+                )
+            )
+            result.facts.append(
+                _pf(
+                    FactKind.GOVERNANCE_VOTE_PCT_AGAINST,
+                    round(pct_against, 4),
+                    FactUnit.PERCENT,
+                    agm_date,
+                    section,
+                    vote_offset,
+                    f"{pct_against:.4f}%",
+                    confidence="medium",
+                )
+            )
 
     # 4. Warn if vote percentage extraction yielded nothing
     if block_starts and not vote_pcts:
@@ -427,6 +485,7 @@ def _extract_voting_results(
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
+
 
 def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     """Analyze one agm_notice evidence document.

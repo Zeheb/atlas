@@ -7,6 +7,7 @@ inspect the actual prompt sent to the model — proof the flag reaches
 build_context and the question-conditioned passage reaches the prompt, not
 just that the CLI doesn't crash.
 """
+
 from __future__ import annotations
 
 import json
@@ -34,23 +35,37 @@ _CONTENT = (
 )
 _QUESTION = "What favourable pricing mix and bookings did the company report?"
 
-_RESPONSE = json.dumps({
-    "refused": False, "overall_confidence": "high",
-    "findings": [{
-        "statement": "Operating margin has held near 24%.",
-        "assertability": "judgment", "confidence": "high",
-        "supporting_evidence_ids": ["ev-1"], "known_unknowns": [],
-    }],
-})
+_RESPONSE = json.dumps(
+    {
+        "refused": False,
+        "overall_confidence": "high",
+        "findings": [
+            {
+                "statement": "Operating margin has held near 24%.",
+                "assertability": "judgment",
+                "confidence": "high",
+                "supporting_evidence_ids": ["ev-1"],
+                "known_unknowns": [],
+            }
+        ],
+    }
+)
 
 
 def _seed(base: Path, ticker: str = "TCS") -> None:
     profile = CompanyProfile(
         company_id=ticker,
-        financial=FinancialTimeSeries(snapshots=[FinancialSnapshot(
-            period="2026-03-31", period_type="annual", basis="consolidated",
-            facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2}, sources=["ev-1"],
-        )]),
+        financial=FinancialTimeSeries(
+            snapshots=[
+                FinancialSnapshot(
+                    period="2026-03-31",
+                    period_type="annual",
+                    basis="consolidated",
+                    facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2},
+                    sources=["ev-1"],
+                )
+            ]
+        ),
     )
     repo_root = base / ticker
     CompanyStore(repo_root / "profile.json", ticker).save(profile)
@@ -58,15 +73,22 @@ def _seed(base: Path, ticker: str = "TCS") -> None:
     rel = "ev-1.txt"
     (repo_root / rel).write_text(_CONTENT, encoding="utf-8")
     entry = CatalogEntry(
-        evidence_id="ev-1", source=EvidenceSource.BSE.value,
-        kind=EvidenceKind.FINANCIAL_RESULTS.value, title="Test filing",
-        source_date="2026-03-31T00:00:00+00:00", document_url=None,
-        local_path=rel, file_size_bytes=None, acquired_at="2026-04-01T00:00:00+00:00",
+        evidence_id="ev-1",
+        source=EvidenceSource.BSE.value,
+        kind=EvidenceKind.FINANCIAL_RESULTS.value,
+        title="Test filing",
+        source_date="2026-03-31T00:00:00+00:00",
+        document_url=None,
+        local_path=rel,
+        file_size_bytes=None,
+        acquired_at="2026-04-01T00:00:00+00:00",
     )
     KnowledgeBase(repo_root).parse(entry)
 
 
-def _run_and_capture_fake(monkeypatch, tmp_path: Path, args: list[str]) -> tuple[object, FakeLLMClient]:
+def _run_and_capture_fake(
+    monkeypatch, tmp_path: Path, args: list[str]
+) -> tuple[object, FakeLLMClient]:
     monkeypatch.setenv("ATLAS_REPOSITORY_BASE_PATH", str(tmp_path))
     monkeypatch.setenv("ATLAS_ANTHROPIC_API_KEY", "sk-test")
     fake = FakeLLMClient(response=_RESPONSE)
@@ -79,9 +101,13 @@ def _run_and_capture_fake(monkeypatch, tmp_path: Path, args: list[str]) -> tuple
     return result, fake
 
 
-def test_question_retrieval_flag_merges_passage_into_prompt(monkeypatch, tmp_path: Path) -> None:
+def test_question_retrieval_flag_merges_passage_into_prompt(
+    monkeypatch, tmp_path: Path
+) -> None:
     result, fake = _run_and_capture_fake(
-        monkeypatch, tmp_path, ["ask", "TCS", _QUESTION, "--question-retrieval"],
+        monkeypatch,
+        tmp_path,
+        ["ask", "TCS", _QUESTION, "--question-retrieval"],
     )
     assert result.exit_code == 0, result.output
     _system, user_prompt = fake.calls[0]
@@ -90,7 +116,9 @@ def test_question_retrieval_flag_merges_passage_into_prompt(monkeypatch, tmp_pat
 
 
 def test_without_flag_no_source_passage_in_prompt(monkeypatch, tmp_path: Path) -> None:
-    result, fake = _run_and_capture_fake(monkeypatch, tmp_path, ["ask", "TCS", _QUESTION])
+    result, fake = _run_and_capture_fake(
+        monkeypatch, tmp_path, ["ask", "TCS", _QUESTION]
+    )
     assert result.exit_code == 0, result.output
     _system, user_prompt = fake.calls[0]
     assert "Source passage:" not in user_prompt
@@ -98,7 +126,8 @@ def test_without_flag_no_source_passage_in_prompt(monkeypatch, tmp_path: Path) -
 
 def test_flag_combines_with_show_evidence(monkeypatch, tmp_path: Path) -> None:
     result, _fake = _run_and_capture_fake(
-        monkeypatch, tmp_path,
+        monkeypatch,
+        tmp_path,
         ["ask", "TCS", _QUESTION, "--question-retrieval", "--show-evidence"],
     )
     assert result.exit_code == 0, result.output

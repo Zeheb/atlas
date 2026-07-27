@@ -5,6 +5,7 @@ testing, mirroring the design's own explicit unvalidated thresholds. The
 central invariant across the whole file: recommend() always returns a value
 and NEVER raises -- there is no command this can cause to exit non-zero.
 """
+
 from __future__ import annotations
 
 from atlas.eval.recommendation import (
@@ -12,31 +13,55 @@ from atlas.eval.recommendation import (
     _MIN_CHANGED_SELECTION_FRACTION,
     recommend,
 )
-from atlas.eval.report import CaseResult, PlannerCaseMetrics, Report, RetrievalCaseMetrics
+from atlas.eval.report import (
+    CaseResult,
+    PlannerCaseMetrics,
+    Report,
+    RetrievalCaseMetrics,
+)
 
 
 def _report(milestone: str, results: tuple[CaseResult, ...]) -> Report:
     return Report(
-        milestone=milestone, created_at="2026-01-01T00:00:00+00:00", model="fake",
-        capabilities=("single_name",), results=results,
+        milestone=milestone,
+        created_at="2026-01-01T00:00:00+00:00",
+        model="fake",
+        capabilities=("single_name",),
+        results=results,
     )
 
 
 def _retrieval(selected: tuple[tuple[str, int, int], ...]) -> RetrievalCaseMetrics:
     return RetrievalCaseMetrics(
-        candidates_considered=len(selected), docs_searched=3, selected=selected,
-        doc_type_counts=(), metadata_coverage=1.0, boost_totals=(), boost_share=0.1,
+        candidates_considered=len(selected),
+        docs_searched=3,
+        selected=selected,
+        doc_type_counts=(),
+        metadata_coverage=1.0,
+        boost_totals=(),
+        boost_share=0.1,
     )
 
 
-def _healthy_case(case_id: str, selected: tuple[tuple[str, int, int], ...], **overrides: object) -> CaseResult:
+def _healthy_case(
+    case_id: str, selected: tuple[tuple[str, int, int], ...], **overrides: object
+) -> CaseResult:
     defaults: dict[str, object] = dict(
-        case_id=case_id, category="A", status="active",
-        refused=False, correctness_pass=True, grounding_pass=True,
-        reasoning_quality=4, usefulness=4, evidence_use=4,
+        case_id=case_id,
+        category="A",
+        status="active",
+        refused=False,
+        correctness_pass=True,
+        grounding_pass=True,
+        reasoning_quality=4,
+        usefulness=4,
+        evidence_use=4,
         retrieval_metrics=_retrieval(selected),
         planner_metrics=PlannerCaseMetrics(
-            intent="narrative", preferred_kinds=(), top_k=5, periods_found=(),
+            intent="narrative",
+            preferred_kinds=(),
+            top_k=5,
+            periods_found=(),
             rules_fired=("intent_keyword_match",),
         ),
     )
@@ -55,24 +80,35 @@ def _n_cases(n: int, *, changed_fraction: float) -> tuple[Report, Report]:
         cid = f"t{i:02d}"
         baseline_cases.append(_healthy_case(cid, (("ev-1", 0, 100),)))
         if i < n_changed:
-            candidate_cases.append(_healthy_case(cid, (("ev-2", 0, 200),)))  # disjoint set
+            candidate_cases.append(
+                _healthy_case(cid, (("ev-2", 0, 200),))
+            )  # disjoint set
         else:
-            candidate_cases.append(_healthy_case(cid, (("ev-1", 0, 100),)))  # identical set
-    return _report("base", tuple(baseline_cases)), _report("cand", tuple(candidate_cases))
+            candidate_cases.append(
+                _healthy_case(cid, (("ev-1", 0, 100),))
+            )  # identical set
+    return _report("base", tuple(baseline_cases)), _report(
+        "cand", tuple(candidate_cases)
+    )
 
 
 # --- INSUFFICIENT_DATA -----------------------------------------------------------
 def test_insufficient_data_below_minimum_active_cases_with_answers() -> None:
-    baseline, candidate = _n_cases(_MIN_ACTIVE_CASES_WITH_ANSWERS - 1, changed_fraction=1.0)
+    baseline, candidate = _n_cases(
+        _MIN_ACTIVE_CASES_WITH_ANSWERS - 1, changed_fraction=1.0
+    )
     rec = recommend(baseline, candidate)
     assert rec.verdict == "INSUFFICIENT_DATA"
-    assert rec.criteria["active_cases_with_answers"] == _MIN_ACTIVE_CASES_WITH_ANSWERS - 1
+    assert (
+        rec.criteria["active_cases_with_answers"] == _MIN_ACTIVE_CASES_WITH_ANSWERS - 1
+    )
 
 
 def test_insufficient_data_for_retrieval_only_report() -> None:
     # --retrieval-only mode: correctness_pass is always None (no LLM call).
     cases = tuple(
-        CaseResult(case_id=f"t{i:02d}", category="A", status="active") for i in range(30)
+        CaseResult(case_id=f"t{i:02d}", category="A", status="active")
+        for i in range(30)
     )
     baseline, candidate = _report("base", cases), _report("cand", cases)
     rec = recommend(baseline, candidate)
@@ -101,7 +137,13 @@ def test_not_ready_on_grounding_regression() -> None:
 
 def test_not_ready_on_negative_correctness_delta() -> None:
     baseline, candidate = _n_cases(_MIN_ACTIVE_CASES_WITH_ANSWERS, changed_fraction=1.0)
-    worsened = CaseResult(**{**candidate.results[0].__dict__, "correctness_pass": False, "grounding_pass": True})
+    worsened = CaseResult(
+        **{
+            **candidate.results[0].__dict__,
+            "correctness_pass": False,
+            "grounding_pass": True,
+        }
+    )
     candidate = _report("cand", (worsened,) + candidate.results[1:])
     rec = recommend(baseline, candidate)
     assert rec.verdict == "NOT_READY"
@@ -131,7 +173,8 @@ def test_not_ready_when_no_measurable_effect() -> None:
 
 def test_not_ready_right_at_the_changed_fraction_boundary() -> None:
     baseline, candidate = _n_cases(
-        _MIN_ACTIVE_CASES_WITH_ANSWERS, changed_fraction=_MIN_CHANGED_SELECTION_FRACTION,
+        _MIN_ACTIVE_CASES_WITH_ANSWERS,
+        changed_fraction=_MIN_CHANGED_SELECTION_FRACTION,
     )
     rec = recommend(baseline, candidate)
     assert rec.verdict == "SAFE_TO_ENABLE"  # >= threshold passes, not just >

@@ -6,6 +6,7 @@ re-implemented. If a future refactor ever bypassed ask(), that test fails --
 which is the point of building synthesis as a reasoning pass in the first
 place.
 """
+
 from __future__ import annotations
 
 import json
@@ -39,23 +40,30 @@ def _investigation(dimension: str = "business_quality") -> Investigation:
     )
 
 
-def _semantic(statement: str, eid: str, confidence: str = "high",
-              assertability: str = "judgment"):
+def _semantic(
+    statement: str, eid: str, confidence: str = "high", assertability: str = "judgment"
+):
     from atlas.reasoning.contracts import Finding as SemanticFinding
 
     return SemanticFinding(
         statement=statement,
         assertability=assertability,  # type: ignore[arg-type]
         confidence=confidence,  # type: ignore[arg-type]
-        supporting_claims=(Claim(
-            subject_ref=SUBJECT, statement=statement,
-            assertability="fact", confidence=confidence,  # type: ignore[arg-type]
-            evidence=[EvidenceReference(evidence_id=eid)],
-        ),),
+        supporting_claims=(
+            Claim(
+                subject_ref=SUBJECT,
+                statement=statement,
+                assertability="fact",
+                confidence=confidence,  # type: ignore[arg-type]
+                evidence=[EvidenceReference(evidence_id=eid)],
+            ),
+        ),
     )
 
 
-def _resolved(dimension: str, eid: str = "ev-1", confidence: str = "high") -> InvestigationResult:
+def _resolved(
+    dimension: str, eid: str = "ev-1", confidence: str = "high"
+) -> InvestigationResult:
     return InvestigationResult(
         investigation=_investigation(dimension),
         finding=Finding(text=f"{dimension} looks fine.", evidence_ids=[eid]),
@@ -75,7 +83,9 @@ def _plan(*dimensions: str) -> ResearchPlan:
         raw_question="Should I invest in TCS?",
         intent="invest_decision",
         subjects=("TCS",),
-        investigations=tuple(_investigation(d) for d in (dimensions or ("business_quality",))),
+        investigations=tuple(
+            _investigation(d) for d in (dimensions or ("business_quality",))
+        ),
     )
 
 
@@ -98,19 +108,29 @@ class _Fake:
     def complete(self, *, system: str, user: str) -> str:
         self.user_prompt = user
         if self._refused:
-            return json.dumps({
-                "refused": True, "overall_confidence": "low",
-                "refusal_reason": "the findings do not support a view", "findings": [],
-            })
-        return json.dumps({
-            "refused": False, "overall_confidence": "medium",
-            "findings": [{
-                "statement": "The business looks durable but fairly priced.",
-                "assertability": "judgment", "confidence": "medium",
-                "supporting_evidence_ids": self._cite,
-                "known_unknowns": ["no segment detail"],
-            }],
-        })
+            return json.dumps(
+                {
+                    "refused": True,
+                    "overall_confidence": "low",
+                    "refusal_reason": "the findings do not support a view",
+                    "findings": [],
+                }
+            )
+        return json.dumps(
+            {
+                "refused": False,
+                "overall_confidence": "medium",
+                "findings": [
+                    {
+                        "statement": "The business looks durable but fairly priced.",
+                        "assertability": "judgment",
+                        "confidence": "medium",
+                        "supporting_evidence_ids": self._cite,
+                        "known_unknowns": ["no segment detail"],
+                    }
+                ],
+            }
+        )
 
 
 # --- THE load-bearing test: closed world is inherited, not rebuilt ---------------------
@@ -134,7 +154,9 @@ def test_thesis_citations_are_a_subset_of_the_runs_evidence() -> None:
     assert thesis.citations <= run_evidence
 
 
-def test_synthesis_citing_only_invalid_ids_raises_rather_than_producing_a_thesis() -> None:
+def test_synthesis_citing_only_invalid_ids_raises_rather_than_producing_a_thesis() -> (
+    None
+):
     """Nothing grounded survives -> ask() refuses -> not a degraded thesis,
     no thesis at all."""
     run = _run(_resolved("business_quality", "ev-1"))
@@ -216,8 +238,12 @@ def test_thesis_rejects_a_refused_result() -> None:
     from atlas.reasoning.contracts import ReasoningResult
 
     refused = ReasoningResult(
-        question=good.result.question, findings=(), overall_confidence="low",
-        citations=frozenset(), refused=True, refusal_reason="nope",
+        question=good.result.question,
+        findings=(),
+        overall_confidence="low",
+        citations=frozenset(),
+        refused=True,
+        refusal_reason="nope",
     )
     with pytest.raises(ValueError, match="refused ReasoningResult"):
         _thesis(result=refused)
@@ -225,10 +251,12 @@ def test_thesis_rejects_a_refused_result() -> None:
 
 def test_thesis_rejects_duplicate_dispositions() -> None:
     with pytest.raises(ValueError, match="duplicate disposition"):
-        _thesis(dispositions=(
-            Disposition(dimension="risks", materiality="incorporated"),
-            Disposition(dimension="risks", materiality="incorporated"),
-        ))
+        _thesis(
+            dispositions=(
+                Disposition(dimension="risks", materiality="incorporated"),
+                Disposition(dimension="risks", materiality="incorporated"),
+            )
+        )
 
 
 def test_thesis_rejects_a_dimension_both_disposed_and_unresolved() -> None:
@@ -283,7 +311,13 @@ def test_thesis_exposes_no_rating_or_price_target() -> None:
     import dataclasses
 
     fields = {f.name for f in dataclasses.fields(Thesis)}
-    for banned in ("stance", "rating", "recommendation", "target_price", "position_size"):
+    for banned in (
+        "stance",
+        "rating",
+        "recommendation",
+        "target_price",
+        "position_size",
+    ):
         assert banned not in fields
 
 

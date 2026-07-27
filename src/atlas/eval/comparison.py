@@ -10,6 +10,7 @@ runs reasoning, retrieval, or an LLM -- it only reads two reports' already-
 computed fields. A third/fourth retrieval strategy needs no new comparison
 machinery: every function here already generalizes to any two reports.
 """
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -26,10 +27,15 @@ def _selected_keys(cr: CaseResult) -> tuple[tuple[str, int], ...]:
     """
     if cr.retrieval_metrics is None:
         return ()
-    return tuple((doc_id, char_offset) for doc_id, char_offset, _score in cr.retrieval_metrics.selected)
+    return tuple(
+        (doc_id, char_offset)
+        for doc_id, char_offset, _score in cr.retrieval_metrics.selected
+    )
 
 
-def _ranking_change_for_case(base: CaseResult, cand: CaseResult) -> dict[str, Any] | None:
+def _ranking_change_for_case(
+    base: CaseResult, cand: CaseResult
+) -> dict[str, Any] | None:
     """One case's ranking-change diagnostics, or None when either side has
     no retrieval metrics to compare (e.g. an inactive/pending case).
     """
@@ -47,7 +53,9 @@ def _ranking_change_for_case(base: CaseResult, cand: CaseResult) -> dict[str, An
     cand_rank = {key: i for i, key in enumerate(cand_selected)}
     common = base_set & cand_set
     displacements = [abs(base_rank[k] - cand_rank[k]) for k in common]
-    mean_displacement = round(sum(displacements) / len(displacements), 3) if displacements else None
+    mean_displacement = (
+        round(sum(displacements) / len(displacements), 3) if displacements else None
+    )
 
     return {
         "case_id": base.case_id,
@@ -55,7 +63,8 @@ def _ranking_change_for_case(base: CaseResult, cand: CaseResult) -> dict[str, An
         "mean_rank_displacement": mean_displacement,
         "churned_in": sorted(cand_set - base_set),
         "churned_out": sorted(base_set - cand_set),
-        "top1_changed": (base_selected[0] if base_selected else None) != (cand_selected[0] if cand_selected else None),
+        "top1_changed": (base_selected[0] if base_selected else None)
+        != (cand_selected[0] if cand_selected else None),
     }
 
 
@@ -73,8 +82,11 @@ def ranking_change(baseline: Report, candidate: Report) -> dict[str, Any]:
 
     if not per_case:
         return {
-            "cases_compared": 0, "mean_jaccard_overlap": None,
-            "cases_with_changed_top1": 0, "fraction_changed_top1": None, "per_case": (),
+            "cases_compared": 0,
+            "mean_jaccard_overlap": None,
+            "cases_with_changed_top1": 0,
+            "fraction_changed_top1": None,
+            "per_case": (),
         }
     jaccards = [c["jaccard_overlap"] for c in per_case]
     changed_top1 = sum(1 for c in per_case if c["top1_changed"])
@@ -87,11 +99,17 @@ def ranking_change(baseline: Report, candidate: Report) -> dict[str, Any]:
     }
 
 
-def _delta(base: dict[str, Any] | None, cand: dict[str, Any] | None, key: str) -> float | None:
+def _delta(
+    base: dict[str, Any] | None, cand: dict[str, Any] | None, key: str
+) -> float | None:
     if base is None or cand is None:
         return None
     b, c = base.get(key), cand.get(key)
-    return round(c - b, 3) if isinstance(b, (int, float)) and isinstance(c, (int, float)) else None
+    return (
+        round(c - b, 3)
+        if isinstance(b, (int, float)) and isinstance(c, (int, float))
+        else None
+    )
 
 
 def retrieval_deltas(baseline: Report, candidate: Report) -> dict[str, Any]:
@@ -103,8 +121,12 @@ def retrieval_deltas(baseline: Report, candidate: Report) -> dict[str, Any]:
     return {
         "baseline": base_agg,
         "candidate": cand_agg,
-        "delta_mean_candidates_considered": _delta(base_agg, cand_agg, "mean_candidates_considered"),
-        "delta_mean_metadata_coverage": _delta(base_agg, cand_agg, "mean_metadata_coverage"),
+        "delta_mean_candidates_considered": _delta(
+            base_agg, cand_agg, "mean_candidates_considered"
+        ),
+        "delta_mean_metadata_coverage": _delta(
+            base_agg, cand_agg, "mean_metadata_coverage"
+        ),
         "delta_mean_boost_share": _delta(base_agg, cand_agg, "mean_boost_share"),
     }
 
@@ -132,7 +154,9 @@ def _mean(values: list[float]) -> float | None:
 
 
 def _bucket_delta(
-    baseline: Report, candidate: Report, key_fn: Callable[[PlannerCaseMetrics], list[str]],
+    baseline: Report,
+    candidate: Report,
+    key_fn: Callable[[PlannerCaseMetrics], list[str]],
 ) -> dict[str, dict[str, Any]]:
     """Group candidate cases by key_fn(candidate.planner_metrics), join each
     to its baseline counterpart by case_id, and report the correctness/
@@ -152,16 +176,36 @@ def _bucket_delta(
 
     out: dict[str, dict[str, Any]] = {}
     for key, pairs in sorted(buckets.items()):
-        base_corr = [1.0 if b.correctness_pass else 0.0 for b, _c in pairs if b.correctness_pass is not None]
-        cand_corr = [1.0 if c.correctness_pass else 0.0 for _b, c in pairs if c.correctness_pass is not None]
-        base_grnd = [1.0 if b.grounding_pass else 0.0 for b, _c in pairs if b.grounding_pass is not None]
-        cand_grnd = [1.0 if c.grounding_pass else 0.0 for _b, c in pairs if c.grounding_pass is not None]
+        base_corr = [
+            1.0 if b.correctness_pass else 0.0
+            for b, _c in pairs
+            if b.correctness_pass is not None
+        ]
+        cand_corr = [
+            1.0 if c.correctness_pass else 0.0
+            for _b, c in pairs
+            if c.correctness_pass is not None
+        ]
+        base_grnd = [
+            1.0 if b.grounding_pass else 0.0
+            for b, _c in pairs
+            if b.grounding_pass is not None
+        ]
+        cand_grnd = [
+            1.0 if c.grounding_pass else 0.0
+            for _b, c in pairs
+            if c.grounding_pass is not None
+        ]
         b_c, c_c = _mean(base_corr), _mean(cand_corr)
         b_g, c_g = _mean(base_grnd), _mean(cand_grnd)
         out[key] = {
             "n_cases": len(pairs),
-            "delta_correctness_pass_rate": round(c_c - b_c, 3) if b_c is not None and c_c is not None else None,
-            "delta_grounding_pass_rate": round(c_g - b_g, 3) if b_g is not None and c_g is not None else None,
+            "delta_correctness_pass_rate": (
+                round(c_c - b_c, 3) if b_c is not None and c_c is not None else None
+            ),
+            "delta_grounding_pass_rate": (
+                round(c_g - b_g, 3) if b_g is not None and c_g is not None else None
+            ),
         }
     return out
 
@@ -205,18 +249,30 @@ def side_by_side(baseline: Report, candidate: Report) -> tuple[CaseSideBySide, .
         base_r = base_by_id.get(cand_r.case_id)
         if base_r is None:
             continue
-        out.append(CaseSideBySide(
-            case_id=cand_r.case_id,
-            baseline_refused=base_r.refused, candidate_refused=cand_r.refused,
-            baseline_correctness_pass=base_r.correctness_pass,
-            candidate_correctness_pass=cand_r.correctness_pass,
-            baseline_grounding_pass=base_r.grounding_pass,
-            candidate_grounding_pass=cand_r.grounding_pass,
-            baseline_answer=base_r.answer_prose, candidate_answer=cand_r.answer_prose,
-            baseline_selected=base_r.retrieval_metrics.selected if base_r.retrieval_metrics else (),
-            candidate_selected=cand_r.retrieval_metrics.selected if cand_r.retrieval_metrics else (),
-            ranking_change=_ranking_change_for_case(base_r, cand_r),
-        ))
+        out.append(
+            CaseSideBySide(
+                case_id=cand_r.case_id,
+                baseline_refused=base_r.refused,
+                candidate_refused=cand_r.refused,
+                baseline_correctness_pass=base_r.correctness_pass,
+                candidate_correctness_pass=cand_r.correctness_pass,
+                baseline_grounding_pass=base_r.grounding_pass,
+                candidate_grounding_pass=cand_r.grounding_pass,
+                baseline_answer=base_r.answer_prose,
+                candidate_answer=cand_r.answer_prose,
+                baseline_selected=(
+                    base_r.retrieval_metrics.selected
+                    if base_r.retrieval_metrics
+                    else ()
+                ),
+                candidate_selected=(
+                    cand_r.retrieval_metrics.selected
+                    if cand_r.retrieval_metrics
+                    else ()
+                ),
+                ranking_change=_ranking_change_for_case(base_r, cand_r),
+            )
+        )
     return tuple(out)
 
 

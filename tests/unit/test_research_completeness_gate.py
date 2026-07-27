@@ -9,6 +9,7 @@ The failure this exists to catch is subtle by design -- a thesis that cites
 correctly, grounds every claim, and is still misleading because it quietly
 omitted the finding that undercut it.
 """
+
 from __future__ import annotations
 
 import json
@@ -37,11 +38,18 @@ def _semantic(statement: str, eid: str):
     from atlas.reasoning.contracts import Finding as SemanticFinding
 
     return SemanticFinding(
-        statement=statement, assertability="judgment", confidence="high",
-        supporting_claims=(Claim(
-            subject_ref=SUBJECT, statement=statement, assertability="fact",
-            confidence="high", evidence=[EvidenceReference(evidence_id=eid)],
-        ),),
+        statement=statement,
+        assertability="judgment",
+        confidence="high",
+        supporting_claims=(
+            Claim(
+                subject_ref=SUBJECT,
+                statement=statement,
+                assertability="fact",
+                confidence="high",
+                evidence=[EvidenceReference(evidence_id=eid)],
+            ),
+        ),
     )
 
 
@@ -78,14 +86,21 @@ class _Fake:
         self._cite = cite if cite is not None else ["ev-1"]
 
     def complete(self, *, system: str, user: str) -> str:
-        return json.dumps({
-            "refused": False, "overall_confidence": "medium",
-            "findings": [{
-                "statement": "Durable business, fairly priced.",
-                "assertability": "judgment", "confidence": "medium",
-                "supporting_evidence_ids": self._cite, "known_unknowns": [],
-            }],
-        })
+        return json.dumps(
+            {
+                "refused": False,
+                "overall_confidence": "medium",
+                "findings": [
+                    {
+                        "statement": "Durable business, fairly priced.",
+                        "assertability": "judgment",
+                        "confidence": "medium",
+                        "supporting_evidence_ids": self._cite,
+                        "known_unknowns": [],
+                    }
+                ],
+            }
+        )
 
 
 # --- An honest thesis passes ------------------------------------------------------------
@@ -107,15 +122,21 @@ def test_thesis_with_unresolved_investigations_passes_when_it_says_so() -> None:
 
 def test_setting_a_finding_aside_with_a_reason_passes() -> None:
     """Judging a finding immaterial is legitimate -- it just has to be said."""
-    run = _run(_resolved("business_quality", "ev-1"), _resolved("esg_governance", "ev-2"))
+    run = _run(
+        _resolved("business_quality", "ev-1"), _resolved("esg_governance", "ev-2")
+    )
     thesis = synthesize(run, _Fake(cite=["ev-1", "ev-2"]))
-    edited = replace(thesis, dispositions=(
-        Disposition(dimension="business_quality", materiality="incorporated"),
-        Disposition(
-            dimension="esg_governance", materiality="not_material",
-            rationale="disclosure is boilerplate and does not bear on the question",
+    edited = replace(
+        thesis,
+        dispositions=(
+            Disposition(dimension="business_quality", materiality="incorporated"),
+            Disposition(
+                dimension="esg_governance",
+                materiality="not_material",
+                rationale="disclosure is boilerplate and does not bear on the question",
+            ),
         ),
-    ))
+    )
 
     assert check_completeness(edited, run).passed
 
@@ -127,9 +148,12 @@ def test_silently_dropped_finding_is_rejected() -> None:
     """
     run = _run(_resolved("business_quality", "ev-1"), _resolved("risks", "ev-2"))
     thesis = synthesize(run, _Fake(cite=["ev-1"]))
-    dishonest = replace(thesis, dispositions=(
-        Disposition(dimension="business_quality", materiality="incorporated"),
-    ))  # 'risks' investigated, grounded, and never mentioned
+    dishonest = replace(
+        thesis,
+        dispositions=(
+            Disposition(dimension="business_quality", materiality="incorporated"),
+        ),
+    )  # 'risks' investigated, grounded, and never mentioned
 
     result = check_completeness(dishonest, run)
     assert not result.passed
@@ -152,10 +176,13 @@ def test_phantom_disposition_is_rejected() -> None:
     """Claiming to have considered something the run never produced."""
     run = _run(_resolved("business_quality", "ev-1"))
     thesis = synthesize(run, _Fake())
-    inflated = replace(thesis, dispositions=(
-        Disposition(dimension="business_quality", materiality="incorporated"),
-        Disposition(dimension="competitive_position", materiality="incorporated"),
-    ))
+    inflated = replace(
+        thesis,
+        dispositions=(
+            Disposition(dimension="business_quality", materiality="incorporated"),
+            Disposition(dimension="competitive_position", materiality="incorporated"),
+        ),
+    )
 
     result = check_completeness(inflated, run)
     assert not result.passed
@@ -168,7 +195,9 @@ def test_phantom_unresolved_is_rejected() -> None:
     thesis = synthesize(run, _Fake(cite=["ev-1", "ev-2"]))
     excused = replace(
         thesis,
-        dispositions=(Disposition(dimension="business_quality", materiality="incorporated"),),
+        dispositions=(
+            Disposition(dimension="business_quality", materiality="incorporated"),
+        ),
         unresolved_dimensions=("valuation",),
     )
 
@@ -211,7 +240,9 @@ def test_multiple_violations_are_all_reported() -> None:
     thesis = synthesize(run, _Fake(cite=["ev-1"]))
     dishonest = replace(
         thesis,
-        dispositions=(Disposition(dimension="business_quality", materiality="incorporated"),),
+        dispositions=(
+            Disposition(dimension="business_quality", materiality="incorporated"),
+        ),
         unresolved_dimensions=(),
     )
 
@@ -224,9 +255,12 @@ def test_multiple_violations_are_all_reported() -> None:
 def test_violations_name_the_dimension_and_explain_the_problem() -> None:
     run = _run(_resolved("business_quality", "ev-1"), _resolved("risks", "ev-2"))
     thesis = synthesize(run, _Fake(cite=["ev-1"]))
-    dishonest = replace(thesis, dispositions=(
-        Disposition(dimension="business_quality", materiality="incorporated"),
-    ))
+    dishonest = replace(
+        thesis,
+        dispositions=(
+            Disposition(dimension="business_quality", materiality="incorporated"),
+        ),
+    )
 
     violation = check_completeness(dishonest, run).violations[0]
     assert "risks" in violation.detail

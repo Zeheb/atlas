@@ -79,8 +79,12 @@ class TestRepositoryCatalogAdd:
         _make_catalog_json(tmp_path)
         catalog = RepositoryCatalog(tmp_path)
         ev = _make_evidence("bse-news-ev-001")
-        catalog.add(CatalogEntry.from_evidence(ev, "annual_reports/bse-news-ev-001.pdf"))
-        catalog.add(CatalogEntry.from_evidence(ev, "annual_reports/bse-news-ev-001-v2.pdf"))
+        catalog.add(
+            CatalogEntry.from_evidence(ev, "annual_reports/bse-news-ev-001.pdf")
+        )
+        catalog.add(
+            CatalogEntry.from_evidence(ev, "annual_reports/bse-news-ev-001-v2.pdf")
+        )
         assert len(catalog.known_ids()) == 1
 
 
@@ -239,7 +243,9 @@ class TestCatalogEntryFromEvidence:
         )
         assert entry.report_period is None
 
-    def test_checksum_and_report_period_survive_to_dict_from_dict_round_trip(self) -> None:
+    def test_checksum_and_report_period_survive_to_dict_from_dict_round_trip(
+        self,
+    ) -> None:
         entry = CatalogEntry.from_evidence(
             _make_evidence(), "annual_reports/ev-001.pdf", checksum="deadbeef"
         )
@@ -311,14 +317,10 @@ class TestNewsidMigration:
         assert "bse-news-12345678" in catalog.known_ids()
         assert "12345678" not in catalog.known_ids()
 
-    def test_already_prefixed_entry_not_double_prefixed(
-        self, tmp_path: Path
-    ) -> None:
+    def test_already_prefixed_entry_not_double_prefixed(self, tmp_path: Path) -> None:
         _make_catalog_json(tmp_path, [_BSE_ITEM_ALREADY_PREFIXED])
         catalog = RepositoryCatalog(tmp_path)
-        assert (
-            "bse-news-6fb57b5e-a05f-4e05-b2da-6e2b5bfe32ae" in catalog.known_ids()
-        )
+        assert "bse-news-6fb57b5e-a05f-4e05-b2da-6e2b5bfe32ae" in catalog.known_ids()
         assert (
             "bse-news-bse-news-6fb57b5e-a05f-4e05-b2da-6e2b5bfe32ae"
             not in catalog.known_ids()

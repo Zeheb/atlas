@@ -25,6 +25,7 @@ Every evidence_id must still resolve through the same repo/profile
 back-links atlas.citation already uses — no separate index, no duplicated
 metadata.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -33,7 +34,6 @@ from typing import Literal
 from atlas.acquisition.repository import Repository
 from atlas.citation import Citation, build_citation
 from atlas.company.model import CompanyProfile
-
 
 # What kind of statement a Finding is -- and, through CITATION_OBLIGATION
 # below, whether it must cite evidence. M2.3 widened this from the original
@@ -141,7 +141,10 @@ class Finding:
 
 
 def _citations_for(
-    finding: Finding, ticker: str, repo: Repository, profile: CompanyProfile | None,
+    finding: Finding,
+    ticker: str,
+    repo: Repository,
+    profile: CompanyProfile | None,
 ) -> list[Citation]:
     citations = []
     for eid in finding.evidence_ids:
@@ -150,12 +153,17 @@ def _citations_for(
             continue
         section = finding.section if len(finding.evidence_ids) == 1 else None
         page = finding.page if len(finding.evidence_ids) == 1 else None
-        citations.append(build_citation(entry, ticker, profile, section=section, page=page))
+        citations.append(
+            build_citation(entry, ticker, profile, section=section, page=page)
+        )
     return citations
 
 
 def render_finding(
-    finding: Finding, ticker: str, repo: Repository, profile: CompanyProfile | None = None,
+    finding: Finding,
+    ticker: str,
+    repo: Repository,
+    profile: CompanyProfile | None = None,
 ) -> str:
     """Render one Finding as text + its citation block.
 

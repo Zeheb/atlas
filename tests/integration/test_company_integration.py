@@ -6,6 +6,7 @@ TCS documents into a coherent CompanyProfile.
 
 Run with: pytest -m integration -v -s
 """
+
 from __future__ import annotations
 
 from collections.abc import Generator
@@ -50,6 +51,7 @@ def tcs_root(isolated_repo_factory) -> Path:
 def kb(tcs_root: Path) -> Generator[KnowledgeBase, None, None]:
     instance = KnowledgeBase(tcs_root)
     from atlas.acquisition.repository import Repository
+
     repo = Repository(tcs_root)
     for eid in (_ANN_ID, _Q2_ID, _SHP_ID, _CREDIT_ID, _BUYBACK_ID):
         entry = repo.get(eid)
@@ -64,7 +66,7 @@ def tcs_profile(kb: KnowledgeBase) -> CompanyProfile:
     for eid in (_ANN_ID, _Q2_ID, _SHP_ID, _CREDIT_ID, _BUYBACK_ID):
         try:
             results.append(analyze(eid, kb))
-        except (ValueError, Exception):
+        except ValueError, Exception:
             pass
     return build_profile("TCS", results)
 
@@ -84,7 +86,9 @@ def test_financial_annual_snapshot_has_revenue(tcs_profile: CompanyProfile) -> N
     snap = annual[0]
     revenue = snap.facts.get(FactKind.FINANCIAL_REVENUE)
     assert revenue is not None
-    assert revenue > 100_000, f"TCS annual revenue should be > 1 lakh crore; got {revenue}"
+    assert (
+        revenue > 100_000
+    ), f"TCS annual revenue should be > 1 lakh crore; got {revenue}"
 
 
 def test_financial_snapshots_sorted_asc(tcs_profile: CompanyProfile) -> None:
@@ -104,8 +108,11 @@ def test_annual_snapshot_has_balance_sheet(tcs_profile: CompanyProfile) -> None:
 
 def test_annual_snapshot_derived_metrics(tcs_profile: CompanyProfile) -> None:
     annual = next(
-        (s for s in tcs_profile.financial.snapshots
-         if s.period_type == "annual" and s.basis == "consolidated"),
+        (
+            s
+            for s in tcs_profile.financial.snapshots
+            if s.period_type == "annual" and s.basis == "consolidated"
+        ),
         None,
     )
     if annual is None:
@@ -156,7 +163,9 @@ def test_credit_esg_rating_in_esg_list(tcs_profile: CompanyProfile) -> None:
 def test_credit_debt_list_separate_from_esg(tcs_profile: CompanyProfile) -> None:
     # TCS has no rated debt — debt_ratings should be empty for our test corpus
     for entry in tcs_profile.credit_history.debt_ratings:
-        assert entry.instrument != "ESG", "Debt ratings list must not contain ESG entries"
+        assert (
+            entry.instrument != "ESG"
+        ), "Debt ratings list must not contain ESG entries"
 
 
 # ---------------------------------------------------------------------------
@@ -181,11 +190,13 @@ def test_profile_company_id(tcs_profile: CompanyProfile) -> None:
 
 
 def test_multiple_domains_populated(tcs_profile: CompanyProfile) -> None:
-    domains_populated = sum([
-        bool(tcs_profile.financial.snapshots),
-        bool(tcs_profile.esg.snapshots),
-        bool(tcs_profile.ownership.snapshots),
-        bool(tcs_profile.credit_history.esg_ratings),
-        bool(tcs_profile.capital_events.buybacks),
-    ])
+    domains_populated = sum(
+        [
+            bool(tcs_profile.financial.snapshots),
+            bool(tcs_profile.esg.snapshots),
+            bool(tcs_profile.ownership.snapshots),
+            bool(tcs_profile.credit_history.esg_ratings),
+            bool(tcs_profile.capital_events.buybacks),
+        ]
+    )
     assert domains_populated >= 2, "Expected at least 2 domains to be populated"

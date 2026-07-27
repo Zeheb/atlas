@@ -24,6 +24,7 @@ transport rather than stylistic:
 ``Settings.llm_max_tokens``/``llm_temperature`` knobs, so the determinism
 floor (G7) is one policy across every provider rather than reinvented here.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -81,7 +82,9 @@ class OllamaClient:
         self._timeout = timeout
 
     @classmethod
-    def from_settings(cls, settings: "Settings", *, model: str | None = None) -> "OllamaClient":
+    def from_settings(
+        cls, settings: "Settings", *, model: str | None = None
+    ) -> "OllamaClient":
         """Build from Settings.
 
         Unlike the cloud adapters, this reads the transport-specific

@@ -32,6 +32,7 @@ returns lives here instead of the reverse. None when a case has no gold
 label -- most cases don't, and that's fine; these metrics are additive
 precision on TOP OF M1.8's ranking_change, not a replacement for it.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -66,10 +67,18 @@ class RetrievalCaseMetrics:
     candidates_considered: int
     docs_searched: int
     selected: tuple[tuple[str, int, int], ...]  # (doc_id, char_offset, total_score)
-    doc_type_counts: tuple[tuple[str, int], ...]  # (kind, count) over selected, sorted by kind
-    metadata_coverage: float | None  # 1 - missing/searched; None when docs_searched == 0
-    boost_totals: tuple[tuple[str, int], ...]  # (boost_name, summed value) over selected
-    boost_share: float | None  # fraction of summed score from boosts; None when nothing selected
+    doc_type_counts: tuple[
+        tuple[str, int], ...
+    ]  # (kind, count) over selected, sorted by kind
+    metadata_coverage: (
+        float | None
+    )  # 1 - missing/searched; None when docs_searched == 0
+    boost_totals: tuple[
+        tuple[str, int], ...
+    ]  # (boost_name, summed value) over selected
+    boost_share: (
+        float | None
+    )  # fraction of summed score from boosts; None when nothing selected
 
 
 @dataclass(frozen=True)
@@ -85,7 +94,9 @@ class PlannerCaseMetrics:
     rules_fired: tuple[str, ...]
 
 
-def build_retrieval_metrics(retrieval: "RetrievalResult | None") -> RetrievalCaseMetrics | None:
+def build_retrieval_metrics(
+    retrieval: "RetrievalResult | None",
+) -> RetrievalCaseMetrics | None:
     """Derive per-case retrieval metrics from a RetrievalResult. Pure, no LLM,
     no I/O -- every input is already in memory on the RunOutcome.
     """
@@ -95,11 +106,19 @@ def build_retrieval_metrics(retrieval: "RetrievalResult | None") -> RetrievalCas
     selected = tuple((b.doc_id, b.char_offset, b.total) for b in retrieval.breakdowns)
 
     doc_type_counter: dict[str, int] = {}
-    boost_totals_acc = {"doc_type": 0, "date_window": 0, "period": 0, "recency": 0, "numeric": 0}
+    boost_totals_acc = {
+        "doc_type": 0,
+        "date_window": 0,
+        "period": 0,
+        "recency": 0,
+        "numeric": 0,
+    }
     boost_sum = 0
     total_sum = 0
     for b in retrieval.breakdowns:
-        doc_type_counter[b.kind or "unknown"] = doc_type_counter.get(b.kind or "unknown", 0) + 1
+        doc_type_counter[b.kind or "unknown"] = (
+            doc_type_counter.get(b.kind or "unknown", 0) + 1
+        )
         boost_totals_acc["doc_type"] += b.doc_type
         boost_totals_acc["date_window"] += b.date_window
         boost_totals_acc["period"] += b.period
@@ -110,7 +129,8 @@ def build_retrieval_metrics(retrieval: "RetrievalResult | None") -> RetrievalCas
 
     metadata_coverage = (
         1.0 - (len(retrieval.docs_missing_metadata) / retrieval.docs_searched)
-        if retrieval.docs_searched > 0 else None
+        if retrieval.docs_searched > 0
+        else None
     )
     boost_share = round(boost_sum / total_sum, 3) if total_sum > 0 else None
 
@@ -119,7 +139,9 @@ def build_retrieval_metrics(retrieval: "RetrievalResult | None") -> RetrievalCas
         docs_searched=retrieval.docs_searched,
         selected=selected,
         doc_type_counts=tuple(sorted(doc_type_counter.items())),
-        metadata_coverage=(round(metadata_coverage, 3) if metadata_coverage is not None else None),
+        metadata_coverage=(
+            round(metadata_coverage, 3) if metadata_coverage is not None else None
+        ),
         boost_totals=tuple(sorted(boost_totals_acc.items())),
         boost_share=boost_share,
     )
@@ -138,7 +160,9 @@ def build_planner_metrics(plan: "SearchPlan | None") -> PlannerCaseMetrics | Non
     )
 
 
-def _retrieval_metrics_from_dict(d: dict[str, Any] | None) -> RetrievalCaseMetrics | None:
+def _retrieval_metrics_from_dict(
+    d: dict[str, Any] | None,
+) -> RetrievalCaseMetrics | None:
     if d is None:
         return None
     return RetrievalCaseMetrics(
@@ -242,7 +266,9 @@ class RetrievalQualityScore:
     forbidden_retrieved: tuple[str, ...]
 
 
-def _retrieval_quality_from_dict(d: dict[str, Any] | None) -> RetrievalQualityScore | None:
+def _retrieval_quality_from_dict(
+    d: dict[str, Any] | None,
+) -> RetrievalQualityScore | None:
     if d is None:
         return None
     return RetrievalQualityScore(
@@ -319,7 +345,9 @@ class Report:
             "capabilities": list(self.capabilities),
             "cache_hits": self.cache_hits,
             "cache_misses": self.cache_misses,
-            "coverage_snapshot": asdict(self.coverage_snapshot) if self.coverage_snapshot else None,
+            "coverage_snapshot": (
+                asdict(self.coverage_snapshot) if self.coverage_snapshot else None
+            ),
             "aggregates": aggregate(self.results),
             "results": [asdict(r) for r in self.results],
         }
@@ -331,7 +359,9 @@ class Report:
     def from_dict(cls, d: dict[str, Any]) -> "Report":
         results = tuple(
             CaseResult(
-                case_id=r["case_id"], category=r["category"], status=r["status"],
+                case_id=r["case_id"],
+                category=r["category"],
+                status=r["status"],
                 refused=r.get("refused"),
                 correctness_pass=r.get("correctness_pass"),
                 correctness_reasons=tuple(r.get("correctness_reasons", ())),
@@ -343,18 +373,27 @@ class Report:
                 distinct_docs_cited=r.get("distinct_docs_cited"),
                 judge_notes=r.get("judge_notes", ""),
                 error=r.get("error"),
-                retrieval_metrics=_retrieval_metrics_from_dict(r.get("retrieval_metrics")),
+                retrieval_metrics=_retrieval_metrics_from_dict(
+                    r.get("retrieval_metrics")
+                ),
                 planner_metrics=_planner_metrics_from_dict(r.get("planner_metrics")),
                 answer_prose=r.get("answer_prose"),
-                retrieval_quality=_retrieval_quality_from_dict(r.get("retrieval_quality")),
+                retrieval_quality=_retrieval_quality_from_dict(
+                    r.get("retrieval_quality")
+                ),
             )
             for r in d["results"]
         )
         return cls(
-            milestone=d["milestone"], created_at=d["created_at"], model=d["model"],
-            capabilities=tuple(d.get("capabilities", ())), results=results,
-            git_commit=d.get("git_commit"), judge_model=d.get("judge_model"),
-            cache_hits=d.get("cache_hits"), cache_misses=d.get("cache_misses"),
+            milestone=d["milestone"],
+            created_at=d["created_at"],
+            model=d["model"],
+            capabilities=tuple(d.get("capabilities", ())),
+            results=results,
+            git_commit=d.get("git_commit"),
+            judge_model=d.get("judge_model"),
+            cache_hits=d.get("cache_hits"),
+            cache_misses=d.get("cache_misses"),
             coverage_snapshot=_coverage_snapshot_from_dict(d.get("coverage_snapshot")),
         )
 
@@ -404,12 +443,16 @@ def _aggregate_retrieval(active: list[CaseResult]) -> dict[str, Any] | None:
     """Suite-level retrieval aggregates (M1.8 / ADR-0004). None when no case
     in this report carries retrieval metrics.
     """
-    with_retrieval = [r.retrieval_metrics for r in active if r.retrieval_metrics is not None]
+    with_retrieval = [
+        r.retrieval_metrics for r in active if r.retrieval_metrics is not None
+    ]
     if not with_retrieval:
         return None
 
     candidates = [float(m.candidates_considered) for m in with_retrieval]
-    coverage = [m.metadata_coverage for m in with_retrieval if m.metadata_coverage is not None]
+    coverage = [
+        m.metadata_coverage for m in with_retrieval if m.metadata_coverage is not None
+    ]
     boost_share = [m.boost_share for m in with_retrieval if m.boost_share is not None]
     doc_type_totals: dict[str, int] = {}
     for m in with_retrieval:
@@ -483,16 +526,25 @@ def compare(baseline: Report, candidate: Report) -> dict[str, Any]:
     """Diff two reports: per-dimension deltas, regressions, newly-active cases."""
     base_agg, cand_agg = aggregate(baseline.results), aggregate(candidate.results)
     dims = [
-        "coverage", "correctness_pass_rate", "grounding_pass_rate",
-        "mean_reasoning_quality", "mean_usefulness", "mean_evidence_use",
+        "coverage",
+        "correctness_pass_rate",
+        "grounding_pass_rate",
+        "mean_reasoning_quality",
+        "mean_usefulness",
+        "mean_evidence_use",
         "refusal_rate",  # M1.8 (ADR-0004)
     ]
     deltas: dict[str, Any] = {}
     for d in dims:
         b, c = base_agg.get(d), cand_agg.get(d)
         deltas[d] = {
-            "baseline": b, "candidate": c,
-            "delta": round(c - b, 3) if isinstance(b, (int, float)) and isinstance(c, (int, float)) else None,
+            "baseline": b,
+            "candidate": c,
+            "delta": (
+                round(c - b, 3)
+                if isinstance(b, (int, float)) and isinstance(c, (int, float))
+                else None
+            ),
         }
 
     base_by_id = {r.case_id: r for r in baseline.results}

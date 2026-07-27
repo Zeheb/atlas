@@ -7,6 +7,7 @@ Synthesis needs the discarded structure, so these tests pin that it survives,
 that it is stored unmodified, and that dimension is read from the
 Investigation rather than copied onto the contract type (ADR-0009).
 """
+
 from __future__ import annotations
 
 import json
@@ -40,10 +41,17 @@ def _inv(dimension: str = "business_quality") -> Investigation:
 def _seed(base) -> None:
     profile = CompanyProfile(
         company_id="TCS",
-        financial=FinancialTimeSeries(snapshots=[FinancialSnapshot(
-            period="2026-03-31", period_type="annual", basis="consolidated",
-            facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2}, sources=["ev-1"],
-        )]),
+        financial=FinancialTimeSeries(
+            snapshots=[
+                FinancialSnapshot(
+                    period="2026-03-31",
+                    period_type="annual",
+                    basis="consolidated",
+                    facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2},
+                    sources=["ev-1"],
+                )
+            ]
+        ),
     )
     repo_root = base / "TCS"
     repo_root.mkdir(parents=True, exist_ok=True)
@@ -52,10 +60,15 @@ def _seed(base) -> None:
     rel = "ev-1.txt"
     (repo_root / rel).write_text(_CONTENT, encoding="utf-8")
     entry = CatalogEntry(
-        evidence_id="ev-1", source=EvidenceSource.BSE.value,
-        kind=EvidenceKind.FINANCIAL_RESULTS.value, title="Test filing",
-        source_date="2026-03-31T00:00:00+00:00", document_url=None,
-        local_path=rel, file_size_bytes=None, acquired_at="2026-04-01T00:00:00+00:00",
+        evidence_id="ev-1",
+        source=EvidenceSource.BSE.value,
+        kind=EvidenceKind.FINANCIAL_RESULTS.value,
+        title="Test filing",
+        source_date="2026-03-31T00:00:00+00:00",
+        document_url=None,
+        local_path=rel,
+        file_size_bytes=None,
+        acquired_at="2026-04-01T00:00:00+00:00",
     )
     KnowledgeBase(repo_root).parse(entry)
 
@@ -64,24 +77,33 @@ class _RichFake:
     """Returns a finding carrying every field the flattened view loses."""
 
     def complete(self, *, system: str, user: str) -> str:
-        return json.dumps({
-            "refused": False, "overall_confidence": "medium",
-            "findings": [{
-                "statement": "Operating margin ~24%.",
-                "assertability": "judgment",
-                "confidence": "medium",
-                "supporting_evidence_ids": ["ev-1"],
-                "known_unknowns": ["segment-level margin is not disclosed"],
-            }],
-        })
+        return json.dumps(
+            {
+                "refused": False,
+                "overall_confidence": "medium",
+                "findings": [
+                    {
+                        "statement": "Operating margin ~24%.",
+                        "assertability": "judgment",
+                        "confidence": "medium",
+                        "supporting_evidence_ids": ["ev-1"],
+                        "known_unknowns": ["segment-level margin is not disclosed"],
+                    }
+                ],
+            }
+        )
 
 
 class _RefusingFake:
     def complete(self, *, system: str, user: str) -> str:
-        return json.dumps({
-            "refused": True, "overall_confidence": "low",
-            "refusal_reason": "no evidence supports this", "findings": [],
-        })
+        return json.dumps(
+            {
+                "refused": True,
+                "overall_confidence": "low",
+                "refusal_reason": "no evidence supports this",
+                "findings": [],
+            }
+        )
 
 
 # --- The metadata survives ------------------------------------------------------------

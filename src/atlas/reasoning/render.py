@@ -9,6 +9,7 @@ M1 commit 4: when the GroundingContext used to produce *result* is supplied,
 citations carry the excerpt/section retrieved for them (drill-to-source) —
 omit it for M0-equivalent behavior (bare evidence_id citations).
 """
+
 from __future__ import annotations
 
 from atlas.reasoning.contracts import (
@@ -34,7 +35,9 @@ def _best_reference_for(eid: str, context: GroundingContext) -> EvidenceReferenc
     return bare or EvidenceReference(evidence_id=eid)
 
 
-def to_answer(result: ReasoningResult, *, context: GroundingContext | None = None) -> Answer:
+def to_answer(
+    result: ReasoningResult, *, context: GroundingContext | None = None
+) -> Answer:
     """Build the presentational Answer from a ReasoningResult.
 
     ``context`` — when supplied, citations carry the retrieved excerpt/section

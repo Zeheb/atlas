@@ -19,6 +19,7 @@ the note's own pre-adjustment gross Total; FINANCIAL_TOTAL_DEBT matches the
 post-adjustment Net figure, which nets out "Capitalisation of transaction
 costs").
 """
+
 from __future__ import annotations
 
 from atlas.analysis.annual_report import _extract_debt_maturity
@@ -98,7 +99,7 @@ def test_debt_maturity_does_not_extract_reconciliation_rows() -> None:
     facts = _extract_debt_maturity(_REAL_TABLE_FY2026, "2026-03-31")
     values = {f.value for f in facts}
     assert 64757.28 not in values  # Total
-    assert 53.10 not in values     # transaction-cost adjustment
+    assert 53.10 not in values  # transaction-cost adjustment
     assert 64704.18 not in values  # Net
 
 
@@ -141,8 +142,11 @@ def test_debt_maturity_facts_route_into_financial_snapshot() -> None:
     from atlas.analysis.base import AnalysisResult
 
     result = AnalysisResult(
-        evidence_id="bse-ar-1", kind="annual_report", analyzer_version="3.4",
-        confidence="high", source_date=datetime(2026, 6, 1, tzinfo=timezone.utc),
+        evidence_id="bse-ar-1",
+        kind="annual_report",
+        analyzer_version="3.4",
+        confidence="high",
+        source_date=datetime(2026, 6, 1, tzinfo=timezone.utc),
         facts=result_facts,
     )
     profile = build_profile("TATASTEEL", [result])
@@ -158,8 +162,11 @@ def test_debt_maturity_survives_store_round_trip(tmp_path) -> None:
 
     result_facts = _extract_debt_maturity(_REAL_TABLE_FY2026, "2026-03-31")
     result = AnalysisResult(
-        evidence_id="bse-ar-1", kind="annual_report", analyzer_version="3.4",
-        confidence="high", source_date=datetime(2026, 6, 1, tzinfo=timezone.utc),
+        evidence_id="bse-ar-1",
+        kind="annual_report",
+        analyzer_version="3.4",
+        confidence="high",
+        source_date=datetime(2026, 6, 1, tzinfo=timezone.utc),
         facts=result_facts,
     )
     profile = build_profile("TATASTEEL", [result])
@@ -173,9 +180,14 @@ def test_debt_maturity_survives_store_round_trip(tmp_path) -> None:
 # --- metrics registration -------------------------------------------------------
 def test_new_metrics_registered() -> None:
     from atlas.query.metrics import get_metric
+
     for key in (
-        "debt_maturity_within_1y", "debt_maturity_1_to_2y", "debt_maturity_2_to_3y",
-        "debt_maturity_3_to_4y", "debt_maturity_4_to_5y", "debt_maturity_beyond_5y",
+        "debt_maturity_within_1y",
+        "debt_maturity_1_to_2y",
+        "debt_maturity_2_to_3y",
+        "debt_maturity_3_to_4y",
+        "debt_maturity_4_to_5y",
+        "debt_maturity_beyond_5y",
     ):
         spec = get_metric(key)
         assert spec.fact_kind is not None

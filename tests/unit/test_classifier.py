@@ -4,10 +4,10 @@ Every case here is grounded in a real document found during the evidence
 coverage audit and Stage 2 investigation — see classifier.py's module
 docstring for the specific TCS filings each pattern was calibrated against.
 """
+
 from __future__ import annotations
 
 from atlas.acquisition.classifier import classify
-
 
 # ---------------------------------------------------------------------------
 # Cross-kind reclassification: financial_results -> regulatory_filing
@@ -56,7 +56,9 @@ class TestRelatedPartyReclassification:
         # A related-party Sub line on a document already correctly
         # catalogued as regulatory_filing shouldn't "reclassify" to itself
         # in a way that looks like a correction was made.
-        text = "Sub: Disclosure of Related Party Transactions pursuant to Regulation 23(9)"
+        text = (
+            "Sub: Disclosure of Related Party Transactions pursuant to Regulation 23(9)"
+        )
         result = classify("regulatory_filing", text, page_count=5)
         assert result.was_reclassified is False
 
@@ -68,13 +70,18 @@ class TestRelatedPartyReclassification:
 
 class TestInvestorPresentationSubstance:
     def test_schedule_notice_flagged_not_substantive(self):
-        text = "Dear Sirs,\nSub: Schedule of Analyst / Institutional Investor Meetings\n"
+        text = (
+            "Dear Sirs,\nSub: Schedule of Analyst / Institutional Investor Meetings\n"
+        )
         result = classify("investor_presentation", text, page_count=2)
         assert result.is_substantive is False
         assert result.was_reclassified is False
 
     def test_real_deck_submission_flagged_substantive(self):
-        text = "Sub: Submission of presentation to be made during TCS Analyst Day 2025\n" + ("x" * 3000)
+        text = (
+            "Sub: Submission of presentation to be made during TCS Analyst Day 2025\n"
+            + ("x" * 3000)
+        )
         result = classify("investor_presentation", text, page_count=55)
         assert result.is_substantive is True
 

@@ -2,6 +2,7 @@
 (M1 commit 4). M0's test_reasoning_render.py (to_answer() with no context)
 is untouched and still passes, confirming the default path is unchanged.
 """
+
 from __future__ import annotations
 
 from atlas.reasoning.contracts import (
@@ -18,25 +19,36 @@ from atlas.reasoning.render import format_answer, to_answer
 SUBJECT = SubjectRef(subject_id="TCS", display="TCS")
 
 
-def _result_and_context(*, with_excerpt: bool) -> tuple[ReasoningResult, GroundingContext]:
+def _result_and_context(
+    *, with_excerpt: bool
+) -> tuple[ReasoningResult, GroundingContext]:
     ref = EvidenceReference(
         evidence_id="ev-1",
         excerpt="Operating margin stood at 24.2% in FY26." if with_excerpt else None,
         section="Financial Highlights" if with_excerpt else None,
     )
     claim = Claim(
-        subject_ref=SUBJECT, statement="op margin 24.2%", assertability="fact",
-        confidence="high", evidence=[ref],
+        subject_ref=SUBJECT,
+        statement="op margin 24.2%",
+        assertability="fact",
+        confidence="high",
+        evidence=[ref],
     )
     finding = Finding(
         statement="Margins have been durable near 24%.",
-        assertability="judgment", confidence="high", supporting_claims=[claim],
+        assertability="judgment",
+        confidence="high",
+        supporting_claims=[claim],
     )
     result = ReasoningResult(
         question=Question(raw_text="margins?", subject_ref=SUBJECT),
-        findings=[finding], overall_confidence="high", citations=frozenset({"ev-1"}),
+        findings=[finding],
+        overall_confidence="high",
+        citations=frozenset({"ev-1"}),
     )
-    context = GroundingContext(subject_ref=SUBJECT, claims=[claim], evidence_index=frozenset({"ev-1"}))
+    context = GroundingContext(
+        subject_ref=SUBJECT, claims=[claim], evidence_index=frozenset({"ev-1"})
+    )
     return result, context
 
 

@@ -5,6 +5,7 @@ extraction unaffected, and the derived `former_answerers` query — which
 establishes identity by a single ephemeral, query-time resolver pass (not
 stored ids, not string equality), and under-emits rather than misattributes.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -59,7 +60,10 @@ def test_honorific_roster_extracts_management() -> None:
 
 
 def test_no_roster_under_emits() -> None:
-    assert _extract_management_mentions("no roster here, just prose", EntityResolver()) == []
+    assert (
+        _extract_management_mentions("no roster here, just prose", EntityResolver())
+        == []
+    )
 
 
 def test_analyst_extraction_unaffected_by_management() -> None:
@@ -80,14 +84,19 @@ def _profile(participants, resignations) -> CompanyProfile:
     return p
 
 
-def _mgmt(name: str, eid: str = "person:x", ev: str = "bse-t1") -> ParticipantAppearance:
+def _mgmt(
+    name: str, eid: str = "person:x", ev: str = "bse-t1"
+) -> ParticipantAppearance:
     return ParticipantAppearance(eid, name, "management", None, ev, "2023-01-15")
 
 
 def _resign(name: str, role: str = "Director") -> DirectorChange:
     return DirectorChange(
         source_date=datetime(2024, 6, 1, tzinfo=timezone.utc),
-        change_type="resignation", name=name, role=role, evidence_id="bse-bo1",
+        change_type="resignation",
+        name=name,
+        role=role,
+        evidence_id="bse-bo1",
     )
 
 
@@ -102,7 +111,11 @@ def test_cross_ref_matches_across_name_variant() -> None:
 
 def test_cross_ref_ignores_analysts() -> None:
     prof = _profile(
-        [ParticipantAppearance("person:a", "Some Analyst", "analyst", "X", "bse-t1", "2023-01-15")],
+        [
+            ParticipantAppearance(
+                "person:a", "Some Analyst", "analyst", "X", "bse-t1", "2023-01-15"
+            )
+        ],
         [_resign("Some Analyst")],
     )
     assert former_answerers(prof).sections[0].rows == []
@@ -122,11 +135,17 @@ def test_cross_ref_does_not_match_different_people_same_surname() -> None:
 def test_cross_ref_ignores_appointments() -> None:
     prof = CompanyProfile(company_id="TCS")
     prof.participants = [_mgmt("N Chandrasekaran")]
-    prof.governance = GovernanceProfile(director_changes=[
-        DirectorChange(source_date=datetime(2024, 1, 1, tzinfo=timezone.utc),
-                       change_type="appointment", name="N Chandrasekaran", role="Chairman",
-                       evidence_id="bse-bo2"),
-    ])
+    prof.governance = GovernanceProfile(
+        director_changes=[
+            DirectorChange(
+                source_date=datetime(2024, 1, 1, tzinfo=timezone.utc),
+                change_type="appointment",
+                name="N Chandrasekaran",
+                role="Chairman",
+                evidence_id="bse-bo2",
+            ),
+        ]
+    )
     assert former_answerers(prof).sections[0].rows == []
 
 

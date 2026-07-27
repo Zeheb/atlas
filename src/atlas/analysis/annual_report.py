@@ -18,6 +18,7 @@ Section detection uses a two-level TOC-skip strategy:
 This handles the common Indian PDF structure where section names appear both
 in the TOC and as running headers on every body page.
 """
+
 from __future__ import annotations
 
 import re
@@ -68,7 +69,9 @@ _RE_DIRECTOR_DIN = re.compile(
 # the second row, not the first row's own Total). Under-emit rather than ship
 # a heuristic already shown to produce a wrong number: absent for
 # movement-schedule-only filings, not zero, not guessed.
-_RE_GROSS_BLOCK = re.compile(r"Gross block of property,\s*plant and equipment", re.IGNORECASE)
+_RE_GROSS_BLOCK = re.compile(
+    r"Gross block of property,\s*plant and equipment", re.IGNORECASE
+)
 
 
 def _extract_gross_block(content: str, period: str) -> AnalysisFact | None:
@@ -120,7 +123,7 @@ _RE_RPT_BALANCE = re.compile(
 
 
 def _parse_rpt_amount(token: str) -> float:
-    """"-" is a disclosed nil, not a missing value -- 0.0 is the correct
+    """ "-" is a disclosed nil, not a missing value -- 0.0 is the correct
     figure here (the company genuinely reports zero), not an extraction gap."""
     return 0.0 if token.strip() == "-" else float(token.replace(",", ""))
 
@@ -130,17 +133,25 @@ def _extract_rpt_balance(content: str, period: str) -> list[AnalysisFact]:
     if m is None:
         return []
     amount = _parse_rpt_amount(m.group(1))
-    prov = Provenance(section="rpt_row_0", char_offset=m.start(), excerpt=_snip(content, m.start()))
+    prov = Provenance(
+        section="rpt_row_0", char_offset=m.start(), excerpt=_snip(content, m.start())
+    )
     return [
         AnalysisFact(
             kind=FactKind.GOVERNANCE_RPT_BALANCE_AMOUNT,
-            value=amount, unit=FactUnit.CRORE_INR, period=period,
-            confidence="high", provenance=prov,
+            value=amount,
+            unit=FactUnit.CRORE_INR,
+            period=period,
+            confidence="high",
+            provenance=prov,
         ),
         AnalysisFact(
             kind=FactKind.GOVERNANCE_RPT_CATEGORY,
-            value="Loans to related parties", unit=None, period=period,
-            confidence="high", provenance=prov,
+            value="Loans to related parties",
+            unit=None,
+            period=period,
+            confidence="high",
+            provenance=prov,
         ),
     ]
 
@@ -195,7 +206,7 @@ def _extract_debt_maturity(content: str, period: str) -> list[AnalysisFact]:
     if m is None:
         return []
 
-    window = content[m.end(): m.end() + 3000]
+    window = content[m.end() : m.end() + 3000]
     values: list[float] = []
     for line in window.split("\n"):
         stripped = line.strip()
@@ -227,18 +238,20 @@ def _extract_debt_maturity(content: str, period: str) -> list[AnalysisFact]:
         # maturing in that window.
         if current_period_value <= 0:
             continue
-        facts.append(AnalysisFact(
-            kind=kind,
-            value=current_period_value,
-            unit=FactUnit.CRORE_INR,
-            period=period,
-            confidence="high",
-            provenance=Provenance(
-                section="debt_maturity_schedule",
-                char_offset=m.start(),
-                excerpt=_snip(content, m.start()),
-            ),
-        ))
+        facts.append(
+            AnalysisFact(
+                kind=kind,
+                value=current_period_value,
+                unit=FactUnit.CRORE_INR,
+                period=period,
+                confidence="high",
+                provenance=Provenance(
+                    section="debt_maturity_schedule",
+                    char_offset=m.start(),
+                    excerpt=_snip(content, m.start()),
+                ),
+            )
+        )
     return facts
 
 
@@ -256,20 +269,25 @@ def _extract_directors(content: str, resolver: EntityResolver) -> list[EntityMen
         if key in seen:
             continue
         seen.add(key)
-        mentions.append(EntityMention(
-            entity=entity,
-            role="director",
-            affiliation=None,
-            identifier=din,
-            provenance=Provenance("corporate_governance", m.start(), _snip(content, m.start())),
-        ))
+        mentions.append(
+            EntityMention(
+                entity=entity,
+                role="director",
+                affiliation=None,
+                identifier=din,
+                provenance=Provenance(
+                    "corporate_governance", m.start(), _snip(content, m.start())
+                ),
+            )
+        )
     return mentions
+
 
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
 
-_SECTION_CHARS = 80_000   # chars to capture from a section header onward
+_SECTION_CHARS = 80_000  # chars to capture from a section header onward
 _MIN_SECTION_CONTENT = 200
 
 # ---------------------------------------------------------------------------
@@ -326,9 +344,7 @@ _RE_KAM_ENTRY = re.compile(r"^([^\n]{20,300})\nSee\s+Note", re.MULTILINE)
 
 # KAM section header within the auditor's report.
 # FY2026/FY2025 write "Key Audit Matters"; FY2024 writes "Key Audit Matter(s)".
-_RE_KAM_HEADER = re.compile(
-    r"Key\s+Audit\s+Matter(?:s|\(s\))?\s*\n", re.IGNORECASE
-)
+_RE_KAM_HEADER = re.compile(r"Key\s+Audit\s+Matter(?:s|\(s\))?\s*\n", re.IGNORECASE)
 
 # Voluntary LTM attrition rate, typically in MDA workforce discussion.
 _RE_ATTRITION = re.compile(
@@ -373,7 +389,7 @@ def _find_section(
     """
     for pat in patterns:
         for m in pat.finditer(content):
-            after = content[m.end(): m.end() + _SECTION_CHARS + 500]
+            after = content[m.end() : m.end() + _SECTION_CHARS + 500]
             non_blank = [ln.strip() for ln in after.split("\n") if ln.strip()]
             if not non_blank:
                 continue
@@ -417,9 +433,7 @@ def _extract_list_items(text: str) -> list[str]:
     items: list[str] = []
     for raw_line in text.split("\n"):
         line = raw_line.strip()
-        m = re.match(
-            r"^(?:\d+[\.\)]\s+|[•●▪■\-\*]\s*|[a-zA-Z][\.\)]\s+)(.+)", line
-        )
+        m = re.match(r"^(?:\d+[\.\)]\s+|[•●▪■\-\*]\s*|[a-zA-Z][\.\)]\s+)(.+)", line)
         if m:
             item = m.group(1).strip()
             if 5 <= len(item) <= 200:
@@ -484,11 +498,13 @@ def _extract_kam_titles(
     Searches within ``_SECTION_CHARS`` bytes of ``auditor_header_offset``.
     KAM titles are lines that immediately precede "See Note" in the KAM section.
     """
-    section_text = content[auditor_header_offset: auditor_header_offset + _SECTION_CHARS]
+    section_text = content[
+        auditor_header_offset : auditor_header_offset + _SECTION_CHARS
+    ]
     kam_m = _RE_KAM_HEADER.search(section_text)
     if not kam_m:
         return []
-    kam_body = section_text[kam_m.end():]
+    kam_body = section_text[kam_m.end() :]
     results: list[tuple[str, int]] = []
     for entry_m in _RE_KAM_ENTRY.finditer(kam_body):
         title = entry_m.group(1).strip()

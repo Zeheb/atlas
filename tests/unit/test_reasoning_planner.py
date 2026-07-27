@@ -5,6 +5,7 @@ extraction, the top_k adjustment rules, and the import-boundary + purity
 guarantees the M1.7 design leans on: the planner must be a pure function with
 zero KB/LLM/network dependency, enforced here by test rather than convention.
 """
+
 from __future__ import annotations
 
 import ast
@@ -48,7 +49,9 @@ def _imported_modules(module_name: str) -> list[str]:
 
 
 # --- Import boundary ----------------------------------------------------------
-@pytest.mark.parametrize("module_name", ["atlas.reasoning.plan", "atlas.reasoning.planner"])
+@pytest.mark.parametrize(
+    "module_name", ["atlas.reasoning.plan", "atlas.reasoning.planner"]
+)
 def test_module_imports_no_forbidden_dependency(module_name: str) -> None:
     imports = _imported_modules(module_name)
     for imported in imports:
@@ -72,17 +75,20 @@ def test_plan_retrieval_convenience_function_matches_direct_call() -> None:
 
 
 # --- Intent classification: one case per declared intent ----------------------
-@pytest.mark.parametrize("question,expected_intent", [
-    ("Who was appointed to the board this quarter?", "governance"),
-    ("When was the last dividend announced?", "capital_action"),
-    ("What are the company's BRSR emissions disclosures?", "esg"),
-    ("What is the promoter shareholding pattern?", "ownership"),
-    ("What are the key risk factors disclosed?", "risk"),
-    ("What is the management's guidance for FY25?", "guidance"),
-    ("What did management say about margins?", "narrative"),
-    ("What was the reported revenue for FY2024?", "financial_metric"),
-    ("What is the weather like today?", "general"),
-])
+@pytest.mark.parametrize(
+    "question,expected_intent",
+    [
+        ("Who was appointed to the board this quarter?", "governance"),
+        ("When was the last dividend announced?", "capital_action"),
+        ("What are the company's BRSR emissions disclosures?", "esg"),
+        ("What is the promoter shareholding pattern?", "ownership"),
+        ("What are the key risk factors disclosed?", "risk"),
+        ("What is the management's guidance for FY25?", "guidance"),
+        ("What did management say about margins?", "narrative"),
+        ("What was the reported revenue for FY2024?", "financial_metric"),
+        ("What is the weather like today?", "general"),
+    ],
+)
 def test_intent_classification(question: str, expected_intent: str) -> None:
     plan = _PLANNER.plan(question)
     assert plan.intent == expected_intent
@@ -112,15 +118,18 @@ def test_fallback_intent_is_recorded_with_its_own_rule() -> None:
 
 
 # --- Period / FY / quarter extraction -----------------------------------------
-@pytest.mark.parametrize("question,expected_periods", [
-    ("What was revenue in FY2024?", ("FY2024",)),
-    ("What was revenue in FY24?", ("FY2024",)),
-    ("What was revenue in FY 2024?", ("FY2024",)),
-    ("How did Q3FY24 compare to Q3FY23?", ("Q3FY2024", "Q3FY2023")),
-    ("How did Q3 FY24 perform?", ("Q3FY2024",)),
-    ("How did Q3-FY2024 perform?", ("Q3FY2024",)),
-    ("What is the weather like today?", ()),
-])
+@pytest.mark.parametrize(
+    "question,expected_periods",
+    [
+        ("What was revenue in FY2024?", ("FY2024",)),
+        ("What was revenue in FY24?", ("FY2024",)),
+        ("What was revenue in FY 2024?", ("FY2024",)),
+        ("How did Q3FY24 compare to Q3FY23?", ("Q3FY2024", "Q3FY2023")),
+        ("How did Q3 FY24 perform?", ("Q3FY2024",)),
+        ("How did Q3-FY2024 perform?", ("Q3FY2024",)),
+        ("What is the weather like today?", ()),
+    ],
+)
 def test_period_extraction(question: str, expected_periods: tuple[str, ...]) -> None:
     plan = _PLANNER.plan(question)
     assert plan.periods == expected_periods

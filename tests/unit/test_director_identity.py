@@ -5,6 +5,7 @@ the AR corporate-governance section does not preserve per-director bindings for
 them. Only clean "Name (DIN XXXXXXXX)" adjacencies; under-emit rather than
 misattribute.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -25,7 +26,8 @@ def test_entity_mention_identifier_defaults_none() -> None:
 def test_entity_mention_carries_identifier() -> None:
     m = EntityMention(
         entity=Entity(entity_id="p:x", kind="person", canonical_name="X"),
-        role="director", identifier="07121802",
+        role="director",
+        identifier="07121802",
     )
     assert m.identifier == "07121802"
 
@@ -62,7 +64,12 @@ def test_no_age_or_tenure_emitted() -> None:
 
 def test_bare_din_without_adjacent_name_not_emitted() -> None:
     # Garbled OCR: DIN present but no clean preceding name -> under-emit.
-    assert _extract_directors("(Independent)\n29-06-2014 | 3 years\nDIN:00267211", EntityResolver()) == []
+    assert (
+        _extract_directors(
+            "(Independent)\n29-06-2014 | 3 years\nDIN:00267211", EntityResolver()
+        )
+        == []
+    )
 
 
 def test_dedup_same_director_din_within_document() -> None:
@@ -73,44 +80,61 @@ def test_dedup_same_director_din_within_document() -> None:
 # --- builder + store ----------------------------------------------------------
 def _ar_result(evidence_id: str, mentions: list[EntityMention]) -> AnalysisResult:
     return AnalysisResult(
-        evidence_id=evidence_id, kind="annual_report", analyzer_version="3.1",
-        confidence="high", source_date=datetime(2025, 6, 30, tzinfo=timezone.utc),
+        evidence_id=evidence_id,
+        kind="annual_report",
+        analyzer_version="3.1",
+        confidence="high",
+        source_date=datetime(2025, 6, 30, tzinfo=timezone.utc),
         entities=mentions,
     )
 
 
 def _director(name: str, din: str) -> EntityMention:
     return EntityMention(
-        entity=Entity(entity_id=f"person:{name.lower().replace(' ', '-')}", kind="person", canonical_name=name),
-        role="director", identifier=din,
+        entity=Entity(
+            entity_id=f"person:{name.lower().replace(' ', '-')}",
+            kind="person",
+            canonical_name=name,
+        ),
+        role="director",
+        identifier=din,
     )
 
 
 def test_builder_ingests_directors() -> None:
     result = _ar_result("bse-ar-1", [_director("Rajesh Gopinathan", "06365813")])
     profile = build_profile("TCS", [result])
-    assert [(d.canonical_name, d.din) for d in profile.directors] == [("Rajesh Gopinathan", "06365813")]
+    assert [(d.canonical_name, d.din) for d in profile.directors] == [
+        ("Rajesh Gopinathan", "06365813")
+    ]
 
 
 def test_builder_skips_mention_without_identifier() -> None:
     # A non-director entity mention (no DIN) must not become a director.
-    m = EntityMention(entity=Entity(entity_id="person:x", kind="person", canonical_name="X"), role="analyst")
+    m = EntityMention(
+        entity=Entity(entity_id="person:x", kind="person", canonical_name="X"),
+        role="analyst",
+    )
     profile = build_profile("TCS", [_ar_result("bse-ar-2", [m])])
     assert profile.directors == []
 
 
 def test_directors_survive_store_round_trip(tmp_path) -> None:
     from atlas.company.store import CompanyStore
+
     result = _ar_result("bse-ar-3", [_director("Keki Minoo Mistry", "00008886")])
     profile = build_profile("TCS", [result])
     store = CompanyStore(tmp_path / "TCS" / "profile.json", "TCS")
     store.save(profile, [result])
     loaded = store.load()
-    assert [(d.canonical_name, d.din) for d in loaded.directors] == [("Keki Minoo Mistry", "00008886")]
+    assert [(d.canonical_name, d.din) for d in loaded.directors] == [
+        ("Keki Minoo Mistry", "00008886")
+    ]
 
 
 def test_empty_directors_round_trip(tmp_path) -> None:
     from atlas.company.store import CompanyStore
+
     store = CompanyStore(tmp_path / "TCS" / "profile.json", "TCS")
     store.save(CompanyProfile(company_id="TCS"), [])
     assert store.load().directors == []

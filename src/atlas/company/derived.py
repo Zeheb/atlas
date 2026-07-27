@@ -9,6 +9,7 @@ Primary vs. Derived policy (mirroring the Analysis layer):
 - Company-defined metrics (FCF, ROE) are primary facts in the Analysis layer
   and therefore NOT re-derived here.
 """
+
 from __future__ import annotations
 
 from atlas.analysis.base import FactKind
@@ -114,7 +115,9 @@ def employee_cost_pct(snap: FinancialSnapshot) -> float | None:
     return emp / rev * 100
 
 
-def cost_of_debt(snap: FinancialSnapshot, prior_debt: float | None = None) -> float | None:
+def cost_of_debt(
+    snap: FinancialSnapshot, prior_debt: float | None = None
+) -> float | None:
     """Finance cost as a percentage of debt — the effective borrowing rate.
 
     Average-debt convention: when the prior period's total debt is supplied

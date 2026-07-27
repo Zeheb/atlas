@@ -103,7 +103,9 @@ class TestParseFilingFields:
         )[0]
 
     def test_evidence_id(self) -> None:
-        assert self.evidence.evidence_id == "bse-news-6fb57b5e-a05f-4e05-b2da-6e2b5bfe32ae"
+        assert (
+            self.evidence.evidence_id == "bse-news-6fb57b5e-a05f-4e05-b2da-6e2b5bfe32ae"
+        )
 
     def test_source_is_bse_enum(self) -> None:
         assert self.evidence.source == EvidenceSource.BSE
@@ -265,7 +267,10 @@ class TestEvidenceKindMapping:
 
     def test_secretarial_compliance_maps_to_regulatory_filing(self) -> None:
         parser = BSEParser()
-        record = {**FILING_RECORD, "SUBCATNAME": "Reg.24(A)-Annual Secretarial Compliance"}
+        record = {
+            **FILING_RECORD,
+            "SUBCATNAME": "Reg.24(A)-Annual Secretarial Compliance",
+        }
         result = parser.parse_filings(make_response(record), COMPANY_ID)
         assert result[0].kind == EvidenceKind.REGULATORY_FILING
 
@@ -516,7 +521,9 @@ class TestParseAnnualReports:
     def test_report_period_none_when_year_missing(self) -> None:
         record = {k: v for k, v in AR_TABLE_RECORD.items() if k != "year"}
         parser = BSEParser()
-        result = parser.parse_annual_reports(make_ar_response(record), COMPANY_ID, SCRIP_CODE)
+        result = parser.parse_annual_reports(
+            make_ar_response(record), COMPANY_ID, SCRIP_CODE
+        )
         assert result[0].report_period is None
 
     def test_source_is_bse(self) -> None:
@@ -549,7 +556,9 @@ class TestParseAnnualReports:
         assert "\\" not in result[0].evidence_id
         assert "\\" not in (result[0].document_url or "")
 
-    def test_uuid_filename_resolves_to_attach_his_with_single_pdf_extension(self) -> None:
+    def test_uuid_filename_resolves_to_attach_his_with_single_pdf_extension(
+        self,
+    ) -> None:
         # AR_TABLE_RECORD uses the ~2023+ UUID filename generation, which
         # the old "/AnnualReports/{scrip}/{fname}" template silently
         # resolved to BSE's Angular SPA shell (HTTP 200, HTML body) for
@@ -922,7 +931,9 @@ class TestParseShareholdingIndex:
             make_shp_response(SHP_ROW_NEW), COMPANY_ID, SCRIP_CODE
         )
         # 2026-04-21T15:51:39 IST = 2026-04-21T10:21:39 UTC
-        assert result[0].source_date == datetime(2026, 4, 21, 10, 21, 39, tzinfo=timezone.utc)
+        assert result[0].source_date == datetime(
+            2026, 4, 21, 10, 21, 39, tzinfo=timezone.utc
+        )
 
     def test_revised_filing_uses_revised_date(self) -> None:
         parser = BSEParser()
@@ -930,7 +941,9 @@ class TestParseShareholdingIndex:
             make_shp_response(SHP_ROW_REVISED), COMPANY_ID, SCRIP_CODE
         )
         # 2024-02-07T20:10:30 IST = 2024-02-07T14:40:30 UTC
-        assert result[0].source_date == datetime(2024, 2, 7, 14, 40, 30, tzinfo=timezone.utc)
+        assert result[0].source_date == datetime(
+            2024, 2, 7, 14, 40, 30, tzinfo=timezone.utc
+        )
 
     def test_source_date_falls_back_to_quarter_end_when_no_datetime(self) -> None:
         row = {**SHP_ROW_NEW, "filing_date_time": None, "revised_date_time": None}
@@ -1179,7 +1192,10 @@ class TestParseCorporateGovernanceIndex:
 # Regression: transcript reclassification (SBI validation sprint)
 # ---------------------------------------------------------------------------
 
-def _make_announcement_record(headline: str, subcatname: str = "Analyst / Investor Meet") -> dict:
+
+def _make_announcement_record(
+    headline: str, subcatname: str = "Analyst / Investor Meet"
+) -> dict:
     """Build a minimal BSE announcement record for kind-classification tests."""
     return {
         "NEWSID": "test-newsid-001",
@@ -1226,7 +1242,9 @@ class TestTranscriptReclassification:
 
     def test_outcome_of_analyst_meet_stays_presentation(self) -> None:
         parser = BSEParser()
-        record = _make_announcement_record("Disclosure regarding outcome of investors meeting")
+        record = _make_announcement_record(
+            "Disclosure regarding outcome of investors meeting"
+        )
         evidences = parser.parse_filings({"Table": [record]}, COMPANY_ID)
         assert evidences[0].kind == EvidenceKind.INVESTOR_PRESENTATION
 

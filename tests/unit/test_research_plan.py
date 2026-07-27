@@ -5,6 +5,7 @@ research planner and the deterministic report must name the same nine things
 the same way, and that is asserted against the REAL section builders rather
 than a copied list, so the two cannot drift.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -153,26 +154,34 @@ def test_dimensions_property_preserves_plan_order() -> None:
 
 
 def test_ordered_investigations_sorts_by_priority_descending() -> None:
-    plan = _plan(investigations=(
-        _inv("risks", priority=3),
-        _inv("valuation", priority=9),
-        _inv("catalysts", priority=6),
-    ))
+    plan = _plan(
+        investigations=(
+            _inv("risks", priority=3),
+            _inv("valuation", priority=9),
+            _inv("catalysts", priority=6),
+        )
+    )
     assert [i.dimension for i in plan.ordered_investigations()] == [
-        "valuation", "catalysts", "risks",
+        "valuation",
+        "catalysts",
+        "risks",
     ]
 
 
 def test_ordered_investigations_is_stable_within_equal_priority() -> None:
     # Equal priorities keep the planner's own emission order -- never
     # re-sorted alphabetically, since emission order is itself a judgment.
-    plan = _plan(investigations=(
-        _inv("valuation", priority=5),
-        _inv("business_quality", priority=5),
-        _inv("risks", priority=5),
-    ))
+    plan = _plan(
+        investigations=(
+            _inv("valuation", priority=5),
+            _inv("business_quality", priority=5),
+            _inv("risks", priority=5),
+        )
+    )
     assert [i.dimension for i in plan.ordered_investigations()] == [
-        "valuation", "business_quality", "risks",
+        "valuation",
+        "business_quality",
+        "risks",
     ]
 
 
@@ -180,7 +189,11 @@ def test_ordered_investigations_is_stable_within_equal_priority() -> None:
 def test_to_dict_round_trips_nested_dataclasses() -> None:
     plan = _plan(
         investigations=(_inv("risks", priority=7),),
-        decisions=(ResearchDecision(rule="intent_keyword_match", input="invest", output="invest_decision"),),
+        decisions=(
+            ResearchDecision(
+                rule="intent_keyword_match", input="invest", output="invest_decision"
+            ),
+        ),
     )
     d = plan.to_dict()
 

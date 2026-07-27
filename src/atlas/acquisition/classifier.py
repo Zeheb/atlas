@@ -49,6 +49,7 @@ specifically rather than relying on page count alone).
 No LLM. No ML. Every rule here is a literal substring/regex match against
 already-extracted text, deterministic and independently testable.
 """
+
 from __future__ import annotations
 
 import re
@@ -64,7 +65,12 @@ _RE_SUB_LINE = re.compile(r"Sub\s*[:\-]\s*([^\n]{0,200})", re.IGNORECASE)
 # unexamined — this module makes claims only where it has calibrated
 # evidence, not a blanket "guess for every kind" heuristic.
 _SUBSTANTIVE_KEYWORDS: dict[str, tuple[str, ...]] = {
-    "investor_presentation": ("presentation", "analyst day", "investor meet", "investor day"),
+    "investor_presentation": (
+        "presentation",
+        "analyst day",
+        "investor meet",
+        "investor day",
+    ),
     "earnings_transcript": ("transcript",),
     "annual_report": ("annual report",),
     "brsr": ("business responsibility", "brsr", "sustainability"),
@@ -96,7 +102,12 @@ _MIN_SUBSTANTIVE_PAGES: dict[str, int] = {
 # just a thin/administrative version of the claimed kind. Maps the marker
 # to the corrected EvidenceKind value.
 _REGULATORY_RECLASSIFICATION: dict[str, tuple[str, ...]] = {
-    "regulatory_filing": ("related party transaction", "regulation 23(9)", "reg. 23(9)", "reg 23(9)"),
+    "regulatory_filing": (
+        "related party transaction",
+        "regulation 23(9)",
+        "reg. 23(9)",
+        "reg 23(9)",
+    ),
 }
 
 # Regex fallback for the same reclassification, matched against the same
@@ -153,7 +164,9 @@ def classify(kind: str, text: str, page_count: int | None) -> ClassificationResu
     haystack = sub_line.lower() if sub_line else ""
 
     for corrected_kind, markers in _REGULATORY_RECLASSIFICATION.items():
-        matched = any(m in haystack for m in markers) or (sub_line is not None and _RE_REG_23_9.search(sub_line))
+        matched = any(m in haystack for m in markers) or (
+            sub_line is not None and _RE_REG_23_9.search(sub_line)
+        )
         if kind != corrected_kind and matched:
             return ClassificationResult(
                 original_kind=kind,
@@ -165,7 +178,9 @@ def classify(kind: str, text: str, page_count: int | None) -> ClassificationResu
     required_keywords = _SUBSTANTIVE_KEYWORDS.get(kind)
     if required_keywords and sub_line is not None:
         has_substantive_keyword = any(kw in haystack for kw in required_keywords)
-        has_non_substantive_marker = any(m in haystack for m in _NON_SUBSTANTIVE_MARKERS)
+        has_non_substantive_marker = any(
+            m in haystack for m in _NON_SUBSTANTIVE_MARKERS
+        )
         if not has_substantive_keyword and has_non_substantive_marker:
             return ClassificationResult(
                 original_kind=kind,
@@ -223,7 +238,9 @@ def reclassify_repository(repo_root: Path) -> list[ReclassificationRecord]:
     whose parse status is "ok" — a document with no extracted text has
     nothing for this classifier to read.
     """
-    calibrated_kinds = set(_SUBSTANTIVE_KEYWORDS) | set(_MIN_SUBSTANTIVE_PAGES) | {"financial_results"}
+    calibrated_kinds = (
+        set(_SUBSTANTIVE_KEYWORDS) | set(_MIN_SUBSTANTIVE_PAGES) | {"financial_results"}
+    )
 
     catalog = RepositoryCatalog(repo_root)
     kb = KnowledgeBase(repo_root)

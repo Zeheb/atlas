@@ -46,6 +46,7 @@ pipeline: ``evidence_id``, ``kind``, ``analyzer_version``, ``source_date``,
 ``analyzed_at``.  ``builder_version`` records which version of the assembly
 algorithm produced the stored profile.
 """
+
 from __future__ import annotations
 
 import json
@@ -431,9 +432,21 @@ def _deserialize_profile(data: dict[str, Any]) -> CompanyProfile:
                     source_date=_parse_dt(e["source_date"]),
                     sub_type=e["sub_type"],
                     amount=float(e["amount"]) if e.get("amount") is not None else None,
-                    price_per_share=float(e["price_per_share"]) if e.get("price_per_share") is not None else None,
-                    shares_offered=int(e["shares_offered"]) if e.get("shares_offered") is not None else None,
-                    shares_bought=int(e["shares_bought"]) if e.get("shares_bought") is not None else None,
+                    price_per_share=(
+                        float(e["price_per_share"])
+                        if e.get("price_per_share") is not None
+                        else None
+                    ),
+                    shares_offered=(
+                        int(e["shares_offered"])
+                        if e.get("shares_offered") is not None
+                        else None
+                    ),
+                    shares_bought=(
+                        int(e["shares_bought"])
+                        if e.get("shares_bought") is not None
+                        else None
+                    ),
                     record_date=e.get("record_date"),
                     evidence_id=e.get("evidence_id", ""),
                 )
@@ -444,9 +457,17 @@ def _deserialize_profile(data: dict[str, Any]) -> CompanyProfile:
                     source_date=_parse_dt(e["source_date"]),
                     target_name=e["target_name"],
                     consideration_type=e.get("consideration_type"),
-                    enterprise_value=float(e["enterprise_value"]) if e.get("enterprise_value") is not None else None,
+                    enterprise_value=(
+                        float(e["enterprise_value"])
+                        if e.get("enterprise_value") is not None
+                        else None
+                    ),
                     enterprise_value_unit=_parse_unit(e.get("enterprise_value_unit")),
-                    stake_pct=float(e["stake_pct"]) if e.get("stake_pct") is not None else None,
+                    stake_pct=(
+                        float(e["stake_pct"])
+                        if e.get("stake_pct") is not None
+                        else None
+                    ),
                     expected_completion=e.get("expected_completion"),
                     evidence_id=e.get("evidence_id", ""),
                 )
@@ -491,9 +512,15 @@ def _deserialize_profile(data: dict[str, Any]) -> CompanyProfile:
                 SegmentEntry(
                     period=e["period"],
                     name=e["name"],
-                    revenue=float(e["revenue"]) if e.get("revenue") is not None else None,
+                    revenue=(
+                        float(e["revenue"]) if e.get("revenue") is not None else None
+                    ),
                     ebit=float(e["ebit"]) if e.get("ebit") is not None else None,
-                    growth_pct=float(e["growth_pct"]) if e.get("growth_pct") is not None else None,
+                    growth_pct=(
+                        float(e["growth_pct"])
+                        if e.get("growth_pct") is not None
+                        else None
+                    ),
                     evidence_id=e.get("evidence_id", ""),
                 )
                 for e in seg.get("entries", [])
@@ -526,8 +553,14 @@ def _deserialize_profile(data: dict[str, Any]) -> CompanyProfile:
                     title=r["title"],
                     resolution_type=r.get("resolution_type", ""),
                     outcome=r.get("outcome"),
-                    pct_for=float(r["pct_for"]) if r.get("pct_for") is not None else None,
-                    pct_against=float(r["pct_against"]) if r.get("pct_against") is not None else None,
+                    pct_for=(
+                        float(r["pct_for"]) if r.get("pct_for") is not None else None
+                    ),
+                    pct_against=(
+                        float(r["pct_against"])
+                        if r.get("pct_against") is not None
+                        else None
+                    ),
                     evidence_id=r.get("evidence_id", ""),
                 )
                 for r in gov.get("resolutions", [])
@@ -750,6 +783,7 @@ class CompanyStore:
         """
         if not self.exists():
             from atlas.company.builder import build_profile
+
             profile = build_profile(self._company_id, [result])
             self.save(profile, [result])
             return profile

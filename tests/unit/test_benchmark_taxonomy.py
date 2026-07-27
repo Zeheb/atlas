@@ -1,4 +1,5 @@
 """Benchmark taxonomies (M1.8.5 commit 1, ADR-0005; AtlasCapability, M-E.1)."""
+
 from __future__ import annotations
 
 from typing import get_args
@@ -28,6 +29,7 @@ def test_six_scenarios_declared() -> None:
 
 
 # --- AtlasCapability axis (M-E.1) -----------------------------------------
+
 
 def test_all_capability_ids_matches_the_literal_exactly() -> None:
     # Same Literal<->frozenset parity discipline as the scenario axis, so the

@@ -36,6 +36,7 @@ structure and phrasing. Coverage:
 
   Confidence and provenance invariants
 """
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -45,10 +46,10 @@ import pytest
 from atlas.analysis.earnings_transcript import ANALYZER_VERSION, analyze
 from atlas.analysis.base import AnalysisResult, FactKind, FactUnit
 
-
 # ---------------------------------------------------------------------------
 # Fixture helpers
 # ---------------------------------------------------------------------------
+
 
 def _kb(
     content: str,
@@ -91,6 +92,7 @@ def _transcript(prepared: str, qa: str = "") -> str:
 # Error handling
 # ---------------------------------------------------------------------------
 
+
 class TestErrors:
     def test_missing_entry_raises(self):
         kb = MagicMock()
@@ -119,15 +121,20 @@ class TestErrors:
 # Period detection
 # ---------------------------------------------------------------------------
 
+
 class TestPeriodDetection:
     def test_quarter_ended_phrase(self):
-        content = "Sub: Transcript for the quarter ended September 30, 2025\n\nBody text.\n"
+        content = (
+            "Sub: Transcript for the quarter ended September 30, 2025\n\nBody text.\n"
+        )
         result = analyze("x", _kb(content))
         assert _facts(result, FactKind.REPORT_PERIOD_END)[0].value == "2025-09-30"
         assert _facts(result, FactKind.REPORT_PERIOD_TYPE)[0].value == "quarterly"
 
     def test_quarter_and_year_ended_is_annual(self):
-        content = "Sub: Transcript for the quarter and year ended March 31, 2026\n\nBody.\n"
+        content = (
+            "Sub: Transcript for the quarter and year ended March 31, 2026\n\nBody.\n"
+        )
         result = analyze("x", _kb(content))
         assert _facts(result, FactKind.REPORT_PERIOD_TYPE)[0].value == "annual"
 
@@ -144,7 +151,9 @@ class TestPeriodDetection:
         assert _facts(result, FactKind.REPORT_PERIOD_END)[0].value == "2026-03-31"
 
     def test_quarter_label_fallback_q2(self):
-        content = "Transcript of Q2FY26 post-results Analyst Meet.\n\nOpening remarks.\n"
+        content = (
+            "Transcript of Q2FY26 post-results Analyst Meet.\n\nOpening remarks.\n"
+        )
         result = analyze("x", _kb(content))
         assert _facts(result, FactKind.REPORT_PERIOD_END)[0].value == "2025-09-30"
 
@@ -167,6 +176,7 @@ class TestPeriodDetection:
 # ---------------------------------------------------------------------------
 # Prepared-remarks / Q&A boundary
 # ---------------------------------------------------------------------------
+
 
 class TestQABoundary:
     def test_agenda_mention_does_not_truncate_prepared_remarks(self):
@@ -192,6 +202,7 @@ class TestQABoundary:
 # Revenue
 # ---------------------------------------------------------------------------
 
+
 class TestRevenue:
     def test_rupee_symbol_with_stood_at(self):
         content = _transcript("Our revenue was ₹70,698 crore, a strong quarter.")
@@ -202,7 +213,9 @@ class TestRevenue:
     def test_rs_text_marker_not_just_rupee_symbol(self):
         # Regression: v1.0 anchored purely on the "₹" glyph. Tata Steel's
         # CFO uses the text marker "Rs" instead.
-        content = _transcript("Our consolidated revenues stood at Rs 63,270 crores this quarter.")
+        content = _transcript(
+            "Our consolidated revenues stood at Rs 63,270 crores this quarter."
+        )
         result = analyze("x", _kb(content))
         facts = _facts(result, FactKind.FINANCIAL_REVENUE)
         assert any(f.value == 63270.0 for f in facts)
@@ -211,12 +224,16 @@ class TestRevenue:
         # Regression: v1.0's bare "₹\s*NUMBER" pattern would misread ANY
         # rupee figure in the search window (e.g. a capex figure) as
         # revenue. A capex-only sentence must not produce a revenue fact.
-        content = _transcript("We spent ₹14,026 crore on capital expenditure this year.")
+        content = _transcript(
+            "We spent ₹14,026 crore on capital expenditure this year."
+        )
         result = analyze("x", _kb(content))
         assert _facts(result, FactKind.FINANCIAL_REVENUE) == []
 
     def test_usd_revenue(self):
-        content = _transcript("In dollar terms, revenue was $7.621 billion this quarter.")
+        content = _transcript(
+            "In dollar terms, revenue was $7.621 billion this quarter."
+        )
         result = analyze("x", _kb(content))
         facts = _facts(result, FactKind.FINANCIAL_REVENUE)
         assert any(f.value == 7.621 and f.unit == FactUnit.USD_BILLION for f in facts)
@@ -242,6 +259,7 @@ class TestRevenue:
 # ---------------------------------------------------------------------------
 # Margin
 # ---------------------------------------------------------------------------
+
 
 class TestMargin:
     def test_operating_margin_stood_at(self):
@@ -289,9 +307,12 @@ class TestMargin:
 # TCV
 # ---------------------------------------------------------------------------
 
+
 class TestTCV:
     def test_tcv_of_dollar_billion(self):
-        content = _transcript("Our order book was strong, with $12 billion in TCV this quarter.")
+        content = _transcript(
+            "Our order book was strong, with $12 billion in TCV this quarter."
+        )
         result = analyze("x", _kb(content))
         facts = _facts(result, FactKind.FINANCIAL_TCV)
         assert facts[0].value == 12.0
@@ -309,6 +330,7 @@ class TestTCV:
 # ---------------------------------------------------------------------------
 # Forward guidance (shared pattern with investor_presentation.py)
 # ---------------------------------------------------------------------------
+
 
 class TestGuidance:
     def test_capex_guidance(self):
@@ -331,6 +353,7 @@ class TestGuidance:
 # ---------------------------------------------------------------------------
 # Workforce (reused ESG_WORKFORCE_* FactKinds)
 # ---------------------------------------------------------------------------
+
 
 class TestWorkforce:
     def test_headcount(self):
@@ -362,14 +385,19 @@ class TestWorkforce:
 # Confidence
 # ---------------------------------------------------------------------------
 
+
 class TestConfidence:
     def test_high_confidence_with_revenue_and_margin(self):
-        content = _transcript("Revenue was ₹70,698 crore. Operating margin stood at 25.3%.")
+        content = _transcript(
+            "Revenue was ₹70,698 crore. Operating margin stood at 25.3%."
+        )
         result = analyze("x", _kb(content))
         assert result.confidence == "high"
 
     def test_medium_confidence_partial(self):
-        content = _transcript("Our order book was strong, with $12 billion in TCV this quarter.")
+        content = _transcript(
+            "Our order book was strong, with $12 billion in TCV this quarter."
+        )
         result = analyze("x", _kb(content))
         assert result.confidence == "medium"
 
@@ -382,6 +410,7 @@ class TestConfidence:
 # ---------------------------------------------------------------------------
 # Provenance
 # ---------------------------------------------------------------------------
+
 
 class TestProvenance:
     def test_all_facts_have_period_or_are_guidance(self):
@@ -397,14 +426,20 @@ class TestProvenance:
             assert f.period == "2026-03-31", f"{f.kind} has period={f.period!r}"
 
     def test_all_facts_have_provenance_section(self):
-        content = _transcript("Revenue was ₹70,698 crore. Operating margin stood at 25.3%.")
+        content = _transcript(
+            "Revenue was ₹70,698 crore. Operating margin stood at 25.3%."
+        )
         result = analyze("x", _kb(content))
         for f in result.facts:
             assert f.provenance.section, f"fact {f.kind} missing provenance section"
 
     def test_source_date_preserved(self):
         result = analyze(
-            "x", _kb(_transcript("Revenue was ₹70,698 crore."), source_date="2026-04-14T19:57:43+05:30")
+            "x",
+            _kb(
+                _transcript("Revenue was ₹70,698 crore."),
+                source_date="2026-04-14T19:57:43+05:30",
+            ),
         )
         assert result.source_date.year == 2026
         assert result.source_date.month == 4

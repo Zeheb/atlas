@@ -1,4 +1,5 @@
 """Eval suite schema + loader (eval commit 1)."""
+
 from __future__ import annotations
 
 from atlas.eval.cases import CAP_SINGLE_NAME, CAP_THESIS, EvalCase, load_cases
@@ -36,12 +37,21 @@ def test_t25_t39_are_honest_negative() -> None:
 def test_availability_gates_on_capabilities() -> None:
     caps = frozenset({CAP_SINGLE_NAME})
     thesis_case = EvalCase(
-        id="x", category="G", question="q", subject="TCS",
-        expected_behavior="answer", rubric="", requires=(CAP_THESIS,),
+        id="x",
+        category="G",
+        question="q",
+        subject="TCS",
+        expected_behavior="answer",
+        rubric="",
+        requires=(CAP_THESIS,),
     )
     base_case = EvalCase(
-        id="y", category="A", question="q", subject="TCS",
-        expected_behavior="answer", rubric="",
+        id="y",
+        category="A",
+        question="q",
+        subject="TCS",
+        expected_behavior="answer",
+        rubric="",
     )
     assert not thesis_case.is_available(caps)
     assert base_case.is_available(caps)

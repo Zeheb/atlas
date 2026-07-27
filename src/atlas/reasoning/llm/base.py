@@ -14,11 +14,14 @@ local, keyless transport whose model identity is its own setting
 free-form string (``Settings.reasoning_model`` / ``judge_model``), orthogonal
 to this axis.
 """
+
 from __future__ import annotations
 
 from typing import Literal, Protocol, runtime_checkable
 
-LLMProvider = Literal["anthropic", "google_ai_studio", "vertex_ai", "ollama", "omniroute"]
+LLMProvider = Literal[
+    "anthropic", "google_ai_studio", "vertex_ai", "ollama", "omniroute"
+]
 
 
 class LLMConfigurationError(RuntimeError):

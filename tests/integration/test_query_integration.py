@@ -5,6 +5,7 @@ run every query function against real data.  Assertions are deliberately loose
 so tests survive profile rebuilds — we verify structure and non-emptiness rather
 than exact numeric values.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -53,8 +54,7 @@ def tcs_profile() -> CompanyProfile:
     """Load the TCS company profile from the repository."""
     if not _PROFILE_PATH.exists():
         pytest.skip(
-            f"TCS profile not found at {_PROFILE_PATH}. "
-            "Run: atlas profile build TCS"
+            f"TCS profile not found at {_PROFILE_PATH}. " "Run: atlas profile build TCS"
         )
     store = CompanyStore(_PROFILE_PATH, "TCS")
     return store.load()
@@ -111,7 +111,9 @@ class TestRevenueIntegration:
         first_row = result.sections[0].rows[0]
         assert first_row[-1] == "-"
 
-    def test_revenue_subsequent_rows_have_yoy(self, tcs_profile: CompanyProfile) -> None:
+    def test_revenue_subsequent_rows_have_yoy(
+        self, tcs_profile: CompanyProfile
+    ) -> None:
         result = revenue(tcs_profile)
         rows = result.sections[0].rows
         if len(rows) < 2:
@@ -159,12 +161,16 @@ class TestStrategyIntegration:
         result = strategy(tcs_profile)
         assert result.query == "strategy"
 
-    def test_strategy_sections_include_priorities(self, tcs_profile: CompanyProfile) -> None:
+    def test_strategy_sections_include_priorities(
+        self, tcs_profile: CompanyProfile
+    ) -> None:
         result = strategy(tcs_profile)
         headings = [s.heading for s in result.sections]
         assert "Strategic Priorities" in headings
 
-    def test_strategy_keyword_filter_reduces_results(self, tcs_profile: CompanyProfile) -> None:
+    def test_strategy_keyword_filter_reduces_results(
+        self, tcs_profile: CompanyProfile
+    ) -> None:
         all_result = strategy(tcs_profile)
         total_all = sum(len(s.rows) for s in all_result.sections)
 
@@ -173,7 +179,9 @@ class TestStrategyIntegration:
         total_keyword = sum(len(s.rows) for s in keyword_result.sections)
         assert total_keyword <= total_all
 
-    def test_strategy_keyword_note_on_no_match(self, tcs_profile: CompanyProfile) -> None:
+    def test_strategy_keyword_note_on_no_match(
+        self, tcs_profile: CompanyProfile
+    ) -> None:
         result = strategy(tcs_profile, keyword="xyz_no_match_xyz")
         assert any("xyz_no_match_xyz" in n for n in result.notes)
 
@@ -192,7 +200,9 @@ class TestAcquisitionsIntegration:
         result = acquisitions(tcs_profile)
         assert len(result.sections) == 1
 
-    def test_acquisitions_rows_have_six_cells(self, tcs_profile: CompanyProfile) -> None:
+    def test_acquisitions_rows_have_six_cells(
+        self, tcs_profile: CompanyProfile
+    ) -> None:
         result = acquisitions(tcs_profile)
         for row in result.sections[0].rows:
             assert len(row) == 6
@@ -227,19 +237,25 @@ class TestOwnershipIntegration:
         # Periods should be descending — first row > second row
         assert rows[0][0] >= rows[1][0]
 
-    def test_signals_section_when_enough_data(self, tcs_profile: CompanyProfile) -> None:
+    def test_signals_section_when_enough_data(
+        self, tcs_profile: CompanyProfile
+    ) -> None:
         result = ownership(tcs_profile)
         # Signals section is only added when the algorithm detects notable moves.
         # With real TCS data we expect at least some signals (FPI/DII move enough).
         # If no signals are found (unlikely for multi-year data), this is still valid.
         headings = [s.heading for s in result.sections]
         if "Ownership Signals" in headings:
-            sig_sec = next(s for s in result.sections if s.heading == "Ownership Signals")
+            sig_sec = next(
+                s for s in result.sections if s.heading == "Ownership Signals"
+            )
             assert sig_sec.rows, "Signals section should not be empty if present"
             for row in sig_sec.rows:
                 assert len(row) == 1, "Each signal row is a single-cell row"
 
-    def test_signals_section_rows_are_strings(self, tcs_profile: CompanyProfile) -> None:
+    def test_signals_section_rows_are_strings(
+        self, tcs_profile: CompanyProfile
+    ) -> None:
         result = ownership(tcs_profile)
         for section in result.sections:
             if section.heading == "Ownership Signals":
@@ -333,6 +349,7 @@ class TestRunQueryIntegration:
 
     def test_run_query_invalid_raises(self, tcs_profile: CompanyProfile) -> None:
         import pytest
+
         with pytest.raises(ValueError, match="Unknown query"):
             run_query("nonexistent_query", tcs_profile)
 
@@ -351,6 +368,7 @@ class TestRenderIntegration:
 
     def test_render_empty_profile(self) -> None:
         from atlas.company.model import CompanyProfile
+
         empty = CompanyProfile(company_id="EMPTY")
         result = revenue(empty)
         rendered = render_result(result)

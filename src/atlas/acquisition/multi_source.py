@@ -18,6 +18,7 @@ trivially, every existing single-connector acquisition run is unaffected)
 and is tested against synthetic multi-source scenarios so the merge logic
 itself is proven before a second real connector ever exists to feed it.
 """
+
 from __future__ import annotations
 
 from collections import defaultdict
@@ -61,7 +62,9 @@ def _default_quality_preference(a: Evidence, b: Evidence) -> Evidence:
 
 def resolve_multi_source(
     results: Sequence[DiscoveryResult],
-    quality_preference: Callable[[Evidence, Evidence], Evidence] = _default_quality_preference,
+    quality_preference: Callable[
+        [Evidence, Evidence], Evidence
+    ] = _default_quality_preference,
 ) -> DiscoveryResult:
     """Merge per-connector DiscoveryResults into one deduplicated result.
 
@@ -114,18 +117,20 @@ def resolve_multi_source(
         resolved.append(winner)
 
         suppressed = [c for c in candidates if c is not winner]
-        warnings.append(DiscoveryWarning(
-            source=winner.source,
-            code="duplicate_across_exchanges",
-            message=(
-                f"{winner.kind.value} filed {winner.source_date.date()}: kept the "
-                f"{winner.source.value} copy, suppressed {len(suppressed)} duplicate(s) "
-                f"from {sorted({c.source.value for c in suppressed})}"
-            ),
-            metadata={
-                "kept_evidence_id": winner.evidence_id,
-                "suppressed_evidence_ids": [c.evidence_id for c in suppressed],
-            },
-        ))
+        warnings.append(
+            DiscoveryWarning(
+                source=winner.source,
+                code="duplicate_across_exchanges",
+                message=(
+                    f"{winner.kind.value} filed {winner.source_date.date()}: kept the "
+                    f"{winner.source.value} copy, suppressed {len(suppressed)} duplicate(s) "
+                    f"from {sorted({c.source.value for c in suppressed})}"
+                ),
+                metadata={
+                    "kept_evidence_id": winner.evidence_id,
+                    "suppressed_evidence_ids": [c.evidence_id for c in suppressed],
+                },
+            )
+        )
 
     return DiscoveryResult(evidence=resolved, warnings=warnings)

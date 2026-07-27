@@ -5,6 +5,7 @@ type-level facts. If a future change relaxes one of these, a test breaks —
 which is the point: the contracts are frozen, the implementations behind them
 are not.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -118,7 +119,9 @@ def test_judgment_finding_requires_supporting_claim() -> None:
 
 def test_fact_finding_may_have_no_supporting_claim() -> None:
     f = Finding(
-        statement="revenue rose", assertability="fact", confidence="high",
+        statement="revenue rose",
+        assertability="fact",
+        confidence="high",
         supporting_claims=[],
     )
     assert f.assertability == "fact"
@@ -139,7 +142,9 @@ def test_refused_result_must_have_reason_and_no_findings() -> None:
 
 def test_result_citations_must_cover_finding_evidence() -> None:
     finding = Finding(
-        statement="margin durable", assertability="judgment", confidence="high",
+        statement="margin durable",
+        assertability="judgment",
+        confidence="high",
         supporting_claims=[_claim("bse-ev-1")],
     )
     with pytest.raises(ValueError):
@@ -153,7 +158,9 @@ def test_result_citations_must_cover_finding_evidence() -> None:
 
 def test_valid_result_roundtrips() -> None:
     finding = Finding(
-        statement="margin durable", assertability="judgment", confidence="high",
+        statement="margin durable",
+        assertability="judgment",
+        confidence="high",
         supporting_claims=[_claim("bse-ev-1")],
     )
     result = ReasoningResult(
@@ -170,6 +177,9 @@ def test_valid_result_roundtrips() -> None:
 def test_refused_answer_requires_reason() -> None:
     with pytest.raises(ValueError):
         Answer(
-            prose="", citations=[], overall_confidence="low", refused=True,
+            prose="",
+            citations=[],
+            overall_confidence="low",
+            refused=True,
             refusal_reason=None,
         )

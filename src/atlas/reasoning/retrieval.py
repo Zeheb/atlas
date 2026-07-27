@@ -43,6 +43,7 @@ tests) — it stays the M1.5 code path for callers that never build a plan.
 
 Swapping in a real reranking model later replaces ``_rank_and_select`` alone.
 """
+
 from __future__ import annotations
 
 import re
@@ -129,13 +130,15 @@ def _clears_accept_bar(matched_words: int, matched_numbers: int) -> bool:
 
 
 def _finalize_match(
-    content: str, start: int, text: str, all_keywords: set[str],
-    window_chars: int, has_numeric: bool,
+    content: str,
+    start: int,
+    text: str,
+    all_keywords: set[str],
+    window_chars: int,
+    has_numeric: bool,
 ) -> RetrievalMatch:
     """Trim *text* around its first matched keyword and locate it in *content*."""
-    tokens_with_pos = [
-        (m.start(), m.group().lower()) for m in _TOKEN_RE.finditer(text)
-    ]
+    tokens_with_pos = [(m.start(), m.group().lower()) for m in _TOKEN_RE.finditer(text)]
     anchor = next((pos for pos, tok in tokens_with_pos if tok in all_keywords), 0)
 
     excerpt = _trim_excerpt(text, anchor, window_chars)
@@ -181,7 +184,9 @@ def find_excerpt(
     if best is None:
         return None
     _score, start, has_numeric, text = best
-    return _finalize_match(content, start, text, q_words | q_numbers, window_chars, bool(has_numeric))
+    return _finalize_match(
+        content, start, text, q_words | q_numbers, window_chars, bool(has_numeric)
+    )
 
 
 def retrieve_passages(
@@ -251,8 +256,12 @@ def retrieve_passages(
     results: list[tuple[str, RetrievalMatch]] = []
     for _score, doc_id, start, text, has_numeric in selected:
         content = cache[doc_id]
-        assert content is not None  # guaranteed: doc_id only entered candidates if content is set
-        match = _finalize_match(content, start, text, all_keywords, window_chars, has_numeric)
+        assert (
+            content is not None
+        )  # guaranteed: doc_id only entered candidates if content is set
+        match = _finalize_match(
+            content, start, text, all_keywords, window_chars, has_numeric
+        )
         results.append((doc_id, match))
     return results
 
@@ -349,7 +358,9 @@ def _generate_candidates(
             matched_numbers = len(numeric_terms & w_numbers)
             if not _clears_accept_bar(matched_words, matched_numbers):
                 continue
-            candidates.append(_Candidate(doc_id, start, text, matched_words, matched_numbers))
+            candidates.append(
+                _Candidate(doc_id, start, text, matched_words, matched_numbers)
+            )
     return candidates
 
 
@@ -370,7 +381,9 @@ def _date_prefix(source_date: str) -> str | None:
     return source_date[:10] if source_date and len(source_date) >= 10 else None
 
 
-def _recency_ranks(doc_ids: Iterable[str], metadata: dict[str, ParsedDocument]) -> dict[str, int]:
+def _recency_ranks(
+    doc_ids: Iterable[str], metadata: dict[str, ParsedDocument]
+) -> dict[str, int]:
     """Rank *doc_ids* by source_date descending (0 = most recent).
 
     Docs with no metadata or an unparseable date sort last — a missing
@@ -381,7 +394,11 @@ def _recency_ranks(doc_ids: Iterable[str], metadata: dict[str, ParsedDocument]) 
     for doc_id in doc_ids:
         doc = metadata.get(doc_id)
         prefix = _date_prefix(doc.source_date) if doc is not None else None
-        (dated.append((doc_id, prefix)) if prefix is not None else undated.append(doc_id))
+        (
+            dated.append((doc_id, prefix))
+            if prefix is not None
+            else undated.append(doc_id)
+        )
     dated.sort(key=lambda pair: pair[1], reverse=True)
     ranks: dict[str, int] = {doc_id: rank for rank, (doc_id, _date) in enumerate(dated)}
     base = len(dated)
@@ -450,7 +467,11 @@ def _rank_and_select(
     recording what was already computed to reach ``total``, not a second
     computation that could drift from it.
     """
-    recency_ranks = _recency_ranks((c.doc_id for c in candidates), metadata) if plan.rerank.prefer_recent else {}
+    recency_ranks = (
+        _recency_ranks((c.doc_id for c in candidates), metadata)
+        if plan.rerank.prefer_recent
+        else {}
+    )
 
     scored: list[_ScoredCandidate] = []
     for cand in candidates:
@@ -466,7 +487,11 @@ def _rank_and_select(
         numeric = 20 if (plan.rerank.prefer_numeric and cand.matched_numbers > 0) else 0
         total = base * 100 + doc_type + date_window + period + recency + numeric
         kind = doc.kind if doc is not None else None
-        scored.append(_ScoredCandidate(cand, base, doc_type, date_window, period, recency, numeric, total, kind))
+        scored.append(
+            _ScoredCandidate(
+                cand, base, doc_type, date_window, period, recency, numeric, total, kind
+            )
+        )
 
     scored.sort(key=lambda s: (-s.total, s.candidate.doc_id, s.candidate.start))
 
@@ -478,7 +503,10 @@ def _rank_and_select(
         end = start + len(cand.text)
         overlaps = any(
             s.candidate.doc_id == doc_id
-            and not (end <= s.candidate.start or start >= s.candidate.start + len(s.candidate.text))
+            and not (
+                end <= s.candidate.start
+                or start >= s.candidate.start + len(s.candidate.text)
+            )
             for s in selected
         )
         if overlaps:
@@ -521,9 +549,13 @@ def retrieve_with_plan(
     docs_missing_metadata = tuple(d for d in unique_doc_ids if d not in metadata)
 
     if not query_terms and not numeric_terms:
-        return RetrievalResult((), plan, 0, docs_missing_metadata, docs_searched=len(unique_doc_ids))
+        return RetrievalResult(
+            (), plan, 0, docs_missing_metadata, docs_searched=len(unique_doc_ids)
+        )
 
-    candidates = _generate_candidates(kb, unique_doc_ids, query_terms, numeric_terms, cache)
+    candidates = _generate_candidates(
+        kb, unique_doc_ids, query_terms, numeric_terms, cache
+    )
     selected = _rank_and_select(candidates, plan, metadata)
 
     all_keywords = query_terms | numeric_terms
@@ -532,20 +564,39 @@ def retrieve_with_plan(
     for sc in selected:
         cand = sc.candidate
         content = cache[cand.doc_id]
-        assert content is not None  # guaranteed: doc_id only entered candidates if content is set
+        assert (
+            content is not None
+        )  # guaranteed: doc_id only entered candidates if content is set
         match = _finalize_match(
-            content, cand.start, cand.text, all_keywords, window_chars, cand.matched_numbers > 0,
+            content,
+            cand.start,
+            cand.text,
+            all_keywords,
+            window_chars,
+            cand.matched_numbers > 0,
         )
         results.append((cand.doc_id, match))
-        breakdowns.append(ScoreBreakdown(
-            doc_id=cand.doc_id, char_offset=match.char_offset,
-            base=sc.base, doc_type=sc.doc_type, date_window=sc.date_window,
-            period=sc.period, recency=sc.recency, numeric=sc.numeric, total=sc.total,
-            kind=sc.kind,
-        ))
+        breakdowns.append(
+            ScoreBreakdown(
+                doc_id=cand.doc_id,
+                char_offset=match.char_offset,
+                base=sc.base,
+                doc_type=sc.doc_type,
+                date_window=sc.date_window,
+                period=sc.period,
+                recency=sc.recency,
+                numeric=sc.numeric,
+                total=sc.total,
+                kind=sc.kind,
+            )
+        )
 
     return RetrievalResult(
-        tuple(results), plan, len(candidates), docs_missing_metadata, tuple(breakdowns),
+        tuple(results),
+        plan,
+        len(candidates),
+        docs_missing_metadata,
+        tuple(breakdowns),
         docs_searched=len(unique_doc_ids),
     )
 

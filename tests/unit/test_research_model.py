@@ -1,4 +1,5 @@
 """Unit tests for atlas.research.model — ReportSection/ReportData."""
+
 from __future__ import annotations
 
 from atlas.query.engine import TableSection
@@ -15,11 +16,19 @@ class TestReportSectionIsEmpty:
         assert sec.is_empty() is False
 
     def test_not_empty_with_table_rows(self) -> None:
-        sec = ReportSection(key="k", title="T", tables=[TableSection(heading="H", columns=["A"], rows=[["1"]])])
+        sec = ReportSection(
+            key="k",
+            title="T",
+            tables=[TableSection(heading="H", columns=["A"], rows=[["1"]])],
+        )
         assert sec.is_empty() is False
 
     def test_empty_with_table_but_no_rows(self) -> None:
-        sec = ReportSection(key="k", title="T", tables=[TableSection(heading="H", columns=["A"], rows=[])])
+        sec = ReportSection(
+            key="k",
+            title="T",
+            tables=[TableSection(heading="H", columns=["A"], rows=[])],
+        )
         assert sec.is_empty() is True
 
     def test_not_empty_with_notes_only(self) -> None:

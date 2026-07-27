@@ -1,4 +1,5 @@
 """Atlas query engine — deterministic, rule-based investor queries over CompanyProfile."""
+
 from atlas.query.engine import (
     QueryResult,
     TableSection,

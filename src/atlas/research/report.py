@@ -12,6 +12,7 @@ section list runs for every ticker; a section that finds nothing for a
 given company says so (via ReportSection.notes) rather than being skipped,
 so a reader always sees the full shape of what Atlas checked.
 """
+
 from __future__ import annotations
 
 from atlas.acquisition.repository import Repository
@@ -61,12 +62,16 @@ def _build_sections(
     body: list[ReportSection] = []
     for module in _BODY_BUILDERS:
         if module is competitive_position:
-            body.append(module.build(profile, repo, ticker, peer_profiles=peer_profiles))
+            body.append(
+                module.build(profile, repo, ticker, peer_profiles=peer_profiles)
+            )
         else:
             body.append(module.build(profile, repo, ticker))
 
     open_q = open_questions.build(profile, repo, ticker, other_sections=body)
-    appendix = evidence_appendix.build(profile, repo, ticker, other_sections=body + [open_q])
+    appendix = evidence_appendix.build(
+        profile, repo, ticker, other_sections=body + [open_q]
+    )
     the_call_sec = the_call.build(profile, repo, ticker, other_sections=body + [open_q])
 
     return [the_call_sec, *body, open_q, appendix]

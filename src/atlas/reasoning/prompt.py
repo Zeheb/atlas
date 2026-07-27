@@ -33,6 +33,7 @@ JSON schema and default to false/null in ``ask.py``'s parser, so every
 existing fake-LLM response in this codebase's test suite (none of which
 emit these keys) is unaffected.
 """
+
 from __future__ import annotations
 
 from atlas.reasoning.contracts import GroundingContext, Question, RecalledView

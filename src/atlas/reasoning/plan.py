@@ -38,6 +38,7 @@ caller to keep it honest. When that milestone arrives, it will construct
 validation remains the safety boundary for a model-generated plan exactly as
 it is for the heuristic planner's own output.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -50,14 +51,14 @@ _VALID_EVIDENCE_KINDS = frozenset(k.value for k in EvidenceKind)
 
 RetrievalIntent = Literal[
     "financial_metric",  # revenue, margin, EPS, debt
-    "guidance",          # outlook, target, expects, aspiration
-    "risk",              # risk factor, exposure, litigation
-    "governance",        # board, director, auditor, remuneration
-    "capital_action",    # dividend, buyback, acquisition, fundraise
-    "esg",               # emissions, diversity, BRSR
-    "ownership",         # shareholding, promoter, pledge, FII
-    "narrative",         # strategy, commentary, management view
-    "general",           # fallback -- no preference expressed
+    "guidance",  # outlook, target, expects, aspiration
+    "risk",  # risk factor, exposure, litigation
+    "governance",  # board, director, auditor, remuneration
+    "capital_action",  # dividend, buyback, acquisition, fundraise
+    "esg",  # emissions, diversity, BRSR
+    "ownership",  # shareholding, promoter, pledge, FII
+    "narrative",  # strategy, commentary, management view
+    "general",  # fallback -- no preference expressed
 ]
 
 _VALID_INTENTS = frozenset(RetrievalIntent.__args__)  # type: ignore[attr-defined]
@@ -82,7 +83,7 @@ class DocTypePreference:
     additive. See retrieval.py's candidate/ranking split.
     """
 
-    kind: str   # must be a value of EvidenceKind
+    kind: str  # must be a value of EvidenceKind
     weight: int
 
     def __post_init__(self) -> None:
@@ -136,8 +137,8 @@ class PlanningDecision:
     milestone where it is a real, varying signal.
     """
 
-    rule: str    # stable identifier, e.g. "intent_keyword_match", "top_k_default"
-    input: str   # what the rule matched on, e.g. "risk factor"
+    rule: str  # stable identifier, e.g. "intent_keyword_match", "top_k_default"
+    input: str  # what the rule matched on, e.g. "risk factor"
     output: str  # what it decided, e.g. "risk"
 
     def __post_init__(self) -> None:
@@ -171,14 +172,18 @@ class SearchPlan:
     def __post_init__(self) -> None:
         object.__setattr__(self, "query_terms", _tuple(self.query_terms))
         object.__setattr__(self, "numeric_terms", _tuple(self.numeric_terms))
-        object.__setattr__(self, "preferred_doc_types", _tuple(self.preferred_doc_types))
+        object.__setattr__(
+            self, "preferred_doc_types", _tuple(self.preferred_doc_types)
+        )
         object.__setattr__(self, "periods", _tuple(self.periods))
         object.__setattr__(self, "decisions", _tuple(self.decisions))
 
         if not self.raw_question.strip():
             raise ValueError("SearchPlan.raw_question must be non-empty")
         if self.intent not in _VALID_INTENTS:
-            raise ValueError(f"SearchPlan.intent {self.intent!r} is not a valid RetrievalIntent")
+            raise ValueError(
+                f"SearchPlan.intent {self.intent!r} is not a valid RetrievalIntent"
+            )
         if not (1 <= self.top_k <= 50):
             raise ValueError(f"SearchPlan.top_k must be in 1..50, got {self.top_k}")
 

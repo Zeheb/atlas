@@ -3,6 +3,7 @@
 Covers the analyst extractor, the EntityMention composition, the builder's
 ingest into CompanyProfile.participants, and the store round-trip.
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -23,7 +24,7 @@ _QA = (
     "Moderator: Next question from the line of Sudheer Guntupalli from \n"
     "Kotak Mahindra AMC. Please go ahead.\n"
     "Moderator: Next question from the line of Ravi Menon from Macquarie. "
-    "Please go ahead.\n"   # same analyst again -> deduped
+    "Please go ahead.\n"  # same analyst again -> deduped
 )
 
 
@@ -54,12 +55,14 @@ def test_no_analysts_yields_empty() -> None:
 def test_entity_mention_composes_entity_without_mutating_it() -> None:
     e = Entity(entity_id="person:x", kind="person", canonical_name="X")
     m = EntityMention(entity=e, role="analyst", affiliation="Y")
-    assert m.entity is e            # composition, not copy/mutation
+    assert m.entity is e  # composition, not copy/mutation
     assert m.role == "analyst" and m.affiliation == "Y"
 
 
 # --- builder ingest -----------------------------------------------------------
-def _transcript_result(evidence_id: str, mentions: list[EntityMention]) -> AnalysisResult:
+def _transcript_result(
+    evidence_id: str, mentions: list[EntityMention]
+) -> AnalysisResult:
     return AnalysisResult(
         evidence_id=evidence_id,
         kind="earnings_transcript",
@@ -72,19 +75,29 @@ def _transcript_result(evidence_id: str, mentions: list[EntityMention]) -> Analy
 
 def _mention(name: str, affil: str) -> EntityMention:
     return EntityMention(
-        entity=Entity(entity_id=f"person:{name.lower().replace(' ', '-')}",
-                      kind="person", canonical_name=name),
-        role="analyst", affiliation=affil,
+        entity=Entity(
+            entity_id=f"person:{name.lower().replace(' ', '-')}",
+            kind="person",
+            canonical_name=name,
+        ),
+        role="analyst",
+        affiliation=affil,
     )
 
 
 def test_builder_ingests_participants() -> None:
-    result = _transcript_result("bse-news-t1", [
-        _mention("Ravi Menon", "Macquarie"),
-        _mention("Kumar Rakesh", "BNP Paribas"),
-    ])
+    result = _transcript_result(
+        "bse-news-t1",
+        [
+            _mention("Ravi Menon", "Macquarie"),
+            _mention("Kumar Rakesh", "BNP Paribas"),
+        ],
+    )
     profile = build_profile("TCS", [result])
-    got = {(p.canonical_name, p.affiliation, p.evidence_id, p.source_date) for p in profile.participants}
+    got = {
+        (p.canonical_name, p.affiliation, p.evidence_id, p.source_date)
+        for p in profile.participants
+    }
     assert ("Ravi Menon", "Macquarie", "bse-news-t1", "2026-04-15") in got
     assert ("Kumar Rakesh", "BNP Paribas", "bse-news-t1", "2026-04-15") in got
 
@@ -96,13 +109,16 @@ def test_builder_no_entities_leaves_participants_empty() -> None:
 
 # --- store round-trip ---------------------------------------------------------
 def test_participants_survive_store_round_trip(tmp_path) -> None:
-    result = _transcript_result("bse-news-t3", [_mention("Gaurav Rateria", "Morgan Stanley")])
+    result = _transcript_result(
+        "bse-news-t3", [_mention("Gaurav Rateria", "Morgan Stanley")]
+    )
     profile = build_profile("TCS", [result])
     store = CompanyStore(tmp_path / "TCS" / "profile.json", "TCS")
     store.save(profile, [result])
     loaded = store.load()
-    assert [(p.canonical_name, p.affiliation) for p in loaded.participants] == \
-        [("Gaurav Rateria", "Morgan Stanley")]
+    assert [(p.canonical_name, p.affiliation) for p in loaded.participants] == [
+        ("Gaurav Rateria", "Morgan Stanley")
+    ]
 
 
 def test_empty_participants_round_trip(tmp_path) -> None:

@@ -10,6 +10,7 @@ not in a separate "Capital Allocation" section — "how much cash has left
 the business, and can the balance sheet keep doing that" is one resilience
 question, not two.
 """
+
 from __future__ import annotations
 
 from atlas.acquisition.repository import Repository
@@ -26,14 +27,22 @@ from atlas.research.sections._shared import dedupe_identical_rows, drop_empty_ro
 # narrower than "any financial metric" (which would pull in revenue/margin,
 # already Business Quality's job) — this list is balance-sheet-specific.
 _RESILIENCE_METRIC_FALLBACK = (
-    "capital_adequacy_ratio", "gross_npa_ratio", "net_npa_ratio",
-    "casa_ratio", "credit_cost", "provision_coverage_ratio",
+    "capital_adequacy_ratio",
+    "gross_npa_ratio",
+    "net_npa_ratio",
+    "casa_ratio",
+    "credit_cost",
+    "provision_coverage_ratio",
 )
 
 
 def _net_cash_debt_verdict(profile: CompanyProfile) -> Finding | None:
     snaps = sorted(
-        (s for s in profile.financial.snapshots if s.basis == "consolidated" and s.period_type == "annual"),
+        (
+            s
+            for s in profile.financial.snapshots
+            if s.basis == "consolidated" and s.period_type == "annual"
+        ),
         key=lambda s: s.period,
     )
     points = [(s.period, nc) for s in snaps if (nc := derived.net_cash(s)) is not None]
@@ -45,7 +54,9 @@ def _net_cash_debt_verdict(profile: CompanyProfile) -> Finding | None:
     if len(points) >= 2:
         prior_nc = points[-2][1]
         delta = latest_nc - prior_nc
-        direction = "strengthening" if delta > 0 else "weakening" if delta < 0 else "unchanged"
+        direction = (
+            "strengthening" if delta > 0 else "weakening" if delta < 0 else "unchanged"
+        )
         text += f", {direction} versus {engine._fmt_date(points[-2][0])} ({engine._fmt_crore(abs(prior_nc))})."
     else:
         text += "."
@@ -53,7 +64,9 @@ def _net_cash_debt_verdict(profile: CompanyProfile) -> Finding | None:
 
 
 def _rating_trajectory(profile: CompanyProfile) -> Finding | None:
-    ratings = sorted(profile.credit_history.debt_ratings, key=lambda r: r.source_date, reverse=True)
+    ratings = sorted(
+        profile.credit_history.debt_ratings, key=lambda r: r.source_date, reverse=True
+    )
     if not ratings:
         return None
     latest = ratings[0]
@@ -62,29 +75,41 @@ def _rating_trajectory(profile: CompanyProfile) -> Finding | None:
         f"Latest debt rating action: {latest.agency} {action} {latest.rating or ''}".strip()
         + f" ({engine._fmt_source_date(latest.source_date)})."
     )
-    return Finding(text=text, evidence_ids=[latest.evidence_id] if latest.evidence_id else [], kind="fact")
+    return Finding(
+        text=text,
+        evidence_ids=[latest.evidence_id] if latest.evidence_id else [],
+        kind="fact",
+    )
 
 
 def _shareholder_returns(profile: CompanyProfile) -> list[Finding]:
     ce = profile.capital_events
     findings = []
     if ce.dividends:
-        findings.append(Finding(
-            text=f"{len(ce.dividends)} dividend declaration(s) on record.",
-            evidence_ids=[e.evidence_id for e in ce.dividends if e.evidence_id],
-            kind=DERIVED,
-        ))
+        findings.append(
+            Finding(
+                text=f"{len(ce.dividends)} dividend declaration(s) on record.",
+                evidence_ids=[e.evidence_id for e in ce.dividends if e.evidence_id],
+                kind=DERIVED,
+            )
+        )
     buyback_total = sum(e.amount for e in ce.buybacks if e.amount is not None)
     if buyback_total:
-        findings.append(Finding(
-            text=f"Total disclosed buyback capital across all programs: {engine._fmt_crore(buyback_total)}.",
-            evidence_ids=[e.evidence_id for e in ce.buybacks if e.evidence_id and e.amount],
-            kind=DERIVED,
-        ))
+        findings.append(
+            Finding(
+                text=f"Total disclosed buyback capital across all programs: {engine._fmt_crore(buyback_total)}.",
+                evidence_ids=[
+                    e.evidence_id for e in ce.buybacks if e.evidence_id and e.amount
+                ],
+                kind=DERIVED,
+            )
+        )
     return findings
 
 
-def build(profile: CompanyProfile, repo: Repository | None, ticker: str) -> ReportSection:
+def build(
+    profile: CompanyProfile, repo: Repository | None, ticker: str
+) -> ReportSection:
     findings: list[Finding] = []
     tables = []
     notes = []
@@ -134,7 +159,9 @@ def build(profile: CompanyProfile, repo: Repository | None, ticker: str) -> Repo
                 "bank's capital adequacy and asset-quality ratios rather than net cash/debt)."
             )
         else:
-            notes.append("No balance sheet, credit rating, or capital return data found in profile.")
+            notes.append(
+                "No balance sheet, credit rating, or capital return data found in profile."
+            )
 
     return ReportSection(
         key="balance_sheet",

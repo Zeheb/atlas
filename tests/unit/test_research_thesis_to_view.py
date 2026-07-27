@@ -6,6 +6,7 @@ a different one. That is what lets ThesisStore.list() show genuinely
 distinct views later, rather than silently overwriting history with random
 ids.
 """
+
 from __future__ import annotations
 
 import json
@@ -33,11 +34,18 @@ def _semantic(statement: str, eid: str):
     from atlas.reasoning.contracts import Finding as SemanticFinding
 
     return SemanticFinding(
-        statement=statement, assertability="judgment", confidence="high",
-        supporting_claims=(Claim(
-            subject_ref=SUBJECT, statement=statement, assertability="fact",
-            confidence="high", evidence=[EvidenceReference(evidence_id=eid)],
-        ),),
+        statement=statement,
+        assertability="judgment",
+        confidence="high",
+        supporting_claims=(
+            Claim(
+                subject_ref=SUBJECT,
+                statement=statement,
+                assertability="fact",
+                confidence="high",
+                evidence=[EvidenceReference(evidence_id=eid)],
+            ),
+        ),
     )
 
 
@@ -49,11 +57,15 @@ def _resolved(dimension: str, eid: str = "ev-1") -> InvestigationResult:
     )
 
 
-def _run(*results: InvestigationResult, question: str = "Should I invest in TCS?") -> InvestigationRun:
+def _run(
+    *results: InvestigationResult, question: str = "Should I invest in TCS?"
+) -> InvestigationRun:
     used = results or (_resolved("business_quality"),)
     return InvestigationRun(
         plan=ResearchPlan(
-            raw_question=question, intent="invest_decision", subjects=("TCS",),
+            raw_question=question,
+            intent="invest_decision",
+            subjects=("TCS",),
             investigations=tuple(_investigation(r.dimension) for r in used),
         ),
         results=used,
@@ -65,14 +77,21 @@ class _Fake:
         self._cite = cite if cite is not None else ["ev-1"]
 
     def complete(self, *, system: str, user: str) -> str:
-        return json.dumps({
-            "refused": False, "overall_confidence": "medium",
-            "findings": [{
-                "statement": "Durable business, fairly priced.",
-                "assertability": "judgment", "confidence": "medium",
-                "supporting_evidence_ids": self._cite, "known_unknowns": [],
-            }],
-        })
+        return json.dumps(
+            {
+                "refused": False,
+                "overall_confidence": "medium",
+                "findings": [
+                    {
+                        "statement": "Durable business, fairly priced.",
+                        "assertability": "judgment",
+                        "confidence": "medium",
+                        "supporting_evidence_ids": self._cite,
+                        "known_unknowns": [],
+                    }
+                ],
+            }
+        )
 
 
 # --- Determinism: the property that actually matters -----------------------------------
@@ -88,13 +107,19 @@ def test_view_id_changes_when_evidence_changes() -> None:
     run_a = _run(_resolved("business_quality", "ev-1"))
     run_b = _run(_resolved("business_quality", "ev-2"))
 
-    assert synthesize(run_a, _Fake(cite=["ev-1"])).view_id != \
-        synthesize(run_b, _Fake(cite=["ev-2"])).view_id
+    assert (
+        synthesize(run_a, _Fake(cite=["ev-1"])).view_id
+        != synthesize(run_b, _Fake(cite=["ev-2"])).view_id
+    )
 
 
 def test_view_id_changes_when_the_question_changes() -> None:
-    run_a = _run(_resolved("business_quality", "ev-1"), question="Should I invest in TCS?")
-    run_b = _run(_resolved("business_quality", "ev-1"), question="What are the risks to TCS?")
+    run_a = _run(
+        _resolved("business_quality", "ev-1"), question="Should I invest in TCS?"
+    )
+    run_b = _run(
+        _resolved("business_quality", "ev-1"), question="What are the risks to TCS?"
+    )
 
     assert synthesize(run_a, _Fake()).view_id != synthesize(run_b, _Fake()).view_id
 
@@ -103,7 +128,9 @@ def test_view_id_is_computed_from_run_fingerprint_and_question_directly() -> Non
     run = _run(_resolved("business_quality", "ev-1"))
     thesis = synthesize(run, _Fake())
 
-    assert thesis.view_id == compute_view_id(run_fingerprint(run), run.plan.raw_question)
+    assert thesis.view_id == compute_view_id(
+        run_fingerprint(run), run.plan.raw_question
+    )
 
 
 def test_view_id_is_not_a_uuid() -> None:
@@ -200,16 +227,23 @@ class _ContradictingFake:
     drop it, matching what ThesisStore already persisted since M2.4."""
 
     def complete(self, *, system: str, user: str) -> str:
-        return json.dumps({
-            "refused": False, "overall_confidence": "medium",
-            "findings": [{
-                "statement": "Durable business, fairly priced.",
-                "assertability": "judgment", "confidence": "medium",
-                "supporting_evidence_ids": ["ev-1"], "known_unknowns": [],
-                "contradicts_thesis": True,
-                "counter_case": "Contradicts the recalled decline.",
-            }],
-        })
+        return json.dumps(
+            {
+                "refused": False,
+                "overall_confidence": "medium",
+                "findings": [
+                    {
+                        "statement": "Durable business, fairly priced.",
+                        "assertability": "judgment",
+                        "confidence": "medium",
+                        "supporting_evidence_ids": ["ev-1"],
+                        "known_unknowns": [],
+                        "contradicts_thesis": True,
+                        "counter_case": "Contradicts the recalled decline.",
+                    }
+                ],
+            }
+        )
 
 
 def test_to_dict_includes_contradicts_thesis_and_counter_case() -> None:

@@ -17,6 +17,7 @@ different speaker structure and sector:
 
 Run with: pytest -m integration -v -s
 """
+
 from __future__ import annotations
 
 from collections.abc import Generator
@@ -89,17 +90,27 @@ class TestTCSQ4FY26:
         assert _facts(tcs_result, FactKind.REPORT_PERIOD_TYPE)[0].value == "annual"
 
     def test_quarterly_revenue(self, tcs_result: AnalysisResult):
-        inr = [f for f in _facts(tcs_result, FactKind.FINANCIAL_REVENUE)
-               if f.unit == FactUnit.CRORE_INR and f.provenance.section == "quarterly"]
+        inr = [
+            f
+            for f in _facts(tcs_result, FactKind.FINANCIAL_REVENUE)
+            if f.unit == FactUnit.CRORE_INR and f.provenance.section == "quarterly"
+        ]
         assert inr and inr[0].value == 70698.0
 
     def test_annual_revenue(self, tcs_result: AnalysisResult):
-        inr = [f for f in _facts(tcs_result, FactKind.FINANCIAL_REVENUE)
-               if f.unit == FactUnit.CRORE_INR and f.provenance.section == "annual"]
+        inr = [
+            f
+            for f in _facts(tcs_result, FactKind.FINANCIAL_REVENUE)
+            if f.unit == FactUnit.CRORE_INR and f.provenance.section == "annual"
+        ]
         assert inr and inr[0].value == 267021.0
 
     def test_usd_revenue(self, tcs_result: AnalysisResult):
-        usd = [f for f in _facts(tcs_result, FactKind.FINANCIAL_REVENUE) if f.unit == FactUnit.USD_BILLION]
+        usd = [
+            f
+            for f in _facts(tcs_result, FactKind.FINANCIAL_REVENUE)
+            if f.unit == FactUnit.USD_BILLION
+        ]
         assert usd and usd[0].value == 7.621
 
     def test_operating_margin(self, tcs_result: AnalysisResult):
@@ -235,7 +246,9 @@ class TestSBIQ4FY26:
         assert _facts(sbin_result, FactKind.REPORT_PERIOD_END)[0].value == "2026-03-31"
         assert _facts(sbin_result, FactKind.REPORT_PERIOD_TYPE)[0].value == "quarterly"
 
-    def test_guidance_extracted_despite_no_ceo_or_cfo(self, sbin_result: AnalysisResult):
+    def test_guidance_extracted_despite_no_ceo_or_cfo(
+        self, sbin_result: AnalysisResult
+    ):
         # SBI has no CEO or CFO at all — a Chairman delivers all headline
         # commentary directly. Fact extraction is content-window-bound, not
         # speaker-gated, so this must still succeed.

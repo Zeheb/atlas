@@ -7,6 +7,7 @@ Thesis.to_view() and the completeness gate actually read, even though the
 underlying Claim graph is deliberately reconstructed rather than preserved
 byte-for-byte (see the module docstring for why).
 """
+
 from __future__ import annotations
 
 import json
@@ -42,11 +43,18 @@ def _semantic(statement: str, eid: str):
     from atlas.reasoning.contracts import Finding as SemanticFinding
 
     return SemanticFinding(
-        statement=statement, assertability="judgment", confidence="high",
-        supporting_claims=(Claim(
-            subject_ref=SUBJECT, statement=statement, assertability="fact",
-            confidence="high", evidence=[EvidenceReference(evidence_id=eid)],
-        ),),
+        statement=statement,
+        assertability="judgment",
+        confidence="high",
+        supporting_claims=(
+            Claim(
+                subject_ref=SUBJECT,
+                statement=statement,
+                assertability="fact",
+                confidence="high",
+                evidence=[EvidenceReference(evidence_id=eid)],
+            ),
+        ),
         known_unknowns=("no segment-level detail",),
     )
 
@@ -63,7 +71,8 @@ def _run(*results: InvestigationResult) -> InvestigationRun:
     used = results or (_resolved("business_quality"),)
     return InvestigationRun(
         plan=ResearchPlan(
-            raw_question="Should I invest in TCS?", intent="invest_decision",
+            raw_question="Should I invest in TCS?",
+            intent="invest_decision",
             subjects=("TCS",),
             investigations=tuple(_investigation(r.dimension) for r in used),
         ),
@@ -76,20 +85,36 @@ class _Fake:
         self._cite = cite if cite is not None else ["ev-1"]
 
     def complete(self, *, system: str, user: str) -> str:
-        return json.dumps({
-            "refused": False, "overall_confidence": "medium",
-            "findings": [{
-                "statement": "Durable business, fairly priced.",
-                "assertability": "judgment", "confidence": "medium",
-                "supporting_evidence_ids": self._cite,
-                "known_unknowns": ["no segment-level detail"],
-            }],
-        })
+        return json.dumps(
+            {
+                "refused": False,
+                "overall_confidence": "medium",
+                "findings": [
+                    {
+                        "statement": "Durable business, fairly priced.",
+                        "assertability": "judgment",
+                        "confidence": "medium",
+                        "supporting_evidence_ids": self._cite,
+                        "known_unknowns": ["no segment-level detail"],
+                    }
+                ],
+            }
+        )
 
 
 def _thesis(*results: InvestigationResult):
     run = _run(*results)
-    return synthesize(run, _Fake(cite=list({r.finding.evidence_ids[0] for r in (results or (_resolved("business_quality"),))})))
+    return synthesize(
+        run,
+        _Fake(
+            cite=list(
+                {
+                    r.finding.evidence_ids[0]
+                    for r in (results or (_resolved("business_quality"),))
+                }
+            )
+        ),
+    )
 
 
 # --- Round trip: everything to_view() and the gate actually read --------------------
@@ -132,7 +157,9 @@ def test_round_trip_preserves_evidence_ids(tmp_path) -> None:
     store.save(thesis)
     loaded = store.load(thesis.view_id)
 
-    assert loaded.result.findings[0].evidence_ids == thesis.result.findings[0].evidence_ids
+    assert (
+        loaded.result.findings[0].evidence_ids == thesis.result.findings[0].evidence_ids
+    )
 
 
 def test_round_trip_preserves_known_unknowns(tmp_path) -> None:
@@ -141,7 +168,10 @@ def test_round_trip_preserves_known_unknowns(tmp_path) -> None:
     store.save(thesis)
     loaded = store.load(thesis.view_id)
 
-    assert loaded.result.findings[0].known_unknowns == thesis.result.findings[0].known_unknowns
+    assert (
+        loaded.result.findings[0].known_unknowns
+        == thesis.result.findings[0].known_unknowns
+    )
 
 
 def test_round_trip_preserves_citations(tmp_path) -> None:
@@ -164,9 +194,13 @@ def test_round_trip_preserves_dispositions(tmp_path) -> None:
 def test_round_trip_preserves_unresolved_dimensions(tmp_path) -> None:
     run = InvestigationRun(
         plan=ResearchPlan(
-            raw_question="Should I invest in TCS?", intent="invest_decision",
+            raw_question="Should I invest in TCS?",
+            intent="invest_decision",
             subjects=("TCS",),
-            investigations=(_investigation("business_quality"), _investigation("valuation")),
+            investigations=(
+                _investigation("business_quality"),
+                _investigation("valuation"),
+            ),
         ),
         results=(
             _resolved("business_quality", "ev-1"),
@@ -279,7 +313,9 @@ def test_save_rejects_a_thesis_for_a_different_subject(tmp_path) -> None:
 
 def test_incompatible_store_version_raises(tmp_path) -> None:
     path = tmp_path / "theses.json"
-    path.write_text(json.dumps({"store_version": "999", "subject": "TCS", "theses": []}))
+    path.write_text(
+        json.dumps({"store_version": "999", "subject": "TCS", "theses": []})
+    )
     store = ThesisStore(path, "TCS")
     with pytest.raises(IncompatibleStoreVersionError):
         store.list()
@@ -312,23 +348,30 @@ def test_no_thesis_result_is_ever_refused(tmp_path) -> None:
 # fields M2.4 exists to revive are the ones whose persistence was unverified.
 class _ContradictingFake:
     def complete(self, *, system: str, user: str) -> str:
-        return json.dumps({
-            "refused": False, "overall_confidence": "medium",
-            "findings": [
-                {
-                    "statement": "Durable business, fairly priced.",
-                    "assertability": "judgment", "confidence": "medium",
-                    "supporting_evidence_ids": ["ev-1"], "known_unknowns": [],
-                    "contradicts_thesis": True,
-                    "counter_case": "Contradicts the recalled decline.",
-                },
-                {
-                    "statement": "Revenue is in line with expectations.",
-                    "assertability": "fact", "confidence": "high",
-                    "supporting_evidence_ids": ["ev-1"], "known_unknowns": [],
-                },
-            ],
-        })
+        return json.dumps(
+            {
+                "refused": False,
+                "overall_confidence": "medium",
+                "findings": [
+                    {
+                        "statement": "Durable business, fairly priced.",
+                        "assertability": "judgment",
+                        "confidence": "medium",
+                        "supporting_evidence_ids": ["ev-1"],
+                        "known_unknowns": [],
+                        "contradicts_thesis": True,
+                        "counter_case": "Contradicts the recalled decline.",
+                    },
+                    {
+                        "statement": "Revenue is in line with expectations.",
+                        "assertability": "fact",
+                        "confidence": "high",
+                        "supporting_evidence_ids": ["ev-1"],
+                        "known_unknowns": [],
+                    },
+                ],
+            }
+        )
 
 
 def test_round_trip_preserves_a_flagged_contradiction(tmp_path) -> None:

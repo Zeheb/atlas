@@ -16,6 +16,7 @@ eval_result = evaluate(expected, analyzer_result)
 assert eval_result.recall == 1.0   # all expected facts found
 assert eval_result.missing == 0
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -32,9 +33,9 @@ class ExpectedFact:
     """
 
     kind: FactKind
-    value: str | float | int | None = None   # None = match any value
-    unit: FactUnit | None = None             # None = match any unit (incl. None)
-    period: str | None = None               # None = match any period (incl. None)
+    value: str | float | int | None = None  # None = match any value
+    unit: FactUnit | None = None  # None = match any unit (incl. None)
+    period: str | None = None  # None = match any period (incl. None)
 
     def matches(self, fact: AnalysisFact) -> bool:
         if fact.kind != self.kind:
@@ -131,10 +132,12 @@ def load_expected_facts(raw: list[dict]) -> list[ExpectedFact]:
         kind = FactKind(item["kind"])
         unit_str = item.get("unit")
         unit = FactUnit(unit_str) if unit_str is not None else None
-        result.append(ExpectedFact(
-            kind=kind,
-            value=item.get("value"),
-            unit=unit,
-            period=item.get("period"),
-        ))
+        result.append(
+            ExpectedFact(
+                kind=kind,
+                value=item.get("value"),
+                unit=unit,
+                period=item.get("period"),
+            )
+        )
     return result

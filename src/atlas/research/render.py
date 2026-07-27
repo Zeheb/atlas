@@ -3,6 +3,7 @@ Markdown syntax — every section builder returns structured data, never a
 string, so this is the single place output format changes if a second
 format (e.g. eventual PDF) is added later.
 """
+
 from __future__ import annotations
 
 from atlas.acquisition.repository import Repository
@@ -20,9 +21,15 @@ from atlas.research.citations import (
 
 # Kinds the reader sees tagged "[synthesis]": everything interpretive, as
 # opposed to a fact read directly off extracted data.
-_INTERPRETIVE_KINDS = frozenset({
-    DERIVED, CONCLUSION, EVIDENCE_NOTE, DISCLOSURE, LEGACY_SYNTHESIS,
-})
+_INTERPRETIVE_KINDS = frozenset(
+    {
+        DERIVED,
+        CONCLUSION,
+        EVIDENCE_NOTE,
+        DISCLOSURE,
+        LEGACY_SYNTHESIS,
+    }
+)
 from atlas.research.model import ReportData, ReportSection
 
 
@@ -53,7 +60,10 @@ def _render_table(table: TableSection) -> list[str]:
 
 
 def _render_finding(
-    finding: Finding, ticker: str, repo: Repository | None, profile: CompanyProfile | None,
+    finding: Finding,
+    ticker: str,
+    repo: Repository | None,
+    profile: CompanyProfile | None,
 ) -> list[str]:
     # M2.3 split the old "synthesis" label into DERIVED / EVIDENCE_NOTE /
     # DISCLOSURE. All three are interpretive rather than read straight off
@@ -70,12 +80,18 @@ def _render_finding(
             if len(citations) == 1:
                 lines.append(f"  - Source: {citations[0].citation_standard}")
             else:
-                lines.append("  - Supporting evidence: " + "; ".join(c.citation_standard for c in citations))
+                lines.append(
+                    "  - Supporting evidence: "
+                    + "; ".join(c.citation_standard for c in citations)
+                )
     return lines
 
 
 def _render_section(
-    section: ReportSection, ticker: str, repo: Repository | None, profile: CompanyProfile | None,
+    section: ReportSection,
+    ticker: str,
+    repo: Repository | None,
+    profile: CompanyProfile | None,
 ) -> list[str]:
     lines = [f"## {section.title}", ""]
 
@@ -99,7 +115,11 @@ def _render_section(
     return lines
 
 
-def render_markdown(report: ReportData, repo: Repository | None = None, profile: CompanyProfile | None = None) -> str:
+def render_markdown(
+    report: ReportData,
+    repo: Repository | None = None,
+    profile: CompanyProfile | None = None,
+) -> str:
     """Render a complete ReportData as a Markdown document.
 
     repo/profile are optional and only needed to resolve human-readable

@@ -43,6 +43,7 @@ Confidence
 "medium" -- agency + rating extracted but action missing
 "low"    -- only agency or only rating found; or nothing useful found
 """
+
 from __future__ import annotations
 
 import re
@@ -72,7 +73,10 @@ _AGENCY_PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"s\s*&\s*p\s+global", re.I), "S&P Global"),
     (re.compile(r"\bfitch\b", re.I), "Fitch"),
     (re.compile(r"crisil\s+esg\s+ratings?\s*&?\s*analytics", re.I), "CRISIL ESG"),
-    (re.compile(r"nse\s+sustainability\s+ratings?\s*&?\s*analytics", re.I), "NSE Sustainability"),
+    (
+        re.compile(r"nse\s+sustainability\s+ratings?\s*&?\s*analytics", re.I),
+        "NSE Sustainability",
+    ),
     (re.compile(r"\bcrisil\b", re.I), "CRISIL"),
     (re.compile(r"\bicra\b", re.I), "ICRA"),
     (re.compile(r"\bcare\s+ratings?\b", re.I), "CARE Ratings"),
@@ -89,14 +93,17 @@ _AGENCY_PATTERNS: list[tuple[re.Pattern[str], str]] = [
 
 _ACTION_MAP: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r"\bdowngrad", re.I), "downgraded"),
-    (re.compile(r"\bupgrad",   re.I), "upgraded"),
+    (re.compile(r"\bupgrad", re.I), "upgraded"),
     (re.compile(r"\bwithdraw", re.I), "withdrawn"),
     (re.compile(r"\breaffirm", re.I), "reaffirmed"),
-    (re.compile(r"\baffirm",   re.I), "reaffirmed"),  # S&P uses "affirmed", not "reaffirmed"
-    (re.compile(r"\bassign",   re.I), "assigned"),
-    (re.compile(r"\brevise",   re.I), "revised"),     # CARE revision-table disclosures
-    (re.compile(r"\bremain",   re.I), "reaffirmed"),  # S&P "remains"
-    (re.compile(r"\bchange",   re.I), "revised"),     # S&P "changed"
+    (
+        re.compile(r"\baffirm", re.I),
+        "reaffirmed",
+    ),  # S&P uses "affirmed", not "reaffirmed"
+    (re.compile(r"\bassign", re.I), "assigned"),
+    (re.compile(r"\brevise", re.I), "revised"),  # CARE revision-table disclosures
+    (re.compile(r"\bremain", re.I), "reaffirmed"),  # S&P "remains"
+    (re.compile(r"\bchange", re.I), "revised"),  # S&P "changed"
 ]
 
 # ---------------------------------------------------------------------------
@@ -108,17 +115,13 @@ _ACTION_MAP: list[tuple[re.Pattern[str], str]] = [
 # parentheses: "Environmental, Social and Governance (ESG) Rating of 73", which
 # places a closing paren between "ESG" and "Rating" and breaks an ESG-prefix match.
 _RE_ESG_SCORE = re.compile(
-    r"[Rr]ating\s+of\s+['\"‘’“”]?"
-    r"(CRISIL\s+ESG\s+\d+|\d+)"
-    r"['\"‘’“”]?",
+    r"[Rr]ating\s+of\s+['\"‘’“”]?" r"(CRISIL\s+ESG\s+\d+|\d+)" r"['\"‘’“”]?",
     re.I,
 )
 
 # Matches "under the category 'Leader'" or "category 'Leadership'"
 _RE_ESG_CATEGORY = re.compile(
-    r"category\s+['\"‘’“”]?"
-    r"([A-Za-z][A-Za-z\s\-]{0,30}?)"
-    r"['\"‘’“”]?\s*[,.]",
+    r"category\s+['\"‘’“”]?" r"([A-Za-z][A-Za-z\s\-]{0,30}?)" r"['\"‘’“”]?\s*[,.]",
     re.I,
 )
 
@@ -141,8 +144,7 @@ _RE_DEBT_RATING = re.compile(
     # Moody's scale (word-boundary safe; must be whole token)
     r"|(?<!\w)(?:Aaa|Aa[123]|A[123]|Baa[123]|Ba[123]|B[123]|Caa[123]|Ca)(?!\w)"
     # Standalone multi-character ratings without agency prefix (word-boundary safe)
-    r"|(?<!\w)(?:AAA|AA[+-]?|A[+-](?!\d)|BBB[+-]?|BB[+-]?|A[1-4]\+?)(?!\w)"
-    r")",
+    r"|(?<!\w)(?:AAA|AA[+-]?|A[+-](?!\d)|BBB[+-]?|BB[+-]?|A[1-4]\+?)(?!\w)" r")",
     re.I,
 )
 
@@ -176,6 +178,7 @@ _RE_AMOUNT = re.compile(
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _section_key(label: str) -> str:
     return re.sub(r"\W+", "_", label.lower()).strip("_")
@@ -212,6 +215,7 @@ def _parse_amount(m: re.Match[str]) -> float | None:
 # ESG path
 # ---------------------------------------------------------------------------
 
+
 def _parse_esg_cover_letter(
     text: str, period: str
 ) -> tuple[list[AnalysisFact], dict[str, str], list[str]]:
@@ -226,55 +230,67 @@ def _parse_esg_cover_letter(
     m_score = _RE_ESG_SCORE.search(text)
     if m_score:
         raw_score = m_score.group(1).strip()
-        facts.append(AnalysisFact(
-            kind=FactKind.CREDIT_INSTRUMENT,
-            value="ESG",
-            unit=None,
-            period=period,
-            confidence="high",
-            provenance=Provenance(section="document", char_offset=m_score.start()),
-        ))
-        facts.append(AnalysisFact(
-            kind=FactKind.CREDIT_RATING,
-            value=raw_score,
-            unit=None,
-            period=period,
-            confidence="high",
-            provenance=Provenance(
-                section="esg",
-                char_offset=m_score.start(),
-                excerpt=text[max(0, m_score.start() - 20):m_score.end() + 20].replace("\n", " ").strip(),
-            ),
-        ))
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.CREDIT_INSTRUMENT,
+                value="ESG",
+                unit=None,
+                period=period,
+                confidence="high",
+                provenance=Provenance(section="document", char_offset=m_score.start()),
+            )
+        )
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.CREDIT_RATING,
+                value=raw_score,
+                unit=None,
+                period=period,
+                confidence="high",
+                provenance=Provenance(
+                    section="esg",
+                    char_offset=m_score.start(),
+                    excerpt=text[max(0, m_score.start() - 20) : m_score.end() + 20]
+                    .replace("\n", " ")
+                    .strip(),
+                ),
+            )
+        )
     else:
         warnings.append("ESG score not found in document")
 
     m_cat = _RE_ESG_CATEGORY.search(text)
     if m_cat:
         category = m_cat.group(1).strip().lower()
-        facts.append(AnalysisFact(
-            kind=FactKind.CREDIT_OUTLOOK,
-            value=category,
-            unit=None,
-            period=period,
-            confidence="high",
-            provenance=Provenance(
-                section="esg",
-                char_offset=m_cat.start(),
-                excerpt=text[max(0, m_cat.start() - 10):m_cat.end() + 10].replace("\n", " ").strip(),
-            ),
-        ))
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.CREDIT_OUTLOOK,
+                value=category,
+                unit=None,
+                period=period,
+                confidence="high",
+                provenance=Provenance(
+                    section="esg",
+                    char_offset=m_cat.start(),
+                    excerpt=text[max(0, m_cat.start() - 10) : m_cat.end() + 10]
+                    .replace("\n", " ")
+                    .strip(),
+                ),
+            )
+        )
 
     action, act_off = _extract_action(text)
     if action:
-        facts.append(AnalysisFact(
-            kind=FactKind.CREDIT_ACTION,
-            value=action,
-            unit=None,
-            period=period,
-            confidence="high",
-            provenance=Provenance(section="document", char_offset=act_off),
-        ))
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.CREDIT_ACTION,
+                value=action,
+                unit=None,
+                period=period,
+                confidence="high",
+                provenance=Provenance(section="document", char_offset=act_off),
+            )
+        )
     else:
         warnings.append("Rating action not found")
 
@@ -284,6 +300,7 @@ def _parse_esg_cover_letter(
 # ---------------------------------------------------------------------------
 # Debt rating path
 # ---------------------------------------------------------------------------
+
 
 def _parse_debt_rationale(
     text: str, period: str
@@ -336,62 +353,72 @@ def _parse_debt_rationale(
         amount_val = _parse_amount(m_amt) if m_amt else None
 
         # Action: small window (i-1 to i+2) — action word sometimes in header
-        ctx = " ".join(lines[max(0, i - 1):i + 3])
+        ctx = " ".join(lines[max(0, i - 1) : i + 3])
         action_val, _ = _extract_action(ctx)
 
-        facts.append(AnalysisFact(
-            kind=FactKind.CREDIT_INSTRUMENT,
-            value=instrument_label,
-            unit=None,
-            period=period,
-            confidence="high",
-            provenance=Provenance(section=section, char_offset=char_off),
-        ))
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.CREDIT_INSTRUMENT,
+                value=instrument_label,
+                unit=None,
+                period=period,
+                confidence="high",
+                provenance=Provenance(section=section, char_offset=char_off),
+            )
+        )
         instruments_found.append(instrument_label)
 
         if rating_val:
-            facts.append(AnalysisFact(
-                kind=FactKind.CREDIT_RATING,
-                value=rating_val,
-                unit=None,
-                period=period,
-                confidence="high",
-                provenance=Provenance(
-                    section=section,
-                    char_offset=char_off,
-                    excerpt=line[:120],
-                ),
-            ))
+            facts.append(
+                AnalysisFact(
+                    kind=FactKind.CREDIT_RATING,
+                    value=rating_val,
+                    unit=None,
+                    period=period,
+                    confidence="high",
+                    provenance=Provenance(
+                        section=section,
+                        char_offset=char_off,
+                        excerpt=line[:120],
+                    ),
+                )
+            )
 
         if outlook_val:
-            facts.append(AnalysisFact(
-                kind=FactKind.CREDIT_OUTLOOK,
-                value=outlook_val,
-                unit=None,
-                period=period,
-                confidence="high",
-                provenance=Provenance(section=section, char_offset=char_off),
-            ))
+            facts.append(
+                AnalysisFact(
+                    kind=FactKind.CREDIT_OUTLOOK,
+                    value=outlook_val,
+                    unit=None,
+                    period=period,
+                    confidence="high",
+                    provenance=Provenance(section=section, char_offset=char_off),
+                )
+            )
 
         if amount_val is not None:
-            facts.append(AnalysisFact(
-                kind=FactKind.CREDIT_AMOUNT,
-                value=amount_val,
-                unit=FactUnit.CRORE_INR,
-                period=period,
-                confidence="high",
-                provenance=Provenance(section=section, char_offset=char_off),
-            ))
+            facts.append(
+                AnalysisFact(
+                    kind=FactKind.CREDIT_AMOUNT,
+                    value=amount_val,
+                    unit=FactUnit.CRORE_INR,
+                    period=period,
+                    confidence="high",
+                    provenance=Provenance(section=section, char_offset=char_off),
+                )
+            )
 
         if action_val:
-            facts.append(AnalysisFact(
-                kind=FactKind.CREDIT_ACTION,
-                value=action_val,
-                unit=None,
-                period=period,
-                confidence="high",
-                provenance=Provenance(section=section, char_offset=char_off),
-            ))
+            facts.append(
+                AnalysisFact(
+                    kind=FactKind.CREDIT_ACTION,
+                    value=action_val,
+                    unit=None,
+                    period=period,
+                    confidence="high",
+                    provenance=Provenance(section=section, char_offset=char_off),
+                )
+            )
 
     if not instruments_found:
         warnings.append(
@@ -441,13 +468,21 @@ _RE_ISSUER_FROM_TO = re.compile(
 # token within the next 200 chars.
 # Quote chars seen in BSE PDFs (U+0027, U+0022, U+2018, U+2019, U+201C, U+201D).
 # Expressed as bytes to avoid encoding issues in the source file.
-_QUOTES = b'\x27\x22\xe2\x80\x98\xe2\x80\x99\xe2\x80\x9c\xe2\x80\x9d'.decode('utf-8')
+_QUOTES = b"\x27\x22\xe2\x80\x98\xe2\x80\x99\xe2\x80\x9c\xe2\x80\x9d".decode("utf-8")
 
 _RE_REVISION_CELL = re.compile(
-    r'\bRevised\b.{0,400}?'
-    r'[' + re.escape(_QUOTES) + r'][A-Za-z][A-Za-z0-9+-]{0,5}[' + re.escape(_QUOTES) + r']'
-    r'.{0,200}?'
-    r'[' + re.escape(_QUOTES) + r']([A-Za-z][A-Za-z0-9+-]{0,5})[' + re.escape(_QUOTES) + r']',
+    r"\bRevised\b.{0,400}?"
+    r"["
+    + re.escape(_QUOTES)
+    + r"][A-Za-z][A-Za-z0-9+-]{0,5}["
+    + re.escape(_QUOTES)
+    + r"]"
+    r".{0,200}?"
+    r"["
+    + re.escape(_QUOTES)
+    + r"]([A-Za-z][A-Za-z0-9+-]{0,5})["
+    + re.escape(_QUOTES)
+    + r"]",
     re.I | re.DOTALL,
 )
 
@@ -474,48 +509,56 @@ def _parse_revision_table(
 
     # Outlook: search AFTER the revised rating (m.end()), not from m.start().
     # Searching from m.start() would find the Existing column's outlook first.
-    window = text[m.end():m.end() + 120]
+    window = text[m.end() : m.end() + 120]
     m_out = _RE_OUTLOOK.search(window)
     outlook_val = m_out.group(1).strip().lower() if m_out else None
 
-    facts.append(AnalysisFact(
-        kind=FactKind.CREDIT_INSTRUMENT,
-        value="Long-term",
-        unit=None,
-        period=period,
-        confidence="medium",
-        provenance=Provenance(section="revision_table", char_offset=m.start()),
-    ))
-    facts.append(AnalysisFact(
-        kind=FactKind.CREDIT_RATING,
-        value=raw_rating,
-        unit=None,
-        period=period,
-        confidence="medium",
-        provenance=Provenance(
-            section="revision_table",
-            char_offset=m.start(),
-            excerpt=window[:80].replace("\n", " ").strip(),
-        ),
-    ))
-    if outlook_val:
-        facts.append(AnalysisFact(
-            kind=FactKind.CREDIT_OUTLOOK,
-            value=outlook_val,
+    facts.append(
+        AnalysisFact(
+            kind=FactKind.CREDIT_INSTRUMENT,
+            value="Long-term",
             unit=None,
             period=period,
             confidence="medium",
             provenance=Provenance(section="revision_table", char_offset=m.start()),
-        ))
-    if action_val:
-        facts.append(AnalysisFact(
-            kind=FactKind.CREDIT_ACTION,
-            value=action_val,
+        )
+    )
+    facts.append(
+        AnalysisFact(
+            kind=FactKind.CREDIT_RATING,
+            value=raw_rating,
             unit=None,
             period=period,
             confidence="medium",
-            provenance=Provenance(section="revision_table", char_offset=act_off),
-        ))
+            provenance=Provenance(
+                section="revision_table",
+                char_offset=m.start(),
+                excerpt=window[:80].replace("\n", " ").strip(),
+            ),
+        )
+    )
+    if outlook_val:
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.CREDIT_OUTLOOK,
+                value=outlook_val,
+                unit=None,
+                period=period,
+                confidence="medium",
+                provenance=Provenance(section="revision_table", char_offset=m.start()),
+            )
+        )
+    if action_val:
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.CREDIT_ACTION,
+                value=action_val,
+                unit=None,
+                period=period,
+                confidence="medium",
+                provenance=Provenance(section="revision_table", char_offset=act_off),
+            )
+        )
 
     return facts, warnings
 
@@ -549,7 +592,9 @@ def _parse_narrative_issuer_rating(
 
     # Validate: must look like a rating symbol
     if not _RE_DEBT_RATING.search(raw_rating):
-        warnings.append(f"Narrative rating candidate {raw_rating!r} did not match known patterns")
+        warnings.append(
+            f"Narrative rating candidate {raw_rating!r} did not match known patterns"
+        )
         return facts, warnings
 
     # Outlook: embedded "Baa2 (Stable)" or standalone keyword
@@ -567,51 +612,68 @@ def _parse_narrative_issuer_rating(
 
     action_val, act_off = _extract_action(text[:2000])
 
-    facts.append(AnalysisFact(
-        kind=FactKind.CREDIT_INSTRUMENT,
-        value="Issuer",
-        unit=None,
-        period=period,
-        confidence="high",
-        provenance=Provenance(section="narrative_cover", char_offset=0),
-    ))
-    facts.append(AnalysisFact(
-        kind=FactKind.CREDIT_RATING,
-        value=clean_rating,
-        unit=None,
-        period=period,
-        confidence="high",
-        provenance=Provenance(
-            section="narrative_cover",
-            char_offset=0,
-            excerpt=(m_from_to or m_at).group(0)[:120] if (m_from_to or m_at) else None,
-        ),
-    ))
-    if outlook_val:
-        facts.append(AnalysisFact(
-            kind=FactKind.CREDIT_OUTLOOK,
-            value=outlook_val,
+    facts.append(
+        AnalysisFact(
+            kind=FactKind.CREDIT_INSTRUMENT,
+            value="Issuer",
             unit=None,
             period=period,
             confidence="high",
             provenance=Provenance(section="narrative_cover", char_offset=0),
-        ))
-    if action_val:
-        facts.append(AnalysisFact(
-            kind=FactKind.CREDIT_ACTION,
-            value=action_val,
+        )
+    )
+    facts.append(
+        AnalysisFact(
+            kind=FactKind.CREDIT_RATING,
+            value=clean_rating,
             unit=None,
             period=period,
             confidence="high",
-            provenance=Provenance(section="narrative_cover", char_offset=act_off),
-        ))
+            provenance=Provenance(
+                section="narrative_cover",
+                char_offset=0,
+                excerpt=(
+                    (m_from_to or m_at).group(0)[:120] if (m_from_to or m_at) else None
+                ),
+            ),
+        )
+    )
+    if outlook_val:
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.CREDIT_OUTLOOK,
+                value=outlook_val,
+                unit=None,
+                period=period,
+                confidence="high",
+                provenance=Provenance(section="narrative_cover", char_offset=0),
+            )
+        )
+    if action_val:
+        facts.append(
+            AnalysisFact(
+                kind=FactKind.CREDIT_ACTION,
+                value=action_val,
+                unit=None,
+                period=period,
+                confidence="high",
+                provenance=Provenance(section="narrative_cover", char_offset=act_off),
+            )
+        )
 
     return facts, warnings
 
 
 def _collect_rationale_excerpts(text: str, excerpts: dict[str, str]) -> None:
-    _capture_excerpt(excerpts, text, r"key\s+(?:rating\s+)?(?:strengths?|drivers?)", "key_strengths")
-    _capture_excerpt(excerpts, text, r"key\s+(?:rating\s+)?(?:concerns?|weaknesses?|risks?)", "key_concerns")
+    _capture_excerpt(
+        excerpts, text, r"key\s+(?:rating\s+)?(?:strengths?|drivers?)", "key_strengths"
+    )
+    _capture_excerpt(
+        excerpts,
+        text,
+        r"key\s+(?:rating\s+)?(?:concerns?|weaknesses?|risks?)",
+        "key_concerns",
+    )
     _capture_excerpt(excerpts, text, r"liquidity\s*[:\-]", "liquidity")
 
 
@@ -624,7 +686,7 @@ def _capture_excerpt(
 ) -> None:
     m = re.search(header_pattern, text, re.I)
     if m:
-        excerpts[key] = text[m.start():m.start() + window].strip()
+        excerpts[key] = text[m.start() : m.start() + window].strip()
 
 
 # ---------------------------------------------------------------------------
@@ -649,6 +711,7 @@ def _is_esg(text: str) -> bool:
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
+
 
 def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     """Extract structured credit/ESG rating facts from a rating disclosure.
@@ -686,14 +749,16 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
 
     agency, agency_off = _extract_agency(content)
     if agency:
-        result.facts.append(AnalysisFact(
-            kind=FactKind.CREDIT_AGENCY,
-            value=agency,
-            unit=None,
-            period=period,
-            confidence="high",
-            provenance=Provenance(section="document", char_offset=agency_off),
-        ))
+        result.facts.append(
+            AnalysisFact(
+                kind=FactKind.CREDIT_AGENCY,
+                value=agency,
+                unit=None,
+                period=period,
+                confidence="high",
+                provenance=Provenance(section="document", char_offset=agency_off),
+            )
+        )
     else:
         result.warnings.append("Rating agency not identified")
 
@@ -709,7 +774,9 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
         if FactKind.CREDIT_RATING not in {f.kind for f in facts}:
             revision_facts, revision_warnings = _parse_revision_table(content, period)
             if revision_facts:
-                facts = [f for f in facts if f.kind != FactKind.CREDIT_INSTRUMENT] + revision_facts
+                facts = [
+                    f for f in facts if f.kind != FactKind.CREDIT_INSTRUMENT
+                ] + revision_facts
                 warnings = [w for w in warnings if "No instrument table rows" not in w]
                 warnings.extend(revision_warnings)
             else:
@@ -717,8 +784,12 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
                     content, period
                 )
                 if narrative_facts:
-                    facts = [f for f in facts if f.kind != FactKind.CREDIT_INSTRUMENT] + narrative_facts
-                    warnings = [w for w in warnings if "No instrument table rows" not in w]
+                    facts = [
+                        f for f in facts if f.kind != FactKind.CREDIT_INSTRUMENT
+                    ] + narrative_facts
+                    warnings = [
+                        w for w in warnings if "No instrument table rows" not in w
+                    ]
                     warnings.extend(narrative_warnings)
                 else:
                     warnings.extend(revision_warnings)

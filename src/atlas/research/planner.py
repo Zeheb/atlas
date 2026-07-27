@@ -40,6 +40,7 @@ non-uniformity is what the anti-checklist entropy gate measures; a planner
 whose tables were all identical would pass every other test and still be
 worthless.
 """
+
 from __future__ import annotations
 
 from typing import Protocol
@@ -58,13 +59,15 @@ from atlas.research.plan import (
 # ALL_RULE_IDS does for the retrieval planner, and consumed by the same
 # aggregate code path. Kept here, next to the rules themselves, so it cannot
 # silently drift out of sync with what the planner actually does.
-ALL_RESEARCH_RULE_IDS: frozenset[str] = frozenset({
-    "research_intent_keyword_match",
-    "research_intent_fallback",
-    "dimensions_from_intent",
-    "comparison_subjects_detected",
-    "dimension_dropped_single_subject",
-})
+ALL_RESEARCH_RULE_IDS: frozenset[str] = frozenset(
+    {
+        "research_intent_keyword_match",
+        "research_intent_fallback",
+        "dimensions_from_intent",
+        "comparison_subjects_detected",
+        "dimension_dropped_single_subject",
+    }
+)
 
 # ---------------------------------------------------------------------------
 # Intent classification
@@ -75,23 +78,62 @@ ALL_RESEARCH_RULE_IDS: frozenset[str] = frozenset({
 # not a risk_assessment that happens to mention investing -- so the
 # invest markers are checked first.
 _RESEARCH_INTENT_RULES: tuple[tuple[ResearchIntent, tuple[str, ...]], ...] = (
-    ("comparison", (
-        "compare", "versus", " vs ", " vs. ", "against its peer", "relative to",
-        "better than", "which is stronger", "peer comparison",
-    )),
-    ("invest_decision", (
-        "should i invest", "should i buy", "worth investing", "worth buying",
-        "is it a good investment", "investment case", "should we invest",
-        "would you invest", "is this a buy", "attractive investment",
-    )),
-    ("risk_assessment", (
-        "key risks", "what are the risks", "risk to", "risks to", "downside",
-        "what could go wrong", "bear case", "biggest risk", "red flags",
-    )),
-    ("thematic", (
-        "exposed", "exposure", "how does it handle", "impact of",
-        "affected by", "sensitivity to", "dependent on", "reliance on",
-    )),
+    (
+        "comparison",
+        (
+            "compare",
+            "versus",
+            " vs ",
+            " vs. ",
+            "against its peer",
+            "relative to",
+            "better than",
+            "which is stronger",
+            "peer comparison",
+        ),
+    ),
+    (
+        "invest_decision",
+        (
+            "should i invest",
+            "should i buy",
+            "worth investing",
+            "worth buying",
+            "is it a good investment",
+            "investment case",
+            "should we invest",
+            "would you invest",
+            "is this a buy",
+            "attractive investment",
+        ),
+    ),
+    (
+        "risk_assessment",
+        (
+            "key risks",
+            "what are the risks",
+            "risk to",
+            "risks to",
+            "downside",
+            "what could go wrong",
+            "bear case",
+            "biggest risk",
+            "red flags",
+        ),
+    ),
+    (
+        "thematic",
+        (
+            "exposed",
+            "exposure",
+            "how does it handle",
+            "impact of",
+            "affected by",
+            "sensitivity to",
+            "dependent on",
+            "reliance on",
+        ),
+    ),
 )
 
 # The domain content of this milestone: what must be investigated, per class
@@ -130,9 +172,7 @@ _INTENT_DIMENSIONS: dict[ResearchIntent, tuple[tuple[ResearchDimension, int], ..
         ("business_quality", 7),
         ("what_changed", 5),
     ),
-    "targeted": (
-        ("what_changed", 5),
-    ),
+    "targeted": (("what_changed", 5),),
 }
 
 # The sub-question each dimension asks, in singular and plural forms.
@@ -217,7 +257,9 @@ class HeuristicResearchPlanner:
 
     def plan(self, question: str, subjects: tuple[str, ...]) -> ResearchPlan:
         if not subjects:
-            raise ValueError("HeuristicResearchPlanner.plan requires at least one subject")
+            raise ValueError(
+                "HeuristicResearchPlanner.plan requires at least one subject"
+            )
 
         decisions: list[ResearchDecision] = []
 
@@ -236,26 +278,38 @@ class HeuristicResearchPlanner:
     # -- rules, one method each, so each is independently testable ---------
 
     def _classify_intent(
-        self, question: str, decisions: list[ResearchDecision],
+        self,
+        question: str,
+        decisions: list[ResearchDecision],
     ) -> ResearchIntent:
         haystack = question.lower()
         for intent, markers in _RESEARCH_INTENT_RULES:
             for marker in markers:
                 if marker in haystack:
-                    decisions.append(ResearchDecision(
-                        rule="research_intent_keyword_match", input=marker, output=intent,
-                    ))
+                    decisions.append(
+                        ResearchDecision(
+                            rule="research_intent_keyword_match",
+                            input=marker,
+                            output=intent,
+                        )
+                    )
                     return intent
         # No marker matched: a narrow, specific question. It degenerates to a
         # single investigation, which `atlas ask` would already have answered
         # directly -- the plan says so honestly rather than inventing breadth.
-        decisions.append(ResearchDecision(
-            rule="research_intent_fallback", input=question, output="targeted",
-        ))
+        decisions.append(
+            ResearchDecision(
+                rule="research_intent_fallback",
+                input=question,
+                output="targeted",
+            )
+        )
         return "targeted"
 
     def _reconcile_subjects(
-        self, intent: ResearchIntent, subjects: tuple[str, ...],
+        self,
+        intent: ResearchIntent,
+        subjects: tuple[str, ...],
         decisions: list[ResearchDecision],
     ) -> ResearchIntent:
         """Multiple subjects mean a comparison regardless of phrasing.
@@ -265,24 +319,30 @@ class HeuristicResearchPlanner:
         count overrides keyword classification here rather than the reverse.
         """
         if len(subjects) > 1 and intent != "comparison":
-            decisions.append(ResearchDecision(
-                rule="comparison_subjects_detected",
-                input=", ".join(subjects),
-                output="comparison",
-            ))
+            decisions.append(
+                ResearchDecision(
+                    rule="comparison_subjects_detected",
+                    input=", ".join(subjects),
+                    output="comparison",
+                )
+            )
             return "comparison"
         return intent
 
     def _investigations(
-        self, intent: ResearchIntent, subjects: tuple[str, ...],
+        self,
+        intent: ResearchIntent,
+        subjects: tuple[str, ...],
         decisions: list[ResearchDecision],
     ) -> tuple[Investigation, ...]:
         entries = _INTENT_DIMENSIONS[intent]
-        decisions.append(ResearchDecision(
-            rule="dimensions_from_intent",
-            input=intent,
-            output=", ".join(dim for dim, _priority in entries),
-        ))
+        decisions.append(
+            ResearchDecision(
+                rule="dimensions_from_intent",
+                input=intent,
+                output=", ".join(dim for dim, _priority in entries),
+            )
+        )
 
         subject_label = " and ".join(subjects)
         investigations: list[Investigation] = []
@@ -292,21 +352,25 @@ class HeuristicResearchPlanner:
             # against, so it is dropped with an explicit, audited decision
             # rather than emitted as an investigation that cannot be answered.
             if dimension == "competitive_position" and len(subjects) < 2:
-                decisions.append(ResearchDecision(
-                    rule="dimension_dropped_single_subject",
-                    input=dimension,
-                    output="dropped: needs >=2 subjects to be answerable",
-                ))
+                decisions.append(
+                    ResearchDecision(
+                        rule="dimension_dropped_single_subject",
+                        input=dimension,
+                        output="dropped: needs >=2 subjects to be answerable",
+                    )
+                )
                 continue
             singular, plural = _DIMENSION_QUESTIONS[dimension]
             template = singular if len(subjects) == 1 else plural
-            investigations.append(Investigation(
-                dimension=dimension,
-                question=template.format(subject=subject_label),
-                subjects=subjects,
-                rationale=_DIMENSION_RATIONALES[dimension],
-                priority=priority,
-            ))
+            investigations.append(
+                Investigation(
+                    dimension=dimension,
+                    question=template.format(subject=subject_label),
+                    subjects=subjects,
+                    rationale=_DIMENSION_RATIONALES[dimension],
+                    priority=priority,
+                )
+            )
         return tuple(investigations)
 
 

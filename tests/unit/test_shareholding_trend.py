@@ -4,13 +4,20 @@ All tests use synthetic AnalysisResult objects — no file I/O or KB access.
 The five-quarter TCS-like dataset covers Q4 FY25 through Q4 FY26 with
 approximate real values, producing FPI decline, DII rise, and streak signals.
 """
+
 from __future__ import annotations
 
 import pytest
 from datetime import datetime, timezone
 from typing import Any
 
-from atlas.analysis.base import AnalysisFact, AnalysisResult, FactKind, FactUnit, Provenance
+from atlas.analysis.base import (
+    AnalysisFact,
+    AnalysisResult,
+    FactKind,
+    FactUnit,
+    Provenance,
+)
 from atlas.analysis.shareholding_trend import (
     HoldingDelta,
     HoldingPoint,
@@ -21,7 +28,6 @@ from atlas.analysis.shareholding_trend import (
     _TRACKED_KINDS,
 )
 
-
 # ---------------------------------------------------------------------------
 # Test data — approximate TCS quarterly holdings (FPI declining, DII rising)
 # ---------------------------------------------------------------------------
@@ -30,49 +36,79 @@ _QUARTERS: list[dict[str, Any]] = [
     {
         "evidence_id": "bse-shp-532540-q4fy25",
         "period": "2025-03-31",
-        "promoter": 71.77, "public": 28.23,
-        "fpi": 11.24, "dii": 12.54, "mf": 5.46, "insurance": 6.18, "nri": 0.24,
-        "pledged": 0.0, "total_shares": 3_618_087_518,
+        "promoter": 71.77,
+        "public": 28.23,
+        "fpi": 11.24,
+        "dii": 12.54,
+        "mf": 5.46,
+        "insurance": 6.18,
+        "nri": 0.24,
+        "pledged": 0.0,
+        "total_shares": 3_618_087_518,
     },
     {
         "evidence_id": "bse-shp-532540-q1fy26",
         "period": "2025-06-30",
-        "promoter": 71.77, "public": 28.23,
-        "fpi": 10.59, "dii": 12.98, "mf": 5.68, "insurance": 6.44, "nri": 0.25,
-        "pledged": 0.0, "total_shares": 3_618_087_518,
+        "promoter": 71.77,
+        "public": 28.23,
+        "fpi": 10.59,
+        "dii": 12.98,
+        "mf": 5.68,
+        "insurance": 6.44,
+        "nri": 0.25,
+        "pledged": 0.0,
+        "total_shares": 3_618_087_518,
     },
     {
         "evidence_id": "bse-shp-532540-q2fy26",
         "period": "2025-09-30",
-        "promoter": 71.77, "public": 28.23,
-        "fpi": 10.28, "dii": 13.09, "mf": 5.65, "insurance": 6.58, "nri": 0.27,
-        "pledged": 0.0, "total_shares": 3_618_087_518,
+        "promoter": 71.77,
+        "public": 28.23,
+        "fpi": 10.28,
+        "dii": 13.09,
+        "mf": 5.65,
+        "insurance": 6.58,
+        "nri": 0.27,
+        "pledged": 0.0,
+        "total_shares": 3_618_087_518,
     },
     {
         "evidence_id": "bse-shp-532540-q3fy26",
         "period": "2025-12-31",
-        "promoter": 71.77, "public": 28.23,
-        "fpi": 10.01, "dii": 13.27, "mf": 5.72, "insurance": 6.64, "nri": 0.26,
-        "pledged": 0.0, "total_shares": 3_618_087_518,
+        "promoter": 71.77,
+        "public": 28.23,
+        "fpi": 10.01,
+        "dii": 13.27,
+        "mf": 5.72,
+        "insurance": 6.64,
+        "nri": 0.26,
+        "pledged": 0.0,
+        "total_shares": 3_618_087_518,
     },
     {
         "evidence_id": "bse-shp-532540-q4fy26",
         "period": "2026-03-31",
-        "promoter": 71.77, "public": 28.23,
-        "fpi": 9.66, "dii": 13.41, "mf": 5.77, "insurance": 6.69, "nri": 0.24,
-        "pledged": 0.0, "total_shares": 3_618_087_518,
+        "promoter": 71.77,
+        "public": 28.23,
+        "fpi": 9.66,
+        "dii": 13.41,
+        "mf": 5.77,
+        "insurance": 6.69,
+        "nri": 0.24,
+        "pledged": 0.0,
+        "total_shares": 3_618_087_518,
     },
 ]
 
 _KIND_MAP: dict[str, FactKind] = {
-    "promoter":     FactKind.OWNERSHIP_PROMOTER_PCT,
-    "public":       FactKind.OWNERSHIP_PUBLIC_PCT,
-    "fpi":          FactKind.OWNERSHIP_FPI_PCT,
-    "dii":          FactKind.OWNERSHIP_DII_PCT,
-    "mf":           FactKind.OWNERSHIP_MF_PCT,
-    "insurance":    FactKind.OWNERSHIP_INSURANCE_PCT,
-    "nri":          FactKind.OWNERSHIP_NRI_PCT,
-    "pledged":      FactKind.OWNERSHIP_PROMOTER_PLEDGED_PCT,
+    "promoter": FactKind.OWNERSHIP_PROMOTER_PCT,
+    "public": FactKind.OWNERSHIP_PUBLIC_PCT,
+    "fpi": FactKind.OWNERSHIP_FPI_PCT,
+    "dii": FactKind.OWNERSHIP_DII_PCT,
+    "mf": FactKind.OWNERSHIP_MF_PCT,
+    "insurance": FactKind.OWNERSHIP_INSURANCE_PCT,
+    "nri": FactKind.OWNERSHIP_NRI_PCT,
+    "pledged": FactKind.OWNERSHIP_PROMOTER_PLEDGED_PCT,
     "total_shares": FactKind.OWNERSHIP_TOTAL_SHARES,
 }
 
@@ -95,14 +131,16 @@ def _make_result(q: dict[str, Any]) -> AnalysisResult:
         if key not in q:
             continue
         unit = _UNIT_MAP.get(key, FactUnit.PERCENT)
-        result.facts.append(AnalysisFact(
-            kind=kind,
-            value=q[key],
-            unit=unit,
-            period=period,
-            confidence="high",
-            provenance=Provenance(section="test"),
-        ))
+        result.facts.append(
+            AnalysisFact(
+                kind=kind,
+                value=q[key],
+                unit=unit,
+                period=period,
+                confidence="high",
+                provenance=Provenance(section="test"),
+            )
+        )
     return result
 
 
@@ -121,6 +159,7 @@ def _yoy(trend: TrendResult, kind: FactKind) -> list[HoldingDelta]:
 # ---------------------------------------------------------------------------
 # Empty and degenerate cases
 # ---------------------------------------------------------------------------
+
 
 class TestEmpty:
     def test_no_input_returns_empty_trend(self):
@@ -168,6 +207,7 @@ class TestEmpty:
 # ---------------------------------------------------------------------------
 # HoldingPoint extraction and sorting
 # ---------------------------------------------------------------------------
+
 
 class TestHoldingPoints:
     def test_points_sorted_ascending(self):
@@ -219,6 +259,7 @@ class TestHoldingPoints:
 # QoQ deltas
 # ---------------------------------------------------------------------------
 
+
 class TestQoQDeltas:
     @pytest.fixture(autouse=True)
     def trend(self):
@@ -226,8 +267,9 @@ class TestQoQDeltas:
 
     def test_qoq_count_is_n_minus_one_times_kinds(self):
         n_periods = 5
-        n_kinds = len([k for k in _TRACKED_KINDS
-                       if any(k in p.facts for p in self.t.points)])
+        n_kinds = len(
+            [k for k in _TRACKED_KINDS if any(k in p.facts for p in self.t.points)]
+        )
         assert len(self.t.qoq_deltas) == (n_periods - 1) * n_kinds
 
     def test_fpi_qoq_all_negative(self):
@@ -273,6 +315,7 @@ class TestQoQDeltas:
 # YoY deltas
 # ---------------------------------------------------------------------------
 
+
 class TestYoYDeltas:
     @pytest.fixture(autouse=True)
     def trend(self):
@@ -283,15 +326,21 @@ class TestYoYDeltas:
         assert any(d.to_period == "2026-03-31" for d in yoy)
 
     def test_fpi_yoy_q4_vs_q4(self):
-        yoy = [d for d in _yoy(self.t, FactKind.OWNERSHIP_FPI_PCT)
-               if d.to_period == "2026-03-31"]
+        yoy = [
+            d
+            for d in _yoy(self.t, FactKind.OWNERSHIP_FPI_PCT)
+            if d.to_period == "2026-03-31"
+        ]
         assert len(yoy) == 1
         assert yoy[0].from_period == "2025-03-31"
         assert yoy[0].delta == pytest.approx(9.66 - 11.24, abs=1e-3)
 
     def test_dii_yoy_q4_positive(self):
-        yoy = [d for d in _yoy(self.t, FactKind.OWNERSHIP_DII_PCT)
-               if d.to_period == "2026-03-31"]
+        yoy = [
+            d
+            for d in _yoy(self.t, FactKind.OWNERSHIP_DII_PCT)
+            if d.to_period == "2026-03-31"
+        ]
         assert len(yoy) == 1
         assert yoy[0].delta > 0
 
@@ -304,13 +353,14 @@ class TestYoYDeltas:
             assert p not in periods_with_yoy
 
     def test_yoy_needs_at_least_5_quarters(self):
-        t_4q = analyze_trend(_R[1:])   # Q1-Q4 FY26 only (no same-quarter prior year)
+        t_4q = analyze_trend(_R[1:])  # Q1-Q4 FY26 only (no same-quarter prior year)
         assert t_4q.yoy_deltas == []
 
 
 # ---------------------------------------------------------------------------
 # Signals
 # ---------------------------------------------------------------------------
+
 
 class TestSignals:
     @pytest.fixture(autouse=True)
@@ -330,20 +380,17 @@ class TestSignals:
 
     def test_fpi_streak_signal(self):
         assert any(
-            "fpi pct" in s and "falling" in s and "3+" in s
-            for s in self.t.signals
+            "fpi pct" in s and "falling" in s and "3+" in s for s in self.t.signals
         )
 
     def test_dii_streak_signal(self):
         assert any(
-            "dii pct" in s and "rising" in s and "3+" in s
-            for s in self.t.signals
+            "dii pct" in s and "rising" in s and "3+" in s for s in self.t.signals
         )
 
     def test_insurance_streak_signal(self):
         assert any(
-            "insurance pct" in s and "rising" in s and "3+" in s
-            for s in self.t.signals
+            "insurance pct" in s and "rising" in s and "3+" in s for s in self.t.signals
         )
 
     def test_promoter_stable_no_signal(self):
@@ -374,14 +421,19 @@ class TestSignals:
 # Pledging transitions
 # ---------------------------------------------------------------------------
 
+
 class TestPledging:
     def _make_pledging(self, period: str, pledged: float) -> AnalysisResult:
         q = {
             "evidence_id": f"shp-{period}",
             "period": period,
-            "promoter": 71.77, "public": 28.23,
-            "fpi": 10.0, "dii": 13.0, "mf": 5.5,
-            "insurance": 6.5, "nri": 0.25,
+            "promoter": 71.77,
+            "public": 28.23,
+            "fpi": 10.0,
+            "dii": 13.0,
+            "mf": 5.5,
+            "insurance": 6.5,
+            "nri": 0.25,
             "pledged": pledged,
             "total_shares": 3_618_087_518,
         }
@@ -415,6 +467,7 @@ class TestPledging:
 # ---------------------------------------------------------------------------
 # TrendResult shape
 # ---------------------------------------------------------------------------
+
 
 class TestTrendResultShape:
     def test_result_is_trend_result(self):

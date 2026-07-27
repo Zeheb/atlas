@@ -41,6 +41,7 @@ TCS-slide-title-literal patterns. Coverage:
 
   Confidence and provenance invariants
 """
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -50,10 +51,10 @@ import pytest
 from atlas.analysis.investor_presentation import ANALYZER_VERSION, analyze
 from atlas.analysis.base import AnalysisResult, FactKind, FactUnit
 
-
 # ---------------------------------------------------------------------------
 # Fixture helpers
 # ---------------------------------------------------------------------------
+
 
 def _kb(
     content: str,
@@ -83,6 +84,7 @@ def _facts(result: AnalysisResult, kind: FactKind):
 # Error handling
 # ---------------------------------------------------------------------------
 
+
 class TestErrors:
     def test_missing_entry_raises(self):
         with pytest.raises(ValueError, match="not in knowledge base"):
@@ -108,6 +110,7 @@ class TestErrors:
 # ---------------------------------------------------------------------------
 # Period detection
 # ---------------------------------------------------------------------------
+
 
 class TestPeriodDetection:
     def test_textual_quarter_end(self):
@@ -144,7 +147,9 @@ class TestPeriodDetection:
         assert facts[0].value == "annual"
 
     def test_period_from_newline_split_date(self):
-        content = "Earnings Conference Call for\nthe Quarter Ended September\n30, 2024\n"
+        content = (
+            "Earnings Conference Call for\nthe Quarter Ended September\n30, 2024\n"
+        )
         result = analyze("eid", _kb(content))
         facts = _facts(result, FactKind.REPORT_PERIOD_END)
         assert facts[0].value == "2024-09-30"
@@ -158,6 +163,7 @@ class TestPeriodDetection:
 # ---------------------------------------------------------------------------
 # Strategic aspiration
 # ---------------------------------------------------------------------------
+
 
 class TestAspiration:
     def test_we_will_be_phrasing(self):
@@ -217,6 +223,7 @@ class TestAspiration:
 # Strategic priorities
 # ---------------------------------------------------------------------------
 
+
 class TestPriorities:
     _PRIORITY_TEXT = (
         "Strategic Priorities\n"
@@ -252,7 +259,9 @@ class TestPriorities:
             assert f.unit is None
 
     def test_priority_count_capped(self):
-        many = "Transformation Pillars\n" + "".join(f"Pillar Number {i}\n" for i in range(20))
+        many = "Transformation Pillars\n" + "".join(
+            f"Pillar Number {i}\n" for i in range(20)
+        )
         result = analyze("eid", _kb(many))
         assert len(_facts(result, FactKind.STRATEGY_PRIORITY)) <= 8
 
@@ -260,6 +269,7 @@ class TestPriorities:
 # ---------------------------------------------------------------------------
 # Forward guidance
 # ---------------------------------------------------------------------------
+
 
 class TestGuidance:
     def test_targeting_keyword_sentence(self):
@@ -277,7 +287,9 @@ class TestGuidance:
     def test_chart_style_range_under_margin_heading(self):
         # No verb at all — a bare range sitting under a generic heading,
         # as in TCS's "Margin Levers" bar-chart slide.
-        content = "Margin Levers\nOperation Excellence\nAI as an Accelerator\n26-28%\n25.2%\n"
+        content = (
+            "Margin Levers\nOperation Excellence\nAI as an Accelerator\n26-28%\n25.2%\n"
+        )
         result = analyze("eid", _kb(content))
         facts = _facts(result, FactKind.STRATEGY_GUIDANCE)
         assert any("26-28" in f.value for f in facts)
@@ -302,6 +314,7 @@ class TestGuidance:
 # ---------------------------------------------------------------------------
 # Return on Equity / Free Cash Flow
 # ---------------------------------------------------------------------------
+
 
 class TestROEFCF:
     def test_roe_inline_sentence(self):
@@ -384,6 +397,7 @@ class TestROEFCF:
 # Customer Satisfaction Score
 # ---------------------------------------------------------------------------
 
+
 class TestCSAT:
     def test_csat_most_recent_extracted(self):
         content = "92.90%\n93.44%\nH2 FY23\nH1 FY24\nCustomer Satisfaction Score\n"
@@ -417,6 +431,7 @@ class TestCSAT:
 # Banking ratio family
 # ---------------------------------------------------------------------------
 
+
 class TestBankingRatios:
     _KPI_TABLE = (
         "Key indicators\n"
@@ -444,34 +459,48 @@ class TestBankingRatios:
 
     def test_credit_cost(self):
         result = analyze("eid", _kb(self._KPI_TABLE))
-        assert _facts(result, FactKind.FINANCIAL_CREDIT_COST)[0].value == pytest.approx(0.38)
+        assert _facts(result, FactKind.FINANCIAL_CREDIT_COST)[0].value == pytest.approx(
+            0.38
+        )
 
     def test_net_npa_ratio(self):
         result = analyze("eid", _kb(self._KPI_TABLE))
-        assert _facts(result, FactKind.FINANCIAL_NET_NPA_RATIO)[0].value == pytest.approx(0.53)
+        assert _facts(result, FactKind.FINANCIAL_NET_NPA_RATIO)[
+            0
+        ].value == pytest.approx(0.53)
 
     def test_provision_coverage_ratio(self):
         result = analyze("eid", _kb(self._KPI_TABLE))
-        assert _facts(result, FactKind.FINANCIAL_PROVISION_COVERAGE_RATIO)[0].value == pytest.approx(75.66)
+        assert _facts(result, FactKind.FINANCIAL_PROVISION_COVERAGE_RATIO)[
+            0
+        ].value == pytest.approx(75.66)
 
     def test_capital_adequacy_ratio(self):
         result = analyze("eid", _kb(self._KPI_TABLE))
-        assert _facts(result, FactKind.FINANCIAL_CAPITAL_ADEQUACY_RATIO)[0].value == pytest.approx(13.76)
+        assert _facts(result, FactKind.FINANCIAL_CAPITAL_ADEQUACY_RATIO)[
+            0
+        ].value == pytest.approx(13.76)
 
     def test_gross_npa_ratio(self):
         content = "Key indicators\nGross NPA\n2.42\n2.13\n-29 bps\n"
         result = analyze("eid", _kb(content))
-        assert _facts(result, FactKind.FINANCIAL_GROSS_NPA_RATIO)[0].value == pytest.approx(2.13)
+        assert _facts(result, FactKind.FINANCIAL_GROSS_NPA_RATIO)[
+            0
+        ].value == pytest.approx(2.13)
 
     def test_casa_ratio(self):
         content = "Key indicators\nCASA\n40.5\n39.8\n-70 bps\n"
         result = analyze("eid", _kb(content))
-        assert _facts(result, FactKind.FINANCIAL_CASA_RATIO)[0].value == pytest.approx(39.8)
+        assert _facts(result, FactKind.FINANCIAL_CASA_RATIO)[0].value == pytest.approx(
+            39.8
+        )
 
     def test_slippage_ratio(self):
         content = "Key indicators\nSlippage Ratio\n0.45\n0.51\n6 bps\n"
         result = analyze("eid", _kb(content))
-        assert _facts(result, FactKind.FINANCIAL_SLIPPAGE_RATIO)[0].value == pytest.approx(0.51)
+        assert _facts(result, FactKind.FINANCIAL_SLIPPAGE_RATIO)[
+            0
+        ].value == pytest.approx(0.51)
 
     def test_repeated_table_deduplicated(self):
         # Regression: the same ratio restated in a later detail slide must
@@ -488,12 +517,15 @@ class TestBankingRatios:
         # searched for here — "aspiration" contains "ratio" as a substring.)
         result = analyze("eid", _kb("Quarter Ended June 30, 2024\n"))
         assert _facts(result, FactKind.FINANCIAL_NET_INTEREST_MARGIN) == []
-        assert not any("Key indicators" in w or "NPA" in w or "NIM" in w for w in result.warnings)
+        assert not any(
+            "Key indicators" in w or "NPA" in w or "NIM" in w for w in result.warnings
+        )
 
 
 # ---------------------------------------------------------------------------
 # Physical production / delivery volume
 # ---------------------------------------------------------------------------
+
 
 class TestOperatingVolume:
     _VOLUME_TEXT = (
@@ -531,6 +563,7 @@ class TestOperatingVolume:
 # ---------------------------------------------------------------------------
 # Segment growth
 # ---------------------------------------------------------------------------
+
 
 class TestSegmentGrowth:
     _GROWTH_TEXT = (
@@ -570,12 +603,15 @@ class TestSegmentGrowth:
     def test_yoy_variant_without_cc_suffix(self):
         content = "9.13%\nYoY Growth\nin\nDeposits\n"
         result = analyze("eid", _kb(content))
-        assert _facts(result, FactKind.SEGMENT_GROWTH_PCT)[0].value == pytest.approx(9.13)
+        assert _facts(result, FactKind.SEGMENT_GROWTH_PCT)[0].value == pytest.approx(
+            9.13
+        )
 
 
 # ---------------------------------------------------------------------------
 # Management commentary excerpt
 # ---------------------------------------------------------------------------
+
 
 class TestManagementCommentary:
     def test_named_quote_block_captured_as_excerpt(self):
@@ -612,6 +648,7 @@ class TestManagementCommentary:
 # Confidence scoring
 # ---------------------------------------------------------------------------
 
+
 class TestConfidence:
     def test_high_confidence_with_multiple_fact_categories(self):
         content = (
@@ -632,13 +669,16 @@ class TestConfidence:
         assert result.confidence == "medium"
 
     def test_low_confidence_nothing_found(self):
-        result = analyze("eid", _kb("Some generic text without any recognisable section.\n"))
+        result = analyze(
+            "eid", _kb("Some generic text without any recognisable section.\n")
+        )
         assert result.confidence == "low"
 
 
 # ---------------------------------------------------------------------------
 # Provenance invariants
 # ---------------------------------------------------------------------------
+
 
 class TestProvenance:
     def test_all_facts_have_section(self):
@@ -657,7 +697,10 @@ class TestProvenance:
 
     def test_source_date_preserved(self):
         result = analyze(
-            "eid", _kb("Quarter Ended June 30, 2024\n", source_date="2025-12-17T10:00:00+00:00")
+            "eid",
+            _kb(
+                "Quarter Ended June 30, 2024\n", source_date="2025-12-17T10:00:00+00:00"
+            ),
         )
         assert result.source_date.year == 2025
         assert result.source_date.month == 12

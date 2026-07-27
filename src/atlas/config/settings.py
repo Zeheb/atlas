@@ -68,15 +68,23 @@ class Settings(BaseSettings):
     # atlas.reasoning.llm.base.LLMProvider deliberately — config is a
     # foundational module and must not depend on a domain subsystem package.
     # Keep the two literals' values in sync by hand.
-    llm_provider: Literal["anthropic", "google_ai_studio", "vertex_ai", "ollama", "omniroute"] = Field(
+    llm_provider: Literal[
+        "anthropic", "google_ai_studio", "vertex_ai", "ollama", "omniroute"
+    ] = Field(
         default="anthropic",
         description="Default transport for both the reasoning and judge roles.",
     )
-    reasoning_provider: Literal["anthropic", "google_ai_studio", "vertex_ai", "ollama", "omniroute"] | None = Field(
+    reasoning_provider: (
+        Literal["anthropic", "google_ai_studio", "vertex_ai", "ollama", "omniroute"]
+        | None
+    ) = Field(
         default=None,
         description="Transport override for the reasoning role; falls back to llm_provider.",
     )
-    judge_provider: Literal["anthropic", "google_ai_studio", "vertex_ai", "ollama", "omniroute"] | None = Field(
+    judge_provider: (
+        Literal["anthropic", "google_ai_studio", "vertex_ai", "ollama", "omniroute"]
+        | None
+    ) = Field(
         default=None,
         description=(
             "Transport override for the judge role; falls back to llm_provider. "

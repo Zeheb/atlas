@@ -8,6 +8,7 @@ Validates all four board outcome documents in the TCS repository:
   2636b0ad  2025-12-10  Coastal Cloud acquisition (Annexure A, EV USD 700M)
   6f1cf0de  2026-04-09  FY2026 results + final dividend INR 31/share recommended
 """
+
 from __future__ import annotations
 
 from collections.abc import Generator
@@ -27,10 +28,10 @@ pytestmark = pytest.mark.integration
 _PROJECT_ROOT = Path(__file__).parents[2]
 _TCS_REPO = _PROJECT_ROOT / "repositories" / "TCS"
 
-_ID_Q2_2024   = "bse-news-c8be78c9-b40f-486a-853b-825e1919c160"
+_ID_Q2_2024 = "bse-news-c8be78c9-b40f-486a-853b-825e1919c160"
 _ID_HYPERVAULT = "bse-news-6f7c8d3d-ab76-46cb-bca9-efda08d9d559"
-_ID_COASTAL    = "bse-news-2636b0ad-4ee8-4506-8ba5-9eaeaf800020"
-_ID_FY2026     = "bse-news-6f1cf0de-6044-4195-8d91-f479cbfa778a"
+_ID_COASTAL = "bse-news-2636b0ad-4ee8-4506-8ba5-9eaeaf800020"
+_ID_FY2026 = "bse-news-6f1cf0de-6044-4195-8d91-f479cbfa778a"
 
 _ALL_IDS = [_ID_Q2_2024, _ID_HYPERVAULT, _ID_COASTAL, _ID_FY2026]
 
@@ -66,6 +67,7 @@ def _skip_if_not_parsed(kb: KnowledgeBase, eid: str) -> None:
 # ---------------------------------------------------------------------------
 # Q2 FY2025: second interim dividend INR 10/share
 # ---------------------------------------------------------------------------
+
 
 class TestQ2Dividend:
     @pytest.fixture(scope="class")
@@ -125,6 +127,7 @@ class TestQ2Dividend:
 # HyperVault investment: SSA with TPG into wholly-owned subsidiary
 # ---------------------------------------------------------------------------
 
+
 class TestHyperVaultInvestment:
     @pytest.fixture(scope="class")
     def result(self, kb: KnowledgeBase) -> AnalysisResult:
@@ -173,6 +176,7 @@ class TestHyperVaultInvestment:
 # Coastal Cloud acquisition: Annexure A Type A
 # ---------------------------------------------------------------------------
 
+
 class TestCoastalCloudAcquisition:
     @pytest.fixture(scope="class")
     def result(self, kb: KnowledgeBase) -> AnalysisResult:
@@ -219,6 +223,7 @@ class TestCoastalCloudAcquisition:
 # FY2026 annual results: final dividend INR 31/share recommended
 # ---------------------------------------------------------------------------
 
+
 class TestFY2026FinalDividend:
     @pytest.fixture(scope="class")
     def result(self, kb: KnowledgeBase) -> AnalysisResult:
@@ -261,6 +266,7 @@ class TestFY2026FinalDividend:
 # Analyzer version
 # ---------------------------------------------------------------------------
 
+
 class TestAnalyzerVersion:
     """All four board outcome filings should report the current ANALYZER_VERSION."""
 
@@ -275,6 +281,7 @@ class TestAnalyzerVersion:
 # No spurious new facts — existing documents must not produce false positives
 # for buyback / fundraising / management changes
 # ---------------------------------------------------------------------------
+
 
 class TestNoSpuriousBoardOutcomeFacts:
     """The four TCS board outcome filings contain no buybacks, fundraising events,
@@ -303,6 +310,7 @@ class TestNoSpuriousBoardOutcomeFacts:
 # ---------------------------------------------------------------------------
 # CompanyProfile ingestion — board outcomes flow into capital_events + governance
 # ---------------------------------------------------------------------------
+
 
 class TestBoardOutcomeProfileIngestion:
     """Proves that board_outcome results are correctly ingested into CompanyProfile."""
@@ -334,13 +342,17 @@ class TestBoardOutcomeProfileIngestion:
         profile = build_profile("TCS", all_results)
         assert len(profile.capital_events.investments) > 0
 
-    def test_fundraises_empty_for_tcs_corpus(self, all_results: list[AnalysisResult]) -> None:
+    def test_fundraises_empty_for_tcs_corpus(
+        self, all_results: list[AnalysisResult]
+    ) -> None:
         if not all_results:
             pytest.skip("No board outcome results available")
         profile = build_profile("TCS", all_results)
         assert profile.capital_events.fundraises == []
 
-    def test_director_changes_empty_for_tcs_corpus(self, all_results: list[AnalysisResult]) -> None:
+    def test_director_changes_empty_for_tcs_corpus(
+        self, all_results: list[AnalysisResult]
+    ) -> None:
         if not all_results:
             pytest.skip("No board outcome results available")
         profile = build_profile("TCS", all_results)

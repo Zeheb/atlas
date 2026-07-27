@@ -5,6 +5,7 @@ up in real answers (rupee amounts, ticks, Greek). The CLI forces UTF-8 on its
 streams so ``click.echo`` can't die with a UnicodeEncodeError regardless of the
 active provider.
 """
+
 from __future__ import annotations
 
 import sys

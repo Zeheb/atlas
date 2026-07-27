@@ -8,6 +8,7 @@ Uses three real TCS AGM voting-results filings from the repository:
 
 Run with: pytest -m integration -v -s
 """
+
 from __future__ import annotations
 
 from collections.abc import Generator
@@ -23,11 +24,11 @@ from atlas.acquisition.repository import Repository
 pytestmark = pytest.mark.integration
 
 _PROJECT_ROOT = Path(__file__).parents[2]
-_TCS_REPO     = _PROJECT_ROOT / "repositories" / "TCS"
+_TCS_REPO = _PROJECT_ROOT / "repositories" / "TCS"
 
-_AGM_2025_ID = "bse-news-142ec3b0-9c40-44d4-a91a-90209663497a"   # 30th AGM
-_AGM_2026_ID = "bse-news-d73b015e-301e-43d4-a739-f44bdbaaf3c9"   # 31st AGM
-_AGM_2024_ID = "bse-news-481ce326-fd14-4e6f-9676-1d68115654bb"   # 29th AGM
+_AGM_2025_ID = "bse-news-142ec3b0-9c40-44d4-a91a-90209663497a"  # 30th AGM
+_AGM_2026_ID = "bse-news-d73b015e-301e-43d4-a739-f44bdbaaf3c9"  # 31st AGM
+_AGM_2024_ID = "bse-news-481ce326-fd14-4e6f-9676-1d68115654bb"  # 29th AGM
 
 
 @pytest.fixture(scope="module")
@@ -63,6 +64,7 @@ def _skip_if_not_parsed(kb: KnowledgeBase, eid: str) -> None:
 # ---------------------------------------------------------------------------
 # 30th AGM — 2025-06-19 (Format A: 10 resolutions, vote percentages via col-split)
 # ---------------------------------------------------------------------------
+
 
 class TestAGM2025:
     @pytest.fixture(scope="class")
@@ -151,10 +153,14 @@ class TestAGM2025:
         assert abs(res4.value - 0.3442) < 0.001
 
     def test_vote_pct_pairs_sum_to_100(self, result: AnalysisResult):
-        for_facts = {f.provenance.section: f.value
-                     for f in _facts(result, FactKind.GOVERNANCE_VOTE_PCT_FOR)}
-        against_facts = {f.provenance.section: f.value
-                         for f in _facts(result, FactKind.GOVERNANCE_VOTE_PCT_AGAINST)}
+        for_facts = {
+            f.provenance.section: f.value
+            for f in _facts(result, FactKind.GOVERNANCE_VOTE_PCT_FOR)
+        }
+        against_facts = {
+            f.provenance.section: f.value
+            for f in _facts(result, FactKind.GOVERNANCE_VOTE_PCT_AGAINST)
+        }
         for section in for_facts:
             if section in against_facts:
                 total = for_facts[section] + against_facts[section]
@@ -174,6 +180,7 @@ class TestAGM2025:
 # ---------------------------------------------------------------------------
 # 31st AGM — 2026-06-09 (Format B: 3 resolutions, global outcome)
 # ---------------------------------------------------------------------------
+
 
 class TestAGM2026:
     @pytest.fixture(scope="class")
@@ -227,6 +234,7 @@ class TestAGM2026:
 # ---------------------------------------------------------------------------
 # 29th AGM — 2024-05-31 (Format A: 7 resolutions, only Res1 has vote pcts)
 # ---------------------------------------------------------------------------
+
 
 class TestAGM2024:
     @pytest.fixture(scope="class")

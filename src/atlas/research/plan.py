@@ -53,6 +53,7 @@ that milestone arrives it will construct these same dataclasses, so
 exactly as it is for the heuristic planner's output -- a hallucinated
 dimension raises ``ValueError`` rather than reaching the executor.
 """
+
 from __future__ import annotations
 
 import dataclasses
@@ -63,15 +64,15 @@ from typing import Any, Literal
 # rendered order. Test-enforced against the real builders so the two cannot
 # drift (see test_research_plan.py::test_dimensions_match_report_section_keys).
 ResearchDimension = Literal[
-    "what_changed",            # the one question every memo genre answers first
-    "business_quality",        # margins, returns, durability
+    "what_changed",  # the one question every memo genre answers first
+    "business_quality",  # margins, returns, durability
     "management_credibility",  # said-vs-did, tenure, governance signals
-    "balance_sheet",           # leverage, liquidity, cash generation
-    "valuation",               # multiples where available; honest gap where not
-    "risks",                   # disclosed risk factors and exposures
-    "catalysts",               # forward events that could change the view
-    "competitive_position",    # peer-relative standing
-    "esg_governance",          # BRSR/ESG disclosure and governance structure
+    "balance_sheet",  # leverage, liquidity, cash generation
+    "valuation",  # multiples where available; honest gap where not
+    "risks",  # disclosed risk factors and exposures
+    "catalysts",  # forward events that could change the view
+    "competitive_position",  # peer-relative standing
+    "esg_governance",  # BRSR/ESG disclosure and governance structure
 ]
 
 _VALID_DIMENSIONS = frozenset(ResearchDimension.__args__)  # type: ignore[attr-defined]
@@ -79,9 +80,9 @@ _VALID_DIMENSIONS = frozenset(ResearchDimension.__args__)  # type: ignore[attr-d
 ResearchIntent = Literal[
     "invest_decision",  # "should I invest in TCS?" -- the widest plan
     "risk_assessment",  # "what are the key risks to SBI?"
-    "comparison",       # "compare Tata Steel with JSW Steel" -- multi-subject
-    "thematic",         # "how exposed is X to input costs?" -- narrow but multi-dimension
-    "targeted",         # a single-dimension lookup; degenerates to a plain `ask`
+    "comparison",  # "compare Tata Steel with JSW Steel" -- multi-subject
+    "thematic",  # "how exposed is X to input costs?" -- narrow but multi-dimension
+    "targeted",  # a single-dimension lookup; degenerates to a plain `ask`
 ]
 
 _VALID_RESEARCH_INTENTS = frozenset(ResearchIntent.__args__)  # type: ignore[attr-defined]
@@ -114,8 +115,8 @@ class ResearchDecision:
     own docstring for the full argument, which applies here unchanged.
     """
 
-    rule: str    # stable identifier, e.g. "intent_keyword_match"
-    input: str   # what the rule matched on, e.g. "should i invest"
+    rule: str  # stable identifier, e.g. "intent_keyword_match"
+    input: str  # what the rule matched on, e.g. "should i invest"
     output: str  # what it decided, e.g. "invest_decision"
 
     def __post_init__(self) -> None:

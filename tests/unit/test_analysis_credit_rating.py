@@ -30,6 +30,7 @@ Coverage:
     - All facts carry period = source_date[:10]
     - Result-level confidence: high / medium / low
 """
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -39,13 +40,16 @@ import pytest
 from atlas.analysis.credit_rating import ANALYZER_VERSION, analyze
 from atlas.analysis.base import AnalysisResult, FactKind, FactUnit
 
-
 # ---------------------------------------------------------------------------
 # Fixtures helpers
 # ---------------------------------------------------------------------------
 
-def _kb(content: str, kind: str = "credit_rating_report",
-        source_date: str = "2025-12-12T06:08:59+00:00") -> MagicMock:
+
+def _kb(
+    content: str,
+    kind: str = "credit_rating_report",
+    source_date: str = "2025-12-12T06:08:59+00:00",
+) -> MagicMock:
     entry = MagicMock()
     entry.kind = kind
     entry.source_date = source_date
@@ -164,6 +168,7 @@ Improved financial profile following debt reduction.
 # ESG: NSE reaffirmed
 # ---------------------------------------------------------------------------
 
+
 class TestESGNSEReaffirmed:
     @pytest.fixture(scope="class")
     def result(self):
@@ -223,6 +228,7 @@ class TestESGNSEReaffirmed:
 # ESG: NSE assigned (no category)
 # ---------------------------------------------------------------------------
 
+
 class TestESGNSEAssigned:
     @pytest.fixture(scope="class")
     def result(self):
@@ -247,6 +253,7 @@ class TestESGNSEAssigned:
 # ---------------------------------------------------------------------------
 # ESG: CRISIL assigned with prefixed score and "Leadership" category
 # ---------------------------------------------------------------------------
+
 
 class TestESGCRISILAssigned:
     @pytest.fixture(scope="class")
@@ -276,6 +283,7 @@ class TestESGCRISILAssigned:
 # ---------------------------------------------------------------------------
 # Debt: CRISIL with LT + CP instruments
 # ---------------------------------------------------------------------------
+
 
 class TestDebtCRISILLtCp:
     @pytest.fixture(scope="class")
@@ -344,6 +352,7 @@ class TestDebtCRISILLtCp:
 # Debt: ICRA NCD with embedded outlook in rating symbol
 # ---------------------------------------------------------------------------
 
+
 class TestDebtICRANCD:
     @pytest.fixture(scope="class")
     def result(self):
@@ -378,6 +387,7 @@ class TestDebtICRANCD:
 # Debt: no instrument table (cover letter only) → warning
 # ---------------------------------------------------------------------------
 
+
 class TestDebtNoTable:
     @pytest.fixture(scope="class")
     def result(self):
@@ -402,14 +412,19 @@ class TestDebtNoTable:
 # Period assignment
 # ---------------------------------------------------------------------------
 
+
 class TestPeriod:
     def test_all_facts_carry_source_date_as_period(self):
-        result = analyze("x", _kb(_ESG_NSE_REAFFIRMED, source_date="2025-12-12T06:08:59+00:00"))
+        result = analyze(
+            "x", _kb(_ESG_NSE_REAFFIRMED, source_date="2025-12-12T06:08:59+00:00")
+        )
         for f in result.facts:
             assert f.period == "2025-12-12"
 
     def test_different_source_dates(self):
-        result = analyze("x", _kb(_ESG_NSE_ASSIGNED, source_date="2025-06-06T13:47:56+00:00"))
+        result = analyze(
+            "x", _kb(_ESG_NSE_ASSIGNED, source_date="2025-06-06T13:47:56+00:00")
+        )
         for f in result.facts:
             assert f.period == "2025-06-06"
 
@@ -417,6 +432,7 @@ class TestPeriod:
 # ---------------------------------------------------------------------------
 # Confidence logic
 # ---------------------------------------------------------------------------
+
 
 class TestConfidence:
     def test_high_when_agency_rating_action(self):
@@ -441,6 +457,7 @@ ESG Rating of 80 under the category 'Leader'.
 # ---------------------------------------------------------------------------
 # Error handling
 # ---------------------------------------------------------------------------
+
 
 class TestErrorHandling:
     def test_wrong_kind_raises(self):
@@ -467,6 +484,7 @@ class TestErrorHandling:
 # ---------------------------------------------------------------------------
 # Agency detection ordering (more specific patterns win)
 # ---------------------------------------------------------------------------
+
 
 class TestAgencyDetection:
     def _result(self, text: str) -> AnalysisResult:

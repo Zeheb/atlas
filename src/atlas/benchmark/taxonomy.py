@@ -34,27 +34,30 @@ independent of any milestone. A single case can legitimately carry both: a
 capability the question requires, and a ``CAP_*`` gate saying whether this
 build provides it.
 """
+
 from __future__ import annotations
 
 from typing import Literal
 
 RetrievalScenario = Literal[
-    "document_routing",     # the answer lives in one specific doc kind
-    "temporal",              # period-scoped ("FY24", "Q3FY23", "last three years")
-    "ambiguity",             # underspecified question, several defensible readings
-    "conflict_resolution",   # two disclosures genuinely disagree
-    "sparse_evidence",       # relevant evidence exists but is thin
-    "negative_retrieval",    # nothing relevant exists; the honest answer is absence
+    "document_routing",  # the answer lives in one specific doc kind
+    "temporal",  # period-scoped ("FY24", "Q3FY23", "last three years")
+    "ambiguity",  # underspecified question, several defensible readings
+    "conflict_resolution",  # two disclosures genuinely disagree
+    "sparse_evidence",  # relevant evidence exists but is thin
+    "negative_retrieval",  # nothing relevant exists; the honest answer is absence
 ]
 
-ALL_SCENARIO_IDS: frozenset[str] = frozenset({
-    "document_routing",
-    "temporal",
-    "ambiguity",
-    "conflict_resolution",
-    "sparse_evidence",
-    "negative_retrieval",
-})
+ALL_SCENARIO_IDS: frozenset[str] = frozenset(
+    {
+        "document_routing",
+        "temporal",
+        "ambiguity",
+        "conflict_resolution",
+        "sparse_evidence",
+        "negative_retrieval",
+    }
+)
 
 DifficultyClass = Literal["routine", "difficult"]
 
@@ -79,66 +82,68 @@ SCENARIO_DESCRIPTIONS: dict[str, str] = {
 # ---------------------------------------------------------------------------
 AtlasCapability = Literal[
     # Acquisition — does Atlas hold the document?
-    "acq.kind_coverage",       # the kind is in the ontology AND a connector fetches it
-    "acq.history_depth",       # the corpus reaches back far enough for the period
-    "acq.entity_coverage",     # enough other companies are held, densely per sector
-    "acq.tier_admission",      # Atlas admits evidence outside Tier-1 primary filings
+    "acq.kind_coverage",  # the kind is in the ontology AND a connector fetches it
+    "acq.history_depth",  # the corpus reaches back far enough for the period
+    "acq.entity_coverage",  # enough other companies are held, densely per sector
+    "acq.tier_admission",  # Atlas admits evidence outside Tier-1 primary filings
     # Structuring — does the document become a typed, comparable fact?
-    "struct.typed_fact",       # a FactKind exists for the concept
-    "struct.time_series",      # the fact is period-anchored and comparable across periods
+    "struct.typed_fact",  # a FactKind exists for the concept
+    "struct.time_series",  # the fact is period-anchored and comparable across periods
     "struct.entity_identity",  # the fact names a resolvable entity, not a string
-    "struct.event_linkage",    # two facts across documents/periods link as one chain
+    "struct.event_linkage",  # two facts across documents/periods link as one chain
     # Retrieval — intentionally EMPTY. Retrieval difficulty is measured wholly
     # on RetrievalScenario (axis 1); no capability restates a scenario member.
     # See the module docstring and the admission rule in §6.
     # Reasoning — can a defensible answer be formed?
-    "reason.grounded_answer",         # cited answer from retrieved context
-    "reason.derived_metric",          # compute a metric not disclosed directly
-    "reason.comparative",             # compare across entities / a defined reference set
+    "reason.grounded_answer",  # cited answer from retrieved context
+    "reason.derived_metric",  # compute a metric not disclosed directly
+    "reason.comparative",  # compare across entities / a defined reference set
     "reason.judgment_qualification",  # state how strongly a claim is grounded
     # Memory — does knowledge persist and accumulate?
-    "mem.view_persistence",    # a formed view is stored and recallable
-    "mem.view_history",        # prior versions of a view are diffable over time
-    "mem.staleness",           # a recalled view is checked against current evidence
-    "mem.recurrence",          # a concept recurring across documents/years is detected
+    "mem.view_persistence",  # a formed view is stored and recallable
+    "mem.view_history",  # prior versions of a view are diffable over time
+    "mem.staleness",  # a recalled view is checked against current evidence
+    "mem.recurrence",  # a concept recurring across documents/years is detected
     # External evidence — is non-filing evidence available and correctly weighted?
-    "ext.market_structure",    # index membership, lock-in, float/overhang — document-backed
-    "ext.market_price",        # traded price, share count, multiples — the charter exclusion
-    "ext.third_party_opinion", # brokerage, expert, forum, analyst commentary
-    "ext.macro_trade",         # sector, macro, commodity, trade-flow data
-    "ext.entity_background",   # person/org background outside the filing
+    "ext.market_structure",  # index membership, lock-in, float/overhang — document-backed
+    "ext.market_price",  # traded price, share count, multiples — the charter exclusion
+    "ext.third_party_opinion",  # brokerage, expert, forum, analyst commentary
+    "ext.macro_trade",  # sector, macro, commodity, trade-flow data
+    "ext.entity_background",  # person/org background outside the filing
     # Evaluation — can the benchmark detect whether the answer was good?
-    "eval.gradeable",             # a checkable expected answer exists
+    "eval.gradeable",  # a checkable expected answer exists
     "eval.provenance_checkable",  # the answer's citations verify against the corpus
-    "eval.stability",             # repeat runs are comparable
+    "eval.stability",  # repeat runs are comparable
 ]
 
-ALL_CAPABILITY_IDS: frozenset[str] = frozenset({
-    "acq.kind_coverage",
-    "acq.history_depth",
-    "acq.entity_coverage",
-    "acq.tier_admission",
-    "struct.typed_fact",
-    "struct.time_series",
-    "struct.entity_identity",
-    "struct.event_linkage",
-    "reason.grounded_answer",
-    "reason.derived_metric",
-    "reason.comparative",
-    "reason.judgment_qualification",
-    "mem.view_persistence",
-    "mem.view_history",
-    "mem.staleness",
-    "mem.recurrence",
-    "ext.market_structure",
-    "ext.market_price",
-    "ext.third_party_opinion",
-    "ext.macro_trade",
-    "ext.entity_background",
-    "eval.gradeable",
-    "eval.provenance_checkable",
-    "eval.stability",
-})
+ALL_CAPABILITY_IDS: frozenset[str] = frozenset(
+    {
+        "acq.kind_coverage",
+        "acq.history_depth",
+        "acq.entity_coverage",
+        "acq.tier_admission",
+        "struct.typed_fact",
+        "struct.time_series",
+        "struct.entity_identity",
+        "struct.event_linkage",
+        "reason.grounded_answer",
+        "reason.derived_metric",
+        "reason.comparative",
+        "reason.judgment_qualification",
+        "mem.view_persistence",
+        "mem.view_history",
+        "mem.staleness",
+        "mem.recurrence",
+        "ext.market_structure",
+        "ext.market_price",
+        "ext.third_party_opinion",
+        "ext.macro_trade",
+        "ext.entity_background",
+        "eval.gradeable",
+        "eval.provenance_checkable",
+        "eval.stability",
+    }
+)
 
 # One-line descriptions, for authoring guidance and CLI output -- not consumed
 # by any scoring logic (mirrors SCENARIO_DESCRIPTIONS).

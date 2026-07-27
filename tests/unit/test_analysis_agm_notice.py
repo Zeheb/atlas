@@ -49,6 +49,7 @@ Coverage:
     - All facts carry provenance.section = 'resolution_N'
     - Period field of resolution facts = AGM date ISO string
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -59,10 +60,10 @@ import pytest
 from atlas.analysis.agm_notice import ANALYZER_VERSION, analyze, _extract_vote_pcts
 from atlas.analysis.base import AnalysisResult, FactKind, FactUnit
 
-
 # ---------------------------------------------------------------------------
 # Fixture helpers
 # ---------------------------------------------------------------------------
+
 
 def _kb(
     content: str,
@@ -272,16 +273,14 @@ def _voting_doc(summary: str = "", blocks: str = "") -> str:
     return (
         "Sub: Regulation 30 and Regulation 44(3) - Proceedings\n\n"
         "The 30th Annual General Meeting of the Company was held on "
-        "Thursday, June 19, 2025 at 3.00 p.m. (IST)\n\n"
-        + summary
-        + "\n"
-        + blocks
+        "Thursday, June 19, 2025 at 3.00 p.m. (IST)\n\n" + summary + "\n" + blocks
     )
 
 
 # ---------------------------------------------------------------------------
 # Error handling
 # ---------------------------------------------------------------------------
+
 
 class TestErrors:
     def test_missing_evidence_id_raises(self):
@@ -304,6 +303,7 @@ class TestErrors:
 # Sub-type detection
 # ---------------------------------------------------------------------------
 
+
 class TestSubtypeDetection:
     def test_voting_results_from_section_header(self):
         content = _voting_doc(summary=_VOTING_SUMMARY_SECTION)
@@ -313,8 +313,7 @@ class TestSubtypeDetection:
     def test_voting_results_from_all_passed_phrase(self):
         content = (
             "Regulation 44(3) filing\n\n"
-            "The 31st AGM was held on Tuesday, June 9, 2026.\n\n"
-            + _PROCEEDINGS_SECTION
+            "The 31st AGM was held on Tuesday, June 9, 2026.\n\n" + _PROCEEDINGS_SECTION
         )
         r = analyze("eid", _kb(content))
         assert r.excerpts["subtype"] == "voting_results"
@@ -340,6 +339,7 @@ class TestSubtypeDetection:
 # AGM date extraction
 # ---------------------------------------------------------------------------
 
+
 class TestAGMDate:
     def test_date_extracted_from_cover(self):
         content = _voting_doc(summary=_VOTING_SUMMARY_SECTION)
@@ -361,6 +361,7 @@ class TestAGMDate:
 # ---------------------------------------------------------------------------
 # Format A: summary table (2024/2025 style)
 # ---------------------------------------------------------------------------
+
 
 class TestFormatA:
     def setup_method(self):
@@ -413,6 +414,7 @@ class TestFormatA:
 # Format B: proceedings section (2026 style)
 # ---------------------------------------------------------------------------
 
+
 class TestFormatB:
     def setup_method(self):
         content = (
@@ -446,6 +448,7 @@ class TestFormatB:
 # Vote percentage extraction (unit-level, testing _extract_vote_pcts directly)
 # ---------------------------------------------------------------------------
 
+
 class TestVotePctExtraction:
     def test_layout_a_column_split(self):
         """Column (7) header separates col 6 from col 7 in the tail."""
@@ -467,8 +470,11 @@ class TestVotePctExtraction:
         assert pct_against == pytest.approx(0.3442)
 
     def test_sum_always_close_to_100(self):
-        for block in (_RESOLUTION_BLOCK_COL_SPLIT, _RESOLUTION_BLOCK_TOTAL_ROW,
-                      _RESOLUTION_BLOCK_COMPLEMENT):
+        for block in (
+            _RESOLUTION_BLOCK_COL_SPLIT,
+            _RESOLUTION_BLOCK_TOTAL_ROW,
+            _RESOLUTION_BLOCK_COMPLEMENT,
+        ):
             pf, pa = _extract_vote_pcts(block)
             if pf is not None:
                 assert abs(pf + pa - 100.0) < 0.05
@@ -488,6 +494,7 @@ class TestVotePctExtraction:
 # ---------------------------------------------------------------------------
 # Vote percentage facts in full analyzer output
 # ---------------------------------------------------------------------------
+
 
 class TestVotePctFacts:
     def setup_method(self):
@@ -525,6 +532,7 @@ class TestVotePctFacts:
 # ---------------------------------------------------------------------------
 # Confidence
 # ---------------------------------------------------------------------------
+
 
 class TestConfidence:
     def test_high_with_three_or_more_titles(self):
@@ -577,6 +585,7 @@ majority
 # ---------------------------------------------------------------------------
 # Provenance invariants
 # ---------------------------------------------------------------------------
+
 
 class TestProvenance:
     def setup_method(self):

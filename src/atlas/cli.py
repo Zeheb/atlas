@@ -101,7 +101,9 @@ def depth(ticker: str, since: str | None) -> None:
         try:
             cutoff = datetime.fromisoformat(since)
         except ValueError:
-            click.echo(f"\nInvalid --since date {since!r} (expected YYYY-MM-DD).", err=True)
+            click.echo(
+                f"\nInvalid --since date {since!r} (expected YYYY-MM-DD).", err=True
+            )
             raise SystemExit(1)
         verdict = "yes" if hd.reaches(cutoff) else "no"
         click.echo(f"\n  Reaches {since}: {verdict}")
@@ -151,7 +153,9 @@ def acquire(ticker: str, profile_name: str) -> None:
     click.echo(f"  Downloaded:      {report.downloaded}")
     click.echo(f"  Failed:          {report.failed}")
     if report.classified:
-        click.echo(f"  Classified:      {report.classified}  ({report.reclassified} reclassified)")
+        click.echo(
+            f"  Classified:      {report.classified}  ({report.reclassified} reclassified)"
+        )
     if report.ocr_used:
         click.echo(f"  OCR used:        {report.ocr_used}")
     click.echo(f"  Duration:        {report.duration_seconds:.1f}s")
@@ -189,7 +193,9 @@ def profile() -> None:
 
 @profile.command("build")
 @click.argument("ticker")
-@click.option("--force", is_flag=True, default=False, help="Rebuild even if profile exists.")
+@click.option(
+    "--force", is_flag=True, default=False, help="Rebuild even if profile exists."
+)
 def profile_build(ticker: str, force: bool) -> None:
     """Parse and analyze all evidence for TICKER and save a CompanyProfile.
 
@@ -283,11 +289,25 @@ def profile_build(ticker: str, force: bool) -> None:
 @click.argument("ticker")
 @click.argument("query_name", metavar="QUERY")
 @click.argument("query_arg", required=False, metavar="[METRIC|EVIDENCE_ID]")
-@click.option("--basis", default="consolidated", show_default=True, help="Balance sheet basis.")
-@click.option("--period-type", default=None, help="Filter to 'quarterly' or 'annual' (timeline/compare).")
+@click.option(
+    "--basis", default="consolidated", show_default=True, help="Balance sheet basis."
+)
+@click.option(
+    "--period-type",
+    default=None,
+    help="Filter to 'quarterly' or 'annual' (timeline/compare).",
+)
 @click.option("--keyword", default=None, help="Keyword filter (strategy query only).")
-@click.option("--last-n", default=8, show_default=True, help="Quarters to show (ownership query).")
-@click.option("-n", "compare_n", default=2, show_default=True, help="Periods to show (compare query).")
+@click.option(
+    "--last-n", default=8, show_default=True, help="Quarters to show (ownership query)."
+)
+@click.option(
+    "-n",
+    "compare_n",
+    default=2,
+    show_default=True,
+    help="Periods to show (compare query).",
+)
 def query_cmd(
     ticker: str,
     query_name: str,
@@ -350,7 +370,10 @@ def query_cmd(
         kwargs["last_n"] = last_n
     if query_name in ("timeline", "compare"):
         if not query_arg:
-            click.echo(f"'{query_name}' requires a metric argument. Run: atlas metrics", err=True)
+            click.echo(
+                f"'{query_name}' requires a metric argument. Run: atlas metrics",
+                err=True,
+            )
             raise SystemExit(1)
         kwargs["metric"] = query_arg
         kwargs["basis"] = basis
@@ -382,7 +405,9 @@ def query_cmd(
 @click.argument("metric")
 @click.argument("op", required=False)
 @click.argument("threshold", required=False, type=float)
-@click.option("--basis", default="consolidated", show_default=True, help="Balance sheet basis.")
+@click.option(
+    "--basis", default="consolidated", show_default=True, help="Balance sheet basis."
+)
 @click.option("--period-type", default=None, help="Filter to 'quarterly' or 'annual'.")
 def screen_cmd(
     metric: str,
@@ -436,7 +461,9 @@ def screen_cmd(
 
 
 @cli.command("metrics")
-@click.option("--domain", default=None, help="Filter to 'financial', 'esg', or 'ownership'.")
+@click.option(
+    "--domain", default=None, help="Filter to 'financial', 'esg', or 'ownership'."
+)
 def metrics_cmd(domain: str | None) -> None:
     """List every metric key available to 'timeline', 'compare', and 'screen'."""
     from atlas.query import metrics as metrics_mod
@@ -458,7 +485,10 @@ def metrics_cmd(domain: str | None) -> None:
 @cli.command("research")
 @click.argument("ticker")
 @click.option(
-    "--out", "out_path", default=None, type=click.Path(dir_okay=False, path_type=None),
+    "--out",
+    "out_path",
+    default=None,
+    type=click.Path(dir_okay=False, path_type=None),
     help="Write the report to this file instead of stdout.",
 )
 def research_cmd(ticker: str, out_path: str | None) -> None:
@@ -492,7 +522,9 @@ def research_cmd(ticker: str, out_path: str | None) -> None:
     repo = Repository(repo_root) if (repo_root / "catalog.json").exists() else None
     peer_profiles = screen_mod.discover_companies(atlas.settings.repository_base_path)
 
-    markdown = generate_report_markdown(ticker, profile, repo, peer_profiles=peer_profiles)
+    markdown = generate_report_markdown(
+        ticker, profile, repo, peer_profiles=peer_profiles
+    )
 
     if out_path:
         Path(out_path).write_text(markdown, encoding="utf-8")
@@ -559,11 +591,16 @@ def _echo_staleness(view: "RecalledView", repo_root: Path) -> None:
 @click.argument("ticker")
 @click.argument("question")
 @click.option(
-    "--show-evidence", is_flag=True, default=False,
+    "--show-evidence",
+    is_flag=True,
+    default=False,
     help="Print the retrieved source excerpt behind each citation (drill-to-source).",
 )
 @click.option(
-    "--question-retrieval", "question_retrieval", is_flag=True, default=False,
+    "--question-retrieval",
+    "question_retrieval",
+    is_flag=True,
+    default=False,
     help=(
         "Merge additional passages relevant to the QUESTION itself (not just "
         "existing claims) into the grounding context, at zero extra KB reads "
@@ -572,7 +609,10 @@ def _echo_staleness(view: "RecalledView", repo_root: Path) -> None:
     ),
 )
 @click.option(
-    "--retrieval-plan", "retrieval_plan", is_flag=True, default=False,
+    "--retrieval-plan",
+    "retrieval_plan",
+    is_flag=True,
+    default=False,
     help=(
         "Plan retrieval before running it: classify the question's intent and "
         "bias passage ranking by doc-type/date/period preferences (M1.7). "
@@ -581,19 +621,28 @@ def _echo_staleness(view: "RecalledView", repo_root: Path) -> None:
     ),
 )
 @click.option(
-    "--explain-plan", "explain_plan", is_flag=True, default=False,
+    "--explain-plan",
+    "explain_plan",
+    is_flag=True,
+    default=False,
     help="Print the retrieval plan's decision trace (requires --retrieval-plan).",
 )
 @click.option(
-    "--thesis", "thesis_view_id", default=None,
+    "--thesis",
+    "thesis_view_id",
+    default=None,
     help="Answer against a remembered view (M2.4.1). Takes a view_id from "
-         "`atlas memory list`. The view is shown to the model for "
-         "support/contradiction checking and is NEVER citable -- its evidence "
-         "ids do not widen the closed world.",
+    "`atlas memory list`. The view is shown to the model for "
+    "support/contradiction checking and is NEVER citable -- its evidence "
+    "ids do not widen the closed world.",
 )
 def ask_cmd(
-    ticker: str, question: str, show_evidence: bool,
-    question_retrieval: bool, retrieval_plan: bool, explain_plan: bool,
+    ticker: str,
+    question: str,
+    show_evidence: bool,
+    question_retrieval: bool,
+    retrieval_plan: bool,
+    explain_plan: bool,
     thesis_view_id: str | None,
 ) -> None:
     """Answer a natural-language QUESTION about TICKER, grounded in its evidence.
@@ -633,7 +682,9 @@ def ask_cmd(
     repo_root = atlas.settings.repository_base_path / ticker
     profile_path = repo_root / "profile.json"
     if not profile_path.exists():
-        click.echo(f"No profile for '{ticker}'. Run: atlas profile build {ticker}", err=True)
+        click.echo(
+            f"No profile for '{ticker}'. Run: atlas profile build {ticker}", err=True
+        )
         raise SystemExit(1)
 
     # M2.4.1: load the recalled view BEFORE building an LLM client -- a bad
@@ -665,7 +716,9 @@ def ask_cmd(
     # erroring — a flag ordering slip shouldn't fail the whole command.
     plan = plan_retrieval(question) if (question_retrieval and retrieval_plan) else None
     context = build_context(
-        profile, subject, kb=kb,
+        profile,
+        subject,
+        kb=kb,
         question=question if question_retrieval else None,
         plan=plan,
         thesis=recalled_view,
@@ -677,7 +730,9 @@ def ask_cmd(
         click.echo(f"  intent: {plan.intent}")
         click.echo(f"  top_k: {plan.top_k}")
         for decision in plan.decisions:
-            click.echo(f"  - [{decision.rule}] {decision.input!r} -> {decision.output!r}")
+            click.echo(
+                f"  - [{decision.rule}] {decision.input!r} -> {decision.output!r}"
+            )
     try:
         result = ask(Question(raw_text=question, subject_ref=subject), context, client)
     except LLMTransportError as exc:
@@ -685,29 +740,42 @@ def ask_cmd(
         # friendly "is it running?" beats a raw ConnectionError traceback.
         click.echo(f"Error: {exc}", err=True)
         raise SystemExit(1)
-    click.echo(format_answer(to_answer(result, context=context), show_evidence=show_evidence))
+    click.echo(
+        format_answer(to_answer(result, context=context), show_evidence=show_evidence)
+    )
 
 
 @cli.command("investigate")
 @click.argument("ticker")
 @click.argument("question")
 @click.option(
-    "--also", "also", multiple=True,
+    "--also",
+    "also",
+    multiple=True,
     help="Additional TICKER to investigate alongside the first (repeatable). "
-         "Two or more subjects make the plan comparative (M2.2.5).",
+    "Two or more subjects make the plan comparative (M2.2.5).",
 )
 @click.option(
-    "--dry-run", "dry_run", is_flag=True, default=False,
+    "--dry-run",
+    "dry_run",
+    is_flag=True,
+    default=False,
     help="Print the research plan and stop. Builds NO LLM client at all and "
-         "runs no retrieval -- the plan is a pure function of the question.",
+    "runs no retrieval -- the plan is a pure function of the question.",
 )
 @click.option(
-    "--out", "out_path", default=None, type=click.Path(dir_okay=False),
+    "--out",
+    "out_path",
+    default=None,
+    type=click.Path(dir_okay=False),
     help="Write the plan (and, unless --dry-run, its findings) as JSON here.",
 )
 def investigate_cmd(
-    ticker: str, question: str, also: tuple[str, ...],
-    dry_run: bool, out_path: str | None,
+    ticker: str,
+    question: str,
+    also: tuple[str, ...],
+    dry_run: bool,
+    out_path: str | None,
 ) -> None:
     """Plan and run a multi-dimension investigation of QUESTION about TICKER.
 
@@ -749,7 +817,9 @@ def investigate_cmd(
         # is constructed here, not merely left unused. Asserted by test with an
         # exploding build_llm_client stub, the same way --retrieval-only is.
         if out_path:
-            Path(out_path).write_text(_json.dumps(plan.to_dict(), indent=2), encoding="utf-8")
+            Path(out_path).write_text(
+                _json.dumps(plan.to_dict(), indent=2), encoding="utf-8"
+            )
             click.echo(f"\nPlan written to {out_path}")
         return
 
@@ -773,7 +843,9 @@ def investigate_cmd(
         raise SystemExit(1)
 
     click.echo(f"\n{'=' * 60}")
-    click.echo(f"Findings ({len(run.findings)}/{len(run.results)} investigations grounded)")
+    click.echo(
+        f"Findings ({len(run.findings)}/{len(run.results)} investigations grounded)"
+    )
     for result in run.results:
         click.echo(f"\n  {result.investigation.dimension}:")
         if result.finding is not None:
@@ -804,22 +876,33 @@ def investigate_cmd(
 @click.argument("ticker")
 @click.argument("question")
 @click.option(
-    "--also", "also", multiple=True,
+    "--also",
+    "also",
+    multiple=True,
     help="Additional TICKER to investigate alongside the first (repeatable).",
 )
 @click.option(
-    "--out", "out_path", default=None, type=click.Path(dir_okay=False),
+    "--out",
+    "out_path",
+    default=None,
+    type=click.Path(dir_okay=False),
     help="Write the thesis (findings, citations, dispositions) as JSON here.",
 )
 @click.option(
-    "--remember", "remember", is_flag=True, default=False,
+    "--remember",
+    "remember",
+    is_flag=True,
+    default=False,
     help="Persist this thesis to the primary TICKER's ThesisStore "
-         "(repositories/TICKER/theses.json) so `atlas memory` commands can "
-         "list, show, and check it later. Persistence is an explicit choice "
-         "(M2.4), not an automatic side effect of every synthesis.",
+    "(repositories/TICKER/theses.json) so `atlas memory` commands can "
+    "list, show, and check it later. Persistence is an explicit choice "
+    "(M2.4), not an automatic side effect of every synthesis.",
 )
 def thesis_cmd(
-    ticker: str, question: str, also: tuple[str, ...], out_path: str | None,
+    ticker: str,
+    question: str,
+    also: tuple[str, ...],
+    out_path: str | None,
     remember: bool,
 ) -> None:
     """Investigate QUESTION about TICKER, then form a view from what was found.
@@ -860,8 +943,10 @@ def thesis_cmd(
         raise SystemExit(1)
 
     plan = plan_research(question, subjects)
-    click.echo(f"\nInvestigating {', '.join(plan.subjects)} ({plan.intent}) "
-               f"-- {len(plan.investigations)} dimension(s)")
+    click.echo(
+        f"\nInvestigating {', '.join(plan.subjects)} ({plan.intent}) "
+        f"-- {len(plan.investigations)} dimension(s)"
+    )
 
     try:
         run = run_plan(plan, atlas.settings.repository_base_path, client)
@@ -886,7 +971,10 @@ def thesis_cmd(
     # silently dropped a finding is not a degraded thesis, it is a wrong one.
     gate = check_completeness(thesis, run)
     if not gate.passed:
-        click.echo("\nThesis REJECTED -- it does not account for every investigation:", err=True)
+        click.echo(
+            "\nThesis REJECTED -- it does not account for every investigation:",
+            err=True,
+        )
         for violation in gate.violations:
             click.echo(f"  - [{violation.kind}] {violation.detail}", err=True)
         raise SystemExit(1)
@@ -922,13 +1010,16 @@ def thesis_cmd(
 
         primary = plan.subjects[0]
         store = ThesisStore(
-            atlas.settings.repository_base_path / primary / "theses.json", primary,
+            atlas.settings.repository_base_path / primary / "theses.json",
+            primary,
         )
         store.save(thesis)
         click.echo(f"\nRemembered as view_id={thesis.view_id}")
 
     if out_path:
-        Path(out_path).write_text(_json.dumps(thesis.to_dict(), indent=2), encoding="utf-8")
+        Path(out_path).write_text(
+            _json.dumps(thesis.to_dict(), indent=2), encoding="utf-8"
+        )
         click.echo(f"\nThesis written to {out_path}")
 
 
@@ -1010,7 +1101,9 @@ def memory_list_cmd() -> None:
         click.echo(f"{subject}  {thesis.view_id}  ({thesis.as_of})")
         click.echo(f"    {thesis.question}")
     if not found:
-        click.echo("No remembered views yet. Run: atlas thesis <TICKER> <QUESTION> --remember")
+        click.echo(
+            "No remembered views yet. Run: atlas thesis <TICKER> <QUESTION> --remember"
+        )
 
 
 @memory_group.command("show")
@@ -1076,8 +1169,12 @@ def memory_diff_cmd(view_id_a: str, view_id_b: str) -> None:
         raise SystemExit(1)
 
     click.echo(f"Question: {diff.question}")
-    click.echo(f"  {diff.older_view_id}  ({diff.older_as_of})  overall_confidence={diff.older_overall_confidence}")
-    click.echo(f"  {diff.newer_view_id}  ({diff.newer_as_of})  overall_confidence={diff.newer_overall_confidence}\n")
+    click.echo(
+        f"  {diff.older_view_id}  ({diff.older_as_of})  overall_confidence={diff.older_overall_confidence}"
+    )
+    click.echo(
+        f"  {diff.newer_view_id}  ({diff.newer_as_of})  overall_confidence={diff.newer_overall_confidence}\n"
+    )
 
     if diff.added:
         click.echo("Added:")
@@ -1119,7 +1216,9 @@ def memory_check_cmd() -> None:
         if report.hard_stale:
             click.echo(f"    missing evidence: {', '.join(report.missing_evidence)}")
         if report.new_evidence_since:
-            click.echo(f"    {len(report.new_evidence_since)} new evidence item(s) since as_of")
+            click.echo(
+                f"    {len(report.new_evidence_since)} new evidence item(s) since as_of"
+            )
     if not found:
         click.echo("No remembered views to check.")
 
@@ -1131,44 +1230,97 @@ def eval_group() -> None:
 
 @eval_group.command("run")
 @click.option("--milestone", required=True, help="Label for this run, e.g. 'M0'.")
-@click.option("--suite", "suite", default="full",
-              help="Named preset (core/grounding/refusals/full) or a custom suite "
-                   "JSON path. Defaults to 'full' (the bundled §8.6 set).")
-@click.option("--capabilities", default="single_name",
-              help="Comma-separated capabilities available at this milestone.")
-@click.option("--no-judge", "no_judge", is_flag=True, default=False,
-              help="Skip the subjective LLM judge (deterministic dimensions only).")
-@click.option("--judge-sample", "judge_sample", default=None,
-              help="Judge only a subset of active cases: an integer N (N cases chosen "
-                   "by deterministic hash rank, not suite order) or a comma-separated "
-                   "list of case ids. Deterministic scoring still runs for every case "
-                   "regardless.")
-@click.option("--no-cache", "no_cache", is_flag=True, default=False,
-              help="Disable the LLM-response cache (always call the LLM live).")
-@click.option("--cache-path", "cache_path", default=None, type=click.Path(file_okay=False),
-              help="Cache directory (defaults to .eval_cache/). Holds separate "
-                   "reasoning.json / judge.json files.")
-@click.option("--out", "out_path", default=None, type=click.Path(dir_okay=False),
-              help="Report path (defaults to eval_reports/<milestone>.json).")
-@click.option("--strategy", "strategy_name", type=click.Choice(["baseline", "planned"]), default=None,
-              help="Retrieval strategy (M1.8): 'baseline' (a null SearchPlan -- see "
-                   "eval/strategies.py) or 'planned' (HeuristicPlanner). Overrides the "
-                   "--capabilities question_retrieval/retrieval_plan gating: the case's "
-                   "question is always forwarded and the strategy always builds a plan, "
-                   "so both strategies get identical retrieval diagnostics. Omit to use "
-                   "the pre-M1.8 capability-gated behavior unchanged.")
-@click.option("--retrieval-only", "retrieval_only", is_flag=True, default=False,
-              help="Score ONLY retrieval/planner metrics -- no LLM call at all, no LLM "
-                   "client built (M1.8). Mutually exclusive with --with-answers.")
-@click.option("--with-answers", "with_answers", is_flag=True, default=False,
-              help="Explicitly run end-to-end reasoning (M1.8) -- the default when "
-                   "neither this nor --retrieval-only is given; names the intent at the "
-                   "call site. Mutually exclusive with --retrieval-only.")
+@click.option(
+    "--suite",
+    "suite",
+    default="full",
+    help="Named preset (core/grounding/refusals/full) or a custom suite "
+    "JSON path. Defaults to 'full' (the bundled §8.6 set).",
+)
+@click.option(
+    "--capabilities",
+    default="single_name",
+    help="Comma-separated capabilities available at this milestone.",
+)
+@click.option(
+    "--no-judge",
+    "no_judge",
+    is_flag=True,
+    default=False,
+    help="Skip the subjective LLM judge (deterministic dimensions only).",
+)
+@click.option(
+    "--judge-sample",
+    "judge_sample",
+    default=None,
+    help="Judge only a subset of active cases: an integer N (N cases chosen "
+    "by deterministic hash rank, not suite order) or a comma-separated "
+    "list of case ids. Deterministic scoring still runs for every case "
+    "regardless.",
+)
+@click.option(
+    "--no-cache",
+    "no_cache",
+    is_flag=True,
+    default=False,
+    help="Disable the LLM-response cache (always call the LLM live).",
+)
+@click.option(
+    "--cache-path",
+    "cache_path",
+    default=None,
+    type=click.Path(file_okay=False),
+    help="Cache directory (defaults to .eval_cache/). Holds separate "
+    "reasoning.json / judge.json files.",
+)
+@click.option(
+    "--out",
+    "out_path",
+    default=None,
+    type=click.Path(dir_okay=False),
+    help="Report path (defaults to eval_reports/<milestone>.json).",
+)
+@click.option(
+    "--strategy",
+    "strategy_name",
+    type=click.Choice(["baseline", "planned"]),
+    default=None,
+    help="Retrieval strategy (M1.8): 'baseline' (a null SearchPlan -- see "
+    "eval/strategies.py) or 'planned' (HeuristicPlanner). Overrides the "
+    "--capabilities question_retrieval/retrieval_plan gating: the case's "
+    "question is always forwarded and the strategy always builds a plan, "
+    "so both strategies get identical retrieval diagnostics. Omit to use "
+    "the pre-M1.8 capability-gated behavior unchanged.",
+)
+@click.option(
+    "--retrieval-only",
+    "retrieval_only",
+    is_flag=True,
+    default=False,
+    help="Score ONLY retrieval/planner metrics -- no LLM call at all, no LLM "
+    "client built (M1.8). Mutually exclusive with --with-answers.",
+)
+@click.option(
+    "--with-answers",
+    "with_answers",
+    is_flag=True,
+    default=False,
+    help="Explicitly run end-to-end reasoning (M1.8) -- the default when "
+    "neither this nor --retrieval-only is given; names the intent at the "
+    "call site. Mutually exclusive with --retrieval-only.",
+)
 def eval_run_cmd(
-    milestone: str, suite: str, capabilities: str,
-    no_judge: bool, judge_sample: str | None,
-    no_cache: bool, cache_path: str | None, out_path: str | None,
-    strategy_name: str | None, retrieval_only: bool, with_answers: bool,
+    milestone: str,
+    suite: str,
+    capabilities: str,
+    no_judge: bool,
+    judge_sample: str | None,
+    no_cache: bool,
+    cache_path: str | None,
+    out_path: str | None,
+    strategy_name: str | None,
+    retrieval_only: bool,
+    with_answers: bool,
 ) -> None:
     """Run the evaluation suite and write a machine-readable report."""
     import dataclasses
@@ -1182,7 +1334,9 @@ def eval_run_cmd(
     from atlas.reasoning.llm import LLMConfigurationError, build_llm_client
 
     if retrieval_only and with_answers:
-        click.echo("--retrieval-only and --with-answers are mutually exclusive.", err=True)
+        click.echo(
+            "--retrieval-only and --with-answers are mutually exclusive.", err=True
+        )
         raise SystemExit(1)
 
     strategy = STRATEGIES[strategy_name] if strategy_name else None
@@ -1216,7 +1370,9 @@ def eval_run_cmd(
     # Generation settings aren't visible in a bare (system, user) pair, so a
     # future drift in temperature/max_tokens can't silently produce a false
     # cache hit — it's folded into the key alongside the prompt/context hashes.
-    fingerprint = f"t={atlas.settings.llm_temperature}:m={atlas.settings.llm_max_tokens}"
+    fingerprint = (
+        f"t={atlas.settings.llm_temperature}:m={atlas.settings.llm_max_tokens}"
+    )
 
     # §12.6 amendment 1: the judge gets its OWN, independently resolved client
     # (provider AND model) — upgrading the reasoning model/provider never moves
@@ -1232,7 +1388,9 @@ def eval_run_cmd(
             click.echo(str(exc), err=True)
             raise SystemExit(1)
         judge = Judge(
-            judge_client, cache=judge_cache, model=atlas.settings.judge_model,
+            judge_client,
+            cache=judge_cache,
+            model=atlas.settings.judge_model,
             fingerprint=fingerprint,
         )
 
@@ -1250,15 +1408,21 @@ def eval_run_cmd(
         # measurement, without gating any case's availability (no case
         # requires it — it's a runner-mode switch, not a case gate).
         LiveReasoningRunner(
-            atlas.settings, client, capabilities=frozenset(caps),
-            cache=reasoning_cache, fingerprint=fingerprint,
-            strategy=strategy, retrieval_only=retrieval_only,
+            atlas.settings,
+            client,
+            capabilities=frozenset(caps),
+            cache=reasoning_cache,
+            fingerprint=fingerprint,
+            strategy=strategy,
+            retrieval_only=retrieval_only,
         ),
         judge,
         caps,
         milestone=milestone,
         model=atlas.settings.reasoning_model,
-        judge_model=None if (no_judge or retrieval_only) else atlas.settings.judge_model,
+        judge_model=(
+            None if (no_judge or retrieval_only) else atlas.settings.judge_model
+        ),
         judge_sample=judge_sample,
     )
     if reasoning_cache is not None and judge_cache is not None:
@@ -1276,7 +1440,9 @@ def eval_run_cmd(
 
     agg = report.to_dict()["aggregates"]
     click.echo(f"\nEvaluation: {milestone}")
-    click.echo(f"  coverage:              {agg['coverage']} ({agg['active_cases']}/{agg['total_cases']} active)")
+    click.echo(
+        f"  coverage:              {agg['coverage']} ({agg['active_cases']}/{agg['total_cases']} active)"
+    )
     if not retrieval_only:
         click.echo(f"  correctness pass rate: {agg['correctness_pass_rate']}")
         click.echo(f"  grounding pass rate:   {agg['grounding_pass_rate']}")
@@ -1287,7 +1453,9 @@ def eval_run_cmd(
     if agg.get("planner") is not None:
         click.echo(f"  planner dead rules:    {agg['planner']['dead_rules'] or 'none'}")
     if agg.get("retrieval") is not None:
-        click.echo(f"  mean metadata coverage:{agg['retrieval']['mean_metadata_coverage']}")
+        click.echo(
+            f"  mean metadata coverage:{agg['retrieval']['mean_metadata_coverage']}"
+        )
     if reasoning_cache is not None and judge_cache is not None:
         click.echo(
             f"  cache:                 {reasoning_cache.hits + judge_cache.hits} hits, "
@@ -1312,7 +1480,9 @@ def eval_compare_cmd(baseline: str, candidate: str) -> None:
 
     click.echo(f"\n{diff['baseline']} -> {diff['candidate']}")
     for dim, vals in diff["dimensions"].items():
-        click.echo(f"  {dim:<24} {vals['baseline']} -> {vals['candidate']} (delta {vals['delta']})")
+        click.echo(
+            f"  {dim:<24} {vals['baseline']} -> {vals['candidate']} (delta {vals['delta']})"
+        )
     click.echo(f"  newly active: {diff['newly_active'] or 'none'}")
     click.echo(f"  regressions:  {diff['regressions'] or 'none'}")
     click.echo("\n" + _json.dumps(diff, indent=2))
@@ -1321,11 +1491,18 @@ def eval_compare_cmd(baseline: str, candidate: str) -> None:
 @eval_group.command("compare-retrieval")
 @click.argument("baseline", type=click.Path(exists=True, dir_okay=False))
 @click.argument("candidate", type=click.Path(exists=True, dir_okay=False))
-@click.option("--out", "out_path", default=None, type=click.Path(dir_okay=False),
-              help="Write the full comparison (ranking change, retrieval/planner "
-                   "deltas, per-case side-by-side, and the advisory recommendation) "
-                   "as JSON to this path.")
-def eval_compare_retrieval_cmd(baseline: str, candidate: str, out_path: str | None) -> None:
+@click.option(
+    "--out",
+    "out_path",
+    default=None,
+    type=click.Path(dir_okay=False),
+    help="Write the full comparison (ranking change, retrieval/planner "
+    "deltas, per-case side-by-side, and the advisory recommendation) "
+    "as JSON to this path.",
+)
+def eval_compare_retrieval_cmd(
+    baseline: str, candidate: str, out_path: str | None
+) -> None:
     """Compare BASELINE vs CANDIDATE retrieval strategies (M1.8, ADR-0004):
     ranking change, retrieval/planner deltas, and an advisory SAFE_TO_ENABLE /
     NOT_READY / INSUFFICIENT_DATA recommendation for enabling retrieval
@@ -1366,7 +1543,8 @@ def eval_compare_retrieval_cmd(baseline: str, candidate: str, out_path: str | No
 
     if out_path:
         payload = {
-            "baseline": result["baseline"], "candidate": result["candidate"],
+            "baseline": result["baseline"],
+            "candidate": result["candidate"],
             "end_to_end": result["end_to_end"],
             "ranking_change": result["ranking_change"],
             "retrieval_deltas": result["retrieval_deltas"],
@@ -1374,7 +1552,9 @@ def eval_compare_retrieval_cmd(baseline: str, candidate: str, out_path: str | No
             "planner_attribution": result["planner_attribution"],
             "side_by_side": [dataclasses.asdict(row) for row in result["side_by_side"]],
             "recommendation": {
-                "verdict": rec.verdict, "reasons": list(rec.reasons), "criteria": rec.criteria,
+                "verdict": rec.verdict,
+                "reasons": list(rec.reasons),
+                "criteria": rec.criteria,
             },
         }
         Path(out_path).write_text(_json.dumps(payload, indent=2), encoding="utf-8")
@@ -1382,15 +1562,29 @@ def eval_compare_retrieval_cmd(baseline: str, candidate: str, out_path: str | No
 
 
 @eval_group.command("coverage")
-@click.option("--suite", "suite", default="full",
-              help="Named preset (core/grounding/refusals/full) or a custom suite "
-                   "JSON path. Defaults to 'full'.")
-@click.option("--format", "output_format", type=click.Choice(["summary", "json"]), default="summary",
-              help="'summary' prints a human-readable digest; 'json' prints the full "
-                   "BenchmarkCoverage payload. --out (below) always writes JSON "
-                   "regardless of this choice.")
-@click.option("--out", "out_path", default=None, type=click.Path(dir_okay=False),
-              help="Also write the full BenchmarkCoverage payload as JSON to this path.")
+@click.option(
+    "--suite",
+    "suite",
+    default="full",
+    help="Named preset (core/grounding/refusals/full) or a custom suite "
+    "JSON path. Defaults to 'full'.",
+)
+@click.option(
+    "--format",
+    "output_format",
+    type=click.Choice(["summary", "json"]),
+    default="summary",
+    help="'summary' prints a human-readable digest; 'json' prints the full "
+    "BenchmarkCoverage payload. --out (below) always writes JSON "
+    "regardless of this choice.",
+)
+@click.option(
+    "--out",
+    "out_path",
+    default=None,
+    type=click.Path(dir_okay=False),
+    help="Also write the full BenchmarkCoverage payload as JSON to this path.",
+)
 def eval_coverage_cmd(suite: str, output_format: str, out_path: str | None) -> None:
     """Static benchmark coverage analysis (M1.8.5, ADR-0005): does the suite
     exercise every planner intent, retrieval rule, and retrieval scenario,
@@ -1413,36 +1607,60 @@ def eval_coverage_cmd(suite: str, output_format: str, out_path: str | None) -> N
         raise SystemExit(1)
 
     subjects = sorted({c.subject for c in cases})
-    result = analyze(cases, repo_root=atlas.settings.repository_base_path, subjects=subjects)
+    result = analyze(
+        cases, repo_root=atlas.settings.repository_base_path, subjects=subjects
+    )
     s = result.suite
 
     if output_format == "json":
         click.echo(_json.dumps(dataclasses.asdict(result), indent=2))
     else:
-        click.echo(f"\nBenchmark coverage: {s.total_cases} cases across {len(subjects)} subject(s) {subjects}")
-        click.echo(f"  general-intent share:    {s.general_intent_share}  (floor: <= 0.30)")
-        click.echo(f"  max subject share:       {s.max_subject_share}  (floor: <= 0.60)")
-        click.echo(f"  intent    missing: {list(s.intent.missing) or 'none'}"
-                   f"  underrepresented: {list(s.intent.underrepresented) or 'none'}")
-        click.echo(f"  rule      missing: {list(s.rule.missing) or 'none'}"
-                   f"  underrepresented: {list(s.rule.underrepresented) or 'none'}")
-        click.echo(f"  scenario  missing: {list(s.scenario.missing) or 'none'}"
-                   f"  underrepresented: {list(s.scenario.underrepresented) or 'none'}")
-        click.echo(f"  redundant pairs (>{s.redundancy.threshold}): {len(s.redundancy.near_duplicate_pairs)}")
+        click.echo(
+            f"\nBenchmark coverage: {s.total_cases} cases across {len(subjects)} subject(s) {subjects}"
+        )
+        click.echo(
+            f"  general-intent share:    {s.general_intent_share}  (floor: <= 0.30)"
+        )
+        click.echo(
+            f"  max subject share:       {s.max_subject_share}  (floor: <= 0.60)"
+        )
+        click.echo(
+            f"  intent    missing: {list(s.intent.missing) or 'none'}"
+            f"  underrepresented: {list(s.intent.underrepresented) or 'none'}"
+        )
+        click.echo(
+            f"  rule      missing: {list(s.rule.missing) or 'none'}"
+            f"  underrepresented: {list(s.rule.underrepresented) or 'none'}"
+        )
+        click.echo(
+            f"  scenario  missing: {list(s.scenario.missing) or 'none'}"
+            f"  underrepresented: {list(s.scenario.underrepresented) or 'none'}"
+        )
+        click.echo(
+            f"  redundant pairs (>{s.redundancy.threshold}): {len(s.redundancy.near_duplicate_pairs)}"
+        )
         if result.corpus is not None:
-            click.echo(f"  structurally dead doc types: {list(result.corpus.structurally_dead_doc_types) or 'none'}")
+            click.echo(
+                f"  structurally dead doc types: {list(result.corpus.structurally_dead_doc_types) or 'none'}"
+            )
             for subject, kinds in result.corpus.retrievable_kinds_by_subject:
                 click.echo(f"    {subject}: {list(kinds)}")
 
     if out_path:
-        Path(out_path).write_text(_json.dumps(dataclasses.asdict(result), indent=2), encoding="utf-8")
+        Path(out_path).write_text(
+            _json.dumps(dataclasses.asdict(result), indent=2), encoding="utf-8"
+        )
         click.echo(f"\nCoverage report written to {out_path}")
 
 
 @eval_group.command("validate-cases")
-@click.option("--suite", "suite", default="full",
-              help="Named preset (core/grounding/refusals/full) or a custom suite "
-                   "JSON path. Defaults to 'full'.")
+@click.option(
+    "--suite",
+    "suite",
+    default="full",
+    help="Named preset (core/grounding/refusals/full) or a custom suite "
+    "JSON path. Defaults to 'full'.",
+)
 def eval_validate_cases_cmd(suite: str) -> None:
     """Machine-check every case's provenance claim (M1.8.5, ADR-0005): every
     corpus-derived evidence id resolves in the right subject's KnowledgeBase

@@ -16,6 +16,7 @@ TestSafety            — LTIFR
 TestSBTi              — Scope 1+2 and Scope 3 SBTi commitment targets
 TestAnalyze           — public entry-point: kind validation, empty content
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -37,10 +38,10 @@ from atlas.analysis.brsr import (
 )
 from atlas.analysis.base import AnalysisResult, FactKind, FactUnit
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_result() -> AnalysisResult:
     return AnalysisResult(
@@ -59,6 +60,7 @@ def _facts(result: AnalysisResult, kind: FactKind) -> list:
 # ---------------------------------------------------------------------------
 # Period extraction
 # ---------------------------------------------------------------------------
+
 
 class TestPeriodExtraction:
     def test_period_from_assurance_text(self):
@@ -179,7 +181,11 @@ class TestGHGExtraction:
     def test_units_are_tco2e(self):
         r = _make_result()
         _extract_ghg(_GHG_BLOCK, "2026-03-31", r)
-        for kind in (FactKind.ESG_GHG_SCOPE1, FactKind.ESG_GHG_SCOPE2, FactKind.ESG_GHG_SCOPE3):
+        for kind in (
+            FactKind.ESG_GHG_SCOPE1,
+            FactKind.ESG_GHG_SCOPE2,
+            FactKind.ESG_GHG_SCOPE3,
+        ):
             for f in _facts(r, kind):
                 assert f.unit == FactUnit.TCO2E
 
@@ -591,7 +597,9 @@ class TestWasteExtraction:
     def test_waste_unit_is_metric_tonne(self):
         r = _make_result()
         _extract_waste(_WASTE_BLOCK_FY26, "2026-03-31", r)
-        assert _facts(r, FactKind.ESG_WASTE_GENERATED_MT)[0].unit == FactUnit.METRIC_TONNE
+        assert (
+            _facts(r, FactKind.ESG_WASTE_GENERATED_MT)[0].unit == FactUnit.METRIC_TONNE
+        )
 
     def test_recovery_unit_is_percent(self):
         r = _make_result()
@@ -905,12 +913,18 @@ class TestSBTi:
     def test_scope12_unit_is_percent(self):
         r = _make_result()
         _extract_sbti(_SBTI_BLOCK, r)
-        assert _facts(r, FactKind.ESG_CLIMATE_SBTI_SCOPE12_REDUCTION_PCT)[0].unit == FactUnit.PERCENT
+        assert (
+            _facts(r, FactKind.ESG_CLIMATE_SBTI_SCOPE12_REDUCTION_PCT)[0].unit
+            == FactUnit.PERCENT
+        )
 
     def test_scope3_unit_is_percent(self):
         r = _make_result()
         _extract_sbti(_SBTI_BLOCK, r)
-        assert _facts(r, FactKind.ESG_CLIMATE_SBTI_SCOPE3_REDUCTION_PCT)[0].unit == FactUnit.PERCENT
+        assert (
+            _facts(r, FactKind.ESG_CLIMATE_SBTI_SCOPE3_REDUCTION_PCT)[0].unit
+            == FactUnit.PERCENT
+        )
 
     def test_missing_target_adds_warning(self):
         r = _make_result()
@@ -926,6 +940,7 @@ class TestSBTi:
 # ---------------------------------------------------------------------------
 # Public entry point: analyze()
 # ---------------------------------------------------------------------------
+
 
 class TestAnalyze:
     def _make_kb(self, kind: str = "brsr", content: str = "") -> MagicMock:
@@ -952,6 +967,7 @@ class TestAnalyze:
         kb = self._make_kb(content="irrelevant")
         r = analyze("test-id", kb)
         from atlas.analysis.base import AnalysisResult
+
         assert isinstance(r, AnalysisResult)
 
     def test_kind_is_brsr(self):

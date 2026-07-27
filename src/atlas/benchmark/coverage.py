@@ -23,6 +23,7 @@ structurally without this module importing ``eval`` at all. This keeps the
 dependency direction the same one ``atlas.eval`` already has on this package,
 never the reverse.
 """
+
 from __future__ import annotations
 
 import math
@@ -202,7 +203,9 @@ def _normalized_entropy(counts: dict[str, int], vocab_size: int) -> float:
 
 
 def _dimension_coverage(
-    counts: Counter[str], vocab: frozenset[str], floor: int = _MIN_CASES_PER_SLOT,
+    counts: Counter[str],
+    vocab: frozenset[str],
+    floor: int = _MIN_CASES_PER_SLOT,
 ) -> DimensionCoverage:
     full = {v: counts.get(v, 0) for v in vocab}
     return DimensionCoverage(
@@ -234,7 +237,9 @@ def _redundancy(cases: Sequence[CaseLike]) -> RedundancyReport:
             jaccard = len(sa & sb) / len(union)
             if jaccard > _REDUNDANCY_THRESHOLD:
                 pairs.append((a, b, round(jaccard, 3)))
-    return RedundancyReport(near_duplicate_pairs=tuple(pairs), threshold=_REDUNDANCY_THRESHOLD)
+    return RedundancyReport(
+        near_duplicate_pairs=tuple(pairs), threshold=_REDUNDANCY_THRESHOLD
+    )
 
 
 def analyze_research_plans(plans: Sequence["ResearchPlanLike"]) -> ResearchPlanCoverage:
@@ -254,11 +259,19 @@ def analyze_research_plans(plans: Sequence["ResearchPlanLike"]) -> ResearchPlanC
 
     if not plans:
         return ResearchPlanCoverage(
-            plans_analyzed=0, distinct_dimension_sets=0, mean_plan_width=0.0,
-            max_plan_width=0, vocabulary_size=len(vocabulary), set_entropy=0.0,
-            dimension_counts=(), intent_counts=(), dead_rules=tuple(sorted(ALL_RESEARCH_RULE_IDS)),
+            plans_analyzed=0,
+            distinct_dimension_sets=0,
+            mean_plan_width=0.0,
+            max_plan_width=0,
+            vocabulary_size=len(vocabulary),
+            set_entropy=0.0,
+            dimension_counts=(),
+            intent_counts=(),
+            dead_rules=tuple(sorted(ALL_RESEARCH_RULE_IDS)),
             is_checklist=True,
-            checklist_reasons=("no plans analyzed -- diversity is unmeasured, not proven",),
+            checklist_reasons=(
+                "no plans analyzed -- diversity is unmeasured, not proven",
+            ),
         )
 
     dimension_sets = Counter(tuple(p.dimensions) for p in plans)
@@ -301,7 +314,8 @@ def analyze_research_plans(plans: Sequence["ResearchPlanLike"]) -> ResearchPlanC
         # Evenness across the distinct sets actually used -- descriptive only;
         # see ResearchPlanCoverage's docstring for why this is not the gate.
         set_entropy=_normalized_entropy(
-            {str(k): v for k, v in dimension_sets.items()}, distinct,
+            {str(k): v for k, v in dimension_sets.items()},
+            distinct,
         ),
         dimension_counts=tuple(sorted(dimension_counts.items())),
         intent_counts=tuple(sorted(intent_counts.items())),
@@ -335,7 +349,9 @@ def analyze_suite(cases: Sequence[CaseLike]) -> SuiteCoverage:
     total = len(cases)
     general_share = round(intent_counts.get("general", 0) / total, 3) if total else 0.0
     max_subject_share = (
-        round(max(subject_counts.values()) / total, 3) if total and subject_counts else 0.0
+        round(max(subject_counts.values()) / total, 3)
+        if total and subject_counts
+        else 0.0
     )
 
     return SuiteCoverage(
@@ -379,29 +395,43 @@ def analyze_corpus(repo_root: Path, subjects: Sequence[str]) -> CorpusCoverage:
         profile = CompanyStore(profile_path, subject).load()
         kb = KnowledgeBase(root)
         ctx = build_context(profile, SubjectRef(subject_id=subject, display=subject))
-        evidence_ids = sorted({eid for claim in ctx.claims for eid in claim.evidence_ids})
+        evidence_ids = sorted(
+            {eid for claim in ctx.claims for eid in claim.evidence_ids}
+        )
         if not evidence_ids:
             retrievable_by_subject[subject] = frozenset()
             continue
         metadata = kb.get_many(evidence_ids)
-        retrievable_by_subject[subject] = frozenset(doc.kind for doc in metadata.values())
+        retrievable_by_subject[subject] = frozenset(
+            doc.kind for doc in metadata.values()
+        )
 
-    all_retrievable: frozenset[str] = frozenset().union(*retrievable_by_subject.values()) \
-        if retrievable_by_subject else frozenset()
+    all_retrievable: frozenset[str] = (
+        frozenset().union(*retrievable_by_subject.values())
+        if retrievable_by_subject
+        else frozenset()
+    )
 
     return CorpusCoverage(
         retrievable_kinds_by_subject=tuple(
-            (subject, tuple(sorted(kinds))) for subject, kinds in sorted(retrievable_by_subject.items())
+            (subject, tuple(sorted(kinds)))
+            for subject, kinds in sorted(retrievable_by_subject.items())
         ),
         structurally_dead_doc_types=tuple(sorted(declared_kinds - all_retrievable)),
     )
 
 
 def analyze(
-    cases: Sequence[CaseLike], repo_root: Path | None = None, subjects: Sequence[str] = (),
+    cases: Sequence[CaseLike],
+    repo_root: Path | None = None,
+    subjects: Sequence[str] = (),
 ) -> BenchmarkCoverage:
     """Both analyses. ``corpus`` is ``None`` when no repo_root/subjects are
     given -- suite-only analysis needs neither.
     """
-    corpus = analyze_corpus(repo_root, subjects) if repo_root is not None and subjects else None
+    corpus = (
+        analyze_corpus(repo_root, subjects)
+        if repo_root is not None and subjects
+        else None
+    )
     return BenchmarkCoverage(suite=analyze_suite(cases), corpus=corpus)

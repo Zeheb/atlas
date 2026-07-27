@@ -16,6 +16,7 @@ Adding a new document to the regression suite:
 
 Run with: pytest tests/corpus/ -m integration -v
 """
+
 from __future__ import annotations
 
 import json
@@ -36,6 +37,7 @@ _TCS_REPO = _PROJECT_ROOT / "repositories" / "TCS"
 # ---------------------------------------------------------------------------
 # Parametrize — one test case per expectations file
 # ---------------------------------------------------------------------------
+
 
 def _load_cases() -> list[dict]:
     cases = []
@@ -82,6 +84,7 @@ class TestCorpus:
     @pytest.fixture
     def result(self, case: dict, kb):
         from atlas.analysis.registry import analyze as registry_analyze
+
         eid = case["evidence_id"]
         entry = kb.get(eid)
         if entry is None or entry.status != "ok":
@@ -96,9 +99,9 @@ class TestCorpus:
     def test_confidence(self, case: dict, result):
         min_conf = case.get("min_confidence", "medium")
         order = {"high": 2, "medium": 1, "low": 0}
-        assert order[result.confidence] >= order[min_conf], (
-            f"confidence={result.confidence!r} below minimum {min_conf!r}"
-        )
+        assert (
+            order[result.confidence] >= order[min_conf]
+        ), f"confidence={result.confidence!r} below minimum {min_conf!r}"
 
     def test_no_missing_facts(self, eval_result: EvalResult, case: dict):
         assert eval_result.missing == 0, (
@@ -107,6 +110,6 @@ class TestCorpus:
         )
 
     def test_no_warning_issues(self, eval_result: EvalResult, case: dict):
-        assert not eval_result.warning_issues, (
-            f"{case['_path']}: " + "; ".join(eval_result.warning_issues)
+        assert not eval_result.warning_issues, f"{case['_path']}: " + "; ".join(
+            eval_result.warning_issues
         )

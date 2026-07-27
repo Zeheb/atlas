@@ -20,6 +20,7 @@ file with:
 and review the diff before committing it — a passing golden test after
 regenerating proves nothing; the diff is what should be reviewed.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

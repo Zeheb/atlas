@@ -56,18 +56,27 @@ class TestDownloadEvidenceSuccess:
 
     def test_checksum_is_sha256_of_downloaded_bytes(self, tmp_path: Path) -> None:
         import hashlib
+
         content = b"real file content for checksum test"
         result = download_evidence(_make_evidence(), tmp_path, lambda _: content)
         assert result.checksum == hashlib.sha256(content).hexdigest()
 
     def test_checksum_differs_for_different_content(self, tmp_path: Path) -> None:
-        r1 = download_evidence(_make_evidence("ev-001"), tmp_path, lambda _: b"content A")
-        r2 = download_evidence(_make_evidence("ev-002"), tmp_path, lambda _: b"content B")
+        r1 = download_evidence(
+            _make_evidence("ev-001"), tmp_path, lambda _: b"content A"
+        )
+        r2 = download_evidence(
+            _make_evidence("ev-002"), tmp_path, lambda _: b"content B"
+        )
         assert r1.checksum != r2.checksum
 
     def test_checksum_identical_for_identical_content(self, tmp_path: Path) -> None:
-        r1 = download_evidence(_make_evidence("ev-001"), tmp_path, lambda _: b"same content")
-        r2 = download_evidence(_make_evidence("ev-002"), tmp_path, lambda _: b"same content")
+        r1 = download_evidence(
+            _make_evidence("ev-001"), tmp_path, lambda _: b"same content"
+        )
+        r2 = download_evidence(
+            _make_evidence("ev-002"), tmp_path, lambda _: b"same content"
+        )
         assert r1.checksum == r2.checksum
 
 
@@ -111,7 +120,9 @@ class TestDownloadEvidenceHtmlShellDetection:
     )
 
     def test_html_shell_response_is_treated_as_failure(self, tmp_path: Path) -> None:
-        result = download_evidence(_make_evidence(), tmp_path, lambda _: self._SHELL_HTML)
+        result = download_evidence(
+            _make_evidence(), tmp_path, lambda _: self._SHELL_HTML
+        )
         assert result.succeeded is False
         assert "HTML page" in (result.error or "")
 
@@ -124,13 +135,17 @@ class TestDownloadEvidenceHtmlShellDetection:
         result = download_evidence(_make_evidence(), tmp_path, lambda _: content)
         assert result.succeeded is False
 
-    def test_leading_whitespace_before_doctype_still_detected(self, tmp_path: Path) -> None:
+    def test_leading_whitespace_before_doctype_still_detected(
+        self, tmp_path: Path
+    ) -> None:
         content = b"\r\n\r\n  <!DOCTYPE html><html></html>"
         result = download_evidence(_make_evidence(), tmp_path, lambda _: content)
         assert result.succeeded is False
 
     def test_real_pdf_content_unaffected(self, tmp_path: Path) -> None:
-        result = download_evidence(_make_evidence(), tmp_path, lambda _: b"%PDF-1.4 real content")
+        result = download_evidence(
+            _make_evidence(), tmp_path, lambda _: b"%PDF-1.4 real content"
+        )
         assert result.succeeded is True
 
     def test_html_extension_exempt_from_check(self, tmp_path: Path) -> None:

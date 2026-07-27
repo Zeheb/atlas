@@ -5,6 +5,7 @@ rather than warning: a thesis that fails it is not printed at all, and the
 command exits non-zero. A gate that prints the thesis anyway with a warning
 above it is not a gate.
 """
+
 from __future__ import annotations
 
 import json
@@ -28,10 +29,17 @@ _CONTENT = (
 def _seed(base, ticker: str = "TCS") -> None:
     profile = CompanyProfile(
         company_id=ticker,
-        financial=FinancialTimeSeries(snapshots=[FinancialSnapshot(
-            period="2026-03-31", period_type="annual", basis="consolidated",
-            facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2}, sources=["ev-1"],
-        )]),
+        financial=FinancialTimeSeries(
+            snapshots=[
+                FinancialSnapshot(
+                    period="2026-03-31",
+                    period_type="annual",
+                    basis="consolidated",
+                    facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2},
+                    sources=["ev-1"],
+                )
+            ]
+        ),
     )
     repo_root = base / ticker
     repo_root.mkdir(parents=True, exist_ok=True)
@@ -40,40 +48,56 @@ def _seed(base, ticker: str = "TCS") -> None:
     rel = "ev-1.txt"
     (repo_root / rel).write_text(_CONTENT, encoding="utf-8")
     entry = CatalogEntry(
-        evidence_id="ev-1", source=EvidenceSource.BSE.value,
-        kind=EvidenceKind.FINANCIAL_RESULTS.value, title="Test filing",
-        source_date="2026-03-31T00:00:00+00:00", document_url=None,
-        local_path=rel, file_size_bytes=None, acquired_at="2026-04-01T00:00:00+00:00",
+        evidence_id="ev-1",
+        source=EvidenceSource.BSE.value,
+        kind=EvidenceKind.FINANCIAL_RESULTS.value,
+        title="Test filing",
+        source_date="2026-03-31T00:00:00+00:00",
+        document_url=None,
+        local_path=rel,
+        file_size_bytes=None,
+        acquired_at="2026-04-01T00:00:00+00:00",
     )
     KnowledgeBase(repo_root).parse(entry)
 
 
 class _GroundedFake:
     def complete(self, *, system: str, user: str) -> str:
-        return json.dumps({
-            "refused": False, "overall_confidence": "medium",
-            "findings": [{
-                "statement": "Margins are durable at ~24%.",
-                "assertability": "judgment", "confidence": "medium",
-                "supporting_evidence_ids": ["ev-1"],
-                "known_unknowns": ["no segment-level detail disclosed"],
-            }],
-        })
+        return json.dumps(
+            {
+                "refused": False,
+                "overall_confidence": "medium",
+                "findings": [
+                    {
+                        "statement": "Margins are durable at ~24%.",
+                        "assertability": "judgment",
+                        "confidence": "medium",
+                        "supporting_evidence_ids": ["ev-1"],
+                        "known_unknowns": ["no segment-level detail disclosed"],
+                    }
+                ],
+            }
+        )
 
 
 class _RefusingFake:
     def complete(self, *, system: str, user: str) -> str:
-        return json.dumps({
-            "refused": True, "overall_confidence": "low",
-            "refusal_reason": "the evidence does not support a view", "findings": [],
-        })
+        return json.dumps(
+            {
+                "refused": True,
+                "overall_confidence": "low",
+                "refusal_reason": "the evidence does not support a view",
+                "findings": [],
+            }
+        )
 
 
 def _env(monkeypatch, tmp_path, client) -> None:
     monkeypatch.setenv("ATLAS_REPOSITORY_BASE_PATH", str(tmp_path))
     monkeypatch.setenv("ATLAS_ANTHROPIC_API_KEY", "sk-test")
     monkeypatch.setattr(
-        "atlas.reasoning.llm.build_llm_client", lambda settings, *, role: client,
+        "atlas.reasoning.llm.build_llm_client",
+        lambda settings, *, role: client,
     )
 
 
@@ -121,7 +145,8 @@ def test_writes_json_when_asked(monkeypatch, tmp_path) -> None:
     out = tmp_path / "thesis.json"
 
     result = CliRunner().invoke(
-        cli, ["thesis", "TCS", "Should I invest in TCS?", "--out", str(out)],
+        cli,
+        ["thesis", "TCS", "Should I invest in TCS?", "--out", str(out)],
     )
     assert result.exit_code == 0, result.output
 
@@ -133,7 +158,9 @@ def test_writes_json_when_asked(monkeypatch, tmp_path) -> None:
 
 
 # --- Refusal / failure paths -------------------------------------------------------------
-def test_refused_synthesis_exits_nonzero_without_printing_a_view(monkeypatch, tmp_path) -> None:
+def test_refused_synthesis_exits_nonzero_without_printing_a_view(
+    monkeypatch, tmp_path
+) -> None:
     _env(monkeypatch, tmp_path, _RefusingFake())
     _seed(tmp_path)
 
@@ -183,12 +210,14 @@ def test_failing_gate_blocks_the_thesis_entirely(monkeypatch, tmp_path) -> None:
 
     monkeypatch.setattr(
         "atlas.research.thesis.check_completeness",
-        lambda thesis, run: GateResult(violations=(
-            GateViolation(
-                kind="undisposed_finding",
-                detail="'risks' produced a grounded finding but the thesis ignored it",
-            ),
-        )),
+        lambda thesis, run: GateResult(
+            violations=(
+                GateViolation(
+                    kind="undisposed_finding",
+                    detail="'risks' produced a grounded finding but the thesis ignored it",
+                ),
+            )
+        ),
     )
 
     result = CliRunner().invoke(cli, ["thesis", "TCS", "Should I invest in TCS?"])
@@ -210,10 +239,12 @@ def test_gate_violations_are_all_listed(monkeypatch, tmp_path) -> None:
 
     monkeypatch.setattr(
         "atlas.research.thesis.check_completeness",
-        lambda thesis, run: GateResult(violations=(
-            GateViolation(kind="undisposed_finding", detail="first problem here"),
-            GateViolation(kind="dropped_unresolved", detail="second problem here"),
-        )),
+        lambda thesis, run: GateResult(
+            violations=(
+                GateViolation(kind="undisposed_finding", detail="first problem here"),
+                GateViolation(kind="dropped_unresolved", detail="second problem here"),
+            )
+        ),
     )
 
     result = CliRunner().invoke(cli, ["thesis", "TCS", "Should I invest in TCS?"])
@@ -227,9 +258,16 @@ def test_also_flag_investigates_both_subjects(monkeypatch, tmp_path) -> None:
     _seed(tmp_path, "TATASTEEL")
     _seed(tmp_path, "JSWSTEEL")
 
-    result = CliRunner().invoke(cli, [
-        "thesis", "TATASTEEL", "Compare Tata Steel with JSW Steel.", "--also", "JSWSTEEL",
-    ])
+    result = CliRunner().invoke(
+        cli,
+        [
+            "thesis",
+            "TATASTEEL",
+            "Compare Tata Steel with JSW Steel.",
+            "--also",
+            "JSWSTEEL",
+        ],
+    )
     assert result.exit_code == 0, result.output
     assert "TATASTEEL, JSWSTEEL" in result.output
     assert "comparison" in result.output
@@ -250,7 +288,8 @@ def test_remember_persists_the_thesis_to_the_store(monkeypatch, tmp_path) -> Non
     _seed(tmp_path)
 
     result = CliRunner().invoke(
-        cli, ["thesis", "TCS", "Should I invest in TCS?", "--remember"],
+        cli,
+        ["thesis", "TCS", "Should I invest in TCS?", "--remember"],
     )
     assert result.exit_code == 0, result.output
     assert "Remembered as view_id=" in result.output
@@ -283,13 +322,16 @@ def test_remember_is_not_reached_when_the_gate_rejects(monkeypatch, tmp_path) ->
 
     monkeypatch.setattr(
         "atlas.research.thesis.check_completeness",
-        lambda thesis, run: GateResult(violations=(
-            GateViolation(kind="undisposed_finding", detail="ignored a finding"),
-        )),
+        lambda thesis, run: GateResult(
+            violations=(
+                GateViolation(kind="undisposed_finding", detail="ignored a finding"),
+            )
+        ),
     )
 
     result = CliRunner().invoke(
-        cli, ["thesis", "TCS", "Should I invest in TCS?", "--remember"],
+        cli,
+        ["thesis", "TCS", "Should I invest in TCS?", "--remember"],
     )
     assert result.exit_code == 1
     assert not (tmp_path / "TCS" / "theses.json").exists()

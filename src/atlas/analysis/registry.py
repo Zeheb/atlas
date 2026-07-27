@@ -9,6 +9,7 @@ Usage
 
 Individual analyzer modules remain importable for focused unit testing.
 """
+
 from __future__ import annotations
 
 from atlas.analysis.base import AnalysisResult
@@ -33,17 +34,17 @@ from atlas.analysis.brsr import analyze as _brsr
 from atlas.analysis.annual_report import analyze as _annual_report
 
 _REGISTRY: dict[str, object] = {
-    "financial_results":      _financial_results,
-    "acquisition":            _acquisition,
-    "board_outcome":          _board_outcome,
-    "buyback":                _buyback,
-    "shareholding_pattern":   _shareholding_pattern,
-    "credit_rating_report":   _credit_rating,
-    "earnings_transcript":    _earnings_transcript,
-    "investor_presentation":  _investor_presentation,
-    "agm_notice":             _agm_notice,
-    "brsr":                   _brsr,
-    "annual_report":          _annual_report,
+    "financial_results": _financial_results,
+    "acquisition": _acquisition,
+    "board_outcome": _board_outcome,
+    "buyback": _buyback,
+    "shareholding_pattern": _shareholding_pattern,
+    "credit_rating_report": _credit_rating,
+    "earnings_transcript": _earnings_transcript,
+    "investor_presentation": _investor_presentation,
+    "agm_notice": _agm_notice,
+    "brsr": _brsr,
+    "annual_report": _annual_report,
 }
 
 

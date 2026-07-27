@@ -3,6 +3,7 @@
 Covers all four document sub-types and error cases using synthetic fixtures.
 No real repository access required.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -10,7 +11,6 @@ from unittest.mock import MagicMock
 
 from atlas.analysis.board_outcome import ANALYZER_VERSION, analyze
 from atlas.analysis.base import AnalysisFact, AnalysisResult, FactKind, FactUnit
-
 
 # ---------------------------------------------------------------------------
 # Synthetic document fixtures
@@ -194,7 +194,9 @@ the next few years. TPG will invest up to Rs 8,820 crore and is envisaged to hav
 final shareholding between 27.5% and 49% in DataVault.
 """
 
-_FULL_INVESTMENT = _COVER_INVESTMENT + _ANNEXURE_A_INVESTMENT + _PRESS_RELEASE_INVESTMENT
+_FULL_INVESTMENT = (
+    _COVER_INVESTMENT + _ANNEXURE_A_INVESTMENT + _PRESS_RELEASE_INVESTMENT
+)
 
 # Sub-type: Other (buyback authorisation — no dividend, no annexure)
 _COVER_OTHER = """\
@@ -219,6 +221,7 @@ Company Secretary
 # KB mock factory
 # ---------------------------------------------------------------------------
 
+
 def _make_kb(eid: str, content: str, kind: str = "board_outcome") -> MagicMock:
     entry = MagicMock()
     entry.kind = kind
@@ -231,7 +234,10 @@ def _make_kb(eid: str, content: str, kind: str = "board_outcome") -> MagicMock:
 
 
 def _make_kb_with_date(
-    eid: str, content: str, source_date: str, kind: str = "board_outcome",
+    eid: str,
+    content: str,
+    source_date: str,
+    kind: str = "board_outcome",
 ) -> MagicMock:
     entry = MagicMock()
     entry.kind = kind
@@ -250,6 +256,7 @@ def _facts(result: AnalysisResult, kind: FactKind) -> list[AnalysisFact]:
 # ---------------------------------------------------------------------------
 # Error cases
 # ---------------------------------------------------------------------------
+
 
 class TestErrors:
     def test_raises_for_missing_entry(self) -> None:
@@ -281,6 +288,7 @@ class TestErrors:
 # Common result structure
 # ---------------------------------------------------------------------------
 
+
 class TestResultStructure:
     def test_returns_analysis_result(self) -> None:
         result = analyze("eid-a", _make_kb("eid-a", _COVER_INTERIM_DIVIDEND))
@@ -300,6 +308,7 @@ class TestResultStructure:
 
     def test_analyzed_at_is_utc(self) -> None:
         from datetime import timezone
+
         result = analyze("eid-a", _make_kb("eid-a", _COVER_INTERIM_DIVIDEND))
         assert result.analyzed_at.tzinfo == timezone.utc
 
@@ -320,6 +329,7 @@ class TestResultStructure:
 # ---------------------------------------------------------------------------
 # Sub-type: Results + interim dividend
 # ---------------------------------------------------------------------------
+
 
 class TestInterimDividend:
     def test_confidence_high(self) -> None:
@@ -371,37 +381,50 @@ class TestInterimDividend:
 # Sub-type: Final dividend recommended (pending AGM, no payment/record date)
 # ---------------------------------------------------------------------------
 
+
 class TestFinalDividend:
     def test_confidence_high(self) -> None:
-        kb = _make_kb_with_date("eid-fin", _COVER_FINAL_DIVIDEND, "2026-04-09T00:00:00+00:00")
+        kb = _make_kb_with_date(
+            "eid-fin", _COVER_FINAL_DIVIDEND, "2026-04-09T00:00:00+00:00"
+        )
         result = analyze("eid-fin", kb)
         assert result.confidence == "high"
 
     def test_dividend_amount_31(self) -> None:
-        kb = _make_kb_with_date("eid-fin", _COVER_FINAL_DIVIDEND, "2026-04-09T00:00:00+00:00")
+        kb = _make_kb_with_date(
+            "eid-fin", _COVER_FINAL_DIVIDEND, "2026-04-09T00:00:00+00:00"
+        )
         result = analyze("eid-fin", kb)
         facts = _facts(result, FactKind.CAPITAL_DIVIDEND_PER_SHARE)
         assert len(facts) == 1
         assert facts[0].value == pytest.approx(31.0)
 
     def test_dividend_type_final(self) -> None:
-        kb = _make_kb_with_date("eid-fin", _COVER_FINAL_DIVIDEND, "2026-04-09T00:00:00+00:00")
+        kb = _make_kb_with_date(
+            "eid-fin", _COVER_FINAL_DIVIDEND, "2026-04-09T00:00:00+00:00"
+        )
         result = analyze("eid-fin", kb)
         facts = _facts(result, FactKind.CAPITAL_DIVIDEND_TYPE)
         assert facts[0].value == "final"
 
     def test_no_record_date(self) -> None:
-        kb = _make_kb_with_date("eid-fin", _COVER_FINAL_DIVIDEND, "2026-04-09T00:00:00+00:00")
+        kb = _make_kb_with_date(
+            "eid-fin", _COVER_FINAL_DIVIDEND, "2026-04-09T00:00:00+00:00"
+        )
         result = analyze("eid-fin", kb)
         assert _facts(result, FactKind.CAPITAL_DIVIDEND_RECORD_DATE) == []
 
     def test_no_payment_date(self) -> None:
-        kb = _make_kb_with_date("eid-fin", _COVER_FINAL_DIVIDEND, "2026-04-09T00:00:00+00:00")
+        kb = _make_kb_with_date(
+            "eid-fin", _COVER_FINAL_DIVIDEND, "2026-04-09T00:00:00+00:00"
+        )
         result = analyze("eid-fin", kb)
         assert _facts(result, FactKind.CAPITAL_DIVIDEND_PAYMENT_DATE) == []
 
     def test_dividend_period_is_fy_end(self) -> None:
-        kb = _make_kb_with_date("eid-fin", _COVER_FINAL_DIVIDEND, "2026-04-09T00:00:00+00:00")
+        kb = _make_kb_with_date(
+            "eid-fin", _COVER_FINAL_DIVIDEND, "2026-04-09T00:00:00+00:00"
+        )
         result = analyze("eid-fin", kb)
         facts = _facts(result, FactKind.CAPITAL_DIVIDEND_PER_SHARE)
         assert facts[0].period == "2026-03-31"
@@ -410,6 +433,7 @@ class TestFinalDividend:
 # ---------------------------------------------------------------------------
 # Sub-type: Acquisition (Annexure A with target-entity table)
 # ---------------------------------------------------------------------------
+
 
 class TestAcquisition:
     def test_confidence_high(self) -> None:
@@ -473,6 +497,7 @@ class TestAcquisition:
 # Sub-type: Pure JV / distribution agreement (no stated investment amount)
 # ---------------------------------------------------------------------------
 
+
 class TestAgreement:
     def test_confidence_low(self) -> None:
         result = analyze("eid-agr", _make_kb("eid-agr", _FULL_AGREEMENT))
@@ -494,6 +519,7 @@ class TestAgreement:
 # ---------------------------------------------------------------------------
 # Sub-type: Investment (Securities Subscription Agreement into subsidiary)
 # ---------------------------------------------------------------------------
+
 
 class TestInvestment:
     def test_confidence_medium(self) -> None:
@@ -533,7 +559,10 @@ class TestInvestment:
     def test_invest_facts_period_none(self) -> None:
         result = analyze("eid-inv", _make_kb("eid-inv", _FULL_INVESTMENT))
         for f in result.facts:
-            if f.kind in (FactKind.CAPITAL_INVEST_TARGET_NAME, FactKind.CAPITAL_INVEST_AMOUNT):
+            if f.kind in (
+                FactKind.CAPITAL_INVEST_TARGET_NAME,
+                FactKind.CAPITAL_INVEST_AMOUNT,
+            ):
                 assert f.period is None
 
     def test_no_acquisition_facts(self) -> None:
@@ -616,6 +645,7 @@ Purpose of entering into the agreement: Build and operate logistics infrastructu
 # ---------------------------------------------------------------------------
 # Sub-type: Other board decision (buyback auth, no dividend, no annexure)
 # ---------------------------------------------------------------------------
+
 
 class TestOther:
     def test_confidence_low(self) -> None:
@@ -853,19 +883,28 @@ class TestManagementAppointment:
 
     def test_change_types_extracted(self) -> None:
         result = analyze("eid-mgt", _make_kb("eid-mgt", _COVER_MGMT_APPOINTMENT))
-        types = {str(f.value) for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR_CHANGE_TYPE)}
+        types = {
+            str(f.value)
+            for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR_CHANGE_TYPE)
+        }
         assert "appointment" in types
         assert "resignation" in types
 
     def test_roles_extracted(self) -> None:
         result = analyze("eid-mgt", _make_kb("eid-mgt", _COVER_MGMT_APPOINTMENT))
-        roles = [str(f.value) for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR_CHANGE_ROLE)]
+        roles = [
+            str(f.value)
+            for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR_CHANGE_ROLE)
+        ]
         assert any("Chief Human Resources Officer" in r for r in roles)
 
     def test_facts_grouped_by_section(self) -> None:
         result = analyze("eid-mgt", _make_kb("eid-mgt", _COVER_MGMT_APPOINTMENT))
-        sections = {f.provenance.section for f in result.facts
-                    if f.kind == FactKind.GOVERNANCE_DIRECTOR}
+        sections = {
+            f.provenance.section
+            for f in result.facts
+            if f.kind == FactKind.GOVERNANCE_DIRECTOR
+        }
         assert all(s.startswith("director_change_") for s in sections)
         assert len(sections) == 2  # two distinct persons
 
@@ -876,26 +915,41 @@ class TestManagementAppointment:
 
 class TestManagementReappointment:
     def test_reappointment_type(self) -> None:
-        result = analyze("eid-reappt", _make_kb("eid-reappt", _COVER_MGMT_REAPPOINTMENT))
-        types = [str(f.value) for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR_CHANGE_TYPE)]
+        result = analyze(
+            "eid-reappt", _make_kb("eid-reappt", _COVER_MGMT_REAPPOINTMENT)
+        )
+        types = [
+            str(f.value)
+            for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR_CHANGE_TYPE)
+        ]
         assert len(types) == 1
         assert types[0] == "reappointment"
 
     def test_name_extracted(self) -> None:
-        result = analyze("eid-reappt", _make_kb("eid-reappt", _COVER_MGMT_REAPPOINTMENT))
+        result = analyze(
+            "eid-reappt", _make_kb("eid-reappt", _COVER_MGMT_REAPPOINTMENT)
+        )
         names = [str(f.value) for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR)]
         assert any("Rajesh Gopinathan" in n for n in names)
 
     def test_role_contains_md_ceo(self) -> None:
-        result = analyze("eid-reappt", _make_kb("eid-reappt", _COVER_MGMT_REAPPOINTMENT))
-        roles = [str(f.value) for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR_CHANGE_ROLE)]
+        result = analyze(
+            "eid-reappt", _make_kb("eid-reappt", _COVER_MGMT_REAPPOINTMENT)
+        )
+        roles = [
+            str(f.value)
+            for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR_CHANGE_ROLE)
+        ]
         assert any("Managing Director" in r for r in roles)
 
 
 class TestManagementCFO:
     def test_cfo_appointment_extracted(self) -> None:
         result = analyze("eid-cfo", _make_kb("eid-cfo", _COVER_MGMT_CFO_CHANGE))
-        types = [str(f.value) for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR_CHANGE_TYPE)]
+        types = [
+            str(f.value)
+            for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR_CHANGE_TYPE)
+        ]
         assert len(types) == 1
         assert types[0] == "appointment"
 
@@ -906,7 +960,10 @@ class TestManagementCFO:
 
     def test_cfo_role(self) -> None:
         result = analyze("eid-cfo", _make_kb("eid-cfo", _COVER_MGMT_CFO_CHANGE))
-        roles = [str(f.value) for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR_CHANGE_ROLE)]
+        roles = [
+            str(f.value)
+            for f in _facts(result, FactKind.GOVERNANCE_DIRECTOR_CHANGE_ROLE)
+        ]
         assert any("Chief Financial Officer" in r for r in roles)
 
 

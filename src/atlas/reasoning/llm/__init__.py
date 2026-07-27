@@ -7,6 +7,7 @@ adapter). Concrete adapters (``AnthropicClient``, ``GeminiClient``) are
 importable from their own modules for tests that need to construct one
 explicitly; production code should go through ``build_llm_client``.
 """
+
 from __future__ import annotations
 
 from atlas.reasoning.llm.base import (

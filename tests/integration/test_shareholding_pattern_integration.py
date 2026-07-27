@@ -19,6 +19,7 @@ Expected values (extracted from the filed XBRL, verified against BSE website):
   HNI (>₹2L):    0.21%
   Pledged:        0.00%  (no pledging)
 """
+
 from __future__ import annotations
 
 from collections.abc import Generator
@@ -59,7 +60,9 @@ def kb(tcs_root: Path) -> Generator[KnowledgeBase, None, None]:
 def result(kb: KnowledgeBase) -> AnalysisResult:
     entry = kb.get(_TCS_SHP_ID)
     if entry is None or entry.status != "ok":
-        pytest.skip(f"Evidence {_TCS_SHP_ID!r} not parsed — run acquisition pipeline first")
+        pytest.skip(
+            f"Evidence {_TCS_SHP_ID!r} not parsed — run acquisition pipeline first"
+        )
     return analyze(_TCS_SHP_ID, kb)
 
 
@@ -70,6 +73,7 @@ def _facts(result: AnalysisResult, kind: FactKind):
 # ---------------------------------------------------------------------------
 # Envelope
 # ---------------------------------------------------------------------------
+
 
 class TestEnvelope:
     def test_returns_analysis_result(self, result: AnalysisResult):
@@ -100,6 +104,7 @@ class TestEnvelope:
 # Quarter period
 # ---------------------------------------------------------------------------
 
+
 class TestPeriod:
     def test_all_facts_period_is_quarter_end(self, result: AnalysisResult):
         for f in result.facts:
@@ -109,6 +114,7 @@ class TestPeriod:
 # ---------------------------------------------------------------------------
 # Total shares
 # ---------------------------------------------------------------------------
+
 
 class TestTotalShares:
     def test_total_shares_extracted(self, result: AnalysisResult):
@@ -132,6 +138,7 @@ class TestTotalShares:
 # Promoter holding
 # ---------------------------------------------------------------------------
 
+
 class TestPromoterHolding:
     def test_promoter_pct_extracted(self, result: AnalysisResult):
         facts = _facts(result, FactKind.OWNERSHIP_PROMOTER_PCT)
@@ -154,6 +161,7 @@ class TestPromoterHolding:
 # Public shareholding
 # ---------------------------------------------------------------------------
 
+
 class TestPublicShareholding:
     def test_public_pct_value(self, result: AnalysisResult):
         facts = _facts(result, FactKind.OWNERSHIP_PUBLIC_PCT)
@@ -168,6 +176,7 @@ class TestPublicShareholding:
 # ---------------------------------------------------------------------------
 # Institutional breakdown
 # ---------------------------------------------------------------------------
+
 
 class TestInstitutionalBreakdown:
     def test_fpi_pct_value(self, result: AnalysisResult):
@@ -195,6 +204,7 @@ class TestInstitutionalBreakdown:
 # Retail / NRI
 # ---------------------------------------------------------------------------
 
+
 class TestRetailAndNRI:
     def test_nri_pct_value(self, result: AnalysisResult):
         facts = _facts(result, FactKind.OWNERSHIP_NRI_PCT)
@@ -213,6 +223,7 @@ class TestRetailAndNRI:
 # Promoter pledging (TCS has no pledging)
 # ---------------------------------------------------------------------------
 
+
 class TestPromoterPledging:
     def test_pledged_pct_zero(self, result: AnalysisResult):
         facts = _facts(result, FactKind.OWNERSHIP_PROMOTER_PLEDGED_PCT)
@@ -227,6 +238,7 @@ class TestPromoterPledging:
 # ---------------------------------------------------------------------------
 # Provenance
 # ---------------------------------------------------------------------------
+
 
 class TestProvenance:
     def test_all_facts_have_section(self, result: AnalysisResult):

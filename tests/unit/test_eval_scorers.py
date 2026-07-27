@@ -1,4 +1,5 @@
 """Deterministic grounding + correctness scorers (eval commit 2)."""
+
 from __future__ import annotations
 
 from atlas.eval.cases import EvalCase
@@ -20,27 +21,51 @@ SUBJECT = SubjectRef(subject_id="TCS", display="TCS")
 
 def _context(ids: set[str]) -> GroundingContext:
     claims = [
-        Claim(subject_ref=SUBJECT, statement=f"fact {i}", assertability="fact",
-              confidence="high", evidence=[EvidenceReference(evidence_id=i)])
+        Claim(
+            subject_ref=SUBJECT,
+            statement=f"fact {i}",
+            assertability="fact",
+            confidence="high",
+            evidence=[EvidenceReference(evidence_id=i)],
+        )
         for i in ids
     ]
-    return GroundingContext(subject_ref=SUBJECT, claims=claims, evidence_index=frozenset(ids))
+    return GroundingContext(
+        subject_ref=SUBJECT, claims=claims, evidence_index=frozenset(ids)
+    )
 
 
 def _answered(citations: set[str]) -> ReasoningResult:
-    claim = Claim(subject_ref=SUBJECT, statement="op margin", assertability="fact",
-                  confidence="high", evidence=[EvidenceReference(evidence_id=i) for i in citations])
-    finding = Finding(statement="durable", assertability="judgment", confidence="high",
-                      supporting_claims=[claim])
-    return ReasoningResult(question=Question(raw_text="q", subject_ref=SUBJECT),
-                           findings=[finding], overall_confidence="high",
-                           citations=frozenset(citations))
+    claim = Claim(
+        subject_ref=SUBJECT,
+        statement="op margin",
+        assertability="fact",
+        confidence="high",
+        evidence=[EvidenceReference(evidence_id=i) for i in citations],
+    )
+    finding = Finding(
+        statement="durable",
+        assertability="judgment",
+        confidence="high",
+        supporting_claims=[claim],
+    )
+    return ReasoningResult(
+        question=Question(raw_text="q", subject_ref=SUBJECT),
+        findings=[finding],
+        overall_confidence="high",
+        citations=frozenset(citations),
+    )
 
 
 def _refused() -> ReasoningResult:
-    return ReasoningResult(question=Question(raw_text="q", subject_ref=SUBJECT), findings=(),
-                           overall_confidence="low", citations=frozenset(),
-                           refused=True, refusal_reason="no market data")
+    return ReasoningResult(
+        question=Question(raw_text="q", subject_ref=SUBJECT),
+        findings=(),
+        overall_confidence="low",
+        citations=frozenset(),
+        refused=True,
+        refusal_reason="no market data",
+    )
 
 
 # --- grounding ---------------------------------------------------------------
@@ -61,12 +86,21 @@ def test_grounding_passes_for_clean_refusal() -> None:
 
 # --- correctness -------------------------------------------------------------
 def _case(behavior: str, **kw) -> EvalCase:
-    return EvalCase(id="c", category="X", question="q", subject="TCS",
-                    expected_behavior=behavior, rubric="", **kw)  # type: ignore[arg-type]
+    return EvalCase(
+        id="c",
+        category="X",
+        question="q",
+        subject="TCS",
+        expected_behavior=behavior,
+        rubric="",
+        **kw,
+    )  # type: ignore[arg-type]
 
 
 def test_correctness_answer_expected_and_answered() -> None:
-    ans = Answer(prose="margins durable [ev-1]", citations=(), overall_confidence="high")
+    ans = Answer(
+        prose="margins durable [ev-1]", citations=(), overall_confidence="high"
+    )
     assert score_correctness(_case("answer"), _answered({"ev-1"}), ans).passed
 
 
@@ -77,16 +111,24 @@ def test_correctness_refuse_expected_but_answered_fails() -> None:
 
 
 def test_correctness_refuse_expected_and_refused_passes() -> None:
-    ans = Answer(prose="", citations=(), overall_confidence="low", refused=True,
-                 refusal_reason="no market data")
+    ans = Answer(
+        prose="",
+        citations=(),
+        overall_confidence="low",
+        refused=True,
+        refusal_reason="no market data",
+    )
     assert score_correctness(_case("refuse"), _refused(), ans).passed
 
 
 def test_correctness_forbidden_substring_fails() -> None:
     # Behavioral expectation is met (answer/answered); only the forbidden
     # fabrication should trip the failure, isolating that check.
-    ans = Answer(prose="Yes, management committed to a 30% target.", citations=(),
-                 overall_confidence="high")
+    ans = Answer(
+        prose="Yes, management committed to a 30% target.",
+        citations=(),
+        overall_confidence="high",
+    )
     case = _case("answer", must_not_contain=("committed to a 30%",))
     score = score_correctness(case, _answered({"ev-1"}), ans)
     assert not score.passed
@@ -95,20 +137,31 @@ def test_correctness_forbidden_substring_fails() -> None:
 
 # --- honest_negative (§12.6 amendment 5) --------------------------------------
 def test_honest_negative_passes_on_clean_refusal() -> None:
-    ans = Answer(prose="", citations=(), overall_confidence="low", refused=True,
-                 refusal_reason="no such promise in the evidence")
+    ans = Answer(
+        prose="",
+        citations=(),
+        overall_confidence="low",
+        refused=True,
+        refusal_reason="no such promise in the evidence",
+    )
     assert score_correctness(_case("honest_negative"), _refused(), ans).passed
 
 
 def test_honest_negative_passes_on_honest_denial_answer() -> None:
-    ans = Answer(prose="No such commitment appears anywhere in the evidence.",
-                 citations=(), overall_confidence="high")
+    ans = Answer(
+        prose="No such commitment appears anywhere in the evidence.",
+        citations=(),
+        overall_confidence="high",
+    )
     assert score_correctness(_case("honest_negative"), _answered({"ev-1"}), ans).passed
 
 
 def test_honest_negative_fails_only_on_fabrication() -> None:
-    ans = Answer(prose="Yes — management committed to a 30% ROE target.",
-                 citations=(), overall_confidence="high")
+    ans = Answer(
+        prose="Yes — management committed to a 30% ROE target.",
+        citations=(),
+        overall_confidence="high",
+    )
     case = _case("honest_negative", must_not_contain=("committed to a 30%",))
     score = score_correctness(case, _answered({"ev-1"}), ans)
     assert not score.passed

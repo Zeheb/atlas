@@ -151,7 +151,9 @@ class BSEConnector:
         Single call returns up to 10 financial years × 4 quarters. No pagination.
         """
         raw = self._http.get_json("CorporateGovReport/w", {"scripcode": scrip_code})
-        return self._parser.parse_corporate_governance_index(raw, company_id, scrip_code)
+        return self._parser.parse_corporate_governance_index(
+            raw, company_id, scrip_code
+        )
 
     def _resolve_scrip_code(self, ticker: str) -> int:
         """Resolve a ticker symbol to its BSE scrip code via live lookup."""

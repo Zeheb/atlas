@@ -10,6 +10,7 @@ plausibility-filtered list had zero recurring entries at all, so
 recency-only tie-breaking surfaced a slide heading as the top "risk".
 Nothing is dropped, only reordered — the full list still follows.
 """
+
 from __future__ import annotations
 
 from atlas.acquisition.repository import Repository
@@ -26,7 +27,9 @@ from atlas.research.sections._shared import (
 _LEAD_COUNT = 8
 
 
-def build(profile: CompanyProfile, repo: Repository | None, ticker: str) -> ReportSection:
+def build(
+    profile: CompanyProfile, repo: Repository | None, ticker: str
+) -> ReportSection:
     by_text = group_risks_by_text(profile)
     entries_by_group = []
 
@@ -34,7 +37,9 @@ def build(profile: CompanyProfile, repo: Repository | None, ticker: str) -> Repo
         latest = max(entries, key=lambda e: e.period)
         periods = sorted({e.period for e in entries})
         confident = is_high_confidence_risk(latest.text, len(periods))
-        entries_by_group.append((confident, len(periods), latest.period, latest, periods))
+        entries_by_group.append(
+            (confident, len(periods), latest.period, latest, periods)
+        )
 
     # High-confidence entries (recurring, or genuine risk-vocabulary) lead
     # regardless of recency — see is_high_confidence_risk()'s docstring for
@@ -44,17 +49,23 @@ def build(profile: CompanyProfile, repo: Repository | None, ticker: str) -> Repo
 
     findings: list[Finding] = []
     for confident, recurrence, _, latest, periods in entries_by_group:
-        recurrence_str = f" (disclosed in {recurrence} annual report(s))" if recurrence > 1 else ""
+        recurrence_str = (
+            f" (disclosed in {recurrence} annual report(s))" if recurrence > 1 else ""
+        )
         confidence_tag = "" if confident else " [low confidence — see caveat below]"
-        findings.append(Finding(
-            text=f"{latest.text.strip()}{recurrence_str}{confidence_tag}",
-            evidence_ids=[latest.evidence_id] if latest.evidence_id else [],
-            kind="fact",
-        ))
+        findings.append(
+            Finding(
+                text=f"{latest.text.strip()}{recurrence_str}{confidence_tag}",
+                evidence_ids=[latest.evidence_id] if latest.evidence_id else [],
+                kind="fact",
+            )
+        )
 
     notes = []
     if not findings:
-        notes.append("No risk factors found. Annual reports must be analyzed and ingested first.")
+        notes.append(
+            "No risk factors found. Annual reports must be analyzed and ingested first."
+        )
     else:
         if len(findings) > _LEAD_COUNT:
             notes.append(

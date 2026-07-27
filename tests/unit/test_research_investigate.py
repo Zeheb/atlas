@@ -5,6 +5,7 @@ be structurally incapable of holding an ungrounded claim, and every failure
 mode (refusal, no citation, exception) must land as an explicit unresolved
 result rather than as a confident sentence with nothing behind it.
 """
+
 from __future__ import annotations
 
 import json
@@ -33,7 +34,9 @@ _CONTENT = (
 )
 
 
-def _inv(dimension: str = "business_quality", subjects: tuple[str, ...] = ("TCS",)) -> Investigation:
+def _inv(
+    dimension: str = "business_quality", subjects: tuple[str, ...] = ("TCS",)
+) -> Investigation:
     return Investigation(
         dimension=dimension,
         question="What do margins show about business quality?",
@@ -49,10 +52,17 @@ def _seed(base) -> None:
     """
     profile = CompanyProfile(
         company_id="TCS",
-        financial=FinancialTimeSeries(snapshots=[FinancialSnapshot(
-            period="2026-03-31", period_type="annual", basis="consolidated",
-            facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2}, sources=["ev-1"],
-        )]),
+        financial=FinancialTimeSeries(
+            snapshots=[
+                FinancialSnapshot(
+                    period="2026-03-31",
+                    period_type="annual",
+                    basis="consolidated",
+                    facts={FactKind.FINANCIAL_OPERATING_MARGIN: 24.2},
+                    sources=["ev-1"],
+                )
+            ]
+        ),
     )
     repo_root = base / "TCS"
     repo_root.mkdir(parents=True, exist_ok=True)
@@ -61,10 +71,15 @@ def _seed(base) -> None:
     rel = "ev-1.txt"
     (repo_root / rel).write_text(_CONTENT, encoding="utf-8")
     entry = CatalogEntry(
-        evidence_id="ev-1", source=EvidenceSource.BSE.value,
-        kind=EvidenceKind.FINANCIAL_RESULTS.value, title="Test filing",
-        source_date="2026-03-31T00:00:00+00:00", document_url=None,
-        local_path=rel, file_size_bytes=None, acquired_at="2026-04-01T00:00:00+00:00",
+        evidence_id="ev-1",
+        source=EvidenceSource.BSE.value,
+        kind=EvidenceKind.FINANCIAL_RESULTS.value,
+        title="Test filing",
+        source_date="2026-03-31T00:00:00+00:00",
+        document_url=None,
+        local_path=rel,
+        file_size_bytes=None,
+        acquired_at="2026-04-01T00:00:00+00:00",
     )
     KnowledgeBase(repo_root).parse(entry)
 
@@ -73,23 +88,33 @@ class _GroundedFake:
     """An LLM that answers with a citation to evidence that is in context."""
 
     def complete(self, *, system: str, user: str) -> str:
-        return json.dumps({
-            "refused": False, "overall_confidence": "high",
-            "findings": [{
-                "statement": "Operating margin ~24%.", "assertability": "judgment",
-                "confidence": "high", "supporting_evidence_ids": ["ev-1"],
-                "known_unknowns": [],
-            }],
-        })
+        return json.dumps(
+            {
+                "refused": False,
+                "overall_confidence": "high",
+                "findings": [
+                    {
+                        "statement": "Operating margin ~24%.",
+                        "assertability": "judgment",
+                        "confidence": "high",
+                        "supporting_evidence_ids": ["ev-1"],
+                        "known_unknowns": [],
+                    }
+                ],
+            }
+        )
 
 
 class _RefusingFake:
     def complete(self, *, system: str, user: str) -> str:
-        return json.dumps({
-            "refused": True, "overall_confidence": "low",
-            "refusal_reason": "no evidence in context supports this",
-            "findings": [],
-        })
+        return json.dumps(
+            {
+                "refused": True,
+                "overall_confidence": "low",
+                "refusal_reason": "no evidence in context supports this",
+                "findings": [],
+            }
+        )
 
 
 class _UncitedFake:
@@ -97,14 +122,21 @@ class _UncitedFake:
     provenance rule exists to catch."""
 
     def complete(self, *, system: str, user: str) -> str:
-        return json.dumps({
-            "refused": False, "overall_confidence": "high",
-            "findings": [{
-                "statement": "Margins are excellent.", "assertability": "judgment",
-                "confidence": "high", "supporting_evidence_ids": [],
-                "known_unknowns": [],
-            }],
-        })
+        return json.dumps(
+            {
+                "refused": False,
+                "overall_confidence": "high",
+                "findings": [
+                    {
+                        "statement": "Margins are excellent.",
+                        "assertability": "judgment",
+                        "confidence": "high",
+                        "supporting_evidence_ids": [],
+                        "known_unknowns": [],
+                    }
+                ],
+            }
+        )
 
 
 class _ExplodingFake:
@@ -145,7 +177,7 @@ def test_grounded_answer_becomes_a_cited_finding(tmp_path) -> None:
     assert result.finding is not None
     assert result.finding.evidence_ids == ("ev-1",)  # tuple since M2.3 froze Finding
     assert result.finding.kind == "fact"
-    assert result.plan is not None       # the retrieval plan used, for diagnostics
+    assert result.plan is not None  # the retrieval plan used, for diagnostics
     assert result.unresolved_reason is None
 
 
@@ -220,7 +252,7 @@ def test_one_failing_investigation_never_aborts_the_run(tmp_path) -> None:
     plan = plan_research("Should I invest in TCS?", ("TCS",))
     run = run_plan(plan, tmp_path, _FlakyFake())
 
-    assert len(run.results) == len(plan.investigations)   # nothing aborted
+    assert len(run.results) == len(plan.investigations)  # nothing aborted
     assert len(run.unresolved) == 1
     assert len(run.findings) == len(plan.investigations) - 1
 
@@ -242,7 +274,7 @@ def test_all_findings_are_grounded_even_when_some_investigations_fail(tmp_path) 
     plan = plan_research("What are the key risks to TCS?", ("TCS",))
     run = run_plan(plan, tmp_path, _UncitedFake())
 
-    assert run.findings == ()                      # nothing uncited leaked through
+    assert run.findings == ()  # nothing uncited leaked through
     assert len(run.unresolved) == len(plan.investigations)
     assert run.resolution_rate == 0.0
 

@@ -25,6 +25,7 @@ which is equivalent to removing grouping separators regardless of locale.
 The Indian Rupee sign (₹, U+20B9) is used directly in regex patterns; it
 appears reliably in text extracted from 2023-era TCS PDFs.
 """
+
 from __future__ import annotations
 
 import re
@@ -134,6 +135,7 @@ _RE_SHARES_BOUGHT_BACK = re.compile(
 # Sub-type extraction helpers
 # ---------------------------------------------------------------------------
 
+
 def _extract_terms(cover: str) -> tuple[list[AnalysisFact], list[str]]:
     """Extract amount, price per share, and max shares from a cover letter."""
     facts: list[AnalysisFact] = []
@@ -143,10 +145,16 @@ def _extract_terms(cover: str) -> tuple[list[AnalysisFact], list[str]]:
     if m:
         n = parse_indian_int(m.group(1))
         if n is not None:
-            facts.append(_fact(
-                FactKind.CAPITAL_BUYBACK_SHARES_OFFERED, n, FactUnit.COUNT,
-                "cover_letter", cover, m.start(1),
-            ))
+            facts.append(
+                _fact(
+                    FactKind.CAPITAL_BUYBACK_SHARES_OFFERED,
+                    n,
+                    FactUnit.COUNT,
+                    "cover_letter",
+                    cover,
+                    m.start(1),
+                )
+            )
         else:
             warnings.append(f"Could not parse shares offered: {m.group(1)!r}")
     else:
@@ -156,10 +164,16 @@ def _extract_terms(cover: str) -> tuple[list[AnalysisFact], list[str]]:
     if m:
         v = parse_indian_float(m.group(1))
         if v is not None:
-            facts.append(_fact(
-                FactKind.CAPITAL_BUYBACK_PRICE_PER_SHARE, v, FactUnit.RUPEES_PER_SHARE,
-                "cover_letter", cover, m.start(1),
-            ))
+            facts.append(
+                _fact(
+                    FactKind.CAPITAL_BUYBACK_PRICE_PER_SHARE,
+                    v,
+                    FactUnit.RUPEES_PER_SHARE,
+                    "cover_letter",
+                    cover,
+                    m.start(1),
+                )
+            )
         else:
             warnings.append(f"Could not parse price per share: {m.group(1)!r}")
     else:
@@ -169,10 +183,16 @@ def _extract_terms(cover: str) -> tuple[list[AnalysisFact], list[str]]:
     if m:
         v = parse_indian_float(m.group(1))
         if v is not None:
-            facts.append(_fact(
-                FactKind.CAPITAL_BUYBACK_AMOUNT, v, FactUnit.CRORE_INR,
-                "cover_letter", cover, m.start(1),
-            ))
+            facts.append(
+                _fact(
+                    FactKind.CAPITAL_BUYBACK_AMOUNT,
+                    v,
+                    FactUnit.CRORE_INR,
+                    "cover_letter",
+                    cover,
+                    m.start(1),
+                )
+            )
         else:
             warnings.append(f"Could not parse total buyback amount: {m.group(1)!r}")
     else:
@@ -183,14 +203,23 @@ def _extract_terms(cover: str) -> tuple[list[AnalysisFact], list[str]]:
 
 def _extract_record_date(text: str) -> tuple[AnalysisFact | None, str | None]:
     """Try both record-date formulations; return (fact, warning) pair."""
-    for pat, section in [(_RE_RECORD_DATE_IE, "cover_letter"), (_RE_RECORD_DATE_IS, "cover_letter")]:
+    for pat, section in [
+        (_RE_RECORD_DATE_IE, "cover_letter"),
+        (_RE_RECORD_DATE_IS, "cover_letter"),
+    ]:
         m = pat.search(text)
         if m:
             iso = parse_iso_date(m.group(1))
             if iso:
                 return (
-                    _fact(FactKind.CAPITAL_BUYBACK_RECORD_DATE, iso, FactUnit.ISO_DATE,
-                          section, text, m.start(1)),
+                    _fact(
+                        FactKind.CAPITAL_BUYBACK_RECORD_DATE,
+                        iso,
+                        FactUnit.ISO_DATE,
+                        section,
+                        text,
+                        m.start(1),
+                    ),
                     None,
                 )
             return None, f"Could not parse record date: {m.group(1)!r}"
@@ -206,8 +235,14 @@ def _extract_shares_bought(text: str) -> tuple[AnalysisFact | None, str | None]:
             n = parse_indian_int(m.group(1))
             if n is not None:
                 return (
-                    _fact(FactKind.CAPITAL_BUYBACK_SHARES_BOUGHT, n, FactUnit.COUNT,
-                          "cover_letter", text, m.start(1)),
+                    _fact(
+                        FactKind.CAPITAL_BUYBACK_SHARES_BOUGHT,
+                        n,
+                        FactUnit.COUNT,
+                        "cover_letter",
+                        text,
+                        m.start(1),
+                    ),
                     None,
                 )
     return None, "Shares extinguished count not found"
@@ -216,6 +251,7 @@ def _extract_shares_bought(text: str) -> tuple[AnalysisFact | None, str | None]:
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
+
 
 def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     """Extract structured facts from a SEBI Reg 30 buyback filing."""

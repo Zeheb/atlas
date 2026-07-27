@@ -46,6 +46,7 @@ the synthesis prompt forbids issuing one. Atlas's own report already tells
 readers it is "an evidence briefing, not a rating"; the type makes that
 structurally true rather than merely stated.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -73,6 +74,7 @@ SYNTHESIZER_VERSION = "reasoning-synthesis-1"
 
 class SynthesisError(RuntimeError):
     """No thesis could honestly be produced from this run."""
+
 
 # Whether a resolved investigation made it into the view, or was considered
 # and set aside. Deliberately TWO states: a third ("contradicting") would be a
@@ -134,7 +136,9 @@ class Thesis:
     def __post_init__(self) -> None:
         object.__setattr__(self, "subjects", tuple(self.subjects))
         object.__setattr__(self, "dispositions", tuple(self.dispositions))
-        object.__setattr__(self, "unresolved_dimensions", tuple(self.unresolved_dimensions))
+        object.__setattr__(
+            self, "unresolved_dimensions", tuple(self.unresolved_dimensions)
+        )
 
         if not self.question.strip():
             raise ValueError("Thesis.question must be non-empty")
@@ -173,11 +177,15 @@ class Thesis:
 
     @property
     def incorporated_dimensions(self) -> tuple[str, ...]:
-        return tuple(d.dimension for d in self.dispositions if d.materiality == "incorporated")
+        return tuple(
+            d.dimension for d in self.dispositions if d.materiality == "incorporated"
+        )
 
     @property
     def set_aside_dimensions(self) -> tuple[str, ...]:
-        return tuple(d.dimension for d in self.dispositions if d.materiality == "not_material")
+        return tuple(
+            d.dimension for d in self.dispositions if d.materiality == "not_material"
+        )
 
     def to_view(self) -> RecalledView:
         """Project this Thesis down to the C6 contract type (M2.4).
@@ -311,51 +319,64 @@ def check_completeness(thesis: Thesis, run: InvestigationRun) -> GateResult:
     unresolved_actual = {r.dimension for r in run.results if not r.resolved}
 
     for dimension in sorted(resolved_actual - disposed):
-        violations.append(GateViolation(
-            kind="undisposed_finding",
-            detail=(
-                f"{dimension!r} produced a grounded finding but the thesis neither "
-                "incorporated it nor recorded why it was set aside"
-            ),
-        ))
+        violations.append(
+            GateViolation(
+                kind="undisposed_finding",
+                detail=(
+                    f"{dimension!r} produced a grounded finding but the thesis neither "
+                    "incorporated it nor recorded why it was set aside"
+                ),
+            )
+        )
 
     for dimension in sorted(disposed - resolved_actual):
-        violations.append(GateViolation(
-            kind="phantom_disposition",
-            detail=(
-                f"{dimension!r} has a disposition but no resolved investigation in "
-                "this run produced it"
-            ),
-        ))
+        violations.append(
+            GateViolation(
+                kind="phantom_disposition",
+                detail=(
+                    f"{dimension!r} has a disposition but no resolved investigation in "
+                    "this run produced it"
+                ),
+            )
+        )
 
     for dimension in sorted(unresolved_actual - unresolved_declared):
-        violations.append(GateViolation(
-            kind="dropped_unresolved",
-            detail=(
-                f"{dimension!r} could not be resolved, and the thesis does not say so -- "
-                "an unanswered question presented as no question at all"
-            ),
-        ))
+        violations.append(
+            GateViolation(
+                kind="dropped_unresolved",
+                detail=(
+                    f"{dimension!r} could not be resolved, and the thesis does not say so -- "
+                    "an unanswered question presented as no question at all"
+                ),
+            )
+        )
 
     for dimension in sorted(unresolved_declared - unresolved_actual):
-        violations.append(GateViolation(
-            kind="phantom_unresolved",
-            detail=f"{dimension!r} is declared unresolved but the run resolved it",
-        ))
+        violations.append(
+            GateViolation(
+                kind="phantom_unresolved",
+                detail=f"{dimension!r} is declared unresolved but the run resolved it",
+            )
+        )
 
     # Should be unreachable while synthesis goes through ask(); see docstring.
     run_evidence = frozenset(
-        eid for r in run.results if r.finding is not None for eid in r.finding.evidence_ids
+        eid
+        for r in run.results
+        if r.finding is not None
+        for eid in r.finding.evidence_ids
     )
     outside = thesis.citations - run_evidence
     if outside:
-        violations.append(GateViolation(
-            kind="citation_outside_run",
-            detail=(
-                f"thesis cites evidence the run never retrieved: {sorted(outside)} -- "
-                "the closed world was bypassed"
-            ),
-        ))
+        violations.append(
+            GateViolation(
+                kind="citation_outside_run",
+                detail=(
+                    f"thesis cites evidence the run never retrieved: {sorted(outside)} -- "
+                    "the closed world was bypassed"
+                ),
+            )
+        )
 
     return GateResult(violations=tuple(violations))
 
@@ -406,7 +427,11 @@ def _claim_for(result: InvestigationResult, subject_ref: SubjectRef) -> Claim | 
 
     if result.semantic_findings:
         sf = result.semantic_findings[0]
-        statement, assertability, confidence = sf.statement, sf.assertability, sf.confidence
+        statement, assertability, confidence = (
+            sf.statement,
+            sf.assertability,
+            sf.confidence,
+        )
         evidence_ids = sorted(sf.evidence_ids)
     else:
         statement, assertability, confidence = result.finding.text, "judgment", "medium"
@@ -423,7 +448,9 @@ def _claim_for(result: InvestigationResult, subject_ref: SubjectRef) -> Claim | 
     )
 
 
-def build_synthesis_context(run: InvestigationRun, subject_ref: SubjectRef) -> GroundingContext:
+def build_synthesis_context(
+    run: InvestigationRun, subject_ref: SubjectRef
+) -> GroundingContext:
     """The closed world for synthesis: exactly what the run actually grounded.
 
     Nothing outside this context can be cited by the resulting thesis, because
@@ -431,7 +458,9 @@ def build_synthesis_context(run: InvestigationRun, subject_ref: SubjectRef) -> G
     provenance mechanism -- assembling this context correctly IS the gate, and
     there is no second check to keep in sync with it.
     """
-    claims = [c for c in (_claim_for(r, subject_ref) for r in run.results) if c is not None]
+    claims = [
+        c for c in (_claim_for(r, subject_ref) for r in run.results) if c is not None
+    ]
     evidence_index = frozenset(eid for c in claims for eid in c.evidence_ids)
     return GroundingContext(
         subject_ref=subject_ref,

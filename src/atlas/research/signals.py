@@ -21,6 +21,7 @@ A move below the noise threshold is classified "stable", not flagged as
 either — this prevents a rounding-level wiggle in a metric from reading as
 a headline finding.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -57,7 +58,9 @@ class MetricSignal:
     sources: list[str]
 
 
-def _direction(spec: metrics_mod.MetricSpec, delta: float, magnitude: float) -> Direction:
+def _direction(
+    spec: metrics_mod.MetricSpec, delta: float, magnitude: float
+) -> Direction:
     if spec.unit == metrics_mod.FactUnit.PERCENT:
         if magnitude < _PP_NOISE_FLOOR:
             return "stable"
@@ -95,7 +98,9 @@ def classify_metric_moves(
             continue
         snaps = metrics_mod.domain_snapshots(profile, spec.domain)
         if spec.domain == "financial":
-            snaps = [s for s in snaps if s.basis == basis and s.period_type == period_type]
+            snaps = [
+                s for s in snaps if s.basis == basis and s.period_type == period_type
+            ]
         snaps = sorted(snaps, key=lambda s: s.period)
 
         points = [
@@ -106,26 +111,34 @@ def classify_metric_moves(
         if len(points) < 2:
             continue
 
-        (prior_period, prior_value, _), (latest_period, latest_value, sources) = points[-2:]
+        (prior_period, prior_value, _), (latest_period, latest_value, sources) = points[
+            -2:
+        ]
         delta = latest_value - prior_value
-        magnitude = abs(delta) if spec.unit == metrics_mod.FactUnit.PERCENT else (
-            abs(delta) / abs(prior_value) if prior_value else 0.0
+        magnitude = (
+            abs(delta)
+            if spec.unit == metrics_mod.FactUnit.PERCENT
+            else (abs(delta) / abs(prior_value) if prior_value else 0.0)
         )
-        signals.append(MetricSignal(
-            metric_key=spec.key,
-            label=spec.label,
-            direction=_direction(spec, delta, magnitude),
-            latest_period=latest_period,
-            prior_period=prior_period,
-            latest_value=latest_value,
-            prior_value=prior_value,
-            magnitude=magnitude,
-            sources=list(sources),
-        ))
+        signals.append(
+            MetricSignal(
+                metric_key=spec.key,
+                label=spec.label,
+                direction=_direction(spec, delta, magnitude),
+                latest_period=latest_period,
+                prior_period=prior_period,
+                latest_value=latest_value,
+                prior_value=prior_value,
+                magnitude=magnitude,
+                sources=list(sources),
+            )
+        )
     return signals
 
 
-def top_movers(signals: list[MetricSignal], direction: Direction, n: int = 3) -> list[MetricSignal]:
+def top_movers(
+    signals: list[MetricSignal], direction: Direction, n: int = 3
+) -> list[MetricSignal]:
     """The N largest-magnitude signals of one direction, biggest first."""
     matching = [s for s in signals if s.direction == direction]
     return sorted(matching, key=lambda s: s.magnitude, reverse=True)[:n]

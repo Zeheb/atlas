@@ -4,6 +4,7 @@ _rank_and_select already computed every one of these values to reach a
 selection; this file proves recording them changed NOTHING about scoring or
 ordering — the acceptance criterion the M1.8 design states explicitly.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -34,10 +35,15 @@ def _kb_with_docs(
         rel = f"{evidence_id}.txt"
         (tmp_path / rel).write_text(content, encoding="utf-8")
         entry = CatalogEntry(
-            evidence_id=evidence_id, source=EvidenceSource.BSE.value,
-            kind=kinds.get(evidence_id, EvidenceKind.ANNUAL_REPORT).value, title="Test doc",
-            source_date=dates.get(evidence_id, "2026-03-31T00:00:00+00:00"), document_url=None,
-            local_path=rel, file_size_bytes=None, acquired_at="2026-04-01T00:00:00+00:00",
+            evidence_id=evidence_id,
+            source=EvidenceSource.BSE.value,
+            kind=kinds.get(evidence_id, EvidenceKind.ANNUAL_REPORT).value,
+            title="Test doc",
+            source_date=dates.get(evidence_id, "2026-03-31T00:00:00+00:00"),
+            document_url=None,
+            local_path=rel,
+            file_size_bytes=None,
+            acquired_at="2026-04-01T00:00:00+00:00",
         )
         kb.parse(entry)
     return kb
@@ -90,7 +96,9 @@ def test_total_equals_the_documented_formula(tmp_path: Path) -> None:
     result = retrieve_with_plan(kb, ["ev-1"], plan)
     assert result.breakdowns
     for b in result.breakdowns:
-        expected_total = b.base * 100 + b.doc_type + b.date_window + b.period + b.recency + b.numeric
+        expected_total = (
+            b.base * 100 + b.doc_type + b.date_window + b.period + b.recency + b.numeric
+        )
         assert b.total == expected_total
 
 
@@ -108,7 +116,8 @@ def test_ordering_unchanged_by_breakdown_recording(tmp_path: Path) -> None:
         },
     )
     plan = _plan(
-        query_terms=("currency", "fluctuation", "risk"), numeric_terms=(),
+        query_terms=("currency", "fluctuation", "risk"),
+        numeric_terms=(),
         preferred_doc_types=(DocTypePreference(kind="earnings_transcript", weight=60),),
         top_k=2,
     )
@@ -118,10 +127,17 @@ def test_ordering_unchanged_by_breakdown_recording(tmp_path: Path) -> None:
     assert match_order == breakdown_order == ["ev-transcript", "ev-annual"]
 
 
-def test_total_scores_are_monotonically_non_increasing_in_rank_order(tmp_path: Path) -> None:
-    kb = _kb_with_docs(tmp_path, {
-        "ev-1": _MARGIN_TEXT, "ev-2": _RISK_TEXT, "ev-3": _IRRELEVANT_TEXT,
-    })
+def test_total_scores_are_monotonically_non_increasing_in_rank_order(
+    tmp_path: Path,
+) -> None:
+    kb = _kb_with_docs(
+        tmp_path,
+        {
+            "ev-1": _MARGIN_TEXT,
+            "ev-2": _RISK_TEXT,
+            "ev-3": _IRRELEVANT_TEXT,
+        },
+    )
     result = retrieve_with_plan(kb, ["ev-1", "ev-2", "ev-3"], _plan(top_k=5))
     totals = [b.total for b in result.breakdowns]
     assert totals == sorted(totals, reverse=True)
@@ -130,10 +146,13 @@ def test_total_scores_are_monotonically_non_increasing_in_rank_order(tmp_path: P
 # --- Individual boost components fire exactly where expected ---------------------
 def test_doc_type_component_isolated(tmp_path: Path) -> None:
     kb = _kb_with_docs(
-        tmp_path, {"ev-1": _RISK_TEXT}, kinds={"ev-1": EvidenceKind.EARNINGS_TRANSCRIPT},
+        tmp_path,
+        {"ev-1": _RISK_TEXT},
+        kinds={"ev-1": EvidenceKind.EARNINGS_TRANSCRIPT},
     )
     plan = _plan(
-        query_terms=("currency", "fluctuation", "risk"), numeric_terms=(),
+        query_terms=("currency", "fluctuation", "risk"),
+        numeric_terms=(),
         preferred_doc_types=(DocTypePreference(kind="earnings_transcript", weight=42),),
     )
     result = retrieve_with_plan(kb, ["ev-1"], plan)
@@ -148,7 +167,8 @@ def test_period_component_isolated(tmp_path: Path) -> None:
     fy_text = "Currency fluctuation risk was elevated in FY2024 due to volatility."
     kb = _kb_with_docs(tmp_path, {"ev-1": fy_text})
     plan = _plan(
-        query_terms=("currency", "fluctuation", "risk"), numeric_terms=(),
+        query_terms=("currency", "fluctuation", "risk"),
+        numeric_terms=(),
         periods=("FY2024",),
     )
     result = retrieve_with_plan(kb, ["ev-1"], plan)
@@ -159,10 +179,14 @@ def test_period_component_isolated(tmp_path: Path) -> None:
 # --- kind (resolved doc-type metadata, for the eval harness's distribution) ------
 def test_breakdown_carries_resolved_kind(tmp_path: Path) -> None:
     kb = _kb_with_docs(
-        tmp_path, {"ev-1": _RISK_TEXT}, kinds={"ev-1": EvidenceKind.EARNINGS_TRANSCRIPT},
+        tmp_path,
+        {"ev-1": _RISK_TEXT},
+        kinds={"ev-1": EvidenceKind.EARNINGS_TRANSCRIPT},
     )
     result = retrieve_with_plan(
-        kb, ["ev-1"], _plan(query_terms=("currency", "fluctuation", "risk"), numeric_terms=()),
+        kb,
+        ["ev-1"],
+        _plan(query_terms=("currency", "fluctuation", "risk"), numeric_terms=()),
     )
     assert result.breakdowns[0].kind == "earnings_transcript"
 
@@ -176,6 +200,10 @@ def test_breakdown_kind_is_none_without_metadata(tmp_path: Path) -> None:
     # Here we just confirm the field is present and typed as optional.
     kb = _kb_with_docs(tmp_path, {"ev-1": _RISK_TEXT})
     result = retrieve_with_plan(
-        kb, ["ev-1"], _plan(query_terms=("currency", "fluctuation", "risk"), numeric_terms=()),
+        kb,
+        ["ev-1"],
+        _plan(query_terms=("currency", "fluctuation", "risk"), numeric_terms=()),
     )
-    assert result.breakdowns[0].kind == "annual_report"  # default kind from _kb_with_docs
+    assert (
+        result.breakdowns[0].kind == "annual_report"
+    )  # default kind from _kb_with_docs

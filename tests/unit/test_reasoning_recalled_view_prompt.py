@@ -5,6 +5,7 @@ context with thesis=None must be EXACTLY what it was before this milestone.
 A prompt that every atlas ask call renders is the highest-blast-radius
 surface in the reasoning package; this is asserted, not assumed.
 """
+
 from __future__ import annotations
 
 from atlas.reasoning.contracts import (
@@ -21,17 +22,23 @@ from atlas.reasoning.prompt import build_user_prompt
 SUBJECT = SubjectRef(subject_id="TCS", display="Tata Consultancy Services")
 
 
-def _claim(statement: str = "Margins ~24%.", eid: str = "ev-1", excerpt: str | None = None) -> Claim:
+def _claim(
+    statement: str = "Margins ~24%.", eid: str = "ev-1", excerpt: str | None = None
+) -> Claim:
     return Claim(
-        subject_ref=SUBJECT, statement=statement, assertability="fact",
-        confidence="high", evidence=[EvidenceReference(evidence_id=eid, excerpt=excerpt)],
+        subject_ref=SUBJECT,
+        statement=statement,
+        assertability="fact",
+        confidence="high",
+        evidence=[EvidenceReference(evidence_id=eid, excerpt=excerpt)],
     )
 
 
 def _context(*claims: Claim, thesis: RecalledView | None = None) -> GroundingContext:
     used = claims or (_claim(),)
     return GroundingContext(
-        subject_ref=SUBJECT, claims=list(used),
+        subject_ref=SUBJECT,
+        claims=list(used),
         evidence_index=frozenset(e for c in used for e in c.evidence_ids),
         thesis=thesis,
     )
@@ -43,11 +50,15 @@ def _question(text: str = "How have margins been?") -> Question:
 
 def _view(view_id: str = "view-1") -> RecalledView:
     return RecalledView(
-        view_id=view_id, question="Should I invest in TCS?",
-        claims=(RecalledClaim(
-            statement="Margins were improving.", evidence_ids=frozenset({"ev-OLD"}),
-            confidence="medium",
-        ),),
+        view_id=view_id,
+        question="Should I invest in TCS?",
+        claims=(
+            RecalledClaim(
+                statement="Margins were improving.",
+                evidence_ids=frozenset({"ev-OLD"}),
+                confidence="medium",
+            ),
+        ),
         as_of="2026-01-01T00:00:00+00:00",
     )
 
@@ -115,14 +126,19 @@ def test_recalled_view_evidence_not_in_valid_evidence_ids() -> None:
     """The closed world itself: ev-OLD must not appear in VALID EVIDENCE IDS
     just because it's mentioned in the recalled-view block."""
     rendered = build_user_prompt(_question(), _context(thesis=_view()))
-    valid_line = next(l for l in rendered.splitlines() if l.startswith("VALID EVIDENCE IDS"))
+    valid_line = next(
+        l for l in rendered.splitlines() if l.startswith("VALID EVIDENCE IDS")
+    )
     assert "ev-OLD" not in valid_line
 
 
 def test_recalled_view_with_no_evidence_says_so() -> None:
     view = RecalledView(
-        view_id="v", question="q",
-        claims=(RecalledClaim(statement="x", evidence_ids=frozenset(), confidence="low"),),
+        view_id="v",
+        question="q",
+        claims=(
+            RecalledClaim(statement="x", evidence_ids=frozenset(), confidence="low"),
+        ),
         as_of="2026-01-01T00:00:00+00:00",
     )
     rendered = build_user_prompt(_question(), _context(thesis=view))

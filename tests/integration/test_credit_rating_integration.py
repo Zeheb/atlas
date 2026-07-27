@@ -10,6 +10,7 @@ Run with: pytest -m integration -v -s
 Note: TCS carries no rated debt so no CRISIL/ICRA/CARE debt rating PDFs exist
 in this repository.  All three real documents are ESG cover letters.
 """
+
 from __future__ import annotations
 
 from collections.abc import Generator
@@ -27,9 +28,9 @@ pytestmark = pytest.mark.integration
 _PROJECT_ROOT = Path(__file__).parents[2]
 _TCS_REPO = _PROJECT_ROOT / "repositories" / "TCS"
 
-_ID_NSE_DEC  = "bse-news-f5e7effc-58ad-40dd-9418-cd55733c6b8c"
-_ID_NSE_JUN  = "bse-news-cc058c30-6e60-4779-b61e-67f67028408d"
-_ID_CRISIL   = "bse-news-820cd8b2-2882-4766-819e-10f0c0dc8714"
+_ID_NSE_DEC = "bse-news-f5e7effc-58ad-40dd-9418-cd55733c6b8c"
+_ID_NSE_JUN = "bse-news-cc058c30-6e60-4779-b61e-67f67028408d"
+_ID_CRISIL = "bse-news-820cd8b2-2882-4766-819e-10f0c0dc8714"
 
 _ALL_IDS = [_ID_NSE_DEC, _ID_NSE_JUN, _ID_CRISIL]
 
@@ -65,6 +66,7 @@ def _skip_if_not_parsed(kb: KnowledgeBase, eid: str) -> None:
 # ---------------------------------------------------------------------------
 # NSE Sustainability Dec 2025 — reaffirmed 73, "Leader"
 # ---------------------------------------------------------------------------
+
 
 class TestNSEDecReaffirmed:
     @pytest.fixture(scope="class")
@@ -132,6 +134,7 @@ class TestNSEDecReaffirmed:
 # NSE Sustainability Jun 2025 — assigned 73, no category phrase
 # ---------------------------------------------------------------------------
 
+
 class TestNSEJunAssigned:
     @pytest.fixture(scope="class")
     def result(self, kb: KnowledgeBase) -> AnalysisResult:
@@ -165,6 +168,7 @@ class TestNSEJunAssigned:
 # ---------------------------------------------------------------------------
 # CRISIL ESG Apr 2025 — assigned "CRISIL ESG 74", "Leadership"
 # ---------------------------------------------------------------------------
+
 
 class TestCRISILESGAssigned:
     @pytest.fixture(scope="class")
@@ -203,6 +207,7 @@ class TestCRISILESGAssigned:
 # Cross-document invariants
 # ---------------------------------------------------------------------------
 
+
 class TestCrossDocumentInvariants:
     @pytest.fixture(scope="class")
     def results(self, kb: KnowledgeBase) -> list[AnalysisResult]:
@@ -218,15 +223,21 @@ class TestCrossDocumentInvariants:
 
     def test_all_have_agency(self, results: list[AnalysisResult]):
         for r in results:
-            assert _facts(r, FactKind.CREDIT_AGENCY), f"{r.evidence_id} missing CREDIT_AGENCY"
+            assert _facts(
+                r, FactKind.CREDIT_AGENCY
+            ), f"{r.evidence_id} missing CREDIT_AGENCY"
 
     def test_all_have_rating(self, results: list[AnalysisResult]):
         for r in results:
-            assert _facts(r, FactKind.CREDIT_RATING), f"{r.evidence_id} missing CREDIT_RATING"
+            assert _facts(
+                r, FactKind.CREDIT_RATING
+            ), f"{r.evidence_id} missing CREDIT_RATING"
 
     def test_all_have_action(self, results: list[AnalysisResult]):
         for r in results:
-            assert _facts(r, FactKind.CREDIT_ACTION), f"{r.evidence_id} missing CREDIT_ACTION"
+            assert _facts(
+                r, FactKind.CREDIT_ACTION
+            ), f"{r.evidence_id} missing CREDIT_ACTION"
 
     def test_all_instrument_is_esg(self, results: list[AnalysisResult]):
         for r in results:
@@ -245,4 +256,6 @@ class TestCrossDocumentInvariants:
     def test_all_facts_have_provenance_section(self, results: list[AnalysisResult]):
         for r in results:
             for f in r.facts:
-                assert f.provenance.section, f"{r.evidence_id} fact {f.kind} missing section"
+                assert (
+                    f.provenance.section
+                ), f"{r.evidence_id} fact {f.kind} missing section"

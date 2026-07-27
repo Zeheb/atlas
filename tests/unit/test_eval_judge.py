@@ -1,5 +1,6 @@
 """Subjective judge (eval commit 3; freeze amendments 2-4, §12.6).
 FakeLLMClient — no network."""
+
 from __future__ import annotations
 
 import json
@@ -17,21 +18,32 @@ from atlas.reasoning.contracts import (
 )
 from atlas.reasoning.llm import FakeLLMClient
 
-CASE = EvalCase(id="c", category="D", question="Is management credible?",
-                subject="TCS", expected_behavior="answer", rubric="marked judgment")
-ANSWER = Answer(prose="Credible; guidance mostly met.", citations=(), overall_confidence="high")
+CASE = EvalCase(
+    id="c",
+    category="D",
+    question="Is management credible?",
+    subject="TCS",
+    expected_behavior="answer",
+    rubric="marked judgment",
+)
+ANSWER = Answer(
+    prose="Credible; guidance mostly met.", citations=(), overall_confidence="high"
+)
 
 SUBJECT = SubjectRef(subject_id="TCS", display="TCS")
 
 
 def _context() -> GroundingContext:
     claim = Claim(
-        subject_ref=SUBJECT, statement="financial_roe = 42.6 (period 2022-03-31)",
-        assertability="fact", confidence="high",
+        subject_ref=SUBJECT,
+        statement="financial_roe = 42.6 (period 2022-03-31)",
+        assertability="fact",
+        confidence="high",
         evidence=[EvidenceReference(evidence_id="ev-roe")],
     )
-    return GroundingContext(subject_ref=SUBJECT, claims=[claim],
-                            evidence_index=frozenset({"ev-roe"}))
+    return GroundingContext(
+        subject_ref=SUBJECT, claims=[claim], evidence_index=frozenset({"ev-roe"})
+    )
 
 
 def _judge(payload: dict) -> Judge:
@@ -63,8 +75,11 @@ def test_unparseable_output_raises() -> None:
 
 
 def test_prompt_includes_question_and_rubric() -> None:
-    fake = FakeLLMClient(response=json.dumps(
-        {"reasoning_quality": 3, "usefulness": 3, "evidence_use": 3, "notes": ""}))
+    fake = FakeLLMClient(
+        response=json.dumps(
+            {"reasoning_quality": 3, "usefulness": 3, "evidence_use": 3, "notes": ""}
+        )
+    )
     Judge(fake).evaluate(CASE, ANSWER)
     _system, user = fake.calls[0]
     assert "Is management credible?" in user
@@ -73,8 +88,11 @@ def test_prompt_includes_question_and_rubric() -> None:
 
 # --- Amendment 2: judge receives the available evidence -----------------------
 def test_context_claims_are_rendered_into_prompt() -> None:
-    fake = FakeLLMClient(response=json.dumps(
-        {"reasoning_quality": 3, "usefulness": 3, "evidence_use": 3, "notes": ""}))
+    fake = FakeLLMClient(
+        response=json.dumps(
+            {"reasoning_quality": 3, "usefulness": 3, "evidence_use": 3, "notes": ""}
+        )
+    )
     Judge(fake).evaluate(CASE, ANSWER, _context())
     _system, user = fake.calls[0]
     assert "AVAILABLE EVIDENCE" in user
@@ -83,8 +101,11 @@ def test_context_claims_are_rendered_into_prompt() -> None:
 
 
 def test_no_context_omits_evidence_block() -> None:
-    fake = FakeLLMClient(response=json.dumps(
-        {"reasoning_quality": 3, "usefulness": 3, "evidence_use": 3, "notes": ""}))
+    fake = FakeLLMClient(
+        response=json.dumps(
+            {"reasoning_quality": 3, "usefulness": 3, "evidence_use": 3, "notes": ""}
+        )
+    )
     Judge(fake).evaluate(CASE, ANSWER)  # context omitted
     _system, user = fake.calls[0]
     assert "AVAILABLE EVIDENCE" not in user
@@ -92,10 +113,23 @@ def test_no_context_omits_evidence_block() -> None:
 
 # --- Amendment 4: refused answers are judged too ------------------------------
 def test_refused_answer_is_rendered_with_refused_marker() -> None:
-    refused = Answer(prose="", citations=(), overall_confidence="low",
-                     refused=True, refusal_reason="No market price data in Atlas.")
-    fake = FakeLLMClient(response=json.dumps(
-        {"reasoning_quality": 5, "usefulness": 4, "evidence_use": 5, "notes": "clean refusal"}))
+    refused = Answer(
+        prose="",
+        citations=(),
+        overall_confidence="low",
+        refused=True,
+        refusal_reason="No market price data in Atlas.",
+    )
+    fake = FakeLLMClient(
+        response=json.dumps(
+            {
+                "reasoning_quality": 5,
+                "usefulness": 4,
+                "evidence_use": 5,
+                "notes": "clean refusal",
+            }
+        )
+    )
     verdict = Judge(fake).evaluate(CASE, refused, _context())
     _system, user = fake.calls[0]
     assert "[REFUSED] No market price data in Atlas." in user

@@ -1,6 +1,7 @@
 """Integration tests for atlas.research.report — the full orchestrator,
 synthetic profile (no real repository/PDFs), but exercising every section
 builder together the way generate_report() actually calls them."""
+
 from __future__ import annotations
 
 from atlas.research.report import generate_report, generate_report_markdown
@@ -41,10 +42,18 @@ class TestGenerateReport:
     def test_empty_profile_does_not_crash(self) -> None:
         report = generate_report("EMPTY", make_empty_profile())
         assert len(report.sections) == 12
-        assert all(s.is_empty() or s.notes for s in report.sections if s.key != "open_questions")
+        assert all(
+            s.is_empty() or s.notes
+            for s in report.sections
+            if s.key != "open_questions"
+        )
 
     def test_peer_profiles_feed_competitive_position(self) -> None:
-        report = generate_report("ACME", make_profile("ACME"), peer_profiles={"ACME": make_profile("ACME"), "PEER": make_profile("PEER")})
+        report = generate_report(
+            "ACME",
+            make_profile("ACME"),
+            peer_profiles={"ACME": make_profile("ACME"), "PEER": make_profile("PEER")},
+        )
         comp = report.section("competitive_position")
         assert comp is not None
         assert any("PEER" in n for n in comp.notes)

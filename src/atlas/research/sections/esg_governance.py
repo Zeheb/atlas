@@ -7,6 +7,7 @@ a different domain. Director changes and audit KAMs are read directly from
 GovernanceProfile since they have no timeline/compare equivalent (they're
 categorical, not a numeric series).
 """
+
 from __future__ import annotations
 
 from atlas.acquisition.repository import Repository
@@ -22,12 +23,18 @@ from atlas.research.signals import classify_metric_moves, top_movers
 # every other registered ESG metric is still queryable via `atlas query`,
 # this is just the headline subset shown inline.
 _HEADLINE_ESG_METRICS = (
-    "workforce_headcount", "workforce_female_pct", "workforce_attrition_pct",
-    "ghg_scope1", "ghg_scope2", "csr_spend",
+    "workforce_headcount",
+    "workforce_female_pct",
+    "workforce_attrition_pct",
+    "ghg_scope1",
+    "ghg_scope2",
+    "csr_spend",
 )
 
 
-def build(profile: CompanyProfile, repo: Repository | None, ticker: str) -> ReportSection:
+def build(
+    profile: CompanyProfile, repo: Repository | None, ticker: str
+) -> ReportSection:
     tables = []
     findings: list[Finding] = []
     notes = []
@@ -46,35 +53,45 @@ def build(profile: CompanyProfile, repo: Repository | None, ticker: str) -> Repo
     # outrank Operating Margin purely on raw percentage-point magnitude —
     # a domain mismatch, not a real prioritization).
     esg_signals = classify_metric_moves(profile, domains=("esg",))
-    for sig in top_movers(esg_signals, "improving", n=2) + top_movers(esg_signals, "deteriorating", n=2):
+    for sig in top_movers(esg_signals, "improving", n=2) + top_movers(
+        esg_signals, "deteriorating", n=2
+    ):
         verb = "improved" if sig.direction == "improving" else "deteriorated"
-        findings.append(Finding(
-            text=(
-                f"{sig.label} {verb} from {metrics_mod.format_value(sig.prior_value, metrics_mod.get_metric(sig.metric_key).unit)} "
-                f"({engine._fmt_date(sig.prior_period)}) to "
-                f"{metrics_mod.format_value(sig.latest_value, metrics_mod.get_metric(sig.metric_key).unit)} "
-                f"({engine._fmt_date(sig.latest_period)})."
-            ),
-            evidence_ids=sig.sources,
-            kind="fact",
-        ))
+        findings.append(
+            Finding(
+                text=(
+                    f"{sig.label} {verb} from {metrics_mod.format_value(sig.prior_value, metrics_mod.get_metric(sig.metric_key).unit)} "
+                    f"({engine._fmt_date(sig.prior_period)}) to "
+                    f"{metrics_mod.format_value(sig.latest_value, metrics_mod.get_metric(sig.metric_key).unit)} "
+                    f"({engine._fmt_date(sig.latest_period)})."
+                ),
+                evidence_ids=sig.sources,
+                kind="fact",
+            )
+        )
 
-    dir_changes = sorted(profile.governance.director_changes, key=lambda d: d.source_date, reverse=True)
+    dir_changes = sorted(
+        profile.governance.director_changes, key=lambda d: d.source_date, reverse=True
+    )
     if dir_changes:
-        findings.append(Finding(
-            text=f"{len(dir_changes)} director/KMP change(s) on record; most recent: "
-                 f"{dir_changes[0].change_type} — {engine._oneline(dir_changes[0].name)} "
-                 f"({engine._fmt_source_date(dir_changes[0].source_date)}).",
-            evidence_ids=[d.evidence_id for d in dir_changes[:5] if d.evidence_id],
-            kind=DERIVED,
-        ))
+        findings.append(
+            Finding(
+                text=f"{len(dir_changes)} director/KMP change(s) on record; most recent: "
+                f"{dir_changes[0].change_type} — {engine._oneline(dir_changes[0].name)} "
+                f"({engine._fmt_source_date(dir_changes[0].source_date)}).",
+                evidence_ids=[d.evidence_id for d in dir_changes[:5] if d.evidence_id],
+                kind=DERIVED,
+            )
+        )
 
     if profile.governance.audit_kams:
-        findings.append(Finding(
-            text=f"Key Audit Matters on record: {'; '.join(profile.governance.audit_kams)}",
-            evidence_ids=[],
-            kind="fact",
-        ))
+        findings.append(
+            Finding(
+                text=f"Key Audit Matters on record: {'; '.join(profile.governance.audit_kams)}",
+                evidence_ids=[],
+                kind="fact",
+            )
+        )
 
     return ReportSection(
         key="esg_governance",

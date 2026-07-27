@@ -13,6 +13,7 @@ reach for one of these three shapes instead:
   notes      uncited, short methodology/absence notes ("no data found for
              X"), rendered plainly, no citation line expected
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -30,7 +31,11 @@ class ReportSection:
     notes: list[str] = field(default_factory=list)
 
     def is_empty(self) -> bool:
-        return not self.findings and not any(t.rows for t in self.tables) and not self.notes
+        return (
+            not self.findings
+            and not any(t.rows for t in self.tables)
+            and not self.notes
+        )
 
 
 @dataclass

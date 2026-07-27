@@ -17,4 +17,5 @@ Adds no retrieval heuristics and changes no reasoning/retrieval behavior —
 this package only reads and describes the benchmark, it never influences
 what `atlas ask`/`atlas eval run` actually do.
 """
+
 from __future__ import annotations

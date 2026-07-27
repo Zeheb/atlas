@@ -6,6 +6,7 @@ call ``build_llm_client(settings, role=...)`` and receive an ``LLMClient``.
 Dispatch is many-to-one (multiple providers may share one adapter class), per
 the provider-vs-adapter architecture amendment — not a 1:1 provider→class map.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Literal

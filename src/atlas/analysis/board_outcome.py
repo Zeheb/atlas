@@ -49,6 +49,7 @@ Dividend period inference
 most recent Indian fiscal year end (March 31) from source_date when a dividend
 is declared but no period phrase is found (standalone dividend announcement).
 """
+
 from __future__ import annotations
 
 import re
@@ -89,8 +90,7 @@ _RE_AGREEMENT_ANCHOR = re.compile(
 
 # Investment sub-type signals within an Agreement filing
 _RE_INVEST_SIGNAL = re.compile(
-    r"Securities\s+Subscription\s+Agreement"
-    r"|aggregate\s+amount\s+of\s+up\s*to",
+    r"Securities\s+Subscription\s+Agreement" r"|aggregate\s+amount\s+of\s+up\s*to",
     re.IGNORECASE,
 )
 # "HyperVault AI Data Center Limited, a wholly owned subsidiary of the Company"
@@ -167,7 +167,9 @@ _RE_COMPLETION = re.compile(
 
 
 def _extract_acq_type_a(
-    cover: str, ann_a: str, ann_b: str,
+    cover: str,
+    ann_a: str,
+    ann_b: str,
 ) -> tuple[list[AnalysisFact], list[str]]:
     """Extract CAPITAL_ACQ_* facts when Annexure A has the target-entity table."""
     facts: list[AnalysisFact] = []
@@ -176,27 +178,45 @@ def _extract_acq_type_a(
     m = _RE_COVER_TARGET.search(cover)
     if m:
         name = m.group(1).strip().rstrip(",.")
-        facts.append(_fact(
-            FactKind.CAPITAL_ACQ_TARGET_NAME, name, None,
-            "cover_letter", cover, m.start(1),
-        ))
+        facts.append(
+            _fact(
+                FactKind.CAPITAL_ACQ_TARGET_NAME,
+                name,
+                None,
+                "cover_letter",
+                cover,
+                m.start(1),
+            )
+        )
     else:
         warnings.append("Could not extract target name from cover letter")
 
     if _RE_SHARE_SWAP.search(ann_a):
         m2 = _RE_SHARE_SWAP.search(ann_a)
         assert m2 is not None
-        facts.append(_fact(
-            FactKind.CAPITAL_ACQ_CONSIDERATION_TYPE, "share_swap", None,
-            "annexure_a", ann_a, m2.start(),
-        ))
+        facts.append(
+            _fact(
+                FactKind.CAPITAL_ACQ_CONSIDERATION_TYPE,
+                "share_swap",
+                None,
+                "annexure_a",
+                ann_a,
+                m2.start(),
+            )
+        )
     elif _RE_CASH.search(ann_a):
         m2 = _RE_CASH.search(ann_a)
         assert m2 is not None
-        facts.append(_fact(
-            FactKind.CAPITAL_ACQ_CONSIDERATION_TYPE, "cash", None,
-            "annexure_a", ann_a, m2.start(),
-        ))
+        facts.append(
+            _fact(
+                FactKind.CAPITAL_ACQ_CONSIDERATION_TYPE,
+                "cash",
+                None,
+                "annexure_a",
+                ann_a,
+                m2.start(),
+            )
+        )
     else:
         warnings.append("Consideration type not found in Annexure A")
 
@@ -211,10 +231,16 @@ def _extract_acq_type_a(
             warnings.append(f"Could not parse enterprise value: {amount_str!r}")
         else:
             unit = FactUnit.USD_BILLION if scale == "billion" else FactUnit.USD_MILLION
-            facts.append(_fact(
-                FactKind.CAPITAL_ACQ_ENTERPRISE_VALUE, amount, unit,
-                "annexure_a", ann_a, m_usd.start(),
-            ))
+            facts.append(
+                _fact(
+                    FactKind.CAPITAL_ACQ_ENTERPRISE_VALUE,
+                    amount,
+                    unit,
+                    "annexure_a",
+                    ann_a,
+                    m_usd.start(),
+                )
+            )
     elif m_inr:
         amount_str = m_inr.group(1).replace(",", "")
         try:
@@ -222,19 +248,31 @@ def _extract_acq_type_a(
         except ValueError:
             warnings.append(f"Could not parse enterprise value: {amount_str!r}")
         else:
-            facts.append(_fact(
-                FactKind.CAPITAL_ACQ_ENTERPRISE_VALUE, amount, FactUnit.CRORE_INR,
-                "annexure_a", ann_a, m_inr.start(),
-            ))
+            facts.append(
+                _fact(
+                    FactKind.CAPITAL_ACQ_ENTERPRISE_VALUE,
+                    amount,
+                    FactUnit.CRORE_INR,
+                    "annexure_a",
+                    ann_a,
+                    m_inr.start(),
+                )
+            )
     else:
         warnings.append("Enterprise value not found in Annexure A")
 
     m_stake = _RE_STAKE.search(ann_a)
     if m_stake:
-        facts.append(_fact(
-            FactKind.CAPITAL_ACQ_STAKE_PCT, float(m_stake.group(1)), FactUnit.PERCENT,
-            "annexure_a", ann_a, m_stake.start(),
-        ))
+        facts.append(
+            _fact(
+                FactKind.CAPITAL_ACQ_STAKE_PCT,
+                float(m_stake.group(1)),
+                FactUnit.PERCENT,
+                "annexure_a",
+                ann_a,
+                m_stake.start(),
+            )
+        )
     else:
         warnings.append("Stake percentage not found in Annexure A")
 
@@ -242,10 +280,16 @@ def _extract_acq_type_a(
     if m_comp:
         iso = parse_iso_date(m_comp.group(1))
         if iso:
-            facts.append(_fact(
-                FactKind.CAPITAL_ACQ_EXPECTED_COMPLETION, iso, FactUnit.ISO_DATE,
-                "annexure_a", ann_a, m_comp.start(),
-            ))
+            facts.append(
+                _fact(
+                    FactKind.CAPITAL_ACQ_EXPECTED_COMPLETION,
+                    iso,
+                    FactUnit.ISO_DATE,
+                    "annexure_a",
+                    ann_a,
+                    m_comp.start(),
+                )
+            )
         else:
             warnings.append(f"Could not parse completion date: {m_comp.group(1)!r}")
 
@@ -256,8 +300,11 @@ def _extract_acq_type_a(
 # Investment / subsidiary fundraise extraction
 # ---------------------------------------------------------------------------
 
+
 def _extract_investment(
-    cover: str, ann_a: str, ann_b: str,
+    cover: str,
+    ann_a: str,
+    ann_b: str,
 ) -> tuple[list[AnalysisFact], list[str]]:
     """Extract CAPITAL_INVEST_* facts when Agreement Annexure contains an investment.
 
@@ -275,12 +322,20 @@ def _extract_investment(
     m_sub = _RE_INVEST_SUBSIDIARY.search(cover)
     if m_sub:
         name = re.sub(r"\s+", " ", m_sub.group(1).strip())
-        facts.append(_fact(
-            FactKind.CAPITAL_INVEST_TARGET_NAME, name, None,
-            "cover_letter", cover, m_sub.start(1),
-        ))
+        facts.append(
+            _fact(
+                FactKind.CAPITAL_INVEST_TARGET_NAME,
+                name,
+                None,
+                "cover_letter",
+                cover,
+                m_sub.start(1),
+            )
+        )
     else:
-        warnings.append("Could not identify subsidiary receiving investment from cover letter")
+        warnings.append(
+            "Could not identify subsidiary receiving investment from cover letter"
+        )
 
     # Investment amount: search press release (ann_b) first; fall back to Annexure A
     def _find_inr(texts: list[tuple[str, str]]) -> tuple[re.Match | None, str, str]:
@@ -308,12 +363,20 @@ def _extract_investment(
         try:
             amount = float(raw)
         except ValueError:
-            warnings.append(f"Could not parse INR investment amount: {m_inr.group(1)!r}")
+            warnings.append(
+                f"Could not parse INR investment amount: {m_inr.group(1)!r}"
+            )
         else:
-            facts.append(_fact(
-                FactKind.CAPITAL_INVEST_AMOUNT, amount, FactUnit.CRORE_INR,
-                inr_section, inr_text, m_inr.start(),
-            ))
+            facts.append(
+                _fact(
+                    FactKind.CAPITAL_INVEST_AMOUNT,
+                    amount,
+                    FactUnit.CRORE_INR,
+                    inr_section,
+                    inr_text,
+                    m_inr.start(),
+                )
+            )
     else:
         m_usd, usd_section, usd_text = _find_usd(_ordered)
         if m_usd:
@@ -321,12 +384,20 @@ def _extract_investment(
             try:
                 amount = float(raw)
             except ValueError:
-                warnings.append(f"Could not parse USD investment amount: {m_usd.group(1)!r}")
+                warnings.append(
+                    f"Could not parse USD investment amount: {m_usd.group(1)!r}"
+                )
             else:
-                facts.append(_fact(
-                    FactKind.CAPITAL_INVEST_AMOUNT, amount, FactUnit.USD_BILLION,
-                    usd_section, usd_text, m_usd.start(),
-                ))
+                facts.append(
+                    _fact(
+                        FactKind.CAPITAL_INVEST_AMOUNT,
+                        amount,
+                        FactUnit.USD_BILLION,
+                        usd_section,
+                        usd_text,
+                        m_usd.start(),
+                    )
+                )
         else:
             warnings.append("Investment amount not found in document")
 
@@ -369,10 +440,16 @@ def _extract_buyback(cover: str) -> tuple[list[AnalysisFact], list[str]]:
         except ValueError:
             warnings.append(f"Could not parse buyback amount: {m_amt.group(1)!r}")
         else:
-            facts.append(_fact(
-                FactKind.CAPITAL_BUYBACK_AMOUNT, amount, FactUnit.CRORE_INR,
-                "cover_letter", cover, m_amt.start(),
-            ))
+            facts.append(
+                _fact(
+                    FactKind.CAPITAL_BUYBACK_AMOUNT,
+                    amount,
+                    FactUnit.CRORE_INR,
+                    "cover_letter",
+                    cover,
+                    m_amt.start(),
+                )
+            )
     else:
         warnings.append("Buyback amount not found in cover letter")
 
@@ -384,10 +461,16 @@ def _extract_buyback(cover: str) -> tuple[list[AnalysisFact], list[str]]:
         except ValueError:
             warnings.append(f"Could not parse buyback price: {m_price.group(1)!r}")
         else:
-            facts.append(_fact(
-                FactKind.CAPITAL_BUYBACK_PRICE_PER_SHARE, price, FactUnit.RUPEES_PER_SHARE,
-                "cover_letter", cover, m_price.start(),
-            ))
+            facts.append(
+                _fact(
+                    FactKind.CAPITAL_BUYBACK_PRICE_PER_SHARE,
+                    price,
+                    FactUnit.RUPEES_PER_SHARE,
+                    "cover_letter",
+                    cover,
+                    m_price.start(),
+                )
+            )
 
     return facts, warnings
 
@@ -397,10 +480,23 @@ def _extract_buyback(cover: str) -> tuple[list[AnalysisFact], list[str]]:
 # ---------------------------------------------------------------------------
 
 _FUNDRAISE_SIGNALS: list[tuple[re.Pattern, str]] = [
-    (re.compile(r"Qualified\s+Institutional\s+Placement|(?<!\w)QIP(?!\w)", re.IGNORECASE), "QIP"),
+    (
+        re.compile(
+            r"Qualified\s+Institutional\s+Placement|(?<!\w)QIP(?!\w)", re.IGNORECASE
+        ),
+        "QIP",
+    ),
     (re.compile(r"rights?\s+issue\b", re.IGNORECASE), "rights_issue"),
-    (re.compile(r"preferential\s+(?:allotment|issue)\b", re.IGNORECASE), "preferential_allotment"),
-    (re.compile(r"Non[-–]?Convertible\s+Debentures?|(?<!\w)NCDs?(?!\w)", re.IGNORECASE), "NCD"),
+    (
+        re.compile(r"preferential\s+(?:allotment|issue)\b", re.IGNORECASE),
+        "preferential_allotment",
+    ),
+    (
+        re.compile(
+            r"Non[-–]?Convertible\s+Debentures?|(?<!\w)NCDs?(?!\w)", re.IGNORECASE
+        ),
+        "NCD",
+    ),
 ]
 
 _RE_FUNDRAISE_AMOUNT = re.compile(
@@ -437,15 +533,27 @@ def _extract_fundraising(cover: str) -> tuple[list[AnalysisFact], list[str]]:
             warnings.append(f"Could not parse fundraise amount: {m_amount.group(1)!r}")
 
     for kind, offset in detected:
-        facts.append(_fact(
-            FactKind.CAPITAL_FUNDRAISE_TYPE, kind, None,
-            "cover_letter", cover, offset,
-        ))
+        facts.append(
+            _fact(
+                FactKind.CAPITAL_FUNDRAISE_TYPE,
+                kind,
+                None,
+                "cover_letter",
+                cover,
+                offset,
+            )
+        )
         if amount is not None:
-            facts.append(_fact(
-                FactKind.CAPITAL_FUNDRAISE_AMOUNT, amount, FactUnit.CRORE_INR,
-                "cover_letter", cover, amount_pos,
-            ))
+            facts.append(
+                _fact(
+                    FactKind.CAPITAL_FUNDRAISE_AMOUNT,
+                    amount,
+                    FactUnit.CRORE_INR,
+                    "cover_letter",
+                    cover,
+                    amount_pos,
+                )
+            )
 
     return facts, warnings
 
@@ -460,9 +568,7 @@ _RE_DIR_CHANGE_ANCHOR = re.compile(
     re.IGNORECASE,
 )
 # Step 2: title-case person name immediately following the anchor (case-sensitive)
-_RE_PERSON_NAME = re.compile(
-    r"([A-Z][a-zA-Z]{2,}(?:\s+[A-Z][a-zA-Z.]{1,}){1,4})"
-)
+_RE_PERSON_NAME = re.compile(r"([A-Z][a-zA-Z]{2,}(?:\s+[A-Z][a-zA-Z.]{1,}){1,4})")
 # Step 3: role after "as" / "from the position of" etc. in the 300 chars after the name
 _RE_AS_ROLE = re.compile(
     r"\bas\s+([^.,;\n]{5,120}?)(?=\s*(?:effective|w\.?e\.?f\.?|with\s+effect"
@@ -470,12 +576,34 @@ _RE_AS_ROLE = re.compile(
     re.IGNORECASE,
 )
 
-_DIR_NAME_STOPWORDS = frozenset({
-    "board", "directors", "director", "committee", "company", "trustee",
-    "sebi", "stock", "exchange", "income", "supreme", "court", "high",
-    "national", "reserve", "bank", "securities", "act", "regulation",
-    "annual", "general", "meeting", "executive", "the",
-})
+_DIR_NAME_STOPWORDS = frozenset(
+    {
+        "board",
+        "directors",
+        "director",
+        "committee",
+        "company",
+        "trustee",
+        "sebi",
+        "stock",
+        "exchange",
+        "income",
+        "supreme",
+        "court",
+        "high",
+        "national",
+        "reserve",
+        "bank",
+        "securities",
+        "act",
+        "regulation",
+        "annual",
+        "general",
+        "meeting",
+        "executive",
+        "the",
+    }
+)
 
 
 def _clean_role(role: str) -> str:
@@ -506,7 +634,7 @@ def _extract_management_changes(cover: str) -> tuple[list[AnalysisFact], list[st
 
         # Look for title-case person name immediately after the anchor
         window_start = m_anchor.end()
-        window = cover[window_start:window_start + 200]
+        window = cover[window_start : window_start + 200]
         m_name = _RE_PERSON_NAME.match(window)
         if m_name is None:
             continue
@@ -534,28 +662,48 @@ def _extract_management_changes(cover: str) -> tuple[list[AnalysisFact], list[st
         counter += 1
 
         name_pos = window_start + m_name.start(1)
-        facts.append(_fact(
-            FactKind.GOVERNANCE_DIRECTOR, name, None,
-            section, cover, name_pos,
-        ))
-        facts.append(_fact(
-            FactKind.GOVERNANCE_DIRECTOR_CHANGE_TYPE, change_type, None,
-            section, cover, m_anchor.start(1),
-        ))
+        facts.append(
+            _fact(
+                FactKind.GOVERNANCE_DIRECTOR,
+                name,
+                None,
+                section,
+                cover,
+                name_pos,
+            )
+        )
+        facts.append(
+            _fact(
+                FactKind.GOVERNANCE_DIRECTOR_CHANGE_TYPE,
+                change_type,
+                None,
+                section,
+                cover,
+                m_anchor.start(1),
+            )
+        )
 
         # Look for role ("as [role]") in the 300 chars after the name.
         # Normalise internal whitespace so multi-line role strings are captured.
         role_window_start = window_start + m_name.end()
-        role_window = re.sub(r"\s+", " ", cover[role_window_start:role_window_start + 300])
+        role_window = re.sub(
+            r"\s+", " ", cover[role_window_start : role_window_start + 300]
+        )
         m_role = _RE_AS_ROLE.search(role_window)
         if m_role:
             role = _clean_role(m_role.group(1))
             if role:
                 role_pos = role_window_start + m_role.start(1)
-                facts.append(_fact(
-                    FactKind.GOVERNANCE_DIRECTOR_CHANGE_ROLE, role, None,
-                    section, cover, role_pos,
-                ))
+                facts.append(
+                    _fact(
+                        FactKind.GOVERNANCE_DIRECTOR_CHANGE_ROLE,
+                        role,
+                        None,
+                        section,
+                        cover,
+                        role_pos,
+                    )
+                )
 
     return facts, warnings
 
@@ -563,6 +711,7 @@ def _extract_management_changes(cover: str) -> tuple[list[AnalysisFact], list[st
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
+
 
 def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     """Extract structured facts from a SEBI Reg 30 board outcome filing."""
@@ -616,7 +765,9 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
     result.facts.extend(bb_facts)
     result.warnings.extend(bb_warnings)
 
-    fundraise_facts, fundraise_warnings = _extract_fundraising(cover_scan[:_COVER_WINDOW])
+    fundraise_facts, fundraise_warnings = _extract_fundraising(
+        cover_scan[:_COVER_WINDOW]
+    )
     result.facts.extend(fundraise_facts)
     result.warnings.extend(fundraise_warnings)
 

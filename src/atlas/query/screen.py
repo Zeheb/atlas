@@ -11,6 +11,7 @@ the other.
 No CompanyProfile/CompanyStore change was needed — discover_companies() is
 a thin loop over the existing, unmodified CompanyStore.load() API.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -24,8 +25,8 @@ from atlas.query import metrics
 from atlas.query.engine import QueryResult, TableSection, _fmt_date
 
 _OPS: dict[str, Callable[[float, float], bool]] = {
-    ">":  lambda v, t: v > t,
-    "<":  lambda v, t: v < t,
+    ">": lambda v, t: v > t,
+    "<": lambda v, t: v < t,
     ">=": lambda v, t: v >= t,
     "<=": lambda v, t: v <= t,
     "==": lambda v, t: v == t,
@@ -107,8 +108,10 @@ def screen(
         snaps = metrics.domain_snapshots(profile, spec.domain)
         if spec.domain == "financial":
             snaps = [
-                s for s in snaps
-                if s.basis == basis and (period_type is None or s.period_type == period_type)
+                s
+                for s in snaps
+                if s.basis == basis
+                and (period_type is None or s.period_type == period_type)
             ]
         snaps = sorted(snaps, key=lambda s: s.period)
         for snap in reversed(snaps):
@@ -119,18 +122,27 @@ def screen(
                     repo = repos.get(company_id)
                     entry = repo.get(snap.sources[0]) if repo else None
                     if entry is not None:
-                        source_citation = build_citation(entry, company_id, profile).citation_short
+                        source_citation = build_citation(
+                            entry, company_id, profile
+                        ).citation_short
                 found.append((company_id, snap.period, value, source_citation))
                 break
 
     matched = found
     if op is not None and threshold is not None:
-        matched = [(cid, period, v, src) for cid, period, v, src in found if _OPS[op](v, threshold)]
+        matched = [
+            (cid, period, v, src)
+            for cid, period, v, src in found
+            if _OPS[op](v, threshold)
+        ]
 
     reverse = spec.higher_is_better is not False
     matched = sorted(matched, key=lambda r: r[2], reverse=reverse)
 
-    rows = [[cid, _fmt_date(period), metrics.format_value(v, spec.unit), src] for cid, period, v, src in matched]
+    rows = [
+        [cid, _fmt_date(period), metrics.format_value(v, spec.unit), src]
+        for cid, period, v, src in matched
+    ]
 
     notes = [f"{len(found)}/{len(profiles)} companies had data for {spec.label!r}."]
     if op is not None:
@@ -144,10 +156,12 @@ def screen(
         query="screen",
         company_id="ALL",
         title=title,
-        sections=[TableSection(
-            heading="Ranked Companies",
-            columns=["Company", "Latest Period", spec.label, "Source"],
-            rows=rows,
-        )],
+        sections=[
+            TableSection(
+                heading="Ranked Companies",
+                columns=["Company", "Latest Period", spec.label, "Source"],
+                rows=rows,
+            )
+        ],
         notes=notes,
     )

@@ -6,6 +6,7 @@ Settings rather than hardcoded — plus from_settings' existing contract
 commit 2 once the atlas.reasoning.client shim it exercised was removed;
 this file's coverage fully supersedes it).
 """
+
 from __future__ import annotations
 
 import pytest
@@ -32,12 +33,16 @@ def test_from_settings_builds_with_key(monkeypatch) -> None:
 def test_from_settings_model_override_for_judge(monkeypatch) -> None:
     monkeypatch.setenv("ATLAS_ANTHROPIC_API_KEY", "sk-test-abc")
     monkeypatch.setenv("ATLAS_REASONING_MODEL", "claude-reasoning")
-    client = AnthropicClient.from_settings(Settings(_env_file=None), model="claude-judge")
+    client = AnthropicClient.from_settings(
+        Settings(_env_file=None), model="claude-judge"
+    )
     assert client._model == "claude-judge"
 
 
 # --- New in this refactor: temperature/max_tokens promoted from hardcoded ----
-def test_from_settings_reads_max_tokens_and_temperature_from_settings(monkeypatch) -> None:
+def test_from_settings_reads_max_tokens_and_temperature_from_settings(
+    monkeypatch,
+) -> None:
     monkeypatch.setenv("ATLAS_ANTHROPIC_API_KEY", "sk-test-abc")
     monkeypatch.setenv("ATLAS_LLM_MAX_TOKENS", "1234")
     monkeypatch.setenv("ATLAS_LLM_TEMPERATURE", "0.7")
@@ -46,7 +51,9 @@ def test_from_settings_reads_max_tokens_and_temperature_from_settings(monkeypatc
     assert client._temperature == 0.7
 
 
-def test_from_settings_default_max_tokens_and_temperature_match_prior_hardcoded(monkeypatch) -> None:
+def test_from_settings_default_max_tokens_and_temperature_match_prior_hardcoded(
+    monkeypatch,
+) -> None:
     # No functionality change: these must equal what was previously hardcoded
     # inline (max_tokens=4096, temperature=0) inside AnthropicClient.
     monkeypatch.setenv("ATLAS_ANTHROPIC_API_KEY", "sk-test-abc")

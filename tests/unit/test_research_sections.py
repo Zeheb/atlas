@@ -5,6 +5,7 @@ needed to test the retrieval+synthesis logic itself (repo=None everywhere;
 citation resolution is exercised separately in test_research_render.py and
 the integration tests).
 """
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -59,9 +60,14 @@ class TestManagementCredibility:
     def test_failed_resolution_flagged(self) -> None:
         profile = make_profile()
         profile.governance.resolutions.append(
-            AGMResolution(source_date=datetime(2026, 7, 1, tzinfo=timezone.utc), period="2026-06-30",
-                          title="Special resolution X", resolution_type="special", outcome="not_passed",
-                          evidence_id="ev-agm-2")
+            AGMResolution(
+                source_date=datetime(2026, 7, 1, tzinfo=timezone.utc),
+                period="2026-06-30",
+                title="Special resolution X",
+                resolution_type="special",
+                outcome="not_passed",
+                evidence_id="ev-agm-2",
+            )
         )
         sec = management_credibility.build(profile, None, "ACME")
         assert any("did not pass" in f.text for f in sec.findings)
@@ -138,10 +144,15 @@ class TestCatalysts:
         from atlas.company.model import AcquisitionEvent
 
         profile = make_profile()
-        profile.capital_events.acquisitions.append(AcquisitionEvent(
-            source_date=datetime(2025, 11, 2, tzinfo=timezone.utc), target_name="Widget Co",
-            stake_pct=100.0, expected_completion="2026-09-30", evidence_id="ev-acq-1-dup",
-        ))
+        profile.capital_events.acquisitions.append(
+            AcquisitionEvent(
+                source_date=datetime(2025, 11, 2, tzinfo=timezone.utc),
+                target_name="Widget Co",
+                stake_pct=100.0,
+                expected_completion="2026-09-30",
+                evidence_id="ev-acq-1-dup",
+            )
+        )
         sec = catalysts.build(profile, None, "ACME")
         widget_findings = [f for f in sec.findings if "Widget Co" in f.text]
         assert len(widget_findings) == 1
@@ -175,12 +186,19 @@ class TestWhatChanged:
 
 class TestCompetitivePosition:
     def test_no_peers_states_limitation_explicitly(self) -> None:
-        sec = competitive_position.build(make_profile(), None, "ACME", peer_profiles=None)
+        sec = competitive_position.build(
+            make_profile(), None, "ACME", peer_profiles=None
+        )
         assert any("No peer companies" in n for n in sec.notes)
 
     def test_with_peers_lists_which_were_checked(self) -> None:
         peer = make_profile("PEER")
-        sec = competitive_position.build(make_profile(), None, "ACME", peer_profiles={"ACME": make_profile(), "PEER": peer})
+        sec = competitive_position.build(
+            make_profile(),
+            None,
+            "ACME",
+            peer_profiles={"ACME": make_profile(), "PEER": peer},
+        )
         assert any("PEER" in n for n in sec.notes)
 
 
@@ -201,12 +219,16 @@ class TestESGGovernance:
 class TestOpenQuestions:
     def test_flags_empty_sections(self) -> None:
         empty_sec = ReportSection(key="risks", title="What Could Go Wrong")
-        sec = open_questions.build(make_profile(), None, "ACME", other_sections=[empty_sec])
+        sec = open_questions.build(
+            make_profile(), None, "ACME", other_sections=[empty_sec]
+        )
         assert any("What Could Go Wrong" in f.text for f in sec.findings)
 
     def test_valuation_section_never_flagged_as_a_gap(self) -> None:
         val_sec = valuation.build(make_profile(), None, "ACME")
-        sec = open_questions.build(make_profile(), None, "ACME", other_sections=[val_sec])
+        sec = open_questions.build(
+            make_profile(), None, "ACME", other_sections=[val_sec]
+        )
         assert not any("Valuation" in f.text for f in sec.findings)
 
     def test_thin_metric_flagged(self) -> None:
@@ -236,28 +258,47 @@ class TestTheCall:
     def test_reuses_balance_sheet_verdict_verbatim(self) -> None:
         bs_sec = balance_sheet.build(make_profile(), None, "ACME")
         sec = the_call.build(make_profile(), None, "ACME", other_sections=[bs_sec])
-        call_bs_finding = next(f for f in sec.findings if f.text.startswith("Balance sheet:"))
+        call_bs_finding = next(
+            f for f in sec.findings if f.text.startswith("Balance sheet:")
+        )
         assert bs_sec.findings[0].text in call_bs_finding.text
 
     def test_low_confidence_risk_produces_honest_fallback(self) -> None:
-        risks_sec = risks.build(make_profile(), None, "ACME")  # only low-confidence risks in fixture besides the recurring one
+        risks_sec = risks.build(
+            make_profile(), None, "ACME"
+        )  # only low-confidence risks in fixture besides the recurring one
         sec = the_call.build(make_profile(), None, "ACME", other_sections=[risks_sec])
         # fixture's recurring risk IS high confidence, so this should headline it, not fall back
         assert any("Top risk on record" in f.text for f in sec.findings)
 
     def test_always_includes_non_recommendation_disclosure(self) -> None:
         sec = the_call.build(make_profile(), None, "ACME", other_sections=[])
-        assert any("does not issue a buy/sell recommendation" in f.text for f in sec.findings)
+        assert any(
+            "does not issue a buy/sell recommendation" in f.text for f in sec.findings
+        )
 
 
 class TestEvidenceAppendix:
     def test_dedupes_evidence_ids_across_sections(self) -> None:
         from atlas.research.citations import Finding
-        sec_a = ReportSection(key="a", title="A", findings=[Finding(text="x", evidence_ids=["ev-1"])])
-        sec_b = ReportSection(key="b", title="B", findings=[Finding(text="y", evidence_ids=["ev-1", "ev-2"])])
-        result = evidence_appendix.build(make_profile(), None, "ACME", other_sections=[sec_a, sec_b])
-        assert result.notes  # no repo given -> can't resolve citations, notes explains why
+
+        sec_a = ReportSection(
+            key="a", title="A", findings=[Finding(text="x", evidence_ids=["ev-1"])]
+        )
+        sec_b = ReportSection(
+            key="b",
+            title="B",
+            findings=[Finding(text="y", evidence_ids=["ev-1", "ev-2"])],
+        )
+        result = evidence_appendix.build(
+            make_profile(), None, "ACME", other_sections=[sec_a, sec_b]
+        )
+        assert (
+            result.notes
+        )  # no repo given -> can't resolve citations, notes explains why
 
     def test_no_citations_when_nothing_cited(self) -> None:
-        result = evidence_appendix.build(make_profile(), None, "ACME", other_sections=[])
+        result = evidence_appendix.build(
+            make_profile(), None, "ACME", other_sections=[]
+        )
         assert any("No evidence" in n for n in result.notes)

@@ -10,6 +10,7 @@ suite/file position: the acceptance suite is laid out in category blocks, so
 category. Hash rank is unbiased with respect to that layout while remaining
 fully deterministic and reproducible.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -36,16 +37,31 @@ SUBJECT = SubjectRef(subject_id="TCS", display="TCS")
 
 def _grounded() -> RunOutcome:
     ref = EvidenceReference(evidence_id="ev-1")
-    claim = Claim(subject_ref=SUBJECT, statement="op margin 24%", assertability="fact",
-                  confidence="high", evidence=[ref])
-    finding = Finding(statement="durable margins", assertability="judgment",
-                      confidence="high", supporting_claims=[claim])
-    result = ReasoningResult(question=Question(raw_text="q", subject_ref=SUBJECT),
-                             findings=[finding], overall_confidence="high",
-                             citations=frozenset({"ev-1"}))
-    context = GroundingContext(subject_ref=SUBJECT, claims=[claim],
-                               evidence_index=frozenset({"ev-1"}))
-    answer = Answer(prose="Durable margins [ev-1]", citations=(ref,), overall_confidence="high")
+    claim = Claim(
+        subject_ref=SUBJECT,
+        statement="op margin 24%",
+        assertability="fact",
+        confidence="high",
+        evidence=[ref],
+    )
+    finding = Finding(
+        statement="durable margins",
+        assertability="judgment",
+        confidence="high",
+        supporting_claims=[claim],
+    )
+    result = ReasoningResult(
+        question=Question(raw_text="q", subject_ref=SUBJECT),
+        findings=[finding],
+        overall_confidence="high",
+        citations=frozenset({"ev-1"}),
+    )
+    context = GroundingContext(
+        subject_ref=SUBJECT, claims=[claim], evidence_index=frozenset({"ev-1"})
+    )
+    answer = Answer(
+        prose="Durable margins [ev-1]", citations=(ref,), overall_confidence="high"
+    )
     return RunOutcome(context=context, result=result, answer=answer)
 
 
@@ -56,15 +72,24 @@ class _FakeRunner:
 
 def _cases(n: int) -> list[EvalCase]:
     return [
-        EvalCase(id=f"t{i:02d}", category="A", question=f"q{i}", subject="TCS",
-                 expected_behavior="answer", rubric="synthesize")
+        EvalCase(
+            id=f"t{i:02d}",
+            category="A",
+            question=f"q{i}",
+            subject="TCS",
+            expected_behavior="answer",
+            rubric="synthesize",
+        )
         for i in range(1, n + 1)
     ]
 
 
 def _counting_judge() -> tuple[Judge, FakeLLMClient]:
-    fake = FakeLLMClient(response=json.dumps(
-        {"reasoning_quality": 4, "usefulness": 4, "evidence_use": 4, "notes": "ok"}))
+    fake = FakeLLMClient(
+        response=json.dumps(
+            {"reasoning_quality": 4, "usefulness": 4, "evidence_use": 4, "notes": "ok"}
+        )
+    )
     return Judge(fake), fake
 
 
@@ -73,6 +98,7 @@ def _hash_rank(ids: list[str]) -> list[str]:
 
 
 # --- resolve_judge_sample (pure parsing) --------------------------------------
+
 
 def test_none_value_means_judge_everything() -> None:
     assert resolve_judge_sample(None, ["t01", "t02"]) is None
@@ -89,7 +115,9 @@ def test_hash_rank_sample_is_stable_across_calls() -> None:
     # Determinism: the same id set always yields the same sample, regardless
     # of the order the ids are passed in.
     ids = ["t01", "t02", "t03", "t04", "t05"]
-    assert resolve_judge_sample("3", ids) == resolve_judge_sample("3", list(reversed(ids)))
+    assert resolve_judge_sample("3", ids) == resolve_judge_sample(
+        "3", list(reversed(ids))
+    )
 
 
 def test_hash_rank_sample_is_not_simply_the_first_n_in_input_order() -> None:
@@ -100,17 +128,27 @@ def test_hash_rank_sample_is_not_simply_the_first_n_in_input_order() -> None:
 
 
 def test_comma_separated_ids_select_exactly_those_cases() -> None:
-    assert resolve_judge_sample("t01,t03", ["t01", "t02", "t03"]) == frozenset({"t01", "t03"})
+    assert resolve_judge_sample("t01,t03", ["t01", "t02", "t03"]) == frozenset(
+        {"t01", "t03"}
+    )
 
 
 # --- run_suite wiring ----------------------------------------------------------
+
 
 def test_judge_sample_by_count_judges_only_the_hash_ranked_cases() -> None:
     judge, fake = _counting_judge()
     ids = [f"t{i:02d}" for i in range(1, 5)]
     sampled = _hash_rank(ids)[:2]
-    report = run_suite(_cases(4), _FakeRunner(), judge, {"single_name"},
-                       milestone="M0", model="fake", judge_sample="2")
+    report = run_suite(
+        _cases(4),
+        _FakeRunner(),
+        judge,
+        {"single_name"},
+        milestone="M0",
+        model="fake",
+        judge_sample="2",
+    )
     by_id = {r.case_id: r for r in report.results}
     for cid in ids:
         expected = 4 if cid in sampled else None
@@ -120,8 +158,15 @@ def test_judge_sample_by_count_judges_only_the_hash_ranked_cases() -> None:
 
 def test_judge_sample_by_id_judges_only_named_cases() -> None:
     judge, fake = _counting_judge()
-    report = run_suite(_cases(4), _FakeRunner(), judge, {"single_name"},
-                       milestone="M0", model="fake", judge_sample="t01,t04")
+    report = run_suite(
+        _cases(4),
+        _FakeRunner(),
+        judge,
+        {"single_name"},
+        milestone="M0",
+        model="fake",
+        judge_sample="t01,t04",
+    )
     by_id = {r.case_id: r for r in report.results}
     assert by_id["t01"].reasoning_quality == 4
     assert by_id["t04"].reasoning_quality == 4
@@ -137,8 +182,15 @@ def test_unjudged_cases_still_get_deterministic_scoring() -> None:
     judge, _fake = _counting_judge()
     ids = ["t01", "t02"]
     unsampled_id = _hash_rank(ids)[1]  # the one NOT selected by judge_sample="1"
-    report = run_suite(_cases(2), _FakeRunner(), judge, {"single_name"},
-                       milestone="M0", model="fake", judge_sample="1")
+    report = run_suite(
+        _cases(2),
+        _FakeRunner(),
+        judge,
+        {"single_name"},
+        milestone="M0",
+        model="fake",
+        judge_sample="1",
+    )
     unjudged = next(r for r in report.results if r.case_id == unsampled_id)
     assert unjudged.reasoning_quality is None
     assert unjudged.correctness_pass is True
@@ -147,7 +199,10 @@ def test_unjudged_cases_still_get_deterministic_scoring() -> None:
 
 def test_judge_sample_none_preserves_existing_behavior() -> None:
     judge, fake = _counting_judge()
-    report = run_suite(_cases(3), _FakeRunner(), judge, {"single_name"},
-                       milestone="M0", model="fake")  # judge_sample omitted
-    assert all(isinstance(r, CaseResult) and r.reasoning_quality == 4 for r in report.results)
+    report = run_suite(
+        _cases(3), _FakeRunner(), judge, {"single_name"}, milestone="M0", model="fake"
+    )  # judge_sample omitted
+    assert all(
+        isinstance(r, CaseResult) and r.reasoning_quality == 4 for r in report.results
+    )
     assert len(fake.calls) == 3
