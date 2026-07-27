@@ -33,11 +33,11 @@ from atlas.analysis.base import (
     Provenance,
     _snip,
 )
-from atlas.analysis.patterns import fiscal_year_end
+from atlas.analysis.patterns import extract_n_values, fiscal_year_end
 from atlas.knowledge.base import KnowledgeBase
 from atlas.knowledge.entities import EntityResolver
 
-ANALYZER_VERSION = "3.1"
+ANALYZER_VERSION = "3.2"
 
 # Director identity (M-P1.4, narrowed): only CLEAN "Name (DIN 12345678)"
 # adjacencies. The name is 2-4 Title-case tokens immediately before the DIN
@@ -52,6 +52,44 @@ _RE_DIRECTOR_DIN = re.compile(
     r"[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z.]+){1,3})"
     r"\s*\(\s*DIN[:\s]*(\d{8})\s*\)"
 )
+
+
+# Gross block of property, plant and equipment (M-P3.2, ADR-0012), from the
+# AR's 10-year financial-highlights table -- a single labeled row, most-recent
+# year first, verified clean at TCS. The label wraps mid-phrase across a line
+# break ("property, \nplant and equipment"), hence \s+ between the two halves.
+#
+# Deliberately NOT extracted from Tata Steel's PP&E movement/reconciliation
+# schedule (opening/closing "Gross block as at [date]" rows with a per-
+# asset-class column breakdown and a final "Total" column): tested directly
+# against real text and found unreliable -- two consecutive unlabeled rows
+# concatenate with no detectable boundary between them, and a "last value
+# before the next row label" heuristic returned the WRONG total (a value from
+# the second row, not the first row's own Total). Under-emit rather than ship
+# a heuristic already shown to produce a wrong number: absent for
+# movement-schedule-only filings, not zero, not guessed.
+_RE_GROSS_BLOCK = re.compile(r"Gross block of property,\s*plant and equipment", re.IGNORECASE)
+
+
+def _extract_gross_block(content: str, period: str) -> AnalysisFact | None:
+    m = _RE_GROSS_BLOCK.search(content)
+    if m is None:
+        return None
+    vals = extract_n_values(content, m.end(), n=1)
+    if not vals or vals[0] is None or vals[0] <= 0:
+        return None
+    return AnalysisFact(
+        kind=FactKind.FINANCIAL_GROSS_BLOCK,
+        value=vals[0],
+        unit=FactUnit.CRORE_INR,
+        period=period,
+        confidence="high",
+        provenance=Provenance(
+            section="financial_highlights",
+            char_offset=m.start(),
+            excerpt=_snip(content, m.start()),
+        ),
+    )
 
 
 def _extract_directors(content: str, resolver: EntityResolver) -> list[EntityMention]:
@@ -441,6 +479,13 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
         )
     if not major_risks:
         warnings.append("Risk factors not found")
+
+    # ------------------------------------------------------------------ #
+    # 2b. Gross block of property, plant and equipment (M-P3.2)            #
+    # ------------------------------------------------------------------ #
+    gross_block_fact = _extract_gross_block(content, period)
+    if gross_block_fact is not None:
+        facts.append(gross_block_fact)
 
     # ------------------------------------------------------------------ #
     # 3. Consolidated auditor's report — KAM titles                        #

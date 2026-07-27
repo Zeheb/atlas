@@ -118,12 +118,17 @@ _SPECS: list[MetricSpec] = [
     _fk("total_equity", "Total Equity", FactKind.FINANCIAL_TOTAL_EQUITY, FactUnit.CRORE_INR, True),
     _fk("operating_cash_flow", "Operating Cash Flow", FactKind.FINANCIAL_OPERATING_CASH_FLOW, FactUnit.CRORE_INR, True),
     _fk("capex", "Capital Expenditure", FactKind.FINANCIAL_CAPEX, FactUnit.CRORE_INR, None),
+    _fk("cash_tax_paid", "Cash Tax Paid", FactKind.FINANCIAL_CASH_TAX_PAID, FactUnit.CRORE_INR, None),
 
     # -- Financial: working capital (M-P3.1, ADR-0012) ---------------------
     _fk("inventories", "Inventories", FactKind.FINANCIAL_INVENTORIES, FactUnit.CRORE_INR, False),
     _fk("trade_receivables", "Trade Receivables (billed)", FactKind.FINANCIAL_TRADE_RECEIVABLES, FactUnit.CRORE_INR, False),
     _fk("trade_payables", "Trade Payables", FactKind.FINANCIAL_TRADE_PAYABLES, FactUnit.CRORE_INR, True),
     _fk("unbilled_revenue", "Unbilled Revenue", FactKind.FINANCIAL_UNBILLED_REVENUE, FactUnit.CRORE_INR, False),
+
+    # -- Financial: notes to accounts (M-P3.2, ADR-0012) --------------------
+    _fk("intangible_assets", "Intangible Assets", FactKind.FINANCIAL_INTANGIBLE_ASSETS, FactUnit.CRORE_INR, None),
+    _fk("gross_block", "Gross Block (PP&E)", FactKind.FINANCIAL_GROSS_BLOCK, FactUnit.CRORE_INR, None),
 
     # -- Financial: banking / NBFC ratios ----------------------------------
     _fk("nii", "Net Interest Income", FactKind.FINANCIAL_NET_INTEREST_INCOME, FactUnit.CRORE_INR, True),

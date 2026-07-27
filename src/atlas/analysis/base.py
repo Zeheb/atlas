@@ -172,6 +172,12 @@ class FactKind(enum.Enum):
     # Cash flow statement items (annual financial results only; period = fiscal year end)
     FINANCIAL_OPERATING_CASH_FLOW = "financial_operating_cash_flow"   # net cash from operating activities; unit=CRORE_INR
     FINANCIAL_CAPEX               = "financial_capex"                  # PP&E purchases only; unit=CRORE_INR; absolute value
+    FINANCIAL_CASH_TAX_PAID       = "financial_cash_tax_paid"          # "Taxes paid (net of refunds)" from the cash flow statement; unit=CRORE_INR; absolute value — the cash-basis counterpart to FINANCIAL_TOTAL_TAX/FINANCIAL_CURRENT_TAX (book basis)
+
+    # Notes-to-accounts items (M-P3.2, ADR-0012). unit=CRORE_INR. Absence =
+    # not extracted, not zero, same convention as every balance-sheet fact.
+    FINANCIAL_INTANGIBLE_ASSETS   = "financial_intangible_assets"      # net intangible assets (incl. "Other intangible assets"); excludes goodwill
+    FINANCIAL_GROSS_BLOCK         = "financial_gross_block"            # gross (pre-depreciation) carrying value of property, plant and equipment, whole-company total — from the annual report's PPE movement schedule or financial-highlights table, not the financial_results balance sheet
 
     # Banking / NBFC financial metrics (broadly applicable across financial sector)
     # Period conventions: quarterly KPIs use quarter-end date; annual KPIs use

@@ -36,6 +36,7 @@ from atlas.analysis.base import AnalysisFact, AnalysisResult, FactKind, FactUnit
 from atlas.company.model import (
     AGMResolution,
     AcquisitionEvent,
+    AuditorEntry,
     BuybackEvent,
     CSATEntry,
     CapitalEventLedger,
@@ -151,6 +152,20 @@ def _ingest_financial_result(result: AnalysisResult, profile: CompanyProfile) ->
 
     _ingest_dividend_facts(result, profile)
     _ingest_segment_facts(result, profile)
+
+    # Auditor history (M-P3.2). AUDIT_FIRM/AUDIT_OPINION carry no period of
+    # their own (categorical, excluded from FinancialSnapshot.facts) --
+    # source_date is the filing's own date, matching CreditRatingEntry's
+    # convention for the same kind of timeless-fact-tracked-per-document.
+    firm = next((str(f.value) for f in result.facts if f.kind == FactKind.AUDIT_FIRM), None)
+    opinion = next((str(f.value) for f in result.facts if f.kind == FactKind.AUDIT_OPINION), None)
+    if firm is not None or opinion is not None:
+        profile.governance.auditor_history.append(AuditorEntry(
+            source_date=result.source_date,
+            firm=firm,
+            opinion=opinion,
+            evidence_id=result.evidence_id,
+        ))
 
 
 def _ingest_transcript_result(result: AnalysisResult, profile: CompanyProfile) -> None:
@@ -425,6 +440,39 @@ def _ingest_annual_report_result(result: AnalysisResult, profile: CompanyProfile
             evidence_id=result.evidence_id,
             source_date=source_date,
         ))
+
+    # Gross block of PP&E (M-P3.2) -> FinancialTimeSeries. financial_results
+    # has no competing source for this fact, but supplement (setdefault) is
+    # still the right merge, matching the same not-financial_results-sourced
+    # pattern already used for investor_presentation's ROE/FCF facts. Basis
+    # defaults to "consolidated" — annual_report has no per-fact basis signal
+    # (same inherited limitation already accepted for the M-P3.1 facts).
+    fin_snaps: dict[str, dict[FactKind, float]] = defaultdict(dict)
+    for fact in result.facts:
+        if fact.kind not in _FINANCIAL_SNAPSHOT_KINDS:
+            continue
+        if fact.period is None or not isinstance(fact.value, (int, float)):
+            continue
+        fin_snaps[fact.period][fact.kind] = float(fact.value)
+
+    fin_existing = {(s.period, s.basis): s for s in profile.financial.snapshots}
+    for period, facts in fin_snaps.items():
+        key = (period, "consolidated")
+        if key in fin_existing:
+            for fk, fv in facts.items():
+                fin_existing[key].facts.setdefault(fk, fv)
+            if result.evidence_id not in fin_existing[key].sources:
+                fin_existing[key].sources.append(result.evidence_id)
+        else:
+            snap = FinancialSnapshot(
+                period=period,
+                period_type="annual",
+                basis="consolidated",
+                facts=facts,
+                sources=[result.evidence_id],
+            )
+            profile.financial.snapshots.append(snap)
+            fin_existing[key] = snap
 
 
 def _ingest_brsr_result(result: AnalysisResult, profile: CompanyProfile) -> None:

@@ -332,12 +332,35 @@ class RiskEntry:
 
 @dataclass
 class GovernanceProfile:
-    """AGM voting history, director change events, auditor KAM titles, and risk factors."""
+    """AGM voting history, director change events, auditor KAM titles, risk
+    factors, and auditor history."""
 
     resolutions: list[AGMResolution] = field(default_factory=list)
     director_changes: list[DirectorChange] = field(default_factory=list)
     audit_kams: list[str] = field(default_factory=list)
     risk_factors: list[RiskEntry] = field(default_factory=list)
+    auditor_history: list["AuditorEntry"] = field(default_factory=list)
+
+
+@dataclass
+class AuditorEntry:
+    """One statutory auditor's firm/opinion as stated in one annual filing
+    (M-P3.2, ADR-0012).
+
+    Mirrors CreditRatingEntry's shape: an entity's status, tracked one entry
+    per document, sorted ASC by source_date so multi-year continuity/changes
+    are readable directly from the list. AUDIT_FIRM/AUDIT_OPINION carry no
+    period of their own (they are timeless, per-document facts) — source_date
+    is the filing's own date, not derived from the fact.
+
+    firm:        Audit firm name, e.g. "B S R & Co. LLP". None if not detected.
+    opinion:     "unmodified" | "qualified" | ... None if not detected.
+    """
+
+    source_date: datetime
+    firm: str | None = None
+    opinion: str | None = None
+    evidence_id: str = ""
 
 
 @dataclass

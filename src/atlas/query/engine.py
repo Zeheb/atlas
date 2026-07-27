@@ -648,6 +648,33 @@ def credit_ratings(profile: CompanyProfile) -> QueryResult:
     )
 
 
+def auditor_history(profile: CompanyProfile) -> QueryResult:
+    """Statutory auditor firm and opinion across filings, most-recent first
+    (M-P3.2, Q42) -- multi-year continuity/changes readable directly from the
+    row order."""
+    entries = sorted(profile.governance.auditor_history, key=lambda a: a.source_date, reverse=True)
+    rows = [
+        [_fmt_source_date(a.source_date), a.firm or "-", a.opinion or "-"]
+        for a in entries
+    ]
+
+    notes = []
+    if not rows:
+        notes.append("No auditor firm/opinion found. Annual filings must be analyzed and ingested first.")
+
+    return QueryResult(
+        query="auditor_history",
+        company_id=profile.company_id,
+        title="Auditor History",
+        sections=[TableSection(
+            heading="Auditor firm and opinion (most recent first)",
+            columns=["Date", "Firm", "Opinion"],
+            rows=rows,
+        )],
+        notes=notes,
+    )
+
+
 def rating_risk_timeline(profile: CompanyProfile) -> QueryResult:
     """Debt rating actions annotated with the risk factors from the most
     recent PRECEDING annual-report period (M-P2.3, Q41).
@@ -1323,6 +1350,7 @@ _QUERIES: dict[str, Callable[..., QueryResult]] = {
     "ownership":    ownership,
     "leverage":     leverage,
     "ratings":      credit_ratings,
+    "auditor_history": auditor_history,
     "rating_risk_timeline": rating_risk_timeline,
     "risks":        risks,
     "risk_recurrence": risk_recurrence,

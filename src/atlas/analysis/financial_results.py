@@ -581,6 +581,17 @@ _RE_BS_PAYABLES_OTHER = re.compile(
     r"[Tt]otal\s+outstanding\s+dues\s+of\s+creditors\s+other\s+than\s+micro\s+and\s+small\s+enterprises",
 )
 
+# Intangible assets (M-P3.2, ADR-0012). Non-current-assets line, no "current"
+# homonym to disambiguate (unlike receivables/inventories), so a plain
+# document-wide search is sufficient -- unlike those, no _last_match_before
+# anchor is needed. Direct-layout only (verified clean at TCS): the
+# deferred-layout non-current-assets block has no verified positional anchor
+# equivalent to Cash's fixed Schedule III position among current assets, so
+# guessing one would risk exactly the misattribution this codebase avoids —
+# under-emit rather than speculate; deferred-layout intangibles are absent,
+# not zero, not wrong.
+_RE_BS_INTANGIBLE = re.compile(r"^\s*(?:Other )?[Ii]ntangible assets\b(?! under development)", re.MULTILINE)
+
 
 def _last_match_before(pattern: "re.Pattern[str]", text: str, before: int) -> "re.Match[str] | None":
     """The LAST match of *pattern* strictly before offset *before*, or None.
@@ -785,6 +796,21 @@ def _extract_balance_sheet_facts(text: str, period: str) -> list[AnalysisFact]:
                                 provenance=Provenance(section="balance_sheet", char_offset=bs_start + unbilled_m.start()),
                             ))
 
+    # 6b. Intangible assets (M-P3.2). Direct layout only -- see
+    # _RE_BS_INTANGIBLE's docstring comment for why deferred layout is
+    # deliberately not attempted. Not anchored to cash_m: intangibles has no
+    # "current" homonym requiring disambiguation, so a plain search suffices.
+    if is_direct:
+        intangible_m = _RE_BS_INTANGIBLE.search(bs_text)
+        if intangible_m:
+            vals = _extract_n_values(bs_text, intangible_m.end(), n=2)
+            if vals and (v := _positive(vals[0])) is not None:
+                facts.append(AnalysisFact(
+                    kind=FactKind.FINANCIAL_INTANGIBLE_ASSETS, value=v, unit=FactUnit.CRORE_INR,
+                    period=period, confidence="high",
+                    provenance=Provenance(section="balance_sheet", char_offset=bs_start + intangible_m.start()),
+                ))
+
     # 7. Trade payables: Schedule III's mandatory MSME + non-MSME split,
     # summed -- the same iterate-and-sum shape already used for debt above.
     # Layout-independent: the split is a fixed statutory disclosure, not
@@ -820,6 +846,9 @@ _RE_CF_CAPEX = re.compile(
     r"Payment(?:s)? (?:including advances )?for (?:purchase of )?property,\s*plant and equipment",
     re.IGNORECASE,
 )
+# Two observed phrasings: "Taxes paid (net of refunds)" (TCS) and "Income
+# taxes paid" (Tata Steel, no parenthetical) -- verified against real filings.
+_RE_CF_TAX_PAID = re.compile(r"(?:Income )?[Tt]axes? paid(?: \(net of refunds\))?", re.IGNORECASE)
 
 
 def _find_cf_region(text: str) -> tuple[int, int] | None:
@@ -835,11 +864,14 @@ def _find_cf_region(text: str) -> tuple[int, int] | None:
 
 
 def _extract_cashflow_facts(text: str, period: str) -> list[AnalysisFact]:
-    """Extract FINANCIAL_OPERATING_CASH_FLOW and FINANCIAL_CAPEX from the
-    cash flow statement in an annual filing.
+    """Extract FINANCIAL_OPERATING_CASH_FLOW, FINANCIAL_CAPEX, and
+    FINANCIAL_CASH_TAX_PAID from the cash flow statement in an annual filing.
 
     FINANCIAL_CAPEX is the absolute value of "Payment for purchase of
     property, plant and equipment" (PP&E only; intangibles excluded).
+    FINANCIAL_CASH_TAX_PAID is the absolute value of "Taxes paid (net of
+    refunds)" (M-P3.2, ADR-0012) — the cash-basis counterpart to the P&L's
+    book-basis FINANCIAL_TOTAL_TAX/FINANCIAL_CURRENT_TAX.
     """
     region = _find_cf_region(text)
     if region is None:
@@ -875,6 +907,24 @@ def _extract_cashflow_facts(text: str, period: str) -> list[AnalysisFact]:
             facts.append(AnalysisFact(
                 kind=FactKind.FINANCIAL_CAPEX,
                 value=abs(vals[0]),
+                unit=FactUnit.CRORE_INR,
+                period=period,
+                confidence="high",
+                provenance=Provenance(
+                    section="cash_flow_statement",
+                    char_offset=cf_start + m.start(),
+                    excerpt=_snip(cf_text, m.start()),
+                ),
+            ))
+
+    # 3. Taxes paid, cash basis (M-P3.2)
+    m = _RE_CF_TAX_PAID.search(cf_text)
+    if m:
+        vals = _extract_n_values(cf_text, m.end(), n=2)
+        if vals and (v := _positive(abs(vals[0]))) is not None:
+            facts.append(AnalysisFact(
+                kind=FactKind.FINANCIAL_CASH_TAX_PAID,
+                value=v,
                 unit=FactUnit.CRORE_INR,
                 period=period,
                 confidence="high",

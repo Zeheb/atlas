@@ -60,6 +60,7 @@ from atlas.company.builder import BUILDER_VERSION, merge_result
 from atlas.company.model import (
     AGMResolution,
     AcquisitionEvent,
+    AuditorEntry,
     BuybackEvent,
     CSATEntry,
     CapitalEventLedger,
@@ -291,6 +292,15 @@ def _serialize_profile(profile: CompanyProfile) -> dict[str, Any]:
                     "evidence_id": r.evidence_id,
                 }
                 for r in profile.governance.risk_factors
+            ],
+            "auditor_history": [
+                {
+                    "source_date": _dt(a.source_date),
+                    "firm": a.firm,
+                    "opinion": a.opinion,
+                    "evidence_id": a.evidence_id,
+                }
+                for a in profile.governance.auditor_history
             ],
         },
         "participants": [
@@ -528,6 +538,15 @@ def _deserialize_profile(data: dict[str, Any]) -> CompanyProfile:
                     evidence_id=r.get("evidence_id", ""),
                 )
                 for r in gov.get("risk_factors", [])
+            ],
+            auditor_history=[
+                AuditorEntry(
+                    source_date=_parse_dt(a["source_date"]),
+                    firm=a.get("firm"),
+                    opinion=a.get("opinion"),
+                    evidence_id=a.get("evidence_id", ""),
+                )
+                for a in gov.get("auditor_history", [])
             ],
         ),
         participants=[

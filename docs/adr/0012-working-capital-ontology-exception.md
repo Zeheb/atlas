@@ -151,14 +151,60 @@ misattribution.
 
 ---
 
+## Amendment (M-P3.2)
+
+Three further FactKinds independently satisfy the same three-part test and
+are admitted under this exception, not a new one:
+
+- `FINANCIAL_CASH_TAX_PAID` — primary (cash flow statement's own disclosed
+  line); extends `_extract_cashflow_facts`, the already-parsed cash-flow
+  region `FINANCIAL_OPERATING_CASH_FLOW`/`FINANCIAL_CAPEX` already use;
+  evidence-verified at both TCS ("Taxes paid (net of refunds)") and Tata
+  Steel ("Income taxes paid", a second real phrasing found and handled).
+- `FINANCIAL_INTANGIBLE_ASSETS` — primary; extends
+  `_extract_balance_sheet_facts`, the same already-parsed balance-sheet
+  region; evidence-verified at TCS's direct layout only. **Condition 3 does
+  not hold for the deferred layout** — tested directly against real Tata
+  Steel text and no verified positional anchor exists for the non-current-
+  assets block (unlike current assets, where Cash's fixed Schedule III
+  position already anchors Inventories/Receivables). Deferred-layout
+  intangibles are therefore absent, not guessed — the same under-emit floor
+  this ADR already established, applied to a new case rather than relaxed.
+- `FINANCIAL_GROSS_BLOCK` — primary; extends `annual_report.py`, not
+  `financial_results.py` — the fact lives in the AR's financial-highlights
+  table, a different already-parsed document kind than the other three, but
+  condition 2 ("extends existing extraction machinery") holds at the
+  analyzer/primitive level (the same `extract_n_values` helper, already
+  shared via `patterns.py`), consistent with this ADR's own reading of that
+  condition. Evidence-verified at TCS's highlights-table format only.
+  **Condition 3 does not hold for Tata Steel's PP&E movement-schedule
+  format** — tested directly: a "last value before the next row label"
+  heuristic returned a wrong Total (a value from an adjacent unlabeled row),
+  not a graceful failure. Rather than build an unverified header-column-
+  counting mechanism, this format is deliberately not attempted — under-emit
+  over shipping a heuristic already shown to produce a wrong number.
+
+`FINANCIAL_TRADE_RECEIVABLES`/`FINANCIAL_TRADE_PAYABLES`/
+`FINANCIAL_INVENTORIES`/`FINANCIAL_UNBILLED_REVENUE` (the original four) are
+unchanged by this amendment. Contingent liabilities and RPT remain outside
+this exception, re-confirmed with a properly note-anchored search this
+round (narrative disclosure, still no clean aggregate found).
+
+---
+
 ## References
 
 - `src/atlas/analysis/financial_results.py` — `_extract_balance_sheet_facts`,
-  the extended function; `_last_match_before`, `_positive` (new helpers)
-- `src/atlas/analysis/base.py` — the four new FactKind members
+  `_extract_cashflow_facts`, the extended functions; `_last_match_before`,
+  `_positive` (M-P3.1 helpers)
+- `src/atlas/analysis/annual_report.py` — `_extract_gross_block` (M-P3.2)
+- `src/atlas/company/model.py` — `AuditorEntry`, `GovernanceProfile.auditor_history` (M-P3.2)
+- `src/atlas/analysis/base.py` — the seven FactKind members this exception covers
 - `src/atlas/query/metrics.py` — registration (`inventories`,
-  `trade_receivables`, `trade_payables`, `unbilled_revenue`)
+  `trade_receivables`, `trade_payables`, `unbilled_revenue`, `cash_tax_paid`,
+  `intangible_assets`, `gross_block`)
+- `src/atlas/query/engine.py` — `auditor_history()` query (M-P3.2)
 - Atlas Evaluation Matrix — Part II Phase 3, M-P3.0 (extraction-risk gate),
-  M-P3.1 (this milestone)
+  M-P3.1, M-P3.2 (this amendment)
 - `docs/adr/0009-orthogonal-concerns.md` — the compose-don't-merge discipline
   informing the Billed/Unbilled non-overlap resolution
