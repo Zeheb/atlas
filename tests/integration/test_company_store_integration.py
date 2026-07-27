@@ -76,7 +76,7 @@ def initial_results(kb: KnowledgeBase) -> list:
     for eid in _INITIAL_IDS:
         try:
             results.append(analyze(eid, kb))
-        except Exception:
+        except Exception:  # noqa: BLE001 - one bad document must not break the fixture
             pass
     return results
 
@@ -85,7 +85,7 @@ def initial_results(kb: KnowledgeBase) -> list:
 def new_result(kb: KnowledgeBase):
     try:
         return analyze(_NEW_ID, kb)
-    except Exception:
+    except Exception:  # noqa: BLE001 - surface as a skip, not a fixture-wide failure
         pytest.skip(f"Could not analyze {_NEW_ID}")
 
 

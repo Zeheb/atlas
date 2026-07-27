@@ -256,7 +256,9 @@ def profile_build(ticker: str, force: bool) -> None:
         try:
             result = analyze(entry.evidence_id, kb)
             results.append(result)
-        except Exception as exc:
+        except (
+            Exception  # noqa: BLE001 - one bad document must not abort the batch
+        ) as exc:
             click.echo(f"  ! analyze failed for {entry.evidence_id}: {exc}", err=True)
             failed_analyze += 1
 

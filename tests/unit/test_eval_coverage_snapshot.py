@@ -7,6 +7,7 @@ same cases -- one implementation, never two that could silently diverge.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 
 from atlas.benchmark.coverage import analyze_suite
@@ -156,5 +157,5 @@ def test_coverage_snapshot_type_is_a_frozen_dataclass() -> None:
     try:
         snapshot.suite_fingerprint = "x"  # type: ignore[misc]
         assert False, "should have raised"
-    except Exception:
+    except dataclasses.FrozenInstanceError:
         pass

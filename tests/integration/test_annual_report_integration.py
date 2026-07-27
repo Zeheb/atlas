@@ -290,7 +290,9 @@ class TestCrossYearConsistency:
                 continue
             try:
                 r = analyze(eid, kb)
-            except Exception:
+            except (
+                Exception  # noqa: BLE001 - one bad year must not sink the trend check
+            ):
                 continue
             csr = [f for f in r.facts if f.kind == FactKind.ESG_CSR_SPEND]
             if csr:
@@ -321,7 +323,7 @@ class TestCrossYearConsistency:
                 continue
             try:
                 r = analyze(eid, kb)
-            except Exception:
+            except Exception:  # noqa: BLE001 - one bad year must not sink the KAM check
                 continue
             for f in r.facts:
                 if f.kind == FactKind.AUDIT_KAM_TITLE:

@@ -66,7 +66,7 @@ def tcs_profile(kb: KnowledgeBase) -> CompanyProfile:
     for eid in (_ANN_ID, _Q2_ID, _SHP_ID, _CREDIT_ID, _BUYBACK_ID):
         try:
             results.append(analyze(eid, kb))
-        except ValueError, Exception:
+        except Exception:  # noqa: BLE001 - one bad document must not break the fixture
             pass
     return build_profile("TCS", results)
 

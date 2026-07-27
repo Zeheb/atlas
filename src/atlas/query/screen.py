@@ -52,7 +52,7 @@ def discover_companies(repository_base_path: Path) -> dict[str, CompanyProfile]:
         store = CompanyStore(profile_path, child.name)
         try:
             profiles[child.name] = store.load()
-        except Exception:
+        except Exception:  # noqa: BLE001 - skip a bad profile, keep screening the rest
             continue
     return profiles
 
