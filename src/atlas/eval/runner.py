@@ -347,8 +347,8 @@ def _run_case(
     try:
         outcome = runner.run(case)
     except (
-        Exception
-    ) as exc:  # noqa: BLE001 - batch robustness: one case must not abort the suite
+        Exception  # noqa: BLE001 - batch robustness: one case must not abort the suite
+    ) as exc:
         return CaseResult(
             case_id=case.id, category=case.category, status="active", error=str(exc)
         )
@@ -401,8 +401,8 @@ def _run_case(
                 verdict.notes,
             )
         except (
-            Exception
-        ) as exc:  # noqa: BLE001 - a judge failure must not abort the case
+            Exception  # noqa: BLE001 - a judge failure must not abort the case
+        ) as exc:
             notes = f"judge error: {exc}"
 
     return CaseResult(
