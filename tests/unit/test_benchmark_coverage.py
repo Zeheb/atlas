@@ -15,6 +15,7 @@ from atlas.analysis.base import FactKind
 from atlas.benchmark.coverage import (
     _MIN_CASES_PER_SLOT,
     _REDUNDANCY_THRESHOLD,
+    _keywords,
     _normalized_entropy,
     analyze,
     analyze_corpus,
@@ -159,6 +160,37 @@ def test_dissimilar_questions_not_flagged() -> None:
     cases = [
         _Case(id="c1", category="A", question="What are the key risk factors disclosed?"),
         _Case(id="c2", category="A", question="Did management deliver on the growth target?"),
+    ]
+    cov = analyze_suite(cases)
+    assert cov.redundancy.near_duplicate_pairs == ()
+
+
+# M-P0.3 characterization: the keyword-Jaccard detector does NOT catch the
+# benchmark's real Q4/Q34 duplicate. The two are semantically identical
+# ("is there a market-structure reason the price is depressed -- index
+# rebalancing, IPO lock-in, selling overhang") but lexically diverged
+# ("reason"/"reasons", "locking"/"lock", different filler), and the tokenizer
+# deliberately does not stem. Measured Jaccard ~0.47 < 0.80 threshold, so the
+# automated redundancy path scores them apart. This pins that gap: the Q34-vs-Q4
+# dedupe is a MANUAL authoring decision (drop Q34), not something the detector
+# performs. If a future tokenizer/threshold change flips this, the test fails
+# and the manual decision should be revisited.
+_Q4 = "is there any mkt structure reason the price is depressed (index rebalancing, ipo-locking, selling overhang etc)"
+_Q34 = "Any reasons the price is depressed due to mkt dynamics (eg index rebalancing, ipo anchor lock-in, selling overhang)"
+
+
+def test_real_q4_q34_pair_is_below_detector_threshold() -> None:
+    wa, na = _keywords(_Q4)
+    wb, nb = _keywords(_Q34)
+    sa, sb = frozenset(wa | na), frozenset(wb | nb)
+    jaccard = len(sa & sb) / len(sa | sb)
+    assert jaccard < _REDUNDANCY_THRESHOLD  # ~0.47 -- not auto-detectable
+
+
+def test_real_q4_q34_not_flagged_by_analyze_suite() -> None:
+    cases = [
+        _Case(id="q4", category="A", question=_Q4),
+        _Case(id="q34", category="A", question=_Q34),
     ]
     cov = analyze_suite(cases)
     assert cov.redundancy.near_duplicate_pairs == ()

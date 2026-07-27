@@ -134,14 +134,146 @@ from datetime import datetime
 from atlas.analysis.base import (
     AnalysisFact,
     AnalysisResult,
+    EntityMention,
     FactKind,
     FactUnit,
     Provenance,
+    _snip,
 )
 from atlas.analysis.patterns import find_guidance_statements, parse_iso_date
 from atlas.knowledge.base import KnowledgeBase
+from atlas.knowledge.entities import EntityResolver
 
-ANALYZER_VERSION = "2.0"
+ANALYZER_VERSION = "2.3"
+
+# Q&A analyst self-introduction, via the moderator (M-P1.2, Q13). Calibrated to
+# the Chorus-call convention ubiquitous in Indian earnings transcripts:
+#   "...from the line of Ravi Menon \nfrom Macquarie. Please go ahead."
+# Newlines fall on either side of the inner "from", so `\s+` spans them. The
+# name is 1-4 Title-case tokens; the institution runs lazily to the "Please go
+# ahead" anchor, which reliably bounds it.
+_RE_ANALYST_INTRO = re.compile(
+    r"line of\s+"
+    r"([A-Z][A-Za-z.'\-]*(?:\s+[A-Z][A-Za-z.'\-]*){0,3})"
+    r"\s+from\s+"
+    r"([A-Z][A-Za-z0-9.'&\-]*(?:\s+[A-Za-z0-9.'&\-]+){0,4}?)"
+    r"\s*\.\s*Please go ahead",
+)
+
+
+# Cap on the bounded question-turn text (M-P2.8), matching the existing
+# management-commentary excerpt cap (analyze()'s `senior_section[:3000]`) --
+# reusing that precedent's order of magnitude rather than inventing a new one.
+_MAX_QUESTION_CHARS = 3000
+
+
+def _bounded_question_text(content: str, analyst_name: str, search_from: int) -> str | None:
+    """Verbatim text of the analyst's own question turn: from their own
+    speaker tag (``Name:``) to the NEXT speaker tag, using the SAME
+    ``_RE_ANY_SPEAKER`` boundary ``_speaker_section`` already uses for the
+    management turn -- no new segmentation heuristic. Capped at
+    ``_MAX_QUESTION_CHARS`` for an unbounded/malformed transcript. ``None`` if
+    the analyst's own tag is never found (introduced by the moderator but no
+    matching in-dialogue tag in the extracted text), or if the bounded text is
+    empty after trimming.
+    """
+    tag_match = re.compile(re.escape(analyst_name) + r"\s*:", re.MULTILINE).search(content, search_from)
+    if tag_match is None:
+        return None
+    start = tag_match.end()
+    limit = min(start + _MAX_QUESTION_CHARS, len(content))
+    next_speaker = _RE_ANY_SPEAKER.search(content, start, limit)
+    end = next_speaker.start() if next_speaker else limit
+    text = content[start:end].strip()
+    return text or None
+
+
+def _extract_analyst_mentions(content: str, resolver: EntityResolver) -> list[EntityMention]:
+    """Resolve the analysts who asked questions, one EntityMention per distinct
+    analyst (role="analyst", affiliation=their institution, question_text=their
+    bounded question turn). De-duplicated within this transcript by resolved
+    entity id -- the first turn only, matching the existing dedup behavior."""
+    mentions: list[EntityMention] = []
+    seen: set[str] = set()
+    for m in _RE_ANALYST_INTRO.finditer(content):
+        name = re.sub(r"\s+", " ", m.group(1)).strip()
+        affiliation = re.sub(r"\s+", " ", m.group(2)).strip()
+        entity = resolver.resolve(name, "person")
+        if entity.entity_id in seen:
+            continue
+        seen.add(entity.entity_id)
+        question_text = _bounded_question_text(content, name, m.end())
+        mentions.append(EntityMention(
+            entity=entity,
+            role="analyst",
+            affiliation=affiliation,
+            question_text=question_text,
+            provenance=Provenance("qa", m.start(), _snip(content, m.start())),
+        ))
+    return mentions
+
+
+# Management roster (M-P1.5, Q45). Two observed layouts, both bounded to the
+# roster block:
+#   Tata Steel "CORPORATE PARTICIPANTS": "Name, Title - Company" per line.
+#   SBI "MANAGEMENT:": "MR. NAME" line, title on the next line.
+# Under-emit: no roster header -> no management participants (TCS has none).
+_RE_ROSTER_HEADER = re.compile(r"CORPORATE PARTICIPANTS|MANAGEMENT TEAM|MANAGEMENT:")
+_RE_ROSTER_END = re.compile(r"CONFERENCE CALL PARTICIPANTS|\bPARTICIPANTS\b|Moderator")
+# "T V Narendran, CEO & MD - Tata Steel Limited" — name before the comma; the
+# remainder is title (+ company) and is captured for affiliation. Kept
+# dash-independent so a mis-decoded separator does not lose the name.
+_RE_MGMT_COMMA = re.compile(
+    r"^[ \t]*([A-Z][A-Za-z.'\-]*(?:[ \t]+[A-Z][A-Za-z.'\-]*){1,3}),[ \t]*(.+?)[ \t]*$",
+    re.MULTILINE,
+)
+# "MR. DINESH KUMAR KHARA" (may share the "MANAGEMENT:" header line, hence [ \t]*).
+# Intra-line whitespace only ([ \t], never \n) so a name never absorbs the
+# title printed on the following line.
+_RE_MGMT_HONORIFIC = re.compile(
+    r"^[ \t]*(?:MR|MS|MRS|DR)\.?[ \t]+([A-Z][A-Z.'\-]*(?:[ \t]+[A-Z][A-Z.'\-]*){1,3})[ \t]*$",
+    re.MULTILINE,
+)
+# Company sits after the last dash-like separator in the comma-form remainder.
+_RE_ROSTER_SEP = re.compile(r"[–—\-�]")
+
+
+def _extract_management_mentions(content: str, resolver: EntityResolver) -> list[EntityMention]:
+    """Resolve the management team named in the transcript's roster block
+    (role="management"; affiliation=company when the line states it). One
+    EntityMention per distinct person; under-emit where no roster is printed."""
+    h = _RE_ROSTER_HEADER.search(content)
+    if h is None:
+        return []
+    # Include the header line's own tail (SBI prints the first name on it).
+    tail = content[h.start():]
+    end = _RE_ROSTER_END.search(tail, h.end() - h.start())
+    region = tail[: end.start()] if end else tail[:1200]
+
+    mentions: list[EntityMention] = []
+    seen: set[str] = set()
+
+    def _add(raw_name: str, affiliation: str | None, offset: int) -> None:
+        name = re.sub(r"\s+", " ", raw_name).strip().title()
+        entity = resolver.resolve(name, "person")
+        if entity.entity_id in seen:
+            return
+        seen.add(entity.entity_id)
+        mentions.append(EntityMention(
+            entity=entity,
+            role="management",
+            affiliation=affiliation,
+            provenance=Provenance("roster", h.start() + offset, _snip(region, offset)),
+        ))
+
+    for m in _RE_MGMT_COMMA.finditer(region):
+        parts = _RE_ROSTER_SEP.split(m.group(2))
+        company = re.sub(r"\s+", " ", parts[-1]).strip() if len(parts) > 1 else None
+        _add(m.group(1), company or None, m.start())
+    for m in _RE_MGMT_HONORIFIC.finditer(region):
+        _add(m.group(1), None, m.start())
+    return mentions
+
 
 # ---------------------------------------------------------------------------
 # Period detection
@@ -506,6 +638,13 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
         senior_section = _speaker_section(content, senior_tag, qa_start)
         if senior_section:
             result.excerpts["management_commentary"] = senior_section[:3000].strip()
+
+    # Q&A analysts (M-P1.2, Q13) + management roster (M-P1.5, Q45) -> resolved
+    # entity mentions. One per-document resolver; distinct roles ("analyst" /
+    # "management") flow through the existing participant ingest unchanged.
+    _resolver = EntityResolver()
+    result.entities.extend(_extract_analyst_mentions(content, _resolver))
+    result.entities.extend(_extract_management_mentions(content, _resolver))
 
     # ------------------------------------------------------------------
     # 3. Revenue (quarterly always; annual too for Q4/full-year calls)

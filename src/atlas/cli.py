@@ -1,4 +1,5 @@
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -10,6 +11,7 @@ if TYPE_CHECKING:
 from atlas.acquisition.acquisitions import save_acquisition_run
 from atlas.acquisition.connectors.bse import BSEConnector
 from atlas.acquisition.profile import COMPREHENSIVE_PROFILE, DEFAULT_PROFILE
+from atlas.acquisition.query import repository_history_depth
 
 _PROFILES = {
     DEFAULT_PROFILE.name: DEFAULT_PROFILE,
@@ -60,6 +62,54 @@ def build(ticker: str) -> None:
         click.echo(f"Repository '{ticker}' created at {path}")
     except RepositoryAlreadyExistsError as e:
         click.echo(f"Repository '{ticker}' already exists at {e.path}. Nothing to do.")
+
+
+@repository.command()
+@click.argument("ticker")
+@click.option(
+    "--since",
+    "since",
+    default=None,
+    help="Report whether history reaches back to this date (YYYY-MM-DD), "
+    "e.g. --since 2021-03-31 for COVID-era crisis coverage.",
+)
+def depth(ticker: str, since: str | None) -> None:
+    """Report how far back TICKER's acquired evidence reaches."""
+    ticker = ticker.upper()
+    atlas = Atlas.from_environment()
+    repo_root = atlas.settings.repository_base_path / ticker
+    if not (repo_root / "company.json").exists():
+        click.echo(
+            f"No repository for '{ticker}'. Run: atlas repository build {ticker}",
+            err=True,
+        )
+        raise SystemExit(1)
+
+    hd = repository_history_depth(repo_root)
+    click.echo(f"Atlas — History depth for {ticker}\n")
+    if hd.dated_count == 0:
+        click.echo("  No dated evidence in the catalog. Run: atlas acquire " + ticker)
+        return
+
+    click.echo(f"  Entries:   {hd.entry_count}  ({hd.dated_count} dated)")
+    click.echo(f"  Earliest:  {hd.earliest.date().isoformat()}")
+    click.echo(f"  Latest:    {hd.latest.date().isoformat()}")
+    if hd.span_years is not None:
+        click.echo(f"  Span:      {hd.span_years} years")
+
+    if since is not None:
+        try:
+            cutoff = datetime.fromisoformat(since)
+        except ValueError:
+            click.echo(f"\nInvalid --since date {since!r} (expected YYYY-MM-DD).", err=True)
+            raise SystemExit(1)
+        verdict = "yes" if hd.reaches(cutoff) else "no"
+        click.echo(f"\n  Reaches {since}: {verdict}")
+
+    if hd.earliest_by_kind:
+        click.echo("\n  Earliest by kind:")
+        for kind in sorted(hd.earliest_by_kind):
+            click.echo(f"    {kind:<28} {hd.earliest_by_kind[kind].date().isoformat()}")
 
 
 @cli.command()
@@ -983,6 +1033,67 @@ def memory_show_cmd(view_id: str) -> None:
         return
     click.echo(f"No remembered view with id {view_id!r}.", err=True)
     raise SystemExit(1)
+
+
+def _find_thesis(base: Path, view_id: str):
+    for subject, thesis in _iter_theses(base):
+        if thesis.view_id == view_id:
+            return subject, thesis
+    return None, None
+
+
+@memory_group.command("diff")
+@click.argument("view_id_a")
+@click.argument("view_id_b")
+def memory_diff_cmd(view_id_a: str, view_id_b: str) -> None:
+    """Compare two remembered views of the SAME question (M-P2.7).
+
+    VIEW_ID_A is treated as the older side, VIEW_ID_B as the newer side --
+    added/removed are directional to that argument order.
+    """
+    from atlas.research.thesis_diff import diff_theses
+
+    atlas = Atlas.from_environment()
+    base = atlas.settings.repository_base_path
+
+    _, older = _find_thesis(base, view_id_a)
+    if older is None:
+        click.echo(f"No remembered view with id {view_id_a!r}.", err=True)
+        raise SystemExit(1)
+    _, newer = _find_thesis(base, view_id_b)
+    if newer is None:
+        click.echo(f"No remembered view with id {view_id_b!r}.", err=True)
+        raise SystemExit(1)
+
+    diff = diff_theses(older, newer)
+    if diff is None:
+        click.echo(
+            "Cannot compare -- these views answer different questions:\n"
+            f"  {view_id_a}: {older.question}\n"
+            f"  {view_id_b}: {newer.question}",
+            err=True,
+        )
+        raise SystemExit(1)
+
+    click.echo(f"Question: {diff.question}")
+    click.echo(f"  {diff.older_view_id}  ({diff.older_as_of})  overall_confidence={diff.older_overall_confidence}")
+    click.echo(f"  {diff.newer_view_id}  ({diff.newer_as_of})  overall_confidence={diff.newer_overall_confidence}\n")
+
+    if diff.added:
+        click.echo("Added:")
+        for s in diff.added:
+            click.echo(f"  + {s}")
+    if diff.removed:
+        click.echo("Removed:")
+        for s in diff.removed:
+            click.echo(f"  - {s}")
+    if diff.changed:
+        click.echo("Changed confidence:")
+        for c in diff.changed:
+            click.echo(f"  ~ {c.statement}")
+            click.echo(f"      {c.older_confidence} -> {c.newer_confidence}")
+    if not diff.added and not diff.removed and not diff.changed:
+        click.echo(f"No differences ({diff.unchanged_count} finding(s) unchanged).")
 
 
 @memory_group.command("check")

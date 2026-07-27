@@ -413,3 +413,80 @@ class TestQueryEvidenceSorting:
         _populate(tmp_path, list(reversed(entries)))
         result = query_evidence(tmp_path)
         assert [e.evidence_id for e in result] == [f"bse-q-e{i}" for i in range(5)]
+
+
+# ---------------------------------------------------------------------------
+# history_depth (M-P0.2) -- per-company corpus depth, the measurement the
+# backfill is run against (Q33).
+# ---------------------------------------------------------------------------
+from atlas.acquisition.query import HistoryDepth, history_depth, repository_history_depth
+
+
+class TestHistoryDepth:
+    def test_empty_catalog_is_zero_depth(self) -> None:
+        hd = history_depth([])
+        assert hd.entry_count == 0 and hd.dated_count == 0
+        assert hd.earliest is None and hd.latest is None
+        assert hd.span_days is None and hd.span_years is None
+
+    def test_earliest_latest_and_span(self) -> None:
+        entries = [
+            _make_entry("bse-a", source_date=datetime(2021, 3, 31, tzinfo=timezone.utc)),
+            _make_entry("bse-b", source_date=datetime(2026, 3, 31, tzinfo=timezone.utc)),
+            _make_entry("bse-c", source_date=datetime(2023, 6, 1, tzinfo=timezone.utc)),
+        ]
+        hd = history_depth(entries)
+        assert hd.entry_count == 3 and hd.dated_count == 3
+        assert hd.earliest == datetime(2021, 3, 31, tzinfo=timezone.utc)
+        assert hd.latest == datetime(2026, 3, 31, tzinfo=timezone.utc)
+        assert hd.span_years == 5.0
+
+    def test_reaches_cutoff(self) -> None:
+        hd = history_depth([
+            _make_entry("bse-old", source_date=datetime(2020, 6, 1, tzinfo=timezone.utc)),
+        ])
+        assert hd.reaches(datetime(2021, 3, 31, tzinfo=timezone.utc)) is True
+        assert hd.reaches(datetime(2019, 1, 1, tzinfo=timezone.utc)) is False
+
+    def test_reaches_tolerates_naive_cutoff(self) -> None:
+        hd = history_depth([
+            _make_entry("bse-old", source_date=datetime(2020, 6, 1, tzinfo=timezone.utc)),
+        ])
+        # naive cutoff must not raise on aware/naive comparison
+        assert hd.reaches(datetime(2021, 3, 31)) is True
+
+    def test_earliest_by_kind(self) -> None:
+        entries = [
+            _make_entry("bse-ar1", kind=EvidenceKind.ANNUAL_REPORT,
+                        source_date=datetime(2022, 1, 1, tzinfo=timezone.utc)),
+            _make_entry("bse-ar2", kind=EvidenceKind.ANNUAL_REPORT,
+                        source_date=datetime(2020, 1, 1, tzinfo=timezone.utc)),
+            _make_entry("bse-fr1", kind=EvidenceKind.FINANCIAL_RESULTS,
+                        source_date=datetime(2024, 1, 1, tzinfo=timezone.utc)),
+        ]
+        hd = history_depth(entries)
+        assert hd.earliest_by_kind[EvidenceKind.ANNUAL_REPORT.value] == \
+            datetime(2020, 1, 1, tzinfo=timezone.utc)
+        assert hd.earliest_by_kind[EvidenceKind.FINANCIAL_RESULTS.value] == \
+            datetime(2024, 1, 1, tzinfo=timezone.utc)
+
+    def test_undated_entry_counted_but_excluded_from_date_math(self) -> None:
+        good = _make_entry("bse-ok", source_date=datetime(2023, 1, 1, tzinfo=timezone.utc))
+        bad = _make_entry("bse-bad")
+        bad.source_date = "not-a-date"
+        hd = history_depth([good, bad])
+        assert hd.entry_count == 2 and hd.dated_count == 1
+        assert hd.earliest == datetime(2023, 1, 1, tzinfo=timezone.utc)
+
+    def test_repository_history_depth_missing_catalog_is_empty(self, tmp_path: Path) -> None:
+        hd = repository_history_depth(tmp_path)
+        assert isinstance(hd, HistoryDepth)
+        assert hd.entry_count == 0
+
+    def test_repository_history_depth_reads_catalog(self, tmp_path: Path) -> None:
+        _populate(tmp_path, [
+            _make_entry("bse-x", source_date=datetime(2021, 1, 1, tzinfo=timezone.utc)),
+        ])
+        hd = repository_history_depth(tmp_path)
+        assert hd.dated_count == 1
+        assert hd.earliest == datetime(2021, 1, 1, tzinfo=timezone.utc)

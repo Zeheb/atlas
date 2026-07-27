@@ -1,3 +1,4 @@
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Collection
@@ -91,3 +92,82 @@ def _parse_date(date_str: str) -> datetime | None:
         return datetime.fromisoformat(date_str)
     except (ValueError, TypeError):
         return None
+
+
+def _as_utc(dt: datetime) -> datetime:
+    """Make a datetime timezone-aware (UTC) so mixed aware/naive catalog dates
+    can be compared without raising. Naive dates are assumed UTC."""
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+
+
+@dataclass(frozen=True)
+class HistoryDepth:
+    """How far back a company's acquired evidence reaches — the measurement
+    the M-P0.2 backfill is run against (Q33: "how did it manage a previous
+    crisis, e.g. COVID"). Computed purely from catalog source dates; carries no
+    judgment about whether the depth is sufficient — that is the caller's
+    thesis-specific question, answered via ``reaches()``.
+    """
+
+    entry_count: int              # total catalog entries considered
+    dated_count: int              # entries with a parseable source_date
+    earliest: datetime | None     # oldest source_date (UTC), None if none dated
+    latest: datetime | None       # newest source_date (UTC)
+    earliest_by_kind: dict[str, datetime] = field(default_factory=dict)
+
+    @property
+    def span_days(self) -> int | None:
+        if self.earliest is None or self.latest is None:
+            return None
+        return (self.latest - self.earliest).days
+
+    @property
+    def span_years(self) -> float | None:
+        d = self.span_days
+        return None if d is None else round(d / 365.25, 2)
+
+    def reaches(self, cutoff: datetime) -> bool:
+        """True when the catalog holds at least one document dated on or before
+        *cutoff* — i.e. history reaches back that far."""
+        return self.earliest is not None and self.earliest <= _as_utc(cutoff)
+
+
+def history_depth(entries: Collection[CatalogEntry]) -> HistoryDepth:
+    """Compute the per-company history depth from catalog entries.
+
+    Entries with an unparseable source_date are counted in ``entry_count`` but
+    excluded from date math (mirroring ``filter_entries``'s treatment of
+    undated entries under a date filter).
+    """
+    earliest: datetime | None = None
+    latest: datetime | None = None
+    by_kind: dict[str, datetime] = {}
+    dated = 0
+
+    for entry in entries:
+        raw = _parse_date(entry.source_date)
+        if raw is None:
+            continue
+        dt = _as_utc(raw)
+        dated += 1
+        if earliest is None or dt < earliest:
+            earliest = dt
+        if latest is None or dt > latest:
+            latest = dt
+        prev = by_kind.get(entry.kind)
+        if prev is None or dt < prev:
+            by_kind[entry.kind] = dt
+
+    return HistoryDepth(
+        entry_count=len(entries),
+        dated_count=dated,
+        earliest=earliest,
+        latest=latest,
+        earliest_by_kind=by_kind,
+    )
+
+
+def repository_history_depth(repo_root: Path) -> HistoryDepth:
+    """Load a repository catalog and report its history depth. A missing
+    catalog.json yields an empty HistoryDepth (entry_count == 0)."""
+    return history_depth(RepositoryCatalog(repo_root).all_entries())

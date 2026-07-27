@@ -23,6 +23,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Literal
 
+from atlas.knowledge.entities import Entity
+
 
 class FactKind(enum.Enum):
     """All extractable fact types across all evidence kinds.
@@ -159,6 +161,13 @@ class FactKind(enum.Enum):
     FINANCIAL_CASH_AND_EQUIVALENTS = "financial_cash_and_equivalents"  # GAAP cash and cash equivalents; unit=CRORE_INR
     FINANCIAL_TOTAL_DEBT           = "financial_total_debt"            # total borrowings; unit=CRORE_INR; absent for debt-free companies
     FINANCIAL_TOTAL_EQUITY         = "financial_total_equity"          # equity attributable to parent shareholders (excl. NCI); unit=CRORE_INR
+    # Working-capital items (M-P3.1, ADR-0012). Current-assets/liabilities
+    # only; unit=CRORE_INR. Absence = not extracted, not zero (same
+    # convention as every other balance-sheet fact above).
+    FINANCIAL_INVENTORIES          = "financial_inventories"           # current-assets Inventories line
+    FINANCIAL_TRADE_RECEIVABLES    = "financial_trade_receivables"     # billed/invoiced trade receivables only (the sub-line, when a Billed/Unbilled split is disclosed; the single reported figure otherwise) — never includes FINANCIAL_UNBILLED_REVENUE, kept additive/non-overlapping
+    FINANCIAL_TRADE_PAYABLES       = "financial_trade_payables"        # sum of MSME + non-MSME outstanding-dues sub-lines (Schedule III mandatory split)
+    FINANCIAL_UNBILLED_REVENUE     = "financial_unbilled_revenue"      # contract-asset / unbilled revenue; disclosed separately from trade receivables where a Billed/Unbilled split exists (IT-services specific — will not fire for most companies, same class as FINANCIAL_TCV)
 
     # Cash flow statement items (annual financial results only; period = fiscal year end)
     FINANCIAL_OPERATING_CASH_FLOW = "financial_operating_cash_flow"   # net cash from operating activities; unit=CRORE_INR
@@ -246,6 +255,43 @@ class Provenance:
     excerpt: str | None = None
 
 
+@dataclass(frozen=True)
+class EntityMention:
+    """A resolved entity as it appeared in one document, with the context
+    observed at that mention (ADR-0014, M-P1.2).
+
+    Composes a knowledge-layer ``Entity`` (identity only — ADR-0013) with the
+    analysis-context attributes that are NOT part of identity: the ``role`` the
+    entity played here, the ``affiliation`` stated here, and the ``provenance``
+    of the mention. Per ADR-0009 these attributes live on this wrapper, never on
+    the shared ``Entity``. This is the payload of ``AnalysisResult.entities`` —
+    the envelope's third output category, beside ``facts`` and ``excerpts``.
+
+    entity:      The resolved identity (kind, canonical_name, aliases).
+    role:        Role in this appearance ("analyst", "CFO", ...). None if unknown.
+    affiliation: Organization stated for the entity here (an analyst's
+                 institution). Free text in M-P1.2; org-entity resolution later.
+    identifier:  A structured EXTERNAL identifier for the entity as stated here
+                 (M-P1.4) — e.g. a director's DIN. Distinct from an alias (a
+                 name variant) and from affiliation/role: it participates in
+                 identity but is not a name. Optional; None for every mention
+                 that carries no such identifier.
+    question_text: The bounded verbatim text of the analyst's question turn
+                 (M-P2.8), when this mention is an analyst's Q&A appearance.
+                 A transport field only, carrying the builder its one required
+                 value for that one case — not a general "quote" concept for
+                 arbitrary attributed speech; None for every other mention.
+    provenance:  Where in the document the mention was found.
+    """
+
+    entity: Entity
+    role: str | None = None
+    affiliation: str | None = None
+    identifier: str | None = None
+    question_text: str | None = None
+    provenance: Provenance | None = None
+
+
 @dataclass
 class AnalysisFact:
     """A single extracted fact from one evidence document.
@@ -317,6 +363,11 @@ class AnalysisResult:
     warnings: list[str] = field(default_factory=list)
     facts: list[AnalysisFact] = field(default_factory=list)
     excerpts: dict[str, str] = field(default_factory=dict)
+    # ADR-0014 (M-P1.2): resolved entities surfaced by this analyzer — the
+    # envelope's third output category, beside facts and excerpts. Empty for
+    # every analyzer that does not emit entities; never serialized (AnalysisResult
+    # is transient — CompanyStore persists only a provenance stub).
+    entities: list["EntityMention"] = field(default_factory=list)
 
 
 def _snip(text: str, offset: int = 0, length: int = 120) -> str:

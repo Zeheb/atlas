@@ -79,6 +79,20 @@ class TestGetMetric:
         assert spec.derive_fn is not None
         assert spec.fact_kind is None
 
+    def test_cost_of_debt_registered(self) -> None:
+        # M-P0.1: named derived metric so Q40 is answered by computation, not
+        # inference.
+        spec = metrics.get_metric("cost_of_debt")
+        assert spec.derive_fn is not None and spec.fact_kind is None
+        assert spec.unit == FactUnit.PERCENT
+        assert spec.higher_is_better is False
+
+    def test_interest_coverage_registered(self) -> None:
+        spec = metrics.get_metric("interest_coverage")
+        assert spec.derive_fn is not None and spec.fact_kind is None
+        assert spec.unit is None  # a ratio in 'times', not a percentage
+        assert spec.higher_is_better is True
+
 
 class TestMetricsByDomain:
     def test_partitions_all_metrics(self) -> None:

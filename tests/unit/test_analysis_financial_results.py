@@ -1514,12 +1514,15 @@ Property, plant and equipment
 8,200
 
 Current assets
-Cash and cash equivalents
-6,417
-8,342
+Inventories
+1,200
+1,050
 Trade receivables
 24,000
 22,000
+Cash and cash equivalents
+6,417
+8,342
 
 EQUITY AND LIABILITIES
 Equity attributable to shareholders of the Company
@@ -1789,6 +1792,218 @@ class TestDeferredBalanceSheetLayout:
         debt = [f for f in facts if f.kind == FactKind.FINANCIAL_TOTAL_DEBT]
         assert len(debt) == 1
         assert debt[0].value == pytest.approx(88963.81)
+
+
+# ---------------------------------------------------------------------------
+# Working-capital items: Inventories, Trade receivables, Trade payables,
+# Unbilled revenue (M-P3.1, ADR-0012)
+# ---------------------------------------------------------------------------
+
+
+class TestDirectLayoutWorkingCapital:
+    """_BS_TEXT (direct/TCS-style, no Billed/Unbilled split, no payables)."""
+
+    def test_extracts_inventories(self) -> None:
+        facts = _extract_balance_sheet_facts(_BS_TEXT, "2026-03-31")
+        inv = [f for f in facts if f.kind == FactKind.FINANCIAL_INVENTORIES]
+        assert len(inv) == 1
+        assert inv[0].value == pytest.approx(1200.0)
+
+    def test_extracts_trade_receivables_single_value(self) -> None:
+        facts = _extract_balance_sheet_facts(_BS_TEXT, "2026-03-31")
+        tr = [f for f in facts if f.kind == FactKind.FINANCIAL_TRADE_RECEIVABLES]
+        assert len(tr) == 1
+        assert tr[0].value == pytest.approx(24000.0)
+
+    def test_no_unbilled_when_no_split_disclosed(self) -> None:
+        facts = _extract_balance_sheet_facts(_BS_TEXT, "2026-03-31")
+        assert [f for f in facts if f.kind == FactKind.FINANCIAL_UNBILLED_REVENUE] == []
+
+    def test_no_payables_when_not_disclosed(self) -> None:
+        facts = _extract_balance_sheet_facts(_BS_TEXT, "2026-03-31")
+        assert [f for f in facts if f.kind == FactKind.FINANCIAL_TRADE_PAYABLES] == []
+
+
+# Modeled directly on real TCS financial_results text (verified against the
+# live corpus): a non-current Trade receivables/Billed/Unbilled block for
+# long-duration contracts appears BEFORE the current-assets one -- this
+# fixture exercises the double-occurrence trap the anchor-to-Cash logic must
+# resolve correctly. Trade payables modeled on the real Tata Steel MSME/
+# non-MSME wording, also verified against the live corpus.
+_BS_DIRECT_BILLED_UNBILLED = """\
+
+ASSETS
+Non-current assets
+Other financial assets
+Investments
+289
+281
+Trade receivables
+Billed
+86
+127
+Unbilled
+62
+16
+Loans
+2
+2
+
+Current assets
+Inventories
+29
+28
+Financial assets
+Investments
+35,792
+31,481
+Trade receivables
+Billed
+49,532
+44,434
+Unbilled
+8,178
+9,143
+Cash and cash equivalents
+8,142
+7,300
+
+EQUITY AND LIABILITIES
+Equity attributable to shareholders of the Company
+50,000
+45,000
+
+Current liabilities
+Financial liabilities
+Borrowings
+1,500
+1,200
+Trade payables
+Total outstanding dues of micro and small enterprises
+7,857.27
+118.62
+Total outstanding dues of creditors other than micro and small enterprises
+10,482.34
+9,800.00
+
+CASH FLOWS FROM OPERATING ACTIVITIES
+"""
+
+
+class TestBilledUnbilledDoubleOccurrence:
+    def test_trade_receivables_selects_current_assets_not_non_current(self) -> None:
+        # Non-current block has Billed=86; current-assets block has
+        # Billed=49,532. Must select the current-assets one.
+        facts = _extract_balance_sheet_facts(_BS_DIRECT_BILLED_UNBILLED, "2026-03-31")
+        tr = [f for f in facts if f.kind == FactKind.FINANCIAL_TRADE_RECEIVABLES]
+        assert len(tr) == 1
+        assert tr[0].value == pytest.approx(49532.0)
+
+    def test_unbilled_selects_current_assets_not_non_current(self) -> None:
+        # Non-current Unbilled=62; current-assets Unbilled=8,178.
+        facts = _extract_balance_sheet_facts(_BS_DIRECT_BILLED_UNBILLED, "2026-03-31")
+        ub = [f for f in facts if f.kind == FactKind.FINANCIAL_UNBILLED_REVENUE]
+        assert len(ub) == 1
+        assert ub[0].value == pytest.approx(8178.0)
+
+    def test_receivables_and_unbilled_do_not_overlap(self) -> None:
+        # Billed (49,532) and Unbilled (8,178) are additive, distinct facts --
+        # never summed together into FINANCIAL_TRADE_RECEIVABLES.
+        facts = _extract_balance_sheet_facts(_BS_DIRECT_BILLED_UNBILLED, "2026-03-31")
+        tr = [f for f in facts if f.kind == FactKind.FINANCIAL_TRADE_RECEIVABLES][0]
+        ub = [f for f in facts if f.kind == FactKind.FINANCIAL_UNBILLED_REVENUE][0]
+        assert tr.value != pytest.approx(tr.value + ub.value)
+        assert tr.value == pytest.approx(49532.0)
+        assert ub.value == pytest.approx(8178.0)
+
+    def test_inventories_unaffected_by_double_occurrence(self) -> None:
+        facts = _extract_balance_sheet_facts(_BS_DIRECT_BILLED_UNBILLED, "2026-03-31")
+        inv = [f for f in facts if f.kind == FactKind.FINANCIAL_INVENTORIES]
+        assert len(inv) == 1
+        assert inv[0].value == pytest.approx(29.0)
+
+    def test_debt_and_payables_are_distinct_values(self) -> None:
+        # Regression: Borrowings must not accidentally capture the Trade
+        # Payables MSME sub-line's numbers.
+        facts = _extract_balance_sheet_facts(_BS_DIRECT_BILLED_UNBILLED, "2026-03-31")
+        debt = [f for f in facts if f.kind == FactKind.FINANCIAL_TOTAL_DEBT][0]
+        payables = [f for f in facts if f.kind == FactKind.FINANCIAL_TRADE_PAYABLES][0]
+        assert debt.value == pytest.approx(1500.0)
+        assert payables.value == pytest.approx(18339.61)
+        assert debt.value != pytest.approx(payables.value)
+
+
+class TestTradePayablesSummation:
+    def test_sums_msme_and_non_msme(self) -> None:
+        # 7,857.27 + 10,482.34 = 18,339.61
+        facts = _extract_balance_sheet_facts(_BS_DIRECT_BILLED_UNBILLED, "2026-03-31")
+        payables = [f for f in facts if f.kind == FactKind.FINANCIAL_TRADE_PAYABLES]
+        assert len(payables) == 1
+        assert payables[0].value == pytest.approx(18339.61)
+
+    def test_no_fact_when_only_one_sub_line_present(self) -> None:
+        # Under-emit: a partial sum would misstate the total.
+        text = _BS_DIRECT_BILLED_UNBILLED.replace(
+            "Total outstanding dues of creditors other than micro and small "
+            "enterprises\n10,482.34\n9,800.00\n",
+            "",
+        )
+        facts = _extract_balance_sheet_facts(text, "2026-03-31")
+        assert [f for f in facts if f.kind == FactKind.FINANCIAL_TRADE_PAYABLES] == []
+
+
+class TestDeferredLayoutWorkingCapital:
+    """_BS_DEFERRED (Tata Steel style): Inventories and Trade receivables are
+    already-computed byproducts of the Cash extraction's positional vals[]."""
+
+    def test_extracts_inventories_from_shared_vals(self) -> None:
+        facts = _extract_balance_sheet_facts(_BS_DEFERRED, "2025-03-31")
+        inv = [f for f in facts if f.kind == FactKind.FINANCIAL_INVENTORIES]
+        assert len(inv) == 1
+        assert inv[0].value == pytest.approx(44589.94)
+
+    def test_extracts_trade_receivables_from_shared_vals(self) -> None:
+        facts = _extract_balance_sheet_facts(_BS_DEFERRED, "2025-03-31")
+        tr = [f for f in facts if f.kind == FactKind.FINANCIAL_TRADE_RECEIVABLES]
+        assert len(tr) == 1
+        assert tr[0].value == pytest.approx(5260.06)
+
+    def test_no_unbilled_in_deferred_layout(self) -> None:
+        # No verified filing discloses a Billed/Unbilled split in this layout.
+        facts = _extract_balance_sheet_facts(_BS_DEFERRED, "2025-03-31")
+        assert [f for f in facts if f.kind == FactKind.FINANCIAL_UNBILLED_REVENUE] == []
+
+
+class TestWorkingCapitalPlausibilityFloor:
+    def test_zero_value_dropped_not_emitted(self) -> None:
+        text = _BS_TEXT.replace("Inventories\n1,200\n1,050", "Inventories\n0\n0")
+        facts = _extract_balance_sheet_facts(text, "2026-03-31")
+        assert [f for f in facts if f.kind == FactKind.FINANCIAL_INVENTORIES] == []
+
+    def test_negative_value_dropped_not_emitted(self) -> None:
+        text = _BS_TEXT.replace("Inventories\n1,200\n1,050", "Inventories\n(1,200)\n1,050")
+        facts = _extract_balance_sheet_facts(text, "2026-03-31")
+        assert [f for f in facts if f.kind == FactKind.FINANCIAL_INVENTORIES] == []
+
+    def test_positive_value_retained(self) -> None:
+        facts = _extract_balance_sheet_facts(_BS_TEXT, "2026-03-31")
+        assert [f for f in facts if f.kind == FactKind.FINANCIAL_INVENTORIES][0].value > 0
+
+
+class TestWorkingCapitalProvenanceAndPeriod:
+    def test_new_facts_carry_balance_sheet_section(self) -> None:
+        facts = _extract_balance_sheet_facts(_BS_DIRECT_BILLED_UNBILLED, "2026-03-31")
+        new_kinds = {
+            FactKind.FINANCIAL_INVENTORIES, FactKind.FINANCIAL_TRADE_RECEIVABLES,
+            FactKind.FINANCIAL_TRADE_PAYABLES, FactKind.FINANCIAL_UNBILLED_REVENUE,
+        }
+        for f in facts:
+            if f.kind in new_kinds:
+                assert f.provenance.section == "balance_sheet"
+
+    def test_new_facts_carry_period(self) -> None:
+        facts = _extract_balance_sheet_facts(_BS_DIRECT_BILLED_UNBILLED, "2026-03-31")
+        assert all(f.period == "2026-03-31" for f in facts)
 
 
 # ---------------------------------------------------------------------------

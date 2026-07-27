@@ -112,3 +112,44 @@ def employee_cost_pct(snap: FinancialSnapshot) -> float | None:
     if emp is None or not rev:
         return None
     return emp / rev * 100
+
+
+def cost_of_debt(snap: FinancialSnapshot, prior_debt: float | None = None) -> float | None:
+    """Finance cost as a percentage of debt — the effective borrowing rate.
+
+    Average-debt convention: when the prior period's total debt is supplied
+    (``prior_debt``), the denominator is the average of opening and closing
+    debt, which is the correct base for a period *flow* (finance cost) divided
+    by a period-end *stock* (debt). With no prior period available — the common
+    case in this stateless single-snapshot module, and how the query registry
+    calls it — the denominator falls back to period-end debt.
+
+    Returns None when finance cost or debt is absent, or when the debt base is
+    zero (an effectively debt-free company has no meaningful cost of debt, and
+    the ratio would divide by zero).
+
+    Most meaningful on annual snapshots, where finance cost is a full-year flow.
+    """
+    fin = snap.facts.get(FactKind.FINANCIAL_FINANCE_COST)
+    debt = snap.facts.get(FactKind.FINANCIAL_TOTAL_DEBT)
+    if fin is None or debt is None:
+        return None
+    base = (debt + prior_debt) / 2 if prior_debt is not None else debt
+    if not base:
+        return None
+    return fin / base * 100
+
+
+def interest_coverage(snap: FinancialSnapshot) -> float | None:
+    """EBIT divided by finance cost — how many times operating profit covers
+    interest (a ratio in 'times', not a percentage).
+
+    Higher is safer. Returns None when EBIT is not derivable or finance cost is
+    absent or zero (a company with no interest expense has no finite coverage
+    ratio, which None reports honestly rather than as a fabricated infinity).
+    """
+    e = ebit(snap)
+    fin = snap.facts.get(FactKind.FINANCIAL_FINANCE_COST)
+    if e is None or not fin:
+        return None
+    return e / fin

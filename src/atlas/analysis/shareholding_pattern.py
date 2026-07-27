@@ -42,13 +42,81 @@ from typing import Literal
 from atlas.analysis.base import (
     AnalysisFact,
     AnalysisResult,
+    EntityMention,
     FactKind,
     FactUnit,
     Provenance,
 )
 from atlas.knowledge.base import KnowledgeBase
+from atlas.knowledge.entities import EntityKind, EntityResolver
 
-ANALYZER_VERSION = "1.0"
+ANALYZER_VERSION = "1.1"
+
+# Named-shareholder emission (M-P1.3, Q24). The XBRL names every shareholder
+# holding >1%, in per-holder detail contexts "D_<Axis>_Context<N>". Only the
+# UNAMBIGUOUSLY PUBLIC axes are emitted; the promoter table and any axis whose
+# ownership class is not certain (notably "OthersIndianShareholders", which
+# carries promoter-group entities) are excluded. EntityKind is decided from the
+# XBRL ownership category ONLY — never from the holder's name. Under-emit rather
+# than misattribute (Phase 1 resolver philosophy).
+_TAG_HOLDER_NAME = "NameOfTheShareholder"
+
+
+def _public_holder_class(axis: str) -> tuple[str, EntityKind] | None:
+    """Map an ownership-category axis to (category, EntityKind), or None to skip.
+
+    None means "not an emittable public holder" — either explicitly excluded
+    (promoter / OthersIndianShareholders) or an unrecognised axis, both of which
+    are skipped rather than guessed.
+    """
+    if "Promoter" in axis or axis == "OthersIndianShareholders":
+        return None
+    if "MutualFund" in axis:
+        return ("mutual_fund", "organization")
+    if "InsuranceCompanies" in axis:
+        return ("insurance", "organization")
+    if "ForeignPortfolio" in axis:
+        return ("fpi", "organization")
+    if axis == "OtherInstitutions":
+        return ("other_institution", "organization")
+    if axis == "OtherNonInstitutions":
+        return ("other_non_institution", "organization")
+    if "Individual" in axis and "InExcessOfRsTwoLakh" in axis:
+        return ("individual_hni", "person")
+    return None
+
+
+def _axis_of(context_id: str) -> str:
+    """Strip the "D_" prefix and "_Context<N>" suffix from a detail context."""
+    a = re.sub(r"^D_", "", context_id)
+    return re.sub(r"_Context\d+$", "", a)
+
+
+def _extract_named_public_holders(
+    fmap: dict[tuple[str, str], str], resolver: EntityResolver
+) -> list[EntityMention]:
+    """Resolve named >1% PUBLIC shareholders to entity mentions (role = the
+    ownership category). De-duplicated within this filing by entity id."""
+    mentions: list[EntityMention] = []
+    seen: set[str] = set()
+    for (tag, ctx), value in fmap.items():
+        if tag != _TAG_HOLDER_NAME or not value.strip():
+            continue
+        cls = _public_holder_class(_axis_of(ctx))
+        if cls is None:
+            continue
+        category, kind = cls
+        entity = resolver.resolve(value, kind)
+        if entity.entity_id in seen:
+            continue
+        seen.add(entity.entity_id)
+        mentions.append(EntityMention(
+            entity=entity,
+            role=category,
+            affiliation=None,
+            provenance=Provenance(section=ctx, char_offset=None, excerpt=value.strip()[:120]),
+        ))
+    return mentions
 
 # ---------------------------------------------------------------------------
 # XBRL context IDs for the categories we extract
@@ -319,6 +387,11 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
         result.confidence = "high"
     elif FactKind.OWNERSHIP_TOTAL_SHARES in extracted_kinds and FactKind.OWNERSHIP_PROMOTER_PCT in extracted_kinds:
         result.confidence = "medium"
+
+    # Named >1% public shareholders -> resolved entity mentions (M-P1.3, Q24).
+    # Per-document resolver, like the transcript path; cross-filing unification
+    # is a later refinement.
+    result.entities.extend(_extract_named_public_holders(fmap, EntityResolver()))
 
     return result
 

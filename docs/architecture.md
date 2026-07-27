@@ -313,6 +313,10 @@ CompanyProfile
 | [0008](adr/0008-thesis-generation.md) | Thesis generation: synthesis as a reasoning pass, the completeness gate |
 | [0009](adr/0009-orthogonal-concerns.md) | Orthogonal concerns: contracts stay consumer-agnostic |
 | [0010](adr/0010-reasoning-memory.md) | C6 reasoning memory: `RecalledView`, `ThesisStore`, staleness, `atlas ask --thesis` |
+| [0011](adr/0011-capability-taxonomy-provenance-tiers.md) | Capability taxonomy (`AtlasCapability`, second benchmark axis) and evidence provenance tiers |
+| [0012](adr/0012-working-capital-ontology-exception.md) | FactKind ontology freeze formalized; narrow exception for working-capital FactKinds (Inventories, Trade Receivables, Trade Payables, Unbilled Revenue) |
+| [0013](adr/0013-entity-model.md) | Person/Org entity model and conservative deterministic resolution (`knowledge/entities/`) |
+| [0014](adr/0014-analysisresult-entity-channel.md) | `AnalysisResult.entities` channel (`EntityMention`) — how analyzers surface resolved entities |
 
 New decisions go in `docs/adr/` using [the template](adr/0000-adr-template.md).
 This document is updated to describe the resulting system; it does not record

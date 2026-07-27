@@ -43,6 +43,7 @@ def test_original_44_cases_have_no_benchmark_fields() -> None:
         assert c.difficulty is None
         assert c.provenance is None
         assert c.retrieval_label is None
+        assert c.capabilities == ()
 
 
 def test_expanded_suite_has_cases_with_benchmark_fields_populated() -> None:
@@ -123,3 +124,43 @@ def test_every_declared_scenario_is_accepted(scenario: str) -> None:
 @pytest.mark.parametrize("difficulty", ["routine", "difficult"])
 def test_every_declared_difficulty_is_accepted(difficulty: str) -> None:
     _case(_base(difficulty=difficulty))  # must not raise
+
+
+# --- capabilities field (M-E.3, ADR-0011) -------------------------------------------
+def test_case_without_capabilities_parses_to_empty_tuple() -> None:
+    assert _case(_base()).capabilities == ()
+
+
+def test_case_with_capabilities_parses_and_coerces_to_tuple() -> None:
+    c = _case(_base(capabilities=["struct.typed_fact", "reason.derived_metric"]))
+    assert c.capabilities == ("struct.typed_fact", "reason.derived_metric")
+
+
+def test_invalid_capability_rejected() -> None:
+    with pytest.raises(ValueError):
+        _case(_base(capabilities=["struct.not_a_real_capability"]))
+
+
+def test_construct_directly_with_invalid_capability_rejected() -> None:
+    with pytest.raises(ValueError):
+        EvalCase(
+            id="x", category="A", question="q", subject="TCS",
+            expected_behavior="answer", rubric="r",
+            capabilities=("bogus.capability",),
+        )
+
+
+def test_capabilities_is_a_separate_axis_from_requires() -> None:
+    # requires holds CAP_* milestone gates; capabilities holds AtlasCapability
+    # ids. A milestone gate id is NOT a valid capability, which is the sharpest
+    # proof the two axes are kept distinct (ADR-0011).
+    from atlas.eval.cases import CAP_SINGLE_NAME
+    with pytest.raises(ValueError):
+        _case(_base(capabilities=[CAP_SINGLE_NAME]))
+
+
+def test_no_bundled_case_carries_capabilities_yet() -> None:
+    # Matrix §9: authoring the 45 questions as cases is deferred -- M-E.3 ships
+    # the field only. If this ever fails, the deferral was crossed and the
+    # authoring milestone (not M-E.3) should own it.
+    assert all(c.capabilities == () for c in load_cases())

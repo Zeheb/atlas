@@ -340,6 +340,95 @@ class GovernanceProfile:
     risk_factors: list[RiskEntry] = field(default_factory=list)
 
 
+@dataclass
+class ParticipantAppearance:
+    """One appearance of a resolved entity in a company event (M-P1.2, Q13).
+
+    The company-layer projection of an analysis ``EntityMention``: the resolved
+    entity's identity plus the context (role, affiliation) and the source
+    document/date. Q13 ("which institutions/HNIs follow the stock on concalls")
+    is answered by the analysts recorded here across a company's transcripts.
+
+    entity_id:      Resolved entity id (document-scoped in M-P1.2; cross-call
+                    unification is a later refinement).
+    canonical_name: The entity's canonical display name.
+    role:           "analyst" for a Q&A questioner; management roles later.
+    affiliation:    Institution stated for the entity (free text).
+    question_text:  The analyst's bounded question turn, verbatim (M-P2.8).
+                    Populated only for analyst appearances; always None for
+                    management appearances.
+    evidence_id:    The transcript this appearance came from.
+    source_date:    ISO date of that transcript.
+    """
+
+    entity_id: str
+    canonical_name: str
+    role: str | None
+    affiliation: str | None
+    evidence_id: str
+    source_date: str
+    question_text: str | None = None
+
+
+@dataclass
+class NamedShareholder:
+    """One named >1% PUBLIC shareholder disclosed in a shareholding pattern
+    (M-P1.3, Q24).
+
+    Deliberately a narrow, separate model from ParticipantAppearance: a
+    shareholder ("appeared in SHP → ownership category") is a different semantic
+    relationship from a concall participant ("appeared in transcript → role +
+    affiliation"). A common abstraction is revisited after M-P1.4, when a third
+    concrete consumer exists — not pre-emptively here.
+
+    Promoter and ambiguous holders are never recorded here (public-only, by
+    construction in the analyzer). Holding percentage is explicitly deferred.
+
+    entity_id:      Resolved entity id (document-scoped in M-P1.3).
+    canonical_name: The entity's canonical display name.
+    kind:           "person" (HNI individual) | "organization" (institution) —
+                    from the XBRL ownership category, never the name.
+    category:       Ownership category ("mutual_fund", "insurance", "fpi",
+                    "other_institution", "other_non_institution",
+                    "individual_hni").
+    evidence_id:    The shareholding-pattern filing this holder came from.
+    source_date:    ISO date of that filing.
+    """
+
+    entity_id: str
+    canonical_name: str
+    kind: str
+    category: str
+    evidence_id: str
+    source_date: str
+
+
+@dataclass
+class DirectorIdentity:
+    """A director resolved from an Annual Report by name + DIN (M-P1.4).
+
+    Narrowed scope: identity only. Age and tenure are deliberately absent — the
+    AR corporate-governance section does not preserve per-director bindings for
+    them in the current extraction pipeline (see the M-P1.4 execution note).
+    A separate, additive model mirroring NamedShareholder; the shared-abstraction
+    question is a post-M-P1.4 architecture review, not decided here.
+
+    entity_id:      Resolved entity id (document-scoped in M-P1.4).
+    canonical_name: The director's canonical display name.
+    din:            Director Identification Number (8 digits, leading zeros kept)
+                    — the structured external identifier, carried through the
+                    analysis channel's EntityMention.identifier.
+    evidence_id:    The annual report this director was named in.
+    source_date:    ISO date of that filing.
+    """
+
+    entity_id: str
+    canonical_name: str
+    din: str
+    evidence_id: str
+    source_date: str
+
+
 # ---------------------------------------------------------------------------
 # Top-level company profile
 # ---------------------------------------------------------------------------
@@ -362,3 +451,6 @@ class CompanyProfile:
     segments: SegmentTimeSeries = field(default_factory=SegmentTimeSeries)
     strategy: StrategyProfile = field(default_factory=StrategyProfile)
     governance: GovernanceProfile = field(default_factory=GovernanceProfile)
+    participants: list[ParticipantAppearance] = field(default_factory=list)
+    named_shareholders: list[NamedShareholder] = field(default_factory=list)
+    directors: list[DirectorIdentity] = field(default_factory=list)

@@ -67,6 +67,7 @@ from atlas.company.model import (
     CreditHistory,
     CreditRatingEntry,
     DirectorChange,
+    DirectorIdentity,
     DividendEvent,
     ESGSnapshot,
     ESGTimeSeries,
@@ -74,6 +75,8 @@ from atlas.company.model import (
     FinancialTimeSeries,
     FundraisingEvent,
     GovernanceProfile,
+    NamedShareholder,
+    ParticipantAppearance,
     InvestmentEvent,
     OwnershipSnapshot,
     OwnershipTimeSeries,
@@ -290,6 +293,39 @@ def _serialize_profile(profile: CompanyProfile) -> dict[str, Any]:
                 for r in profile.governance.risk_factors
             ],
         },
+        "participants": [
+            {
+                "entity_id": p.entity_id,
+                "canonical_name": p.canonical_name,
+                "role": p.role,
+                "affiliation": p.affiliation,
+                "evidence_id": p.evidence_id,
+                "source_date": p.source_date,
+                "question_text": p.question_text,
+            }
+            for p in profile.participants
+        ],
+        "named_shareholders": [
+            {
+                "entity_id": h.entity_id,
+                "canonical_name": h.canonical_name,
+                "kind": h.kind,
+                "category": h.category,
+                "evidence_id": h.evidence_id,
+                "source_date": h.source_date,
+            }
+            for h in profile.named_shareholders
+        ],
+        "directors": [
+            {
+                "entity_id": d.entity_id,
+                "canonical_name": d.canonical_name,
+                "din": d.din,
+                "evidence_id": d.evidence_id,
+                "source_date": d.source_date,
+            }
+            for d in profile.directors
+        ],
     }
 
 
@@ -494,6 +530,39 @@ def _deserialize_profile(data: dict[str, Any]) -> CompanyProfile:
                 for r in gov.get("risk_factors", [])
             ],
         ),
+        participants=[
+            ParticipantAppearance(
+                entity_id=p["entity_id"],
+                canonical_name=p["canonical_name"],
+                role=p.get("role"),
+                affiliation=p.get("affiliation"),
+                evidence_id=p.get("evidence_id", ""),
+                source_date=p.get("source_date", ""),
+                question_text=p.get("question_text"),
+            )
+            for p in data.get("participants", [])
+        ],
+        named_shareholders=[
+            NamedShareholder(
+                entity_id=h["entity_id"],
+                canonical_name=h["canonical_name"],
+                kind=h["kind"],
+                category=h["category"],
+                evidence_id=h.get("evidence_id", ""),
+                source_date=h.get("source_date", ""),
+            )
+            for h in data.get("named_shareholders", [])
+        ],
+        directors=[
+            DirectorIdentity(
+                entity_id=d["entity_id"],
+                canonical_name=d["canonical_name"],
+                din=d["din"],
+                evidence_id=d.get("evidence_id", ""),
+                source_date=d.get("source_date", ""),
+            )
+            for d in data.get("directors", [])
+        ],
     )
 
 

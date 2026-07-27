@@ -27,6 +27,7 @@ from typing import Literal
 from atlas.analysis.base import (
     AnalysisFact,
     AnalysisResult,
+    EntityMention,
     FactKind,
     FactUnit,
     Provenance,
@@ -34,8 +35,47 @@ from atlas.analysis.base import (
 )
 from atlas.analysis.patterns import fiscal_year_end
 from atlas.knowledge.base import KnowledgeBase
+from atlas.knowledge.entities import EntityResolver
 
-ANALYZER_VERSION = "3.0"
+ANALYZER_VERSION = "3.1"
+
+# Director identity (M-P1.4, narrowed): only CLEAN "Name (DIN 12345678)"
+# adjacencies. The name is 2-4 Title-case tokens immediately before the DIN
+# (an honorific like "Dr" allowed as a lead token); the DIN is exactly 8
+# digits (leading zeros preserved). Age and tenure are deliberately NOT
+# extracted — the AR corporate-governance section presents them as category-
+# level aggregates or dissociated OCR columns that cannot be bound to a named
+# director, so binding them would misattribute (see the M-P1.4 execution note
+# in the Atlas Evaluation Matrix). Under-emit rather than misattribute.
+_RE_DIRECTOR_DIN = re.compile(
+    r"((?:Dr|Mr|Ms|Mrs|Shri|Smt)?\.?\s*"
+    r"[A-Z][A-Za-z]+(?:\s+[A-Z][A-Za-z.]+){1,3})"
+    r"\s*\(\s*DIN[:\s]*(\d{8})\s*\)"
+)
+
+
+def _extract_directors(content: str, resolver: EntityResolver) -> list[EntityMention]:
+    """Resolve directors named with a clean adjacent DIN. One EntityMention per
+    distinct (entity, DIN); role="director", identifier=DIN. No age/tenure."""
+    mentions: list[EntityMention] = []
+    seen: set[tuple[str, str]] = set()
+    for m in _RE_DIRECTOR_DIN.finditer(content):
+        name = re.sub(r"\s+", " ", m.group(1)).strip()
+        name = re.sub(r"^(?:Dr|Mr|Ms|Mrs|Shri|Smt)\.?\s+", "", name)
+        din = m.group(2)
+        entity = resolver.resolve(name, "person")
+        key = (entity.entity_id, din)
+        if key in seen:
+            continue
+        seen.add(key)
+        mentions.append(EntityMention(
+            entity=entity,
+            role="director",
+            affiliation=None,
+            identifier=din,
+            provenance=Provenance("corporate_governance", m.start(), _snip(content, m.start())),
+        ))
+    return mentions
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -455,6 +495,7 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
         warnings=warnings,
         facts=facts,
         excerpts=excerpts,
+        entities=_extract_directors(content, EntityResolver()),
     )
 
 

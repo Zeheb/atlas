@@ -119,6 +119,12 @@ _SPECS: list[MetricSpec] = [
     _fk("operating_cash_flow", "Operating Cash Flow", FactKind.FINANCIAL_OPERATING_CASH_FLOW, FactUnit.CRORE_INR, True),
     _fk("capex", "Capital Expenditure", FactKind.FINANCIAL_CAPEX, FactUnit.CRORE_INR, None),
 
+    # -- Financial: working capital (M-P3.1, ADR-0012) ---------------------
+    _fk("inventories", "Inventories", FactKind.FINANCIAL_INVENTORIES, FactUnit.CRORE_INR, False),
+    _fk("trade_receivables", "Trade Receivables (billed)", FactKind.FINANCIAL_TRADE_RECEIVABLES, FactUnit.CRORE_INR, False),
+    _fk("trade_payables", "Trade Payables", FactKind.FINANCIAL_TRADE_PAYABLES, FactUnit.CRORE_INR, True),
+    _fk("unbilled_revenue", "Unbilled Revenue", FactKind.FINANCIAL_UNBILLED_REVENUE, FactUnit.CRORE_INR, False),
+
     # -- Financial: banking / NBFC ratios ----------------------------------
     _fk("nii", "Net Interest Income", FactKind.FINANCIAL_NET_INTEREST_INCOME, FactUnit.CRORE_INR, True),
     _fk("nim", "Net Interest Margin", FactKind.FINANCIAL_NET_INTEREST_MARGIN, FactUnit.PERCENT, True),
@@ -144,6 +150,8 @@ _SPECS: list[MetricSpec] = [
     _derived("capex_intensity", "Capex Intensity (capex / revenue)", derived.capex_intensity_pct, FactUnit.PERCENT, None),
     _derived("fcf_gaap", "Free Cash Flow (GAAP: OCF - capex)", derived.fcf_gaap, FactUnit.CRORE_INR, True),
     _derived("employee_cost_pct", "Employee Cost % of Revenue", derived.employee_cost_pct, FactUnit.PERCENT, False),
+    _derived("cost_of_debt", "Cost of Debt (finance cost / debt)", derived.cost_of_debt, FactUnit.PERCENT, False),
+    _derived("interest_coverage", "Interest Coverage (EBIT / finance cost)", derived.interest_coverage, None, True),
 
     # -- ESG ----------------------------------------------------------------
     _esg("ghg_scope1", "GHG Scope 1 Emissions", FactKind.ESG_GHG_SCOPE1, FactUnit.TCO2E, False),

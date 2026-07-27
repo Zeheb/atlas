@@ -2,8 +2,15 @@
 
 Each §8.6 task is one declarative ``EvalCase``. Cases are data, loaded from
 ``data/acceptance_v2_1.json``, so the acceptance tests are executable rather
-than prose. A case's ``requires`` lists the capabilities it needs; a milestone
-that lacks one marks the case *pending* instead of running it.
+than prose. A case's ``requires`` lists the *milestone-availability* gates it
+needs (``CAP_*`` below); a milestone that lacks one marks the case *pending*
+instead of running it.
+
+``requires`` is NOT the same axis as ``capabilities`` (M-E.3, below). The
+former asks "does this build provide the feature?"; the latter asks "what must
+the system be able to do to answer this question at all?" -- the
+``AtlasCapability`` axis from the Atlas Evaluation Matrix §6 / ADR-0011. The
+two are kept deliberately distinct; a case can carry both.
 
 M1.8.5 (ADR-0005) adds four OPTIONAL benchmark fields -- ``scenario``,
 ``difficulty``, ``provenance``, ``retrieval_label`` -- all ``None`` by
@@ -36,7 +43,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from atlas.benchmark.provenance import CaseProvenance, RetrievalLabel
-from atlas.benchmark.taxonomy import ALL_SCENARIO_IDS, DifficultyClass
+from atlas.benchmark.taxonomy import ALL_CAPABILITY_IDS, ALL_SCENARIO_IDS, DifficultyClass
 
 _SUITE_PATH = Path(__file__).parent / "data" / "acceptance_v2_1.json"
 
@@ -146,6 +153,15 @@ class EvalCase:
     # every case that doesn't need one -- see the module docstring for why
     # this is never read from an on-disk ThesisStore.
     recalled_view: RecalledViewFixture | None = None
+    # M-E.3 (ADR-0011): the AtlasCapability ids this question DEMANDS -- the
+    # second benchmark axis. Deliberately NOT the same thing as `requires`
+    # above: `requires` holds CAP_* milestone *availability* gates ("does this
+    # build provide the feature?"), while `capabilities` holds question-grading
+    # capabilities ("what must the system be able to do to answer this at
+    # all?"). A case legitimately carries both. Empty for every case today --
+    # authoring the 45 benchmark questions as cases is deferred (matrix §9),
+    # so this is the field only, with no bundled-suite population yet.
+    capabilities: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.scenario is not None and self.scenario not in ALL_SCENARIO_IDS:
@@ -153,6 +169,12 @@ class EvalCase:
         if self.difficulty is not None and self.difficulty not in _VALID_DIFFICULTIES:
             raise ValueError(
                 f"EvalCase.difficulty {self.difficulty!r} must be one of {sorted(_VALID_DIFFICULTIES)}"
+            )
+        object.__setattr__(self, "capabilities", tuple(self.capabilities))
+        unknown = set(self.capabilities) - ALL_CAPABILITY_IDS
+        if unknown:
+            raise ValueError(
+                f"EvalCase.capabilities {sorted(unknown)} are not valid AtlasCapability ids"
             )
 
     def is_available(self, capabilities: frozenset[str]) -> bool:
@@ -216,6 +238,7 @@ def _case(d: dict[str, Any]) -> EvalCase:
         provenance=_provenance_from_dict(d.get("provenance")),
         retrieval_label=_retrieval_label_from_dict(d.get("retrieval_label")),
         recalled_view=_recalled_view_from_dict(d.get("recalled_view")),
+        capabilities=tuple(d.get("capabilities", ())),
     )
 
 

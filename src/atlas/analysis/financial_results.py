@@ -43,7 +43,7 @@ from atlas.analysis.patterns import (
 )
 from atlas.knowledge.base import KnowledgeBase
 
-ANALYZER_VERSION = "1.0"
+ANALYZER_VERSION = "1.1"
 
 # ---------------------------------------------------------------------------
 # P&L row definitions
@@ -564,6 +564,53 @@ def _extract_bs_deferred_equity_debt(
     return facts
 _RE_BS_BORROWINGS = re.compile(r"^\s*(?:Long.term\s+)?[Bb]orrowings\b", re.MULTILINE)
 
+# Working-capital items (M-P3.1, ADR-0012).
+_RE_BS_INVENTORIES = re.compile(r"^\s*Inventories\b", re.MULTILINE | re.IGNORECASE)
+_RE_BS_TRADE_RECEIVABLES = re.compile(r"Trade receivables\b", re.IGNORECASE)
+# "Billed"/"Unbilled" sub-lines: only some filings (IT-services, long-duration
+# contracts) split Trade Receivables this way -- see FINANCIAL_UNBILLED_REVENUE.
+_RE_BS_BILLED = re.compile(r"^\s*Billed\b", re.MULTILINE | re.IGNORECASE)
+_RE_BS_UNBILLED = re.compile(r"^\s*Unbilled\b", re.MULTILINE | re.IGNORECASE)
+# Schedule III's mandatory MSMED-Act payables split. Wording verified against
+# real BSE filings (not assumed): "Total outstanding dues of micro and small
+# enterprises" / "...creditors other than micro and small enterprises".
+_RE_BS_PAYABLES_MSME = re.compile(
+    r"[Tt]otal\s+outstanding\s+dues\s+of\s+micro\s+and\s+small\s+enterprises",
+)
+_RE_BS_PAYABLES_OTHER = re.compile(
+    r"[Tt]otal\s+outstanding\s+dues\s+of\s+creditors\s+other\s+than\s+micro\s+and\s+small\s+enterprises",
+)
+
+
+def _last_match_before(pattern: "re.Pattern[str]", text: str, before: int) -> "re.Match[str] | None":
+    """The LAST match of *pattern* strictly before offset *before*, or None.
+
+    Current-assets lines (Inventories, Trade receivables) can appear twice in
+    a filing that also reports a non-current/long-duration variant (verified:
+    TCS's financial_results filings show a non-current "Trade receivables /
+    Billed / Unbilled" block for long-duration contracts, ahead of the
+    current-assets one). Cash and cash equivalents is reliably a current-
+    assets-only, single-occurrence line (IndAS Schedule III), so anchoring to
+    the match immediately preceding it selects the current-assets occurrence
+    -- the same anchor-to-Cash discipline the deferred layout already uses
+    positionally.
+    """
+    last: "re.Match[str] | None" = None
+    for m in pattern.finditer(text, 0, before):
+        last = m
+    return last
+
+
+def _positive(value: float | None) -> float | None:
+    """Plausibility floor for working-capital values: a balance-sheet asset
+    or liability magnitude is never zero or negative for a going concern.
+    Returns None (drop, do not emit) rather than a downgraded-confidence
+    fact -- under-emit rather than misattribute, matching the convention
+    every other extractor in this codebase already follows."""
+    if value is None or value <= 0:
+        return None
+    return value
+
 
 def _find_bs_region(text: str) -> tuple[int, int] | None:
     """Return (start, end) of the balance sheet block, or None if not found.
@@ -670,6 +717,93 @@ def _extract_balance_sheet_facts(text: str, period: str) -> list[AnalysisFact]:
                 confidence="high",
                 provenance=Provenance(section="balance_sheet"),
             ))
+
+    # 4, 5, 6. Working-capital items: Inventories, Trade receivables (billed-
+    # only), Unbilled revenue (M-P3.1, ADR-0012). Cash's own regex match (m,
+    # still in scope from step 1) anchors the current-assets region for the
+    # direct-layout path.
+    cash_m = _RE_BS_CASH.search(bs_text)
+    if cash_m:
+        if not is_direct:
+            # Deferred layout: reuse the SAME positionally-indexed vals[]
+            # already computed for Cash above -- Inventories and Trade
+            # receivables are already-computed byproducts (IndAS Schedule III
+            # order: Inventories, Investments, Trade receivables, Cash), not a
+            # new extraction. No Billed/Unbilled split is disclosed in this
+            # layout in any verified filing -- vals[2] is the whole figure.
+            vals = _extract_n_values(bs_text, cash_m.end(), n=6)
+            if vals and len(vals) > 0 and (v := _positive(vals[0])) is not None:
+                facts.append(AnalysisFact(
+                    kind=FactKind.FINANCIAL_INVENTORIES, value=v, unit=FactUnit.CRORE_INR,
+                    period=period, confidence="high",
+                    provenance=Provenance(section="balance_sheet", char_offset=bs_start + cash_m.start()),
+                ))
+            if vals and len(vals) > 2 and (v := _positive(vals[2])) is not None:
+                facts.append(AnalysisFact(
+                    kind=FactKind.FINANCIAL_TRADE_RECEIVABLES, value=v, unit=FactUnit.CRORE_INR,
+                    period=period, confidence="high",
+                    provenance=Provenance(section="balance_sheet", char_offset=bs_start + cash_m.start()),
+                ))
+        else:
+            # Direct layout: each label has its own regex, anchored to the
+            # occurrence closest to (immediately preceding) Cash, which
+            # selects the current-assets block over any non-current homonym
+            # (verified: TCS reports a separate non-current Trade receivables
+            # / Billed / Unbilled block for long-duration contracts).
+            inv_m = _last_match_before(_RE_BS_INVENTORIES, bs_text, cash_m.start())
+            if inv_m:
+                vals = _extract_n_values(bs_text, inv_m.end(), n=2)
+                if vals and (v := _positive(vals[0])) is not None:
+                    facts.append(AnalysisFact(
+                        kind=FactKind.FINANCIAL_INVENTORIES, value=v, unit=FactUnit.CRORE_INR,
+                        period=period, confidence="high",
+                        provenance=Provenance(section="balance_sheet", char_offset=bs_start + inv_m.start()),
+                    ))
+
+            tr_m = _last_match_before(_RE_BS_TRADE_RECEIVABLES, bs_text, cash_m.start())
+            if tr_m:
+                # Billed-only: if a Billed sub-line immediately follows this
+                # Trade receivables label, extract from there. Otherwise the
+                # label itself carries a single (unsplit) value.
+                billed_m = _RE_BS_BILLED.search(bs_text, tr_m.end(), tr_m.end() + 50)
+                anchor = billed_m if billed_m else tr_m
+                vals = _extract_n_values(bs_text, anchor.end(), n=2)
+                if vals and (v := _positive(vals[0])) is not None:
+                    facts.append(AnalysisFact(
+                        kind=FactKind.FINANCIAL_TRADE_RECEIVABLES, value=v, unit=FactUnit.CRORE_INR,
+                        period=period, confidence="high",
+                        provenance=Provenance(section="balance_sheet", char_offset=bs_start + anchor.start()),
+                    ))
+                if billed_m:
+                    unbilled_m = _RE_BS_UNBILLED.search(bs_text, billed_m.end(), billed_m.end() + 200)
+                    if unbilled_m:
+                        vals = _extract_n_values(bs_text, unbilled_m.end(), n=2)
+                        if vals and (v := _positive(vals[0])) is not None:
+                            facts.append(AnalysisFact(
+                                kind=FactKind.FINANCIAL_UNBILLED_REVENUE, value=v, unit=FactUnit.CRORE_INR,
+                                period=period, confidence="high",
+                                provenance=Provenance(section="balance_sheet", char_offset=bs_start + unbilled_m.start()),
+                            ))
+
+    # 7. Trade payables: Schedule III's mandatory MSME + non-MSME split,
+    # summed -- the same iterate-and-sum shape already used for debt above.
+    # Layout-independent: the split is a fixed statutory disclosure, not
+    # subject to the direct/deferred current-assets ordering convention.
+    # Under-emit: only emit when BOTH sub-lines are found -- a partial sum
+    # would misstate the total (never misattribute a half-total as the whole).
+    msme_m = _RE_BS_PAYABLES_MSME.search(bs_text)
+    other_m = _RE_BS_PAYABLES_OTHER.search(bs_text)
+    if msme_m and other_m:
+        msme_vals = _extract_n_values(bs_text, msme_m.end(), n=2)
+        other_vals = _extract_n_values(bs_text, other_m.end(), n=2)
+        if msme_vals and other_vals:
+            total_payables = msme_vals[0] + other_vals[0]
+            if (v := _positive(total_payables)) is not None:
+                facts.append(AnalysisFact(
+                    kind=FactKind.FINANCIAL_TRADE_PAYABLES, value=v, unit=FactUnit.CRORE_INR,
+                    period=period, confidence="high",
+                    provenance=Provenance(section="balance_sheet", char_offset=bs_start + msme_m.start()),
+                ))
 
     return facts
 

@@ -43,6 +43,7 @@ from atlas.company.model import (
     CreditHistory,
     CreditRatingEntry,
     DirectorChange,
+    DirectorIdentity,
     DividendEvent,
     ESGSnapshot,
     ESGTimeSeries,
@@ -53,6 +54,8 @@ from atlas.company.model import (
     InvestmentEvent,
     OwnershipSnapshot,
     OwnershipTimeSeries,
+    NamedShareholder,
+    ParticipantAppearance,
     RiskEntry,
     SegmentEntry,
     SegmentTimeSeries,
@@ -260,6 +263,22 @@ def _ingest_transcript_result(result: AnalysisResult, profile: CompanyProfile) -
             profile.esg.snapshots.append(esg_snap)
             existing_esg[period] = esg_snap
 
+    # 4. Resolved Q&A analysts -> participants (M-P1.2, Q13; question_text
+    # added M-P2.8, Q12). Explicitly gated to role=="analyst" so a bounded
+    # question can never end up on a management appearance, regardless of
+    # what any producer happens to set on the transport field.
+    source_date = result.source_date.date().isoformat()
+    for mention in result.entities:
+        profile.participants.append(ParticipantAppearance(
+            entity_id=mention.entity.entity_id,
+            canonical_name=mention.entity.canonical_name,
+            role=mention.role,
+            affiliation=mention.affiliation,
+            evidence_id=result.evidence_id,
+            source_date=source_date,
+            question_text=mention.question_text if mention.role == "analyst" else None,
+        ))
+
 
 def _ingest_investor_presentation_result(
     result: AnalysisResult, profile: CompanyProfile
@@ -393,6 +412,20 @@ def _ingest_annual_report_result(result: AnalysisResult, profile: CompanyProfile
                 evidence_id=result.evidence_id,
             ))
 
+    # Directors resolved by name + DIN (M-P1.4). Identity only; age/tenure
+    # deferred. A DIN with no identifier is skipped (under-emit).
+    source_date = result.source_date.date().isoformat()
+    for mention in result.entities:
+        if mention.identifier is None:
+            continue
+        profile.directors.append(DirectorIdentity(
+            entity_id=mention.entity.entity_id,
+            canonical_name=mention.entity.canonical_name,
+            din=mention.identifier,
+            evidence_id=result.evidence_id,
+            source_date=source_date,
+        ))
+
 
 def _ingest_brsr_result(result: AnalysisResult, profile: CompanyProfile) -> None:
     snaps: dict[str, dict[FactKind, float]] = defaultdict(dict)
@@ -442,6 +475,18 @@ def _ingest_shp_result(result: AnalysisResult, profile: CompanyProfile) -> None:
             )
             profile.ownership.snapshots.append(snap)
             existing[period] = snap
+
+    # Named >1% public shareholders (M-P1.3, Q24).
+    source_date = result.source_date.date().isoformat()
+    for mention in result.entities:
+        profile.named_shareholders.append(NamedShareholder(
+            entity_id=mention.entity.entity_id,
+            canonical_name=mention.entity.canonical_name,
+            kind=mention.entity.kind,
+            category=mention.role or "",
+            evidence_id=result.evidence_id,
+            source_date=source_date,
+        ))
 
 
 def _ingest_credit_rating_result(result: AnalysisResult, profile: CompanyProfile) -> None:

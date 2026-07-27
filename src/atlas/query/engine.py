@@ -14,6 +14,7 @@ turns them into text tables.  Test code can inspect rows directly.
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Callable
@@ -22,6 +23,7 @@ from atlas.acquisition.repository import Repository
 from atlas.analysis.base import FactKind, FactUnit
 from atlas.citation import build_citation
 from atlas.company import derived
+from atlas.knowledge.entities import EntityResolver
 from atlas.company.model import (
     AcquisitionEvent,
     CompanyProfile,
@@ -646,6 +648,75 @@ def credit_ratings(profile: CompanyProfile) -> QueryResult:
     )
 
 
+def rating_risk_timeline(profile: CompanyProfile) -> QueryResult:
+    """Debt rating actions annotated with the risk factors from the most
+    recent PRECEDING annual-report period (M-P2.3, Q41).
+
+    A temporal association, not a causal claim: each row shows what the
+    filings said shortly before an action, never that the risks CAUSED it.
+    Deliberately DEBT ratings only (``credit_history.debt_ratings``) --
+    ESG ratings use an unrelated scale and are never mixed in here.
+
+    Ratings from different agencies use different, non-comparable scales
+    (AA+ domestic vs. BBB- vs. Baa2). This query never compares a rating
+    action against a PRIOR action to infer an upgrade/downgrade across
+    agencies -- it reports each agency's own stated ``action`` verbatim.
+    Under-emit: if no debt rating exists, the result says so rather than
+    guessing from ESG ratings or other proxies.
+    """
+    actions = sorted(profile.credit_history.debt_ratings, key=lambda e: e.source_date)
+
+    # Risk factors by period, so each action can look up the single latest
+    # period strictly BEFORE it -- not a cumulative history.
+    periods = sorted({r.period for r in profile.governance.risk_factors})
+
+    def _preceding_period(action_date: str) -> str | None:
+        candidates = [p for p in periods if p < action_date]
+        return candidates[-1] if candidates else None
+
+    rows: list[list[str]] = []
+    for e in actions:
+        action_date = e.source_date.date().isoformat()
+        period = _preceding_period(action_date)
+        if period is None:
+            risk_text = "(no preceding annual-report risk factors on record)"
+        else:
+            texts = [r.text for r in profile.governance.risk_factors if r.period == period]
+            risk_text = "; ".join(_oneline(t) for t in texts[:3])
+            if len(texts) > 3:
+                risk_text += f" (+{len(texts) - 3} more)"
+
+        rows.append([
+            _fmt_source_date(e.source_date),
+            e.agency,
+            e.rating or "-",
+            e.action or "-",
+            _fmt_date(period) if period else "-",
+            risk_text,
+        ])
+
+    notes = [
+        "Temporal association only: risk factors shown are what was on file "
+        "before the action, not a claimed cause. Ratings are never compared "
+        "across agencies or scales — each action is the agency's own stated "
+        "call, not an inferred upgrade/downgrade.",
+    ]
+    if not actions:
+        notes.append("No debt rating actions found for this company.")
+
+    return QueryResult(
+        query="rating_risk_timeline",
+        company_id=profile.company_id,
+        title="Rating Actions and Preceding Risk Factors",
+        sections=[TableSection(
+            heading="Debt rating actions (chronological)",
+            columns=["Date", "Agency", "Rating", "Action", "Preceding Risk Period", "Risk Factors on File"],
+            rows=rows,
+        )],
+        notes=notes,
+    )
+
+
 # ---------------------------------------------------------------------------
 # 8. Recurring risk factors
 # ---------------------------------------------------------------------------
@@ -680,6 +751,85 @@ def risks(profile: CompanyProfile) -> QueryResult:
         sections=[TableSection(
             heading="Risk Factors (deduplicated, most-recent first)",
             columns=["Period", "Risk Factor"],
+            rows=rows,
+        )],
+        notes=notes,
+    )
+
+
+_RE_RISK_PUNCT = re.compile(r"[^\w\s]")
+_RE_RISK_WS = re.compile(r"\s+")
+
+
+def _normalize_risk_text(text: str) -> str:
+    """Presentation-only normalization for risk-factor grouping (M-P2.6):
+    lowercase, strip punctuation, collapse whitespace. Deliberately no
+    stemming, synonym expansion, fuzzy matching, or semantic grouping --
+    two risk statements group together only if they are the same words,
+    modulo case/punctuation/whitespace."""
+    lowered = text.lower()
+    no_punct = _RE_RISK_PUNCT.sub(" ", lowered)
+    return _RE_RISK_WS.sub(" ", no_punct).strip()
+
+
+def risk_recurrence(profile: CompanyProfile) -> QueryResult:
+    """Which risk factors keep appearing across reporting periods (M-P2.6, Q22).
+
+    Groups RiskEntry.text by presentation-normalized form (case/punctuation/
+    whitespace only) and counts DISTINCT reporting periods each group appears
+    in -- repeated rows within the same period do not inflate the count.
+    Only groups appearing in 2+ distinct periods are "recurring"; the rest are
+    under-emitted (excluded) rather than padded in to force a result.
+
+    Complements, and does not modify, risks() -- that query lists individual
+    statements deduplicated to their latest occurrence; this one answers a
+    different question (which risks keep coming back, and how often).
+    """
+    # key -> [display_text, display_text's own period, periods_seen]
+    groups: dict[str, list[object]] = {}
+    for r in profile.governance.risk_factors:
+        key = _normalize_risk_text(r.text)
+        if not key:
+            continue
+        if key not in groups:
+            groups[key] = [r.text, r.period, {r.period}]
+        else:
+            entry = groups[key]
+            entry[2].add(r.period)  # type: ignore[union-attr]
+            if r.period >= entry[1]:  # keep the verbatim form of the latest period seen
+                entry[0], entry[1] = r.text, r.period
+
+    recurring = [
+        (display, periods) for display, _, periods in groups.values() if len(periods) >= 2
+    ]
+
+    # Three stable passes in REVERSE priority order (lowest priority first) --
+    # Python's sort is stable, so each pass preserves the ordering already
+    # established by the previous (higher-priority) pass among equal keys.
+    # Net effect: count desc, then most-recent-period desc, then text asc.
+    recurring.sort(key=lambda item: item[0])                 # 3. text asc
+    recurring.sort(key=lambda item: max(item[1]), reverse=True)  # 2. period desc
+    recurring.sort(key=lambda item: len(item[1]), reverse=True)  # 1. count desc
+
+    rows = [
+        [str(len(periods)), _fmt_date(max(periods)), _oneline(display)]
+        for display, periods in recurring
+    ]
+
+    notes: list[str] = []
+    if not rows:
+        notes.append(
+            "No risk factor recurs across multiple reporting periods "
+            "(presentation-normalized text match only)."
+        )
+
+    return QueryResult(
+        query="risk_recurrence",
+        company_id=profile.company_id,
+        title="Recurring Risk Factors Across Periods",
+        sections=[TableSection(
+            heading="Risks appearing in 2+ distinct reporting periods",
+            columns=["Occurrences", "Most Recent Period", "Risk Factor"],
             rows=rows,
         )],
         notes=notes,
@@ -1098,15 +1248,84 @@ def _cite_sources(sources: list[str], profile: CompanyProfile, repo: Repository 
 # Dispatcher
 # ---------------------------------------------------------------------------
 
+def former_answerers(profile: CompanyProfile) -> QueryResult:
+    """Q45 — management who answered on earnings calls and have since departed.
+
+    A derived query: it cross-references transcript management participants
+    (role="management") against board-outcome director resignations. Identity
+    is established by a single ephemeral, query-time application of the existing
+    entity-resolution primitive — management names and resignation names are
+    resolved together in one pass and matched on the ids produced within it.
+    No cross-document id is stored; the document-scoped semantics of stored
+    entity_ids are untouched (see the M-P1.5 STEP 0 classification).
+    """
+    mgmt = [p for p in profile.participants if p.role == "management"]
+    resignations = [
+        dc for dc in profile.governance.director_changes if dc.change_type == "resignation"
+    ]
+
+    resolver = EntityResolver()
+    # Resolve resignations first, then management, in one shared pass.
+    resigned: dict[str, object] = {}  # entity_id -> DirectorChange
+    for dc in resignations:
+        resigned[resolver.resolve(dc.name, "person").entity_id] = dc
+
+    matched: dict[str, tuple[str, set[str], object]] = {}
+    for p in mgmt:
+        eid = resolver.resolve(p.canonical_name, "person").entity_id
+        dc = resigned.get(eid)
+        if dc is None:
+            continue
+        if eid not in matched:
+            matched[eid] = (p.canonical_name, set(), dc)
+        matched[eid][1].add(p.evidence_id)
+
+    rows = [
+        [name, str(len(calls)), _fmt_date(_dc_date(dc)), _oneline(getattr(dc, "role", "") or "")]
+        for name, calls, dc in sorted(matched.values(), key=lambda t: t[0])
+    ]
+
+    notes: list[str] = []
+    if not mgmt:
+        notes.append(
+            "No management participants recorded. Transcripts with a printed "
+            "management roster must be analyzed and ingested first."
+        )
+    elif not rows:
+        notes.append(
+            "No management answerer has a matching director-resignation record."
+        )
+
+    return QueryResult(
+        query="former_answerers",
+        company_id=profile.company_id,
+        title="Management Answerers Who Have Since Departed",
+        sections=[TableSection(
+            heading="Departed answerers",
+            columns=["Name", "Calls", "Departed", "Role"],
+            rows=rows,
+        )],
+        notes=notes,
+    )
+
+
+def _dc_date(dc: object) -> str:
+    d = getattr(dc, "source_date", "")
+    return d.date().isoformat() if hasattr(d, "date") else str(d)
+
+
 _QUERIES: dict[str, Callable[..., QueryResult]] = {
     "revenue":      revenue,
+    "former_answerers": former_answerers,
     "capital":      capital_allocation,
     "strategy":     strategy,
     "acquisitions": acquisitions,
     "ownership":    ownership,
     "leverage":     leverage,
     "ratings":      credit_ratings,
+    "rating_risk_timeline": rating_risk_timeline,
     "risks":        risks,
+    "risk_recurrence": risk_recurrence,
     "summary":      summary,
     "timeline":     timeline,
     "compare":      compare,

@@ -15,6 +15,7 @@ from atlas.cli import cli
 from atlas.company.model import CompanyProfile, FinancialSnapshot, FinancialTimeSeries
 from atlas.company.store import CompanyStore
 from atlas.reasoning.contracts import (
+    Claim,
     EvidenceReference,
     Finding,
     Question,
@@ -221,3 +222,107 @@ def test_check_warns_and_continues_past_an_incompatible_store(monkeypatch, tmp_p
     assert "Warning" in result.output
     assert "SBIN" in result.output
     assert thesis.view_id in result.output
+
+
+# --- diff --------------------------------------------------------------------------------
+def _thesis_v(ticker: str, question: str, fingerprint: str, as_of: str,
+              statement: str, confidence: str) -> Thesis:
+    subject = SubjectRef(subject_id=ticker, display=ticker)
+    result = ReasoningResult(
+        question=Question(raw_text=question, subject_ref=subject),
+        findings=(Finding(
+            statement=statement, assertability="judgment", confidence=confidence,
+            supporting_claims=(Claim(
+                subject_ref=subject, statement=statement, assertability="judgment",
+                confidence=confidence, evidence=(EvidenceReference(evidence_id="ev-1"),),
+            ),),
+        ),),
+        overall_confidence=confidence, citations=frozenset({"ev-1"}), refused=False,
+    )
+    return Thesis(
+        question=question, subjects=(ticker,), run_fingerprint=fingerprint,
+        view_id=compute_view_id(fingerprint, question), as_of=as_of,
+        result=result, dispositions=(), unresolved_dimensions=(),
+    )
+
+
+def test_diff_shows_confidence_change(monkeypatch, tmp_path) -> None:
+    _env(monkeypatch, tmp_path)
+    _seed_profile(tmp_path, "TCS")
+    older = _thesis_v("TCS", "Is margin durable?", "fp1", "2024-01-01",
+                      "Margins are durable.", "low")
+    newer = _thesis_v("TCS", "Is margin durable?", "fp2", "2025-01-01",
+                      "Margins are durable.", "high")
+    store = ThesisStore(tmp_path / "TCS" / "theses.json", "TCS")
+    store.save(older)
+    store.save(newer)
+
+    result = CliRunner().invoke(cli, ["memory", "diff", older.view_id, newer.view_id])
+    assert result.exit_code == 0, result.output
+    assert "low -> high" in result.output
+
+
+def test_diff_question_mismatch_refuses(monkeypatch, tmp_path) -> None:
+    _env(monkeypatch, tmp_path)
+    _seed_profile(tmp_path, "TCS")
+    a = _thesis_v("TCS", "Is margin durable?", "fp1", "2024-01-01", "X", "medium")
+    b = _thesis_v("TCS", "Is the balance sheet safe?", "fp2", "2025-01-01", "Y", "medium")
+    store = ThesisStore(tmp_path / "TCS" / "theses.json", "TCS")
+    store.save(a)
+    store.save(b)
+
+    result = CliRunner().invoke(cli, ["memory", "diff", a.view_id, b.view_id])
+    assert result.exit_code == 1
+    assert "different questions" in result.output.lower()
+
+
+def test_diff_missing_view_id_a(monkeypatch, tmp_path) -> None:
+    _env(monkeypatch, tmp_path)
+    _seed_profile(tmp_path, "TCS")
+    b = _thesis_v("TCS", "Is margin durable?", "fp2", "2025-01-01", "Y", "medium")
+    ThesisStore(tmp_path / "TCS" / "theses.json", "TCS").save(b)
+
+    result = CliRunner().invoke(cli, ["memory", "diff", "nonexistent-id", b.view_id])
+    assert result.exit_code == 1
+    assert "nonexistent-id" in result.output
+
+
+def test_diff_missing_view_id_b(monkeypatch, tmp_path) -> None:
+    _env(monkeypatch, tmp_path)
+    _seed_profile(tmp_path, "TCS")
+    a = _thesis_v("TCS", "Is margin durable?", "fp1", "2024-01-01", "X", "medium")
+    ThesisStore(tmp_path / "TCS" / "theses.json", "TCS").save(a)
+
+    result = CliRunner().invoke(cli, ["memory", "diff", a.view_id, "nonexistent-id"])
+    assert result.exit_code == 1
+    assert "nonexistent-id" in result.output
+
+
+def test_diff_identical_theses_reports_no_differences(monkeypatch, tmp_path) -> None:
+    _env(monkeypatch, tmp_path)
+    _seed_profile(tmp_path, "TCS")
+    a = _thesis_v("TCS", "Is margin durable?", "fp1", "2024-01-01", "Stable.", "medium")
+    b = _thesis_v("TCS", "Is margin durable?", "fp2", "2025-01-01", "Stable.", "medium")
+    store = ThesisStore(tmp_path / "TCS" / "theses.json", "TCS")
+    store.save(a)
+    store.save(b)
+
+    result = CliRunner().invoke(cli, ["memory", "diff", a.view_id, b.view_id])
+    assert result.exit_code == 0, result.output
+    assert "No differences" in result.output
+
+
+def test_diff_finds_view_across_different_subjects(monkeypatch, tmp_path) -> None:
+    # CLI lookup must sweep the whole portfolio, same convention as `memory show`.
+    _env(monkeypatch, tmp_path)
+    _seed_profile(tmp_path, "TCS")
+    _seed_profile(tmp_path, "SBIN")
+    a = _thesis_v("TCS", "Is margin durable?", "fp1", "2024-01-01", "X", "medium")
+    b = _thesis_v("SBIN", "Is margin durable?", "fp2", "2025-01-01", "Y", "medium")
+    ThesisStore(tmp_path / "TCS" / "theses.json", "TCS").save(a)
+    ThesisStore(tmp_path / "SBIN" / "theses.json", "SBIN").save(b)
+
+    result = CliRunner().invoke(cli, ["memory", "diff", a.view_id, b.view_id])
+    assert result.exit_code == 0, result.output
+    assert "+ Y" in result.output
+    assert "- X" in result.output
