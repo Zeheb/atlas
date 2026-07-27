@@ -15,7 +15,6 @@ from __future__ import annotations
 
 from atlas.acquisition.repository import Repository
 from atlas.company.model import CompanyProfile
-from atlas.query import engine
 from atlas.research.citations import Finding
 from atlas.research.model import ReportSection
 from atlas.research.sections._shared import (

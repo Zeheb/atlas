@@ -20,8 +20,6 @@ from atlas.analysis.base import (
     Provenance,
 )
 from atlas.analysis.shareholding_trend import (
-    _SIGNAL_THRESHOLD,
-    _STREAK_LENGTH,
     _TRACKED_KINDS,
     HoldingDelta,
     HoldingPoint,

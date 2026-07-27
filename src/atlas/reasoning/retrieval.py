@@ -55,7 +55,6 @@ from atlas.reasoning.contracts import ConfidenceLevel
 from atlas.reasoning.plan import SearchPlan
 from atlas.reasoning.text import _TOKEN_RE
 from atlas.reasoning.text import keywords as _keywords
-from atlas.reasoning.text import tokenize as _tokenize
 
 # Defensive bound: skip retrieval entirely for pathologically large documents
 # rather than risk slow tokenization/scanning.

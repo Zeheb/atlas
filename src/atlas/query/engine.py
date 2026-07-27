@@ -28,7 +28,6 @@ from atlas.company.model import (
     AcquisitionEvent,
     CompanyProfile,
     CreditRatingEntry,
-    FinancialSnapshot,
 )
 from atlas.knowledge.entities import EntityResolver
 from atlas.query import metrics

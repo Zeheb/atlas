@@ -25,7 +25,7 @@ from atlas.research.investigate import (
     run_investigation,
     run_plan,
 )
-from atlas.research.plan import Investigation, ResearchPlan
+from atlas.research.plan import Investigation
 from atlas.research.planner import plan_research
 
 _CONTENT = (

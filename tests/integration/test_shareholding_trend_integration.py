@@ -27,7 +27,6 @@ from atlas.acquisition.repository import Repository
 from atlas.analysis.base import AnalysisResult, FactKind
 from atlas.analysis.shareholding_pattern import analyze as shp_analyze
 from atlas.analysis.shareholding_trend import (
-    HoldingPoint,
     TrendResult,
     analyze_trend,
 )

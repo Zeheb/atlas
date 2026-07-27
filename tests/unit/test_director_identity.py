@@ -10,10 +10,10 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from atlas.analysis.annual_report import _RE_DIRECTOR_DIN, _extract_directors
+from atlas.analysis.annual_report import _extract_directors
 from atlas.analysis.base import AnalysisResult, EntityMention
 from atlas.company.builder import build_profile
-from atlas.company.model import CompanyProfile, DirectorIdentity
+from atlas.company.model import CompanyProfile
 from atlas.knowledge.entities import Entity, EntityResolver
 
 

@@ -35,14 +35,11 @@ enforced by ``Thesis.__post_init__`` before it ever reaches ``save()``.
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from atlas.reasoning.contracts import (
     Claim,
-    ConfidenceLevel,
     EvidenceReference,
     Finding,
     Question,

@@ -31,7 +31,7 @@ from atlas.company.derived import (
     net_debt,
     pat_margin_pct,
 )
-from atlas.company.model import CompanyProfile, FinancialSnapshot
+from atlas.company.model import FinancialSnapshot
 
 # ---------------------------------------------------------------------------
 # Fixture helpers

@@ -24,7 +24,7 @@ from atlas.analysis.financial_results import (
     _extract_cashflow_facts,
 )
 from atlas.company.builder import build_profile
-from atlas.company.model import AuditorEntry, CompanyProfile, GovernanceProfile
+from atlas.company.model import CompanyProfile
 from atlas.company.store import CompanyStore
 
 

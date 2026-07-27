@@ -14,16 +14,12 @@ import pytest
 from atlas.analysis.base import FactKind, FactUnit
 from atlas.company.model import (
     AcquisitionEvent,
-    AGMResolution,
     BuybackEvent,
     CapitalEventLedger,
     CompanyProfile,
     CreditHistory,
     CreditRatingEntry,
-    DirectorChange,
     DividendEvent,
-    ESGSnapshot,
-    ESGTimeSeries,
     FinancialSnapshot,
     FinancialTimeSeries,
     FundraisingEvent,
@@ -32,7 +28,6 @@ from atlas.company.model import (
     OwnershipSnapshot,
     OwnershipTimeSeries,
     RiskEntry,
-    SegmentTimeSeries,
     StrategyEntry,
     StrategyProfile,
 )

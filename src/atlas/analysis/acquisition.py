@@ -25,16 +25,14 @@ Provenance sections:
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 
 from atlas.analysis.base import (
     AnalysisFact,
     AnalysisResult,
     FactKind,
     FactUnit,
-    Provenance,
     _fact,
-    _snip,
 )
 from atlas.analysis.patterns import parse_iso_date, split_reg30_sections
 from atlas.knowledge.base import KnowledgeBase

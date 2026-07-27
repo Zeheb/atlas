@@ -16,7 +16,6 @@ from atlas.company.model import CompanyProfile
 from atlas.company.store import CompanyStore
 from atlas.query.engine import (
     QueryResult,
-    TableSection,
     acquisitions,
     available_queries,
     capital_allocation,

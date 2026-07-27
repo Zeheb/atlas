@@ -16,7 +16,7 @@ from atlas.analysis.shareholding_pattern import (
     _public_holder_class,
 )
 from atlas.company.builder import build_profile
-from atlas.company.model import CompanyProfile, NamedShareholder
+from atlas.company.model import CompanyProfile
 from atlas.company.store import CompanyStore
 from atlas.knowledge.entities import Entity, EntityResolver
 

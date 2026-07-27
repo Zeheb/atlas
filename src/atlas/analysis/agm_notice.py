@@ -40,7 +40,6 @@ from atlas.analysis.base import (
     FactKind,
     FactUnit,
     Provenance,
-    _snip,
 )
 from atlas.knowledge.base import KnowledgeBase
 

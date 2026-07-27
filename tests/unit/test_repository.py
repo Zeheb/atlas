@@ -6,9 +6,7 @@ import pytest
 from atlas.acquisition.catalog import CatalogEntry, RepositoryCatalog
 from atlas.acquisition.evidence import EvidenceKind, EvidenceSource
 from atlas.acquisition.profile import (
-    COMPREHENSIVE_PROFILE,
     DEFAULT_PROFILE,
-    KindFilterProfile,
 )
 from atlas.acquisition.repository import Repository
 

@@ -18,7 +18,6 @@ import pytest
 from atlas.acquisition.evidence import EvidenceKind
 from atlas.acquisition.repository import Repository
 from atlas.knowledge.base import KnowledgeBase, ParsedDocument
-from atlas.knowledge.pipeline import parse_incremental
 
 pytestmark = pytest.mark.integration
 

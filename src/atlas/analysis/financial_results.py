@@ -25,7 +25,7 @@ provenance.section.startswith("consolidated_") vs "standalone_".
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import Literal
 
 from atlas.analysis.base import (

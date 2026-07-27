@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 
 from atlas.acquisition.catalog import CatalogEntry
 from atlas.acquisition.evidence import EvidenceKind, EvidenceSource

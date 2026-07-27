@@ -29,16 +29,14 @@ appears reliably in text extracted from 2023-era TCS PDFs.
 from __future__ import annotations
 
 import re
-from datetime import datetime, timezone
+from datetime import datetime
 
 from atlas.analysis.base import (
     AnalysisFact,
     AnalysisResult,
     FactKind,
     FactUnit,
-    Provenance,
     _fact,
-    _snip,
 )
 from atlas.analysis.patterns import parse_indian_float, parse_indian_int, parse_iso_date
 from atlas.knowledge.base import KnowledgeBase

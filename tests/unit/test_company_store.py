@@ -23,27 +23,7 @@ from atlas.analysis.base import (
 )
 from atlas.company.builder import BUILDER_VERSION, build_profile
 from atlas.company.model import (
-    AcquisitionEvent,
-    AGMResolution,
-    BuybackEvent,
-    CapitalEventLedger,
     CompanyProfile,
-    CreditHistory,
-    CreditRatingEntry,
-    CSATEntry,
-    DividendEvent,
-    ESGSnapshot,
-    ESGTimeSeries,
-    FinancialSnapshot,
-    FinancialTimeSeries,
-    GovernanceProfile,
-    InvestmentEvent,
-    OwnershipSnapshot,
-    OwnershipTimeSeries,
-    SegmentEntry,
-    SegmentTimeSeries,
-    StrategyEntry,
-    StrategyProfile,
 )
 from atlas.company.store import STORE_VERSION, CompanyStore, StaleResultError
 

@@ -8,7 +8,6 @@ compatibility: an M1.7-era report JSON with neither field must still load.
 
 from __future__ import annotations
 
-import json
 
 from atlas.eval.report import (
     CaseResult,

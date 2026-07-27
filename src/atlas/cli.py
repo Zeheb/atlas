@@ -201,7 +201,6 @@ def profile_build(ticker: str, force: bool) -> None:
 
     Reads from repositories/TICKER/, writes profile to repositories/TICKER/profile.json.
     """
-    from pathlib import Path
 
     from atlas.acquisition.repository import Repository
     from atlas.analysis.registry import analyze, supported_kinds
@@ -340,7 +339,6 @@ def query_cmd(
 
       atlas query TCS strategy --keyword ai
     """
-    from pathlib import Path
 
     from atlas.acquisition.repository import Repository
     from atlas.company.store import CompanyStore

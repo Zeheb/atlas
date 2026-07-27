@@ -24,12 +24,10 @@ from atlas.analysis.base import (
     AnalysisResult,
     FactKind,
     FactUnit,
-    Provenance,
 )
 from atlas.analysis.financial_results import (
     ANALYZER_VERSION,
     _detect_filing,
-    _detect_n_cols,
     _extract_balance_sheet_facts,
     _extract_banking_facts,
     _extract_cashflow_facts,

@@ -11,12 +11,10 @@ from datetime import datetime, timezone
 
 import pytest
 
-from atlas.analysis.base import FactKind, FactUnit
+from atlas.analysis.base import FactKind
 from atlas.company.model import (
     CapitalEventLedger,
     CompanyProfile,
-    CreditHistory,
-    CreditRatingEntry,
     DirectorChange,
     DividendEvent,
     ESGSnapshot,
