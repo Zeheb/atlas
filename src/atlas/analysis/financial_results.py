@@ -56,6 +56,16 @@ _PL_ROWS: list[tuple[FactKind, re.Pattern[str]]] = [
      re.compile(r"^Other income\b", re.MULTILINE)),
     (FactKind.FINANCIAL_TOTAL_INCOME,
      re.compile(r"TOTAL INCOME")),
+    # Input-cost components (M-P3.4, ADR-0012) -- manufacturer-specific
+    # expense lines, absent for service companies (TCS) by business model,
+    # same as FINANCIAL_TCV/FINANCIAL_UNBILLED_REVENUE. Reuses this exact
+    # generic row mechanism -- no new extraction code.
+    (FactKind.FINANCIAL_COST_OF_MATERIALS,
+     re.compile(r"Cost of mat(?:erials|enals) consumed")),  # "matenals" is a real OCR typo, verified in Tata Steel filings
+    (FactKind.FINANCIAL_PURCHASES_STOCK_IN_TRADE,
+     re.compile(r"Purchases? of stock-in-trade")),
+    (FactKind.FINANCIAL_CHANGE_IN_INVENTORIES,
+     re.compile(r"Changes in inventories of finished")),
     (FactKind.FINANCIAL_EMPLOYEE_COST,
      re.compile(r"Employee benefit expenses")),
     (FactKind.FINANCIAL_EQUIPMENT_SOFTWARE_COST,

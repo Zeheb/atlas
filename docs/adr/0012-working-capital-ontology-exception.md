@@ -235,6 +235,91 @@ dedicated `rpt_row_N` reconstruction code this milestone adds.
 
 ---
 
+## Amendment (M-P3.4)
+
+Three further FactKinds independently satisfy the same three-part test and
+are admitted under this exception, not a new one:
+
+- `FINANCIAL_COST_OF_MATERIALS` — primary (P&L's own disclosed "Cost of
+  materials consumed" line); extends `_PL_ROWS`/`_extract_pl_facts`, the same
+  already-parsed P&L region every other `FINANCIAL_*` P&L line already uses —
+  a plain row addition, no new extraction function. Evidence-verified at Tata
+  Steel: 5/7 real filings, real varying values (e.g. 11,764.27; 10,833.48;
+  11,270.37), always positive. The two real-word variants observed —
+  "materials" and an OCR-mangled "matenals" — are both matched by one regex.
+  **Condition 3 does not hold at TCS** — confirmed absent in both TCS
+  filings checked, expected: a service company has no cost-of-materials line
+  by business model, the identical conditional-firing pattern already
+  accepted for `FINANCIAL_TCV`/`FINANCIAL_UNBILLED_REVENUE`. Not a defect.
+- `FINANCIAL_PURCHASES_STOCK_IN_TRADE` — primary ("Purchases of
+  stock-in-trade"); same extension, same evidence gate, always positive in
+  every verified filing.
+- `FINANCIAL_CHANGE_IN_INVENTORIES` — primary ("Changes in inventories of
+  finished and semi-finished goods, stock-in-trade and work-in-progress");
+  same extension. **Genuinely signed, not floor-gated.** Real evidence shows
+  both positive (559.40) and negative (-851.30) disclosed values across the
+  same filing's comparative periods — an inventory drawdown is a real,
+  correctly-disclosed negative contribution to cost of goods sold, not an
+  extraction error. This is the one FactKind in the ontology where a
+  negative value is accepted as-is.
+
+**Why this needs no new floor-exception mechanism, and touches no existing
+floor.** The `_positive()` plausibility floor (used by the M-P3.1/M-P3.2
+balance-sheet and cash-flow extractions: `FINANCIAL_INVENTORIES`,
+`FINANCIAL_TRADE_RECEIVABLES`, `FINANCIAL_TRADE_PAYABLES`,
+`FINANCIAL_UNBILLED_REVENUE`, `FINANCIAL_INTANGIBLE_ASSETS`,
+`FINANCIAL_CASH_TAX_PAID`) is implemented per-call-site in dedicated
+extraction functions in `financial_results.py`, gating values where zero or
+negative is implausible for a going concern (a balance-sheet asset
+magnitude, a cash outflow). It was never part of `_extract_pl_facts` /
+`_PL_ROWS` — the mechanism this amendment's three FactKinds reuse verbatim.
+Every existing `_PL_ROWS` member (e.g. `FINANCIAL_PROFIT_BEFORE_TAX`, which
+is legitimately negative in a loss-making period) already passes through
+unfiltered by that same absence of a floor. Adding
+`FINANCIAL_CHANGE_IN_INVENTORIES` to this mechanism therefore requires no
+new exception to any floor — there is no floor at this call site to except
+it from. `FINANCIAL_COST_OF_MATERIALS`/`FINANCIAL_PURCHASES_STOCK_IN_TRADE`
+are empirically always-positive across every verified filing but are, like
+every other `_PL_ROWS` member, not floor-enforced — consistent with, not a
+deviation from, the existing per-call-site floor design (which the
+M-P3.1/M-P3.2 extractions above remain unchanged and unaffected by this
+amendment).
+
+Row identity is not needed for these three: like every other `_PL_ROWS`
+entry, each is one scalar value per period, not a repeated/multi-row
+structure — no `provenance.section` row-keying, no builder change. All three
+route into `FinancialSnapshot.facts` automatically via the existing
+`_FINANCIAL_SNAPSHOT_KINDS` blanket `financial_`-prefix routing already
+confirmed in the M-P3.3 amendment above — no store or builder change.
+
+**Found and confirmed as pre-existing, unrelated technical debt (not
+introduced by this milestone).** Verifying `FINANCIAL_COST_OF_MATERIALS`
+against every real Tata Steel filing surfaced two defects already present in
+`_extract_pl_facts` for **every** existing `_PL_ROWS` FactKind, reproduced
+identically on already-shipped facts in the same filings, independent of this
+amendment:
+
+1. A dual-region ("labels-then-values") filing where one basis's region (here,
+   `standalone`) contains only the label section with no proximate values —
+   the existing per-pattern fallback ("keep the first match if none clears the
+   >50-magnitude guard") then emits a garbage small value. Reproduced on the
+   already-shipped `FINANCIAL_REVENUE` fact in the same filing
+   (`bse-news-1145c1df...`-adjacent 2025-05-12 filing: `financial_revenue`
+   extracted as `4.0` for `standalone`, not a plausible revenue figure).
+2. An OCR-mangled multi-comma number (`"20,677 63"`-shaped) not fully
+   corrected by `fix_ocr_numbers`, truncating to a fragment. Reproduced on the
+   already-shipped `FINANCIAL_OTHER_EXPENSES` fact in the same filing
+   (extracted as `73.35442`, not a plausible expense figure).
+
+Both are defects in the pre-existing `_extract_pl_facts`/`fix_ocr_numbers`
+machinery this amendment reuses verbatim, not in the three new FactKinds or
+their regexes. Left unfixed for the same reason ADR-0012's original
+`UnboundLocalError` and basis-defaulting debt were left unfixed: fixing
+already-shipped extraction machinery is out of this milestone's scope and
+would be undisclosed scope creep.
+
+---
+
 ## References
 
 - `src/atlas/analysis/financial_results.py` — `_extract_balance_sheet_facts`,
@@ -242,15 +327,19 @@ dedicated `rpt_row_N` reconstruction code this milestone adds.
   `_positive` (M-P3.1 helpers)
 - `src/atlas/analysis/annual_report.py` — `_extract_gross_block` (M-P3.2),
   `_extract_rpt_balance` (M-P3.3)
+- `src/atlas/analysis/financial_results.py` — `_PL_ROWS`/`_extract_pl_facts`,
+  the reused generic row mechanism extended by `FINANCIAL_COST_OF_MATERIALS`/
+  `FINANCIAL_PURCHASES_STOCK_IN_TRADE`/`FINANCIAL_CHANGE_IN_INVENTORIES` (M-P3.4)
 - `src/atlas/company/model.py` — `AuditorEntry`, `GovernanceProfile.auditor_history` (M-P3.2);
   `RelatedPartyEntry`, `GovernanceProfile.related_parties` (M-P3.3)
-- `src/atlas/analysis/base.py` — the nine FactKind members this exception covers
+- `src/atlas/analysis/base.py` — the twelve FactKind members this exception covers
 - `src/atlas/query/metrics.py` — registration (`inventories`,
   `trade_receivables`, `trade_payables`, `unbilled_revenue`, `cash_tax_paid`,
-  `intangible_assets`, `gross_block`)
+  `intangible_assets`, `gross_block`, `cost_of_materials`,
+  `purchases_stock_in_trade`, `change_in_inventories`)
 - `src/atlas/query/engine.py` — `auditor_history()` query (M-P3.2);
   `related_party_disclosures()`, `rpt_resolutions()` queries (M-P3.3)
 - Atlas Evaluation Matrix — Part II Phase 3, M-P3.0 (extraction-risk gate),
-  M-P3.1, M-P3.2, M-P3.3 (this amendment)
+  M-P3.1, M-P3.2, M-P3.3, M-P3.4 (this amendment)
 - `docs/adr/0009-orthogonal-concerns.md` — the compose-don't-merge discipline
   informing the Billed/Unbilled non-overlap resolution

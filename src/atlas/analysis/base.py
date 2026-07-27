@@ -50,6 +50,17 @@ class FactKind(enum.Enum):
     FINANCIAL_REVENUE = "financial_revenue"
     FINANCIAL_OTHER_INCOME = "financial_other_income"
     FINANCIAL_TOTAL_INCOME = "financial_total_income"
+
+    # Input-cost components (M-P3.4, ADR-0012). Manufacturer-specific --
+    # will not fire for service companies (TCS), the same business-model-
+    # conditional pattern already accepted for FINANCIAL_TCV/
+    # FINANCIAL_UNBILLED_REVENUE. FINANCIAL_CHANGE_IN_INVENTORIES is the
+    # ONLY FactKind in this ontology exempt from the strictly-positive floor
+    # -- see ADR-0012's M-P3.4 amendment for why.
+    FINANCIAL_COST_OF_MATERIALS = "financial_cost_of_materials"           # "Cost of materials consumed"
+    FINANCIAL_PURCHASES_STOCK_IN_TRADE = "financial_purchases_stock_in_trade"  # "Purchases of stock-in-trade"
+    FINANCIAL_CHANGE_IN_INVENTORIES = "financial_change_in_inventories"   # signed; a drawdown is a negative, disclosed value, not an extraction error
+
     FINANCIAL_EMPLOYEE_COST = "financial_employee_cost"
     FINANCIAL_EQUIPMENT_SOFTWARE_COST = "financial_equipment_software_cost"
     FINANCIAL_FINANCE_COST = "financial_finance_cost"

@@ -130,6 +130,12 @@ _SPECS: list[MetricSpec] = [
     _fk("intangible_assets", "Intangible Assets", FactKind.FINANCIAL_INTANGIBLE_ASSETS, FactUnit.CRORE_INR, None),
     _fk("gross_block", "Gross Block (PP&E)", FactKind.FINANCIAL_GROSS_BLOCK, FactUnit.CRORE_INR, None),
 
+    # -- Financial: input-cost components (M-P3.4, ADR-0012) ----------------
+    # Manufacturer-specific -- absent for service companies (TCS) by business model.
+    _fk("cost_of_materials", "Cost of Materials Consumed", FactKind.FINANCIAL_COST_OF_MATERIALS, FactUnit.CRORE_INR, False),
+    _fk("purchases_stock_in_trade", "Purchases of Stock-in-Trade", FactKind.FINANCIAL_PURCHASES_STOCK_IN_TRADE, FactUnit.CRORE_INR, False),
+    _fk("change_in_inventories", "Changes in Inventories", FactKind.FINANCIAL_CHANGE_IN_INVENTORIES, FactUnit.CRORE_INR, None),
+
     # -- Financial: banking / NBFC ratios ----------------------------------
     _fk("nii", "Net Interest Income", FactKind.FINANCIAL_NET_INTEREST_INCOME, FactUnit.CRORE_INR, True),
     _fk("nim", "Net Interest Margin", FactKind.FINANCIAL_NET_INTEREST_MARGIN, FactUnit.PERCENT, True),
