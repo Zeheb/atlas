@@ -202,6 +202,21 @@ class FactKind(enum.Enum):
     FINANCIAL_INTANGIBLE_ASSETS   = "financial_intangible_assets"      # net intangible assets (incl. "Other intangible assets"); excludes goodwill
     FINANCIAL_GROSS_BLOCK         = "financial_gross_block"            # gross (pre-depreciation) carrying value of property, plant and equipment, whole-company total — from the annual report's PPE movement schedule or financial-highlights table, not the financial_results balance sheet
 
+    # Borrowings maturity schedule (M-P3.6, ADR-0012), from the AR's "Maturity
+    # profile of borrowings" note. Six disclosed buckets, one FactKind each —
+    # deliberately not collapsed and not summed into a derived total. unit=CRORE_INR.
+    # Does NOT reconcile to FINANCIAL_TOTAL_DEBT: the six buckets sum to the
+    # note's own pre-adjustment gross Total, which excludes the "Less:
+    # Capitalisation of transaction costs" deduction that IS already netted
+    # into the balance-sheet Borrowings line FINANCIAL_TOTAL_DEBT sums from —
+    # see ADR-0012's M-P3.6 amendment for the verified real-number reconciliation.
+    FINANCIAL_DEBT_MATURITY_WITHIN_1Y  = "financial_debt_maturity_within_1y"    # not later than one year or on demand
+    FINANCIAL_DEBT_MATURITY_1_TO_2Y    = "financial_debt_maturity_1_to_2y"
+    FINANCIAL_DEBT_MATURITY_2_TO_3Y    = "financial_debt_maturity_2_to_3y"
+    FINANCIAL_DEBT_MATURITY_3_TO_4Y    = "financial_debt_maturity_3_to_4y"
+    FINANCIAL_DEBT_MATURITY_4_TO_5Y    = "financial_debt_maturity_4_to_5y"
+    FINANCIAL_DEBT_MATURITY_BEYOND_5Y  = "financial_debt_maturity_beyond_5y"
+
     # Banking / NBFC financial metrics (broadly applicable across financial sector)
     # Period conventions: quarterly KPIs use quarter-end date; annual KPIs use
     # fiscal year-end date.  Ratio facts use unit=PERCENT; stock/flow facts use

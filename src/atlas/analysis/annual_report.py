@@ -37,7 +37,7 @@ from atlas.analysis.patterns import extract_n_values, fiscal_year_end
 from atlas.knowledge.base import KnowledgeBase
 from atlas.knowledge.entities import EntityResolver
 
-ANALYZER_VERSION = "3.3"
+ANALYZER_VERSION = "3.4"
 
 # Director identity (M-P1.4, narrowed): only CLEAN "Name (DIN 12345678)"
 # adjacencies. The name is 2-4 Title-case tokens immediately before the DIN
@@ -143,6 +143,103 @@ def _extract_rpt_balance(content: str, period: str) -> list[AnalysisFact]:
             confidence="high", provenance=prov,
         ),
     ]
+
+
+# Borrowings maturity schedule (M-P3.6, ADR-0012), from the AR notes-to-
+# accounts "Maturity profile of borrowings" table. Six disclosed buckets,
+# always in the same fixed order (<=1yr, 1-2yr, 2-3yr, 3-4yr, 4-5yr, >5yr),
+# verified across 17/25 real Tata Steel filings spanning FY2016-FY2026.
+#
+# Positional extraction, NOT per-bucket label regex: the exact bucket wording
+# varies across years for the identical 6-bucket structure -- e.g. FY2016
+# uses "In one year or less or on demand" / "Between one-two years", FY2026
+# uses "Not later than one year or on demand" / "Later than one year but not
+# two years". Matching every real label variant would be fragile; instead
+# this anchors once on the stable heading phrase and then walks forward
+# collecting exactly 12 numeric tokens (6 buckets x 2 comparative-period
+# columns) positionally, treating the label lines between value-pairs as
+# skippable rather than a stop condition (extract_n_values' stop-on-first-
+# non-numeric-line behavior does not fit this shape and is not reused here).
+# Stopping at exactly 12 values also naturally excludes the Total,
+# "Less: Capitalisation of transaction costs", and Net reconciliation rows
+# that follow the 6th bucket in the source table -- those are deliberately
+# not extracted (see the base.py FactKind comment on why this does not
+# reconcile to FINANCIAL_TOTAL_DEBT).
+#
+# Reads the FIRST occurrence of the heading only (same "no explicit basis
+# signal" limitation already accepted for FINANCIAL_GROSS_BLOCK/
+# FINANCIAL_INTANGIBLE_ASSETS): a Tata Steel filing's notes-to-accounts
+# discloses this table twice (standalone, then consolidated) and this reads
+# whichever occurs first in document order.
+#
+# Business-model-conditional: absent at TCS (near-zero-debt, no such
+# disclosure found in the real corpus) and absent at SBIN (bank; the
+# disclosure format found there is a single debt/equity footnote, not this
+# bucketed note) -- the same conditional-firing pattern already accepted for
+# FINANCIAL_TCV/FINANCIAL_GROSS_BLOCK.
+_RE_DEBT_MATURITY_HEADING = re.compile(r"[Mm]aturity profile of borrowings")
+_RE_NUMERIC_LINE = re.compile(r"^\(?[\d,]+(?:\.\d+)?\)?$")
+
+_DEBT_MATURITY_BUCKET_KINDS = [
+    FactKind.FINANCIAL_DEBT_MATURITY_WITHIN_1Y,
+    FactKind.FINANCIAL_DEBT_MATURITY_1_TO_2Y,
+    FactKind.FINANCIAL_DEBT_MATURITY_2_TO_3Y,
+    FactKind.FINANCIAL_DEBT_MATURITY_3_TO_4Y,
+    FactKind.FINANCIAL_DEBT_MATURITY_4_TO_5Y,
+    FactKind.FINANCIAL_DEBT_MATURITY_BEYOND_5Y,
+]
+
+
+def _extract_debt_maturity(content: str, period: str) -> list[AnalysisFact]:
+    m = _RE_DEBT_MATURITY_HEADING.search(content)
+    if m is None:
+        return []
+
+    window = content[m.end(): m.end() + 3000]
+    values: list[float] = []
+    for line in window.split("\n"):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if _RE_NUMERIC_LINE.match(stripped):
+            token = stripped
+            neg = token.startswith("(") and token.endswith(")")
+            token = token.strip("()").replace(",", "")
+            try:
+                v = float(token)
+            except ValueError:
+                continue
+            values.append(-v if neg else v)
+            if len(values) >= 12:
+                break
+
+    if len(values) < 12:
+        return []
+
+    facts: list[AnalysisFact] = []
+    for i, kind in enumerate(_DEBT_MATURITY_BUCKET_KINDS):
+        current_period_value = values[i * 2]
+        # Plausibility floor, same convention as the other balance-sheet-
+        # adjacent facts in this ontology (_positive() in financial_results.py):
+        # a zero bucket is indistinguishable from a positional-parsing miss
+        # with the evidence available here, so it is dropped rather than
+        # emitted -- under-emit, not a claim that the company has zero debt
+        # maturing in that window.
+        if current_period_value <= 0:
+            continue
+        facts.append(AnalysisFact(
+            kind=kind,
+            value=current_period_value,
+            unit=FactUnit.CRORE_INR,
+            period=period,
+            confidence="high",
+            provenance=Provenance(
+                section="debt_maturity_schedule",
+                char_offset=m.start(),
+                excerpt=_snip(content, m.start()),
+            ),
+        ))
+    return facts
 
 
 def _extract_directors(content: str, resolver: EntityResolver) -> list[EntityMention]:
@@ -541,6 +638,7 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
         facts.append(gross_block_fact)
 
     facts.extend(_extract_rpt_balance(content, period))
+    facts.extend(_extract_debt_maturity(content, period))
 
     # ------------------------------------------------------------------ #
     # 3. Consolidated auditor's report — KAM titles                        #

@@ -320,26 +320,126 @@ would be undisclosed scope creep.
 
 ---
 
+## Amendment (M-P3.6)
+
+Six further FactKinds independently satisfy the same three-part test and are
+admitted under this exception, not a new one — `FINANCIAL_DEBT_MATURITY_
+WITHIN_1Y`, `_1_TO_2Y`, `_2_TO_3Y`, `_3_TO_4Y`, `_4_TO_5Y`, `_BEYOND_5Y`:
+
+- Primary (the AR notes-to-accounts "Maturity profile of borrowings" table
+  — six disclosed buckets, deliberately not collapsed and not summed into a
+  derived total, per the approved design).
+- Extends `annual_report.py`'s existing extraction machinery (same file as
+  `_extract_gross_block`/`_extract_rpt_balance`) — condition 2 satisfied.
+- Evidence-verified at Tata Steel: 18/25 real filings, spanning FY2016
+  through FY2026, real varying values confirmed at both ends of that range.
+
+**Positional extraction, not per-bucket label regex.** The 6-bucket
+structure is stable across a decade of real filings, but the bucket wording
+is not: FY2016 uses "In one year or less or on demand" / "Between one-two
+years"; FY2026 uses "Not later than one year or on demand" / "Later than one
+year but not two years". Matching every real label variant would be
+fragile and would need updating every time wording drifts again. Instead,
+extraction anchors once on the stable heading phrase ("maturity profile of
+borrowings") and walks forward collecting exactly 12 numeric tokens (6
+buckets × 2 comparative-period columns) positionally, skipping the label
+lines between value-pairs rather than stopping at them (`extract_n_values`'s
+stop-on-first-non-numeric-line behavior does not fit this shape and was not
+reused here — a new dedicated scanner was written instead, consistent with
+`_extract_rpt_balance`'s precedent of writing a dedicated parser when the
+shared helper's stop condition doesn't match the source's own nil/structure
+convention). Stopping at exactly 12 values also has the effect of excluding
+the Total, "Less: Capitalisation of transaction costs", and Net
+reconciliation rows that follow the 6th bucket — per the approved design,
+these are deliberately not extracted as facts.
+
+**Plausibility floor.** Each bucket must be strictly positive to be emitted
+— same convention as the original four M-P3.1 FactKinds. A zero bucket is
+indistinguishable, with the evidence available here, from a positional scan
+picking up the wrong line; dropped rather than emitted, under-emit over a
+false claim of zero debt maturing in that window.
+
+**Basis:** reads the first occurrence of the heading only. A single filing's
+notes-to-accounts discloses this table twice — standalone, then consolidated
+— and this reads whichever occurs first in document order. Same "no explicit
+basis signal" limitation already accepted for `FINANCIAL_GROSS_BLOCK`/
+`FINANCIAL_INTANGIBLE_ASSETS`, not newly introduced here.
+
+**Business-model-conditional, confirmed:** absent at TCS (0/29 filings — no
+such disclosure found anywhere in the real corpus; matches TCS's known
+near-zero-debt profile) and absent at SBIN (0/25 filings — the disclosure
+format found there is a single debt/equity-ratio footnote, not this bucketed
+note; banks likely disclose maturity differently, e.g. RBI ALM format, not
+found in the sampled filings). Same conditional-firing pattern already
+accepted for `FINANCIAL_TCV`/`FINANCIAL_GROSS_BLOCK`.
+
+### Reconciliation finding (required verification, per the approved design)
+
+**The 6-bucket sum does NOT reconcile to `FINANCIAL_TOTAL_DEBT`, by design,
+and this was verified against real numbers, not assumed:**
+
+For Tata Steel's FY2026 annual report (standalone, first-occurrence table):
+```
+Bucket sum (this milestone's 6 facts):  64,757.28
+Disclosed "Total" row (same table):     64,757.28   <- exact match, confirms extraction is arithmetically sound
+Disclosed "Less: Capitalisation of
+  transaction costs" (not extracted):       53.10
+Disclosed "Net" row (not extracted):    64,704.18
+```
+The bucket sum matches the table's own **pre-adjustment gross Total**
+exactly — a real-number sanity check that the positional scan is reading
+the right 12 values, not an artifact.
+
+Separately, `FINANCIAL_TOTAL_DEBT` (extracted by `financial_results.py`
+from the audited balance sheet's "Borrowings" line, a different analyzer)
+was checked against the same company's real data. For consolidated basis,
+FY2025: the maturity table's own consolidated gross Total for FY2025 is
+89,186.01; its consolidated Net (post-adjustment) figure for FY2025 is
+88,963.81; and the independently-extracted `FINANCIAL_TOTAL_DEBT` for that
+same period is **88,963.81 — an exact match to the Net figure, not the
+gross Total**. The 222.20 difference is exactly the disclosed
+"Capitalisation of transaction costs" deduction for that year and basis —
+the balance sheet's "Borrowings" line already carries debt at amortized
+cost (net of transaction costs, per Ind AS 109), which is what
+`FINANCIAL_TOTAL_DEBT` sums.
+
+**Conclusion: the two families measure different bases by design** — the 6
+buckets are gross undiscounted maturity amounts (a repayment-timing view);
+`FINANCIAL_TOTAL_DEBT` is the net amortized-cost carrying value (a
+balance-sheet view). A consumer wanting a "total debt" figure from the 6
+buckets should expect it to run slightly *above* `FINANCIAL_TOTAL_DEBT` (by
+the transaction-cost adjustment), and should additionally be aware the two
+families are not guaranteed to be reading the same basis (standalone vs.
+consolidated), per the basis limitation above. No FactKind should be
+constructed to reconcile them; the difference is small (0.06%-0.25% of
+total debt in the years checked), expected, and documented here rather than
+silently present as an unexplained discrepancy.
+
+---
+
 ## References
 
 - `src/atlas/analysis/financial_results.py` — `_extract_balance_sheet_facts`,
   `_extract_cashflow_facts`, the extended functions; `_last_match_before`,
   `_positive` (M-P3.1 helpers)
 - `src/atlas/analysis/annual_report.py` — `_extract_gross_block` (M-P3.2),
-  `_extract_rpt_balance` (M-P3.3)
+  `_extract_rpt_balance` (M-P3.3), `_extract_debt_maturity` (M-P3.6)
 - `src/atlas/analysis/financial_results.py` — `_PL_ROWS`/`_extract_pl_facts`,
   the reused generic row mechanism extended by `FINANCIAL_COST_OF_MATERIALS`/
   `FINANCIAL_PURCHASES_STOCK_IN_TRADE`/`FINANCIAL_CHANGE_IN_INVENTORIES` (M-P3.4)
 - `src/atlas/company/model.py` — `AuditorEntry`, `GovernanceProfile.auditor_history` (M-P3.2);
   `RelatedPartyEntry`, `GovernanceProfile.related_parties` (M-P3.3)
-- `src/atlas/analysis/base.py` — the twelve FactKind members this exception covers
+- `src/atlas/analysis/base.py` — the eighteen FactKind members this exception covers
 - `src/atlas/query/metrics.py` — registration (`inventories`,
   `trade_receivables`, `trade_payables`, `unbilled_revenue`, `cash_tax_paid`,
   `intangible_assets`, `gross_block`, `cost_of_materials`,
-  `purchases_stock_in_trade`, `change_in_inventories`)
+  `purchases_stock_in_trade`, `change_in_inventories`, `debt_maturity_within_1y`,
+  `debt_maturity_1_to_2y`, `debt_maturity_2_to_3y`, `debt_maturity_3_to_4y`,
+  `debt_maturity_4_to_5y`, `debt_maturity_beyond_5y`)
 - `src/atlas/query/engine.py` — `auditor_history()` query (M-P3.2);
   `related_party_disclosures()`, `rpt_resolutions()` queries (M-P3.3)
 - Atlas Evaluation Matrix — Part II Phase 3, M-P3.0 (extraction-risk gate),
-  M-P3.1, M-P3.2, M-P3.3, M-P3.4 (this amendment)
+  M-P3.1, M-P3.2, M-P3.3, M-P3.4, M-P3.6 (this amendment) — M-P3.5 blocked on
+  corpus/specification mismatch, not implemented
 - `docs/adr/0009-orthogonal-concerns.md` — the compose-don't-merge discipline
   informing the Billed/Unbilled non-overlap resolution

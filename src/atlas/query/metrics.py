@@ -136,6 +136,16 @@ _SPECS: list[MetricSpec] = [
     _fk("purchases_stock_in_trade", "Purchases of Stock-in-Trade", FactKind.FINANCIAL_PURCHASES_STOCK_IN_TRADE, FactUnit.CRORE_INR, False),
     _fk("change_in_inventories", "Changes in Inventories", FactKind.FINANCIAL_CHANGE_IN_INVENTORIES, FactUnit.CRORE_INR, None),
 
+    # -- Financial: borrowings maturity schedule (M-P3.6, ADR-0012) ----------
+    # Manufacturer-specific -- absent at TCS (near-zero-debt) and SBIN (different bank disclosure format).
+    # Does NOT reconcile to total_debt -- see ADR-0012's M-P3.6 amendment.
+    _fk("debt_maturity_within_1y", "Debt Maturity: Within 1 Year", FactKind.FINANCIAL_DEBT_MATURITY_WITHIN_1Y, FactUnit.CRORE_INR, False),
+    _fk("debt_maturity_1_to_2y", "Debt Maturity: 1-2 Years", FactKind.FINANCIAL_DEBT_MATURITY_1_TO_2Y, FactUnit.CRORE_INR, None),
+    _fk("debt_maturity_2_to_3y", "Debt Maturity: 2-3 Years", FactKind.FINANCIAL_DEBT_MATURITY_2_TO_3Y, FactUnit.CRORE_INR, None),
+    _fk("debt_maturity_3_to_4y", "Debt Maturity: 3-4 Years", FactKind.FINANCIAL_DEBT_MATURITY_3_TO_4Y, FactUnit.CRORE_INR, None),
+    _fk("debt_maturity_4_to_5y", "Debt Maturity: 4-5 Years", FactKind.FINANCIAL_DEBT_MATURITY_4_TO_5Y, FactUnit.CRORE_INR, None),
+    _fk("debt_maturity_beyond_5y", "Debt Maturity: Beyond 5 Years", FactKind.FINANCIAL_DEBT_MATURITY_BEYOND_5Y, FactUnit.CRORE_INR, None),
+
     # -- Financial: banking / NBFC ratios ----------------------------------
     _fk("nii", "Net Interest Income", FactKind.FINANCIAL_NET_INTEREST_INCOME, FactUnit.CRORE_INR, True),
     _fk("nim", "Net Interest Margin", FactKind.FINANCIAL_NET_INTEREST_MARGIN, FactUnit.PERCENT, True),
