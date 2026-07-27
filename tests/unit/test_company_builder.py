@@ -1077,7 +1077,6 @@ def test_build_profile_multi_domain():
 
 
 def _snap(**kwargs: float) -> FinancialSnapshot:
-    facts = {k: v for k, v in kwargs.items()}
     return FinancialSnapshot(
         period="2025-03-31",
         period_type="annual",

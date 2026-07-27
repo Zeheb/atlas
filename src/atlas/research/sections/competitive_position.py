@@ -14,7 +14,6 @@ from __future__ import annotations
 
 from atlas.acquisition.repository import Repository
 from atlas.company.model import CompanyProfile
-from atlas.query import metrics as metrics_mod
 from atlas.query import screen as screen_mod
 from atlas.research.model import ReportSection
 
@@ -48,7 +47,6 @@ def build(
 
     all_profiles = {ticker: profile, **peers}
     for metric_key in _CROSS_SECTOR_METRICS:
-        spec = metrics_mod.get_metric(metric_key)
         result = screen_mod.screen(all_profiles, metric_key)
         rows = [r for r in result.sections[0].rows if r]
         if rows:

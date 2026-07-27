@@ -523,7 +523,6 @@ class TestCrossYearTrends:
     def test_scope3_dominates_total_ghg_in_fy26(self, results: dict):
         """Scope 3 (employee travel + commuting) should far exceed Scope 1+2."""
         if "FY26" in results:
-            r = results["FY26"]
             s1 = self._get(results, "FY26", FactKind.ESG_GHG_SCOPE1) or 0
             s2 = self._get(results, "FY26", FactKind.ESG_GHG_SCOPE2) or 0
             s3 = self._get(results, "FY26", FactKind.ESG_GHG_SCOPE3) or 0

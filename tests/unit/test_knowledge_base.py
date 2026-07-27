@@ -840,14 +840,14 @@ class TestParsedDocumentFields:
     """New fields (extraction_method, quality_score, ocr_attempted) round-trip through DB."""
 
     def test_pdf_parse_stores_extraction_method(self, tmp_path: Path) -> None:
-        path = _make_pdf(tmp_path, text="Revenue from operations " * 20)
+        _make_pdf(tmp_path, text="Revenue from operations " * 20)
         entry = _make_entry("bse-pdf-001", "docs/doc.pdf")
         kb = KnowledgeBase(tmp_path)
         doc = kb.parse(entry)
         assert doc.extraction_method == "native"
 
     def test_pdf_parse_stores_quality_score(self, tmp_path: Path) -> None:
-        path = _make_pdf(tmp_path, text="Revenue from operations " * 20)
+        _make_pdf(tmp_path, text="Revenue from operations " * 20)
         entry = _make_entry("bse-pdf-002", "docs/doc.pdf")
         kb = KnowledgeBase(tmp_path)
         doc = kb.parse(entry)
@@ -855,14 +855,14 @@ class TestParsedDocumentFields:
         assert 0.0 <= doc.quality_score <= 1.0
 
     def test_pdf_parse_stores_ocr_attempted_false(self, tmp_path: Path) -> None:
-        path = _make_pdf(tmp_path, text="Revenue from operations " * 20)
+        _make_pdf(tmp_path, text="Revenue from operations " * 20)
         entry = _make_entry("bse-pdf-003", "docs/doc.pdf")
         kb = KnowledgeBase(tmp_path)
         doc = kb.parse(entry)
         assert doc.ocr_attempted is False
 
     def test_get_returns_extraction_method(self, tmp_path: Path) -> None:
-        path = _make_pdf(tmp_path, text="Revenue from operations " * 20)
+        _make_pdf(tmp_path, text="Revenue from operations " * 20)
         entry = _make_entry("bse-pdf-004", "docs/doc.pdf")
         kb = KnowledgeBase(tmp_path)
         kb.parse(entry)
@@ -871,7 +871,7 @@ class TestParsedDocumentFields:
         assert stored.extraction_method == "native"
 
     def test_get_returns_quality_score(self, tmp_path: Path) -> None:
-        path = _make_pdf(tmp_path, text="Revenue from operations " * 20)
+        _make_pdf(tmp_path, text="Revenue from operations " * 20)
         entry = _make_entry("bse-pdf-005", "docs/doc.pdf")
         kb = KnowledgeBase(tmp_path)
         kb.parse(entry)
@@ -898,7 +898,7 @@ class TestParsedDocumentFields:
         monkeypatch.setattr(ext_mod, "_native_extract", lambda p: (garbled, 5))
         monkeypatch.setattr(ext_mod, "_ocr_extract", lambda p, n: clean_ocr)
 
-        path = _make_pdf(tmp_path)
+        _make_pdf(tmp_path)
         entry = _make_entry("bse-pdf-ocr", "docs/doc.pdf")
         kb = KnowledgeBase(tmp_path)
         kb.parse(entry)
@@ -911,7 +911,7 @@ class TestDocumentLanguageDetection:
     """document_language — deterministic script-ratio detection, not ML."""
 
     def test_english_text_detected_as_en(self, tmp_path: Path) -> None:
-        path = _make_pdf(
+        _make_pdf(
             tmp_path, text="Revenue from operations increased significantly " * 10
         )
         entry = _make_entry("bse-lang-001", "docs/doc.pdf")
@@ -953,7 +953,7 @@ class TestDocumentLanguageDetection:
         assert doc.document_language is None
 
     def test_get_returns_document_language(self, tmp_path: Path) -> None:
-        path = _make_pdf(
+        _make_pdf(
             tmp_path, text="Revenue from operations increased significantly " * 10
         )
         entry = _make_entry("bse-lang-002", "docs/doc.pdf")
