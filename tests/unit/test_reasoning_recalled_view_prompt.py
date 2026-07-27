@@ -127,7 +127,7 @@ def test_recalled_view_evidence_not_in_valid_evidence_ids() -> None:
     just because it's mentioned in the recalled-view block."""
     rendered = build_user_prompt(_question(), _context(thesis=_view()))
     valid_line = next(
-        l for l in rendered.splitlines() if l.startswith("VALID EVIDENCE IDS")
+        line for line in rendered.splitlines() if line.startswith("VALID EVIDENCE IDS")
     )
     assert "ev-OLD" not in valid_line
 

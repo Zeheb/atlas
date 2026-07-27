@@ -194,7 +194,7 @@ def test_valid_evidence_ids_never_include_the_recalled_views_evidence(
 
     prompt = client.user_prompts[0]
     valid_line = next(
-        l for l in prompt.splitlines() if l.startswith("VALID EVIDENCE IDS")
+        line for line in prompt.splitlines() if line.startswith("VALID EVIDENCE IDS")
     )
     assert VIEW_EVIDENCE not in valid_line
     assert CURRENT_EVIDENCE in valid_line
