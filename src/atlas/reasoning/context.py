@@ -76,7 +76,7 @@ from atlas.reasoning.contracts import (
     SubjectRef,
 )
 from atlas.reasoning.plan import SearchPlan
-from atlas.reasoning.retrieval import RetrievalResult
+from atlas.reasoning.retrieval import RetrievalMatch, RetrievalResult
 
 # Compactness guard so a very deep profile cannot blow the context budget.
 _MAX_CLAIMS = 500
@@ -333,6 +333,7 @@ def _merge_question_passages(
         if ref.excerpt
     }
     retrieval_result: RetrievalResult | None = None
+    matches: Sequence[tuple[str, RetrievalMatch]]
     if plan is not None:
         retrieval_result = _retrieval.retrieve_with_plan(
             kb,

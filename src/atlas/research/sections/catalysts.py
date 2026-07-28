@@ -39,13 +39,13 @@ def build(
     ]
     merged: dict[tuple[str, str], list[str]] = {}
     order: list[tuple[str, str]] = []
-    for e in pending_acquisitions:
-        key = (" ".join(e.target_name.split()), e.expected_completion)
+    for acq in pending_acquisitions:
+        key = (" ".join(acq.target_name.split()), acq.expected_completion)
         if key not in merged:
             merged[key] = []
             order.append(key)
-        if e.evidence_id and e.evidence_id not in merged[key]:
-            merged[key].append(e.evidence_id)
+        if acq.evidence_id and acq.evidence_id not in merged[key]:
+            merged[key].append(acq.evidence_id)
 
     for target, completion in sorted(order, key=lambda k: k[1]):
         findings.append(
@@ -59,18 +59,24 @@ def build(
             )
         )
 
-    for e in sorted(
-        profile.capital_events.fundraises, key=lambda e: e.source_date, reverse=True
+    for fundraise in sorted(
+        profile.capital_events.fundraises,
+        key=lambda fundraise: fundraise.source_date,
+        reverse=True,
     ):
         findings.append(
             Finding(
                 text=(
-                    f"Board-authorized {e.fundraise_type} fundraise"
-                    + (f" of up to {engine._fmt_crore(e.amount)}" if e.amount else "")
-                    + f" ({engine._fmt_source_date(e.source_date)}) — Atlas has no record of whether "
+                    f"Board-authorized {fundraise.fundraise_type} fundraise"
+                    + (
+                        f" of up to {engine._fmt_crore(fundraise.amount)}"
+                        if fundraise.amount
+                        else ""
+                    )
+                    + f" ({engine._fmt_source_date(fundraise.source_date)}) — Atlas has no record of whether "
                     "this authorization was subsequently executed."
                 ),
-                evidence_ids=(e.evidence_id,) if e.evidence_id else (),
+                evidence_ids=(fundraise.evidence_id,) if fundraise.evidence_id else (),
                 kind="fact",
             )
         )
