@@ -364,12 +364,12 @@ def _ingest_investor_presentation_result(
 
     existing = {(s.period, s.basis): s for s in profile.financial.snapshots}
     for period, facts in snaps.items():
-        key = (period, "consolidated")
-        if key in existing:
+        snap_key = (period, "consolidated")
+        if snap_key in existing:
             for fk, fv in facts.items():
-                existing[key].facts.setdefault(fk, fv)
-            if result.evidence_id not in existing[key].sources:
-                existing[key].sources.append(result.evidence_id)
+                existing[snap_key].facts.setdefault(fk, fv)
+            if result.evidence_id not in existing[snap_key].sources:
+                existing[snap_key].sources.append(result.evidence_id)
         else:
             snap = FinancialSnapshot(
                 period=period,
@@ -379,7 +379,7 @@ def _ingest_investor_presentation_result(
                 sources=[result.evidence_id],
             )
             profile.financial.snapshots.append(snap)
-            existing[key] = snap
+            existing[snap_key] = snap
 
 
 _ANNUAL_REPORT_AUTHORITATIVE_ESG: frozenset[FactKind] = frozenset(
@@ -494,15 +494,15 @@ def _ingest_annual_report_result(
             if result.evidence_id not in fin_existing[key].sources:
                 fin_existing[key].sources.append(result.evidence_id)
         else:
-            snap = FinancialSnapshot(
+            fin_snap = FinancialSnapshot(
                 period=period,
                 period_type="annual",
                 basis="consolidated",
                 facts=facts,
                 sources=[result.evidence_id],
             )
-            profile.financial.snapshots.append(snap)
-            fin_existing[key] = snap
+            profile.financial.snapshots.append(fin_snap)
+            fin_existing[key] = fin_snap
 
     # Related-party disclosures (M-P3.3). Row identity via provenance.section
     # ("rpt_row_N"), the SAME grouping discipline as resolution_N/
@@ -513,9 +513,9 @@ def _ingest_annual_report_result(
         if sec.startswith("rpt_row_"):
             rpt_by_section[sec].setdefault(fact.kind, fact)
 
-    for _sec, facts in sorted(rpt_by_section.items()):
-        amount_fact = facts.get(FactKind.GOVERNANCE_RPT_BALANCE_AMOUNT)
-        category_fact = facts.get(FactKind.GOVERNANCE_RPT_CATEGORY)
+    for _sec, rpt_facts in sorted(rpt_by_section.items()):
+        amount_fact = rpt_facts.get(FactKind.GOVERNANCE_RPT_BALANCE_AMOUNT)
+        category_fact = rpt_facts.get(FactKind.GOVERNANCE_RPT_CATEGORY)
         if amount_fact is None or amount_fact.period is None:
             continue
         profile.governance.related_parties.append(
@@ -980,10 +980,10 @@ def _ingest_segment_facts(result: AnalysisResult, profile: CompanyProfile) -> No
     all_names: list[str] = []
     for fact in result.facts:
         if fact.kind == FactKind.SEGMENT_NAME and fact.period:
-            name = str(fact.value)
-            all_names.append(name)
+            seg_name = str(fact.value)
+            all_names.append(seg_name)
             if fact.provenance and fact.provenance.char_offset is not None:
-                name_by_offset[fact.provenance.char_offset] = name
+                name_by_offset[fact.provenance.char_offset] = seg_name
 
     if not all_names:
         return
