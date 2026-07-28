@@ -65,7 +65,7 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
             f"no analyzer registered for kind={kind!r}; "
             f"supported kinds: {sorted(_REGISTRY)}"
         )
-    return fn(evidence_id, kb)  # type: ignore[call-arg]
+    return fn(evidence_id, kb)
 
 
 def supported_kinds() -> list[str]:

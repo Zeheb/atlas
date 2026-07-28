@@ -1019,7 +1019,7 @@ def risk_recurrence(profile: CompanyProfile) -> QueryResult:
             groups[key] = [r.text, r.period, {r.period}]
         else:
             entry = groups[key]
-            entry[2].add(r.period)  # type: ignore[union-attr]
+            entry[2].add(r.period)
             if r.period >= entry[1]:  # keep the verbatim form of the latest period seen
                 entry[0], entry[1] = r.text, r.period
 

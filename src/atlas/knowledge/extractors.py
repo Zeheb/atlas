@@ -207,7 +207,7 @@ def _find_tessdata() -> str:
     """
     import os
 
-    import fitz  # type: ignore[import-untyped]
+    import fitz
 
     try:
         return fitz.get_tessdata()
@@ -244,7 +244,7 @@ def _ocr_extract(path: Path, page_count: int) -> str:
 
     Raises RuntimeError if Tesseract is not installed.
     """
-    import fitz  # type: ignore[import-untyped]
+    import fitz
 
     tessdata = _find_tessdata()
     doc = fitz.open(str(path))
