@@ -1264,14 +1264,14 @@ def summary(profile: CompanyProfile, repo: Repository | None = None) -> QueryRes
         key=lambda s: s.period,
     )
     if fin_snaps:
-        latest = fin_snaps[-1]
+        latest_fin = fin_snaps[-1]
         rows = [
             [
-                _fmt_date(latest.period),
-                _fmt_crore(latest.facts.get(FactKind.FINANCIAL_REVENUE)),
-                _fmt_crore(latest.facts.get(FactKind.FINANCIAL_PAT)),
-                _fmt_pct(derived.pat_margin_pct(latest)),
-                _fmt_pct(derived.ebit_margin_pct(latest)),
+                _fmt_date(latest_fin.period),
+                _fmt_crore(latest_fin.facts.get(FactKind.FINANCIAL_REVENUE)),
+                _fmt_crore(latest_fin.facts.get(FactKind.FINANCIAL_PAT)),
+                _fmt_pct(derived.pat_margin_pct(latest_fin)),
+                _fmt_pct(derived.ebit_margin_pct(latest_fin)),
             ]
         ]
         sections.append(
@@ -1284,13 +1284,13 @@ def summary(profile: CompanyProfile, repo: Repository | None = None) -> QueryRes
 
     own_snaps = sorted(profile.ownership.snapshots, key=lambda s: s.period)
     if own_snaps:
-        latest = own_snaps[-1]
+        latest_own = own_snaps[-1]
         rows = [
             [
-                _fmt_date(latest.period),
-                _fmt_pct(latest.facts.get(FactKind.OWNERSHIP_PROMOTER_PCT), 2),
-                _fmt_pct(latest.facts.get(FactKind.OWNERSHIP_FPI_PCT), 2),
-                _fmt_pct(latest.facts.get(FactKind.OWNERSHIP_DII_PCT), 2),
+                _fmt_date(latest_own.period),
+                _fmt_pct(latest_own.facts.get(FactKind.OWNERSHIP_PROMOTER_PCT), 2),
+                _fmt_pct(latest_own.facts.get(FactKind.OWNERSHIP_FPI_PCT), 2),
+                _fmt_pct(latest_own.facts.get(FactKind.OWNERSHIP_DII_PCT), 2),
             ]
         ]
         sections.append(
@@ -1402,14 +1402,14 @@ def summary(profile: CompanyProfile, repo: Repository | None = None) -> QueryRes
         key=lambda s: s.period,
     )
     if esg_snaps:
-        latest = esg_snaps[-1]
-        headcount = latest.facts.get(FactKind.ESG_WORKFORCE_HEADCOUNT)
-        female_pct = latest.facts.get(FactKind.ESG_WORKFORCE_FEMALE_PCT)
-        scope1 = latest.facts.get(FactKind.ESG_GHG_SCOPE1)
-        scope2 = latest.facts.get(FactKind.ESG_GHG_SCOPE2)
+        latest_esg = esg_snaps[-1]
+        headcount = latest_esg.facts.get(FactKind.ESG_WORKFORCE_HEADCOUNT)
+        female_pct = latest_esg.facts.get(FactKind.ESG_WORKFORCE_FEMALE_PCT)
+        scope1 = latest_esg.facts.get(FactKind.ESG_GHG_SCOPE1)
+        scope2 = latest_esg.facts.get(FactKind.ESG_GHG_SCOPE2)
         rows = [
             [
-                _fmt_date(latest.period),
+                _fmt_date(latest_esg.period),
                 f"{headcount:,.0f}" if headcount is not None else "-",
                 _fmt_pct(female_pct) if female_pct is not None else "-",
                 f"{scope1:,.0f} tCO2e" if scope1 is not None else "-",
@@ -1772,11 +1772,11 @@ def former_answerers(profile: CompanyProfile) -> QueryResult:
     matched: dict[str, tuple[str, set[str], object]] = {}
     for p in mgmt:
         eid = resolver.resolve(p.canonical_name, "person").entity_id
-        dc = resigned.get(eid)
-        if dc is None:
+        matched_dc = resigned.get(eid)
+        if matched_dc is None:
             continue
         if eid not in matched:
-            matched[eid] = (p.canonical_name, set(), dc)
+            matched[eid] = (p.canonical_name, set(), matched_dc)
         matched[eid][1].add(p.evidence_id)
 
     rows = [
