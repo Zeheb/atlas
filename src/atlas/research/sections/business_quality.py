@@ -136,15 +136,15 @@ def _segment_concentration(profile: CompanyProfile) -> Finding | None:
         return None
     latest_period = max(e.period for e in profile.segments.entries)
     latest = [
-        e
+        (e, e.revenue)
         for e in profile.segments.entries
         if e.period == latest_period and e.revenue is not None
     ]
-    total = sum(e.revenue for e in latest)
+    total = sum(revenue for _, revenue in latest)
     if not latest or not total:
         return None
-    largest = max(latest, key=lambda e: e.revenue)
-    pct = largest.revenue / total * 100
+    largest, largest_revenue = max(latest, key=lambda pair: pair[1])
+    pct = largest_revenue / total * 100
     return Finding(
         text=(
             f"Largest segment ({largest.name}) accounted for {pct:.0f}% of segment revenue "

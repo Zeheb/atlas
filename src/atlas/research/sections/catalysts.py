@@ -40,7 +40,10 @@ def build(
     merged: dict[tuple[str, str], list[str]] = {}
     order: list[tuple[str, str]] = []
     for acq in pending_acquisitions:
-        key = (" ".join(acq.target_name.split()), acq.expected_completion)
+        completion = acq.expected_completion
+        if completion is None:
+            continue
+        key = (" ".join(acq.target_name.split()), completion)
         if key not in merged:
             merged[key] = []
             order.append(key)
