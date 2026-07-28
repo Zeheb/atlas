@@ -651,17 +651,18 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
             period,
         )
     )
-    result.facts.append(
-        _pf(
-            FactKind.REPORT_PERIOD_TYPE,
-            period_type,
-            None,
-            period,
-            "cover_letter",
-            period_offset,
-            period_type or "",
+    if period_type is not None:
+        result.facts.append(
+            _pf(
+                FactKind.REPORT_PERIOD_TYPE,
+                period_type,
+                None,
+                period,
+                "cover_letter",
+                period_offset,
+                period_type,
+            )
         )
-    )
     is_annual = period_type == "annual"
 
     # ------------------------------------------------------------------
