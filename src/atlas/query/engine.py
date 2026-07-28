@@ -1002,6 +1002,15 @@ def _normalize_risk_text(text: str) -> str:
     return _RE_RISK_WS.sub(" ", no_punct).strip()
 
 
+@dataclass
+class _RiskGroup:
+    """One presentation-normalized risk-factor group's running state."""
+
+    display: str
+    latest_period: str
+    periods: set[str]
+
+
 def risk_recurrence(profile: CompanyProfile) -> QueryResult:
     """Which risk factors keep appearing across reporting periods (M-P2.6, Q22).
 
@@ -1015,24 +1024,27 @@ def risk_recurrence(profile: CompanyProfile) -> QueryResult:
     statements deduplicated to their latest occurrence; this one answers a
     different question (which risks keep coming back, and how often).
     """
-    # key -> [display_text, display_text's own period, periods_seen]
-    groups: dict[str, list[object]] = {}
+    groups: dict[str, _RiskGroup] = {}
     for r in profile.governance.risk_factors:
         key = _normalize_risk_text(r.text)
         if not key:
             continue
         if key not in groups:
-            groups[key] = [r.text, r.period, {r.period}]
+            groups[key] = _RiskGroup(
+                display=r.text, latest_period=r.period, periods={r.period}
+            )
         else:
-            entry = groups[key]
-            entry[2].add(r.period)
-            if r.period >= entry[1]:  # keep the verbatim form of the latest period seen
-                entry[0], entry[1] = r.text, r.period
+            group = groups[key]
+            group.periods.add(r.period)
+            if (
+                r.period >= group.latest_period
+            ):  # keep the verbatim form of the latest period seen
+                group.display, group.latest_period = r.text, r.period
 
     recurring = [
-        (display, periods)
-        for display, _, periods in groups.values()
-        if len(periods) >= 2
+        (group.display, group.periods)
+        for group in groups.values()
+        if len(group.periods) >= 2
     ]
 
     # Three stable passes in REVERSE priority order (lowest priority first) --
