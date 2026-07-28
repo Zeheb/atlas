@@ -142,38 +142,52 @@ def collect_dated_events(
     raw: list[tuple[datetime, str, str, str]] = []
     ce = profile.capital_events
 
-    for e in ce.dividends:
+    for dividend in ce.dividends:
         raw.append(
             (
-                e.source_date,
+                dividend.source_date,
                 "Dividend",
-                f"{e.dividend_type} {e.per_share:.2f}/share",
-                e.evidence_id,
+                f"{dividend.dividend_type} {dividend.per_share:.2f}/share",
+                dividend.evidence_id,
             )
         )
-    for e in ce.buybacks:
-        amt = f" ({e.amount:,.0f} cr)" if e.amount else ""
-        raw.append((e.source_date, "Buyback", f"{e.sub_type}{amt}", e.evidence_id))
-    for e in ce.acquisitions:
+    for buyback in ce.buybacks:
+        amt = f" ({buyback.amount:,.0f} cr)" if buyback.amount else ""
         raw.append(
             (
-                e.source_date,
+                buyback.source_date,
+                "Buyback",
+                f"{buyback.sub_type}{amt}",
+                buyback.evidence_id,
+            )
+        )
+    for acquisition in ce.acquisitions:
+        raw.append(
+            (
+                acquisition.source_date,
                 "Acquisition",
-                " ".join(e.target_name.split()),
-                e.evidence_id,
+                " ".join(acquisition.target_name.split()),
+                acquisition.evidence_id,
             )
         )
-    for e in ce.investments:
+    for investment in ce.investments:
         raw.append(
             (
-                e.source_date,
+                investment.source_date,
                 "Investment",
-                " ".join(e.target_name.split()),
-                e.evidence_id,
+                " ".join(investment.target_name.split()),
+                investment.evidence_id,
             )
         )
-    for e in ce.fundraises:
-        raw.append((e.source_date, "Fundraise", e.fundraise_type, e.evidence_id))
+    for fundraise in ce.fundraises:
+        raw.append(
+            (
+                fundraise.source_date,
+                "Fundraise",
+                fundraise.fundraise_type,
+                fundraise.evidence_id,
+            )
+        )
     for r in profile.credit_history.debt_ratings + profile.credit_history.esg_ratings:
         desc = f"{r.agency}: {r.action or 'rating'} {r.rating or ''}".strip()
         raw.append((r.source_date, "Rating Action", desc, r.evidence_id))

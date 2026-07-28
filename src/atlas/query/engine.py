@@ -1332,27 +1332,47 @@ def summary(profile: CompanyProfile, repo: Repository | None = None) -> QueryRes
 
     events: list[tuple[datetime, str, str]] = []
     ce = profile.capital_events
-    for e in ce.dividends:
+    for dividend in ce.dividends:
         events.append(
             (
-                e.source_date,
-                f"Dividend: {e.dividend_type} {e.per_share:.2f}/share",
-                e.evidence_id,
+                dividend.source_date,
+                f"Dividend: {dividend.dividend_type} {dividend.per_share:.2f}/share",
+                dividend.evidence_id,
             )
         )
-    for e in ce.buybacks:
-        amt = f" ({e.amount:,.0f} cr)" if e.amount else ""
-        events.append((e.source_date, f"Buyback: {e.sub_type}{amt}", e.evidence_id))
-    for e in ce.acquisitions:
+    for buyback in ce.buybacks:
+        amt = f" ({buyback.amount:,.0f} cr)" if buyback.amount else ""
         events.append(
-            (e.source_date, f"Acquisition: {_oneline(e.target_name)}", e.evidence_id)
+            (
+                buyback.source_date,
+                f"Buyback: {buyback.sub_type}{amt}",
+                buyback.evidence_id,
+            )
         )
-    for e in ce.investments:
+    for acquisition in ce.acquisitions:
         events.append(
-            (e.source_date, f"Investment: {_oneline(e.target_name)}", e.evidence_id)
+            (
+                acquisition.source_date,
+                f"Acquisition: {_oneline(acquisition.target_name)}",
+                acquisition.evidence_id,
+            )
         )
-    for e in ce.fundraises:
-        events.append((e.source_date, f"Fundraise: {e.fundraise_type}", e.evidence_id))
+    for investment in ce.investments:
+        events.append(
+            (
+                investment.source_date,
+                f"Investment: {_oneline(investment.target_name)}",
+                investment.evidence_id,
+            )
+        )
+    for fundraise in ce.fundraises:
+        events.append(
+            (
+                fundraise.source_date,
+                f"Fundraise: {fundraise.fundraise_type}",
+                fundraise.evidence_id,
+            )
+        )
     events.sort(key=lambda t: t[0], reverse=True)
     if events:
         rows = [
