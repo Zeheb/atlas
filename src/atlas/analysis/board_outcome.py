@@ -338,14 +338,18 @@ def _extract_investment(
         )
 
     # Investment amount: search press release (ann_b) first; fall back to Annexure A
-    def _find_inr(texts: list[tuple[str, str]]) -> tuple[re.Match | None, str, str]:
+    def _find_inr(
+        texts: list[tuple[str, str]],
+    ) -> tuple[re.Match[str] | None, str, str]:
         for text, section in texts:
             m = _RE_INVEST_AMOUNT_INR.search(text)
             if m:
                 return m, section, text
         return None, "", ""
 
-    def _find_usd(texts: list[tuple[str, str]]) -> tuple[re.Match | None, str, str]:
+    def _find_usd(
+        texts: list[tuple[str, str]],
+    ) -> tuple[re.Match[str] | None, str, str]:
         for text, section in texts:
             m = _RE_INVEST_AMOUNT_USD.search(text)
             if m:
@@ -479,7 +483,7 @@ def _extract_buyback(cover: str) -> tuple[list[AnalysisFact], list[str]]:
 # Fundraising detection (QIP / Rights Issue / Preferential Allotment / NCD)
 # ---------------------------------------------------------------------------
 
-_FUNDRAISE_SIGNALS: list[tuple[re.Pattern, str]] = [
+_FUNDRAISE_SIGNALS: list[tuple[re.Pattern[str], str]] = [
     (
         re.compile(
             r"Qualified\s+Institutional\s+Placement|(?<!\w)QIP(?!\w)", re.IGNORECASE

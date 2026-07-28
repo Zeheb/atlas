@@ -28,6 +28,8 @@ from atlas.company.model import (
     AcquisitionEvent,
     CompanyProfile,
     CreditRatingEntry,
+    OwnershipSnapshot,
+    StrategyEntry,
 )
 from atlas.knowledge.entities import EntityResolver
 from atlas.query import metrics
@@ -129,7 +131,7 @@ def _ownership_label(kind: FactKind) -> str:
     return kind.value.removeprefix("ownership_").replace("_", " ")
 
 
-def _ownership_signals(snaps_asc: list) -> list[str]:
+def _ownership_signals(snaps_asc: list[OwnershipSnapshot]) -> list[str]:
     """Derive ownership trend signals from OwnershipSnapshots sorted oldest-first.
 
     Mirrors the signal logic in shareholding_trend.py but operates directly
@@ -425,7 +427,11 @@ def strategy(
         kw = keyword.lower()
         entries = [e for e in entries if kw in e.text.lower()]
 
-    by_kind: dict[str, list] = {"priority": [], "guidance": [], "aspiration": []}
+    by_kind: dict[str, list[StrategyEntry]] = {
+        "priority": [],
+        "guidance": [],
+        "aspiration": [],
+    }
     for e in entries:
         bucket = by_kind.get(e.kind)
         if bucket is not None:
@@ -1453,7 +1459,7 @@ def drilldown(
     """
     sections: list[TableSection] = []
 
-    def _facts_str(facts: dict) -> str:
+    def _facts_str(facts: dict[FactKind, float]) -> str:
         return "; ".join(
             f"{k.value}={v}"
             for k, v in sorted(facts.items(), key=lambda kv: kv[0].value)

@@ -38,6 +38,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from atlas.analysis.base import FactKind, FactUnit
 from atlas.company import derived
@@ -723,7 +724,7 @@ def metrics_by_domain() -> dict[Domain, list[MetricSpec]]:
 # ---------------------------------------------------------------------------
 
 
-def domain_snapshots(profile: CompanyProfile, domain: Domain) -> list:
+def domain_snapshots(profile: CompanyProfile, domain: Domain) -> list[Any]:
     """The snapshot list a metric's domain reads from, in one place.
 
     financial/esg/ownership snapshots are structurally different (only
