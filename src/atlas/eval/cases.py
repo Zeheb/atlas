@@ -95,7 +95,7 @@ class RecalledClaimFixture:
 
     statement: str
     evidence_ids: tuple[str, ...] = ()
-    confidence: str = "medium"
+    confidence: Literal["high", "medium", "low"] = "medium"
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "evidence_ids", tuple(self.evidence_ids))
@@ -118,7 +118,7 @@ class RecalledViewFixture:
     question: str
     as_of: str
     claims: tuple[RecalledClaimFixture, ...]
-    origin: str = "atlas"
+    origin: Literal["atlas", "user"] = "atlas"
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "claims", tuple(self.claims))

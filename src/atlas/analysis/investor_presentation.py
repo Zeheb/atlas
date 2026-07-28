@@ -83,6 +83,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
+from typing import Literal
 
 from atlas.analysis.base import (
     AnalysisFact,
@@ -169,7 +170,7 @@ def _pf(
     section: str,
     offset: int,
     excerpt_text: str,
-    confidence: str = "high",
+    confidence: Literal["high", "medium", "low"] = "high",
 ) -> AnalysisFact:
     return AnalysisFact(
         kind=kind,
