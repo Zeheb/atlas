@@ -12,6 +12,8 @@ Individual analyzer modules remain importable for focused unit testing.
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 from atlas.analysis.acquisition import analyze as _acquisition
 from atlas.analysis.agm_notice import analyze as _agm_notice
 from atlas.analysis.annual_report import analyze as _annual_report
@@ -32,7 +34,7 @@ from atlas.analysis.investor_presentation import analyze as _investor_presentati
 from atlas.analysis.shareholding_pattern import analyze as _shareholding_pattern
 from atlas.knowledge.base import KnowledgeBase
 
-_REGISTRY: dict[str, object] = {
+_REGISTRY: dict[str, Callable[[str, KnowledgeBase], AnalysisResult]] = {
     "financial_results": _financial_results,
     "acquisition": _acquisition,
     "board_outcome": _board_outcome,

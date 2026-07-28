@@ -26,6 +26,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from atlas.analysis.base import FactUnit
 from atlas.company.model import CompanyProfile
 from atlas.query import metrics as metrics_mod
 
@@ -61,7 +62,7 @@ class MetricSignal:
 def _direction(
     spec: metrics_mod.MetricSpec, delta: float, magnitude: float
 ) -> Direction:
-    if spec.unit == metrics_mod.FactUnit.PERCENT:
+    if spec.unit == FactUnit.PERCENT:
         if magnitude < _PP_NOISE_FLOOR:
             return "stable"
     else:
@@ -117,7 +118,7 @@ def classify_metric_moves(
         delta = latest_value - prior_value
         magnitude = (
             abs(delta)
-            if spec.unit == metrics_mod.FactUnit.PERCENT
+            if spec.unit == FactUnit.PERCENT
             else (abs(delta) / abs(prior_value) if prior_value else 0.0)
         )
         signals.append(

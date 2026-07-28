@@ -1,4 +1,5 @@
 import sys
+from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -7,6 +8,8 @@ import click
 
 if TYPE_CHECKING:
     from atlas.reasoning.contracts import RecalledView
+    from atlas.research.staleness import StalenessReport
+    from atlas.research.thesis import Thesis
 
 from atlas.acquisition.acquisitions import save_acquisition_run
 from atlas.acquisition.connectors.bse import BSEConnector
@@ -1029,7 +1032,7 @@ def _sorted_subjects(base: Path) -> list[str]:
     return sorted(discover_companies(base))
 
 
-def _iter_theses(base: Path):
+def _iter_theses(base: Path) -> Iterator[tuple[str, "Thesis"]]:
     """Every remembered view across the portfolio, subject by subject
     (M2.4.1 item 6). Shared by ``list``/``show`` so the discover-then-iterate
     sweep exists in exactly one place -- ADR-0010 §7: "a sweep is a
@@ -1054,7 +1057,7 @@ def _iter_theses(base: Path):
             yield subject, thesis
 
 
-def _iter_staleness_reports(base: Path):
+def _iter_staleness_reports(base: Path) -> Iterator[tuple[str, "StalenessReport"]]:
     """Every remembered view's staleness, subject by subject (M2.4.1 item 6).
 
     Same shared-sweep and same-skip-and-warn treatment as ``_iter_theses``,
@@ -1128,7 +1131,7 @@ def memory_show_cmd(view_id: str) -> None:
     raise SystemExit(1)
 
 
-def _find_thesis(base: Path, view_id: str):
+def _find_thesis(base: Path, view_id: str) -> tuple[str, "Thesis"] | tuple[None, None]:
     for subject, thesis in _iter_theses(base):
         if thesis.view_id == view_id:
             return subject, thesis
