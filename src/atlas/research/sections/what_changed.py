@@ -48,7 +48,7 @@ def build(
     findings = [
         Finding(
             text=f"{engine._fmt_source_date(date)} — {category}: {desc}",
-            evidence_ids=eids,
+            evidence_ids=tuple(eids),
             kind="fact",
         )
         for date, category, desc, eids in recent

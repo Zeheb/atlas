@@ -58,7 +58,7 @@ def build(
         findings.append(
             Finding(
                 text=f"Improving: {sig.label} ({sig.prior_period} → {sig.latest_period}).",
-                evidence_ids=sig.sources,
+                evidence_ids=tuple(sig.sources),
                 kind=DERIVED,
             )
         )
@@ -66,7 +66,7 @@ def build(
         findings.append(
             Finding(
                 text=f"Deteriorating: {sig.label} ({sig.prior_period} → {sig.latest_period}).",
-                evidence_ids=sig.sources,
+                evidence_ids=tuple(sig.sources),
                 kind=DERIVED,
             )
         )

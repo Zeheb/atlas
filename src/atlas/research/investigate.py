@@ -223,7 +223,7 @@ def run_investigation(
         semantic_findings=result.findings,
         finding=Finding(
             text=answer.prose,
-            evidence_ids=evidence_ids,
+            evidence_ids=tuple(evidence_ids),
             kind="fact",
         ),
         plan=plan,

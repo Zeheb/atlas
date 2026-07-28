@@ -150,7 +150,7 @@ def _segment_concentration(profile: CompanyProfile) -> Finding | None:
             f"Largest segment ({largest.name}) accounted for {pct:.0f}% of segment revenue "
             f"as of {engine._fmt_date(latest_period)}, across {len(latest)} reported segments."
         ),
-        evidence_ids=[largest.evidence_id] if largest.evidence_id else [],
+        evidence_ids=(largest.evidence_id,) if largest.evidence_id else (),
         kind="fact",
     )
 

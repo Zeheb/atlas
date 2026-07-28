@@ -38,7 +38,7 @@ def _repeated_targets(profile: CompanyProfile) -> list[Finding]:
         findings.append(
             Finding(
                 text=f'Target "{t.pattern}" repeated across {len(t.occurrences)} dated filings: {dates}.',
-                evidence_ids=[eid for _, eid in t.occurrences if eid],
+                evidence_ids=tuple(eid for _, eid in t.occurrences if eid),
                 kind="fact",
             )
         )
@@ -60,7 +60,7 @@ def _recurring_risks(profile: CompanyProfile) -> list[Finding]:
                     f"Risk factor disclosed consistently across {len(periods)} annual reports "
                     f"({engine._fmt_date(periods[0])} to {engine._fmt_date(periods[-1])}): {text}"
                 ),
-                evidence_ids=list(
+                evidence_ids=tuple(
                     dict.fromkeys(e.evidence_id for e in entries if e.evidence_id)
                 ),
                 kind="fact",
@@ -82,7 +82,7 @@ def _failed_resolutions(profile: CompanyProfile) -> list[Finding]:
                 )
                 + ")"
             ),
-            evidence_ids=[r.evidence_id] if r.evidence_id else [],
+            evidence_ids=(r.evidence_id,) if r.evidence_id else (),
             kind="fact",
         )
         for r in profile.governance.resolutions

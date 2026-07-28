@@ -77,7 +77,7 @@ def _rating_trajectory(profile: CompanyProfile) -> Finding | None:
     )
     return Finding(
         text=text,
-        evidence_ids=[latest.evidence_id] if latest.evidence_id else [],
+        evidence_ids=(latest.evidence_id,) if latest.evidence_id else (),
         kind="fact",
     )
 
@@ -89,7 +89,9 @@ def _shareholder_returns(profile: CompanyProfile) -> list[Finding]:
         findings.append(
             Finding(
                 text=f"{len(ce.dividends)} dividend declaration(s) on record.",
-                evidence_ids=[e.evidence_id for e in ce.dividends if e.evidence_id],
+                evidence_ids=tuple(
+                    e.evidence_id for e in ce.dividends if e.evidence_id
+                ),
                 kind=DERIVED,
             )
         )
@@ -98,9 +100,9 @@ def _shareholder_returns(profile: CompanyProfile) -> list[Finding]:
         findings.append(
             Finding(
                 text=f"Total disclosed buyback capital across all programs: {engine._fmt_crore(buyback_total)}.",
-                evidence_ids=[
+                evidence_ids=tuple(
                     e.evidence_id for e in ce.buybacks if e.evidence_id and e.amount
-                ],
+                ),
                 kind=DERIVED,
             )
         )

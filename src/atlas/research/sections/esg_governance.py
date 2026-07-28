@@ -65,7 +65,7 @@ def build(
                     f"{metrics_mod.format_value(sig.latest_value, metrics_mod.get_metric(sig.metric_key).unit)} "
                     f"({engine._fmt_date(sig.latest_period)})."
                 ),
-                evidence_ids=sig.sources,
+                evidence_ids=tuple(sig.sources),
                 kind="fact",
             )
         )
@@ -79,7 +79,9 @@ def build(
                 text=f"{len(dir_changes)} director/KMP change(s) on record; most recent: "
                 f"{dir_changes[0].change_type} — {engine._oneline(dir_changes[0].name)} "
                 f"({engine._fmt_source_date(dir_changes[0].source_date)}).",
-                evidence_ids=[d.evidence_id for d in dir_changes[:5] if d.evidence_id],
+                evidence_ids=tuple(
+                    d.evidence_id for d in dir_changes[:5] if d.evidence_id
+                ),
                 kind=DERIVED,
             )
         )
@@ -88,7 +90,7 @@ def build(
         findings.append(
             Finding(
                 text=f"Key Audit Matters on record: {'; '.join(profile.governance.audit_kams)}",
-                evidence_ids=[],
+                evidence_ids=(),
                 kind="fact",
             )
         )

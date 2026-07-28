@@ -54,7 +54,7 @@ def build(
                     f"Acquisition of {target} — expected completion "
                     f"{completion} as stated in the filing (not confirmed as completed)."
                 ),
-                evidence_ids=merged[(target, completion)],
+                evidence_ids=tuple(merged[(target, completion)]),
                 kind="fact",
             )
         )
@@ -70,7 +70,7 @@ def build(
                     + f" ({engine._fmt_source_date(e.source_date)}) — Atlas has no record of whether "
                     "this authorization was subsequently executed."
                 ),
-                evidence_ids=[e.evidence_id] if e.evidence_id else [],
+                evidence_ids=(e.evidence_id,) if e.evidence_id else (),
                 kind="fact",
             )
         )

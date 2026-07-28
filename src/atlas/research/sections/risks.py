@@ -55,7 +55,7 @@ def build(
         findings.append(
             Finding(
                 text=f"{latest.text.strip()}{recurrence_str}{confidence_tag}",
-                evidence_ids=[latest.evidence_id] if latest.evidence_id else [],
+                evidence_ids=(latest.evidence_id,) if latest.evidence_id else (),
                 kind="fact",
             )
         )
