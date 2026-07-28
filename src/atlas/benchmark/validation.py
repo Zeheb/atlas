@@ -44,12 +44,18 @@ class ValidatableCase(Protocol):
     ``atlas.eval``).
     """
 
-    id: str
-    subject: str
-    question: str
-    difficulty: str | None
-    provenance: CaseProvenance | None
-    retrieval_label: RetrievalLabel | None
+    @property
+    def id(self) -> str: ...
+    @property
+    def subject(self) -> str: ...
+    @property
+    def question(self) -> str: ...
+    @property
+    def provenance(self) -> CaseProvenance | None: ...
+    @property
+    def retrieval_label(self) -> RetrievalLabel | None: ...
+    @property
+    def difficulty(self) -> str | None: ...
 
 
 @dataclass(frozen=True)

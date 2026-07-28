@@ -57,12 +57,18 @@ class CaseLike(Protocol):
     importing the other's concrete type.
     """
 
-    id: str
-    category: str
-    question: str
-    subject: str
-    scenario: str | None
-    difficulty: str | None
+    @property
+    def id(self) -> str: ...
+    @property
+    def category(self) -> str: ...
+    @property
+    def question(self) -> str: ...
+    @property
+    def subject(self) -> str: ...
+    @property
+    def scenario(self) -> str | None: ...
+    @property
+    def difficulty(self) -> str | None: ...
 
 
 class DecisionLike(Protocol):
