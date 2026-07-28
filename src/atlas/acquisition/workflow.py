@@ -144,6 +144,9 @@ def run_acquisition(
         mb = (dl_result.file_size_bytes or 0) / 1_048_576
         _emit(f"        downloaded ({mb:.1f} MB)")
 
+        # download_evidence()'s own invariant: local_path is None only on a
+        # failed result (see acquisition/downloader.py), already ruled out above.
+        assert dl_result.local_path is not None
         provisional_entry = CatalogEntry.from_evidence(ev, dl_result.local_path)
         parsed = kb.parse(provisional_entry)
         ocr_used = parsed.ocr_attempted

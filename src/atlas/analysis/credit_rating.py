@@ -622,6 +622,7 @@ def _parse_narrative_issuer_rating(
             provenance=Provenance(section="narrative_cover", char_offset=0),
         )
     )
+    excerpt_match = m_from_to or m_at
     facts.append(
         AnalysisFact(
             kind=FactKind.CREDIT_RATING,
@@ -632,9 +633,7 @@ def _parse_narrative_issuer_rating(
             provenance=Provenance(
                 section="narrative_cover",
                 char_offset=0,
-                excerpt=(
-                    (m_from_to or m_at).group(0)[:120] if (m_from_to or m_at) else None
-                ),
+                excerpt=excerpt_match.group(0)[:120] if excerpt_match else None,
             ),
         )
     )

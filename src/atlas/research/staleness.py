@@ -107,7 +107,7 @@ def check_staleness(
     """
     cited_ids = frozenset(eid for claim in view.claims for eid in claim.evidence_ids)
 
-    known = frozenset()
+    known: frozenset[str] = frozenset()
     if (repo_root / "knowledge.db").exists():
         known = KnowledgeBase(repo_root).known_ids()
     missing = tuple(sorted(cited_ids - known)) if cited_ids else ()

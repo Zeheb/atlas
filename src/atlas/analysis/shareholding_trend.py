@@ -143,7 +143,9 @@ def analyze_trend(results: Sequence[AnalysisResult]) -> TrendResult:
             )
             continue
         facts: dict[FactKind, float | int] = {
-            f.kind: f.value for f in result.facts if f.kind in _TRACKED_KINDS
+            f.kind: f.value
+            for f in result.facts
+            if f.kind in _TRACKED_KINDS and isinstance(f.value, (int, float))
         }
         out.points.append(
             HoldingPoint(

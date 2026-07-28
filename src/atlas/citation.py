@@ -240,17 +240,17 @@ def _build_display_name(
             return f"{ticker} Q{quarter} FY{fy} {label}"
 
     if kind in _YEAR_COVERING_KINDS and not spans_multiple_periods:
-        fy = _fiscal_year_only(period) if period else None
-        if fy is None:
+        year = _fiscal_year_only(period) if period else None
+        if year is None:
             # Fall back to the filing year — an FY-covering document's own
             # filing date is a reasonable proxy when no period was resolved
             # (e.g. analysis hasn't run yet), still never fabricating a page
             # or a quarter it doesn't have.
             try:
-                fy = datetime.strptime(source_date[:10], "%Y-%m-%d").year
+                year = datetime.strptime(source_date[:10], "%Y-%m-%d").year
             except ValueError:
-                fy = None
-        return f"{ticker} FY{fy} {label}" if fy else f"{ticker} {label}"
+                year = None
+        return f"{ticker} FY{year} {label}" if year else f"{ticker} {label}"
 
     # Point-in-time event: month/year from source_date, matching the
     # convention in the user-specified examples (board outcome, credit

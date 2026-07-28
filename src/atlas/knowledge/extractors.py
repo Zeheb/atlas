@@ -210,7 +210,7 @@ def _find_tessdata() -> str:
     import fitz
 
     try:
-        return fitz.get_tessdata()
+        return str(fitz.get_tessdata())
     except RuntimeError:
         pass
 

@@ -48,6 +48,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 
 from atlas.knowledge.base import KnowledgeBase, ParsedDocument
@@ -134,7 +135,7 @@ def _finalize_match(
     content: str,
     start: int,
     text: str,
-    all_keywords: set[str],
+    all_keywords: AbstractSet[str],
     window_chars: int,
     has_numeric: bool,
 ) -> RetrievalMatch:
