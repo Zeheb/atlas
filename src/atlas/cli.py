@@ -2,11 +2,12 @@ import sys
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 import click
 
 if TYPE_CHECKING:
+    from atlas.acquisition.repository import Repository
     from atlas.reasoning.contracts import RecalledView
     from atlas.research.staleness import StalenessReport
     from atlas.research.thesis import Thesis
@@ -93,6 +94,10 @@ def depth(ticker: str, since: str | None) -> None:
     if hd.dated_count == 0:
         click.echo("  No dated evidence in the catalog. Run: atlas acquire " + ticker)
         return
+    # HistoryDepth's own invariant: earliest/latest are None only when
+    # dated_count == 0 (see acquisition/query.py), already ruled out above.
+    assert hd.earliest is not None
+    assert hd.latest is not None
 
     click.echo(f"  Entries:   {hd.entry_count}  ({hd.dated_count} dated)")
     click.echo(f"  Earliest:  {hd.earliest.date().isoformat()}")
@@ -404,6 +409,16 @@ def query_cmd(
     click.echo(render_result(result))
 
 
+class _ScreenKwargs(TypedDict, total=False):
+    """Optional keyword arguments forwarded to query.screen.screen()."""
+
+    basis: str
+    period_type: str
+    op: str
+    threshold: float
+    repos: dict[str, "Repository"]
+
+
 @cli.command("screen")
 @click.argument("metric")
 @click.argument("op", required=False)
@@ -445,7 +460,7 @@ def screen_cmd(
         )
         raise SystemExit(1)
 
-    kwargs: dict[str, object] = {"basis": basis}
+    kwargs: _ScreenKwargs = {"basis": basis}
     if period_type:
         kwargs["period_type"] = period_type
     if op is not None:
