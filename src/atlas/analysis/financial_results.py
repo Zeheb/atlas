@@ -341,7 +341,7 @@ def _extract_pl_facts(
         # separate value section.  Try every match in the region; prefer the
         # first one that yields at least one value > 50 crore.
         chosen_m = None
-        chosen_values: list[float | None] = []
+        chosen_values: list[float] = []
         for m in pat.finditer(region):
             candidate = _extract_n_values(text, rev_offset + m.end(), n=6)
             if candidate and any(abs(v or 0) > 50 for v in candidate):

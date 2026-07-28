@@ -357,7 +357,7 @@ def parse_number(s: str) -> float | None:
         return None
 
 
-def extract_n_values(text: str, after: int, n: int = 6) -> list[float | None]:
+def extract_n_values(text: str, after: int, n: int = 6) -> list[float]:
     """Collect up to n numeric values starting at text[after:].
 
     Stops at the first non-numeric, non-blank line encountered after values
@@ -367,7 +367,7 @@ def extract_n_values(text: str, after: int, n: int = 6) -> list[float | None]:
     mangling (common in older Tata Steel / BSE PDF extractions) does not
     fragment large numbers into spurious decimals.
     """
-    values: list[float | None] = []
+    values: list[float] = []
     segment = fix_ocr_numbers(text[after : after + _MAX_VALUE_SCAN])
     collecting = False
 
