@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+import pytest
+
 from atlas.analysis.base import AnalysisResult, EntityMention
 from atlas.analysis.earnings_transcript import (
     _bounded_question_text,
@@ -174,6 +176,8 @@ def test_real_tcs_transcripts_produce_bounded_questions() -> None:
     from atlas.analysis.earnings_transcript import analyze
     from atlas.knowledge.base import KnowledgeBase
 
+    if not Path("repositories/TCS/knowledge.db").exists():
+        pytest.skip("TCS repository not found")
     con = sqlite3.connect("repositories/TCS/knowledge.db")
     ids = [
         r[0]
@@ -202,6 +206,8 @@ def test_real_sbi_transcripts_produce_bounded_questions() -> None:
     from atlas.analysis.earnings_transcript import analyze
     from atlas.knowledge.base import KnowledgeBase
 
+    if not Path("repositories/SBIN/knowledge.db").exists():
+        pytest.skip("SBIN repository not found")
     con = sqlite3.connect("repositories/SBIN/knowledge.db")
     ids = [
         r[0]

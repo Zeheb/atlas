@@ -29,6 +29,8 @@ from atlas.query.engine import (
 )
 from atlas.query.render import render_result
 
+pytestmark = pytest.mark.integration
+
 # ---------------------------------------------------------------------------
 # Profile fixture
 # ---------------------------------------------------------------------------
