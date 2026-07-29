@@ -18,10 +18,10 @@ real job is to let the next chat resume cold. Optimize it for that.
 | | |
 |---|---|
 | Branch | `claude/atlas-implementation-13a264` (worktree of `main`) |
-| Last completed commit | `c167876` — `feat(judgment): add Judgment model` |
-| Next planned commit | **M5 commit 2** — `feat(judgment): add append-only JudgmentStore` (#37 + #39) |
-| Tests | 3265 passed, 2 skipped, 663 deselected (`pytest -m "not integration"`) |
-| Coverage | 91.91% (gate: `--cov-fail-under=80`) |
+| Last completed commit | `f52d3b2` — `test(reasoning): pinning across all four answer surfaces` |
+| Next planned commit | **M7 commit 1** — `feat(company): add allow_reanalysis to CompanyStore.merge` (#76). Land it first and alone: it touches a class the existing suite covers heavily, and its blast radius should be visible in isolation. |
+| Tests | 3358 passed, 2 skipped, 663 deselected (`pytest -m "not integration"`) |
+| Coverage | 92.08% (gate: `--cov-fail-under=80`) |
 
 ## Milestones
 
@@ -34,8 +34,8 @@ real job is to let the next chat resume cold. Optimize it for that.
 | M2 — EntityStore | ✅ complete | `d8bf479` … `d1c28b4` |
 | M3 — Profile from Tier 1 | ✅ complete | `f751de3` … `07e952b` |
 | M4 — Rebuild engine | ✅ complete | `5e10dca` … `b82bdba` |
-| M5 — Judgment store | 🔄 1 of 4 commits | `c167876` |
-| M6 — Answer pinning | ⬜ not started | |
+| M5 — Judgment store | ✅ complete | `c167876` … `d0d2a76` |
+| M6 — Answer pinning | ✅ complete except #43b | `5bd6e4a` … `f52d3b2` |
 | M7 — Selective invalidation | ⬜ not started | |
 | M8 — Metrics pinning | ⬜ not started | |
 | M10 — Backfill & operator CLI | ⬜ not started | |
@@ -44,8 +44,19 @@ real job is to let the next chat resume cold. Optimize it for that.
 
 ## Outstanding roadmap items
 
-- **M5** commits 2–4: `JudgmentStore` (#37, #39), `atlas judgment add|list|supersede` (#38), rebuild-survival + import-boundary tests (#40, #41).
-- **M6** — answer pinning. #43b (`assertion_ids`) is explicitly allowed to slip past the milestone.
+- **#43b — record consulted `assertion_ids`. Deferred, with a reason the plan anticipated.**
+  Assertion ids do not reach Tier 2: `results_for()` rebuilds `AnalysisResult`s via
+  `Assertion.to_fact()`, which drops the id, and neither `company/model.py` nor
+  `company/builder.py` mentions `assertion_id` anywhere. Populating the field honestly
+  needs assertion ids threaded through the profile — a Tier 2 model change, which
+  contradicts M6's "additive or it is wrong" constraint. The dishonest alternative,
+  querying the store for every assertion belonging to the consulted documents, records
+  what was *available*, which is exactly what #43 says not to record. The plan permits
+  this slip ("may slip past M6 without blocking it"). Field exists, defaults to `()`,
+  and the footer omits the segment rather than printing `0 assertions`.
+- **`profile_built_at` is likewise unpopulated and has no issue number.** `CompanyProfile`
+  has no `built_at`; only the stored envelope does (`store.py:747`). Wiring it means
+  carrying it into `GroundingContext`. Worth an issue before M10.
 - **M7** — selective invalidation. Commit 1 (`allow_reanalysis` on `CompanyStore.merge`, #76) is unbudgeted work; land it first and alone.
 - **M8** — metrics pinning across ~30 query functions.
 - **M10** — backfill, plus new issue **#78** (remove the analyzer profile path and the `profile_source` flag), which may only land after #59 confirms every repo migrated.
@@ -73,6 +84,18 @@ Repository-verified. Do not regress these.
 7. **`asserted_at` is excluded from `judgment_id` at the call site**, not by widening
    `hashing.EXCLUDED_FROM_HASH`. Widening that frozen list would also change what the
    rebuild comparison ignores.
+8. **`list` as a method name shadows the builtin in class-scope annotations.**
+   `JudgmentStore._raw_judgments` returns a tuple because a `list[...]` annotation
+   inside the class body resolves to the method (mypy `valid-type`/`attr-defined`).
+   `ThesisStore` never hit this only because it annotates no list returns.
+9. **`ask()` is the only non-deserializing `ReasoningResult` construction site in `src/`.**
+   Pinning both of its paths pins every answer surface, present and future. An
+   inventory test fails when a third site appears.
+10. **`InvestigationResult` drops the `ReasoningResult`** and keeps only
+   `semantic_findings`, so per-dimension pinning is not retained. Not a gap: the durable
+   artifact is the `Thesis`, and `synthesize()` re-asks through `ask()`.
+11. **A pre-pinning answer must render byte-identically** — no footer, no blank line, no
+   placeholder. Every pre-M6 renderer expectation depends on it.
 
 ## Accepted deviations
 
@@ -85,6 +108,9 @@ Repository-verified. Do not regress these.
 | — | M-PRE landed as 3 commits, not 1 | Applied; strictly more reversible. |
 | — | New issue #78 — remove the analyzer path in M10 | Additive, confirmed. |
 | — | #62 retired outright | Applied; work already in the tree. |
+| D5 | Pinning fields named `consulted_assertion_ids` / `consulted_evidence_ids`, not the plan's `assertion_ids` / `evidence_ids` | **Applied.** `evidence_ids` is already taken on `Claim` and `Finding` one level down the same contract hierarchy, and on `ReasoningResult` that meaning is occupied by `citations`. A field named `evidence_ids` there reads as a synonym for citations; rendering it as sources would attribute claims to documents that never supported them while the citation chain still validated. |
+| D6 | `#44` footer rendered in `reasoning/render.py` + two CLI blocks, not in `research/render.py` or `query/render.py` | **Applied.** `research/render.py` renders `ReportData`, which holds no `ReasoningResult`. `query/render.py` is M8 commit 3 (`QueryResult` has no fingerprint until #51). COMMIT_PLAN outranks the issue text. |
+| D7 | `JudgmentStore.delete` landed in the CLI commit, not the store commit | **Applied.** #38 includes deletion; the CLI commit is the one that introduces its only caller. |
 
 ## Gates
 
