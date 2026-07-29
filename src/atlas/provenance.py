@@ -77,20 +77,86 @@ class BuildFingerprint:
         keys, no timestamps, no absolute paths, no iteration-order
         dependence. Two runs of the same code always agree.
         """
-        payload = {
-            "ontology_version": self.ontology_version,
-            "parser_version": self.parser_version,
-            "shared_parser_version": self.shared_parser_version,
-            "builder_version": self.builder_version,
-            "analyzer_versions": dict(sorted(self.analyzer_versions.items())),
-        }
-        canonical = json.dumps(
-            payload,
-            sort_keys=True,
-            separators=(",", ":"),
-            ensure_ascii=True,
+        return _digest(
+            {
+                "ontology_version": self.ontology_version,
+                "parser_version": self.parser_version,
+                "shared_parser_version": self.shared_parser_version,
+                "builder_version": self.builder_version,
+                "analyzer_versions": dict(sorted(self.analyzer_versions.items())),
+            }
         )
-        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    def affects(self, kind: str) -> str:
+        """Return the sub-digest of everything that can change *kind*'s assertions.
+
+        ``digest()`` moves whenever any of the eleven analyzers is bumped, so
+        using it to decide what is stale re-runs all eleven to fix one. This
+        is the narrow question: what could have changed the assertions
+        extracted from a ``kind`` document?
+
+        Four components, and the reason each is in:
+
+        ``ontology_version``      the FactKind vocabulary every fact is
+                                  expressed in.
+        ``parser_version``        the text the analyzer read. Different text,
+                                  different facts.
+        ``shared_parser_version`` the helpers seven of the eleven analyzers
+                                  share, which can change extracted values
+                                  without moving any ANALYZER_VERSION. This is
+                                  the component a per-kind digest is most
+                                  likely to omit and the one whose omission
+                                  would be hardest to notice.
+        the analyzer's own version, for this kind alone.
+
+        ``builder_version`` is deliberately OUT, and this is a determinate
+        call rather than an optimistic one: assertions are Tier 1, written by
+        ``assertions/writer.py`` from analyzer output, while the builder
+        assembles Tier 2 from those assertions. A builder bump cannot change
+        an assertion row, so including it would invalidate Tier 1 for a change
+        that provably cannot reach it.
+
+        ``kind`` itself is in the payload, so two kinds whose analyzers happen
+        to sit at the same version still get distinct sub-digests. A stored
+        sub-digest is then diagnostic on its own.
+
+        Raises ``ValueError`` for a kind with no registered analyzer. Returning
+        a digest for it would assert coverage that does not exist -- the
+        failure mode this module's docstring names as worse than no
+        fingerprint at all.
+        """
+        try:
+            analyzer_version = self.analyzer_versions[kind]
+        except KeyError:
+            raise ValueError(
+                f"no registered analyzer for kind {kind!r}; "
+                f"known kinds: {sorted(self.analyzer_versions)}"
+            ) from None
+        return _digest(
+            {
+                "kind": kind,
+                "ontology_version": self.ontology_version,
+                "parser_version": self.parser_version,
+                "shared_parser_version": self.shared_parser_version,
+                "analyzer_version": analyzer_version,
+            }
+        )
+
+
+def _digest(payload: dict[str, object]) -> str:
+    """Return a stable sha256 over *payload*'s canonical JSON.
+
+    One canonicalisation for both the whole-build digest and the per-kind
+    sub-digests. Two copies would drift, and the symptom would be a
+    sub-digest that disagrees with the digest about whether anything moved.
+    """
+    canonical = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+    )
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def _repo_root() -> Path:

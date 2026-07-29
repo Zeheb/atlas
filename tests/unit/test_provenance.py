@@ -197,3 +197,121 @@ def test_current_fingerprint_populates_every_component() -> None:
 
 def test_current_fingerprint_is_reproducible_within_a_process() -> None:
     assert current_fingerprint().digest() == current_fingerprint().digest()
+
+
+# ---------------------------------------------------------------------------
+# affects() — per-kind sub-digests (#47)
+# ---------------------------------------------------------------------------
+#
+# The whole point is selectivity: bumping one analyzer must not invalidate the
+# other ten. But an under-invalidating sub-digest silently serves stale data,
+# which is worse than over-invalidating, so the omission tests below matter
+# more than the selectivity ones.
+
+
+def test_affects_is_stable() -> None:
+    assert _fingerprint().affects("buyback") == _fingerprint().affects("buyback")
+
+
+def test_affects_differs_per_kind() -> None:
+    fingerprint = _fingerprint()
+    assert fingerprint.affects("buyback") != fingerprint.affects("financial_results")
+
+
+def test_two_kinds_at_the_same_version_still_differ() -> None:
+    """A sub-digest has to identify its kind, or it is not diagnostic alone."""
+    fingerprint = _fingerprint(
+        analyzer_versions={"financial_results": "1.0", "buyback": "1.0"}
+    )
+    assert fingerprint.affects("buyback") != fingerprint.affects("financial_results")
+
+
+def test_affects_is_not_the_whole_digest() -> None:
+    fingerprint = _fingerprint()
+    assert fingerprint.affects("buyback") != fingerprint.digest()
+
+
+def test_bumping_one_analyzer_moves_only_that_kind() -> None:
+    """The selectivity M7 exists for."""
+    before = _fingerprint()
+    after = _fingerprint(
+        analyzer_versions={"financial_results": "9.9", "buyback": "1.0"}
+    )
+
+    assert after.affects("financial_results") != before.affects("financial_results")
+    assert after.affects("buyback") == before.affects("buyback")
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["ontology_version", "parser_version", "shared_parser_version"],
+)
+def test_a_global_component_moves_every_kind(field: str) -> None:
+    """Omitting any of these would silently serve stale assertions."""
+    before = _fingerprint()
+    after = _fingerprint(**{field: "99.0"})
+
+    for kind in ("financial_results", "buyback"):
+        assert after.affects(kind) != before.affects(kind), (
+            f"{field} does not reach affects({kind!r}); a bump would leave "
+            f"stale assertions looking current"
+        )
+
+
+def test_shared_parser_version_is_covered() -> None:
+    """Named separately because it is the easiest one to forget.
+
+    Seven of the eleven analyzers share these helpers, and a change here
+    alters extracted values without moving any ANALYZER_VERSION -- so nothing
+    else in the sub-digest would move either.
+    """
+    before = _fingerprint(shared_parser_version="1.0")
+    after = _fingerprint(shared_parser_version="1.1")
+
+    assert after.affects("buyback") != before.affects("buyback")
+
+
+def test_builder_version_does_not_move_a_sub_digest() -> None:
+    """Tier 2 assembly cannot change a Tier 1 assertion row.
+
+    Deliberate omission, not an oversight: assertions are written by
+    assertions/writer.py from analyzer output, and the builder runs strictly
+    downstream of them.
+    """
+    before = _fingerprint(builder_version="1.0")
+    after = _fingerprint(builder_version="2.0")
+
+    assert after.affects("buyback") == before.affects("buyback")
+    assert after.digest() != before.digest()
+
+
+def test_code_rev_does_not_move_a_sub_digest() -> None:
+    before = _fingerprint(code_rev="abc1234")
+    after = _fingerprint(code_rev="def5678")
+
+    assert after.affects("buyback") == before.affects("buyback")
+
+
+def test_an_unregistered_kind_raises() -> None:
+    """Returning a digest would assert coverage that does not exist."""
+    with pytest.raises(ValueError, match="no registered analyzer"):
+        _fingerprint().affects("not_a_kind")
+
+
+def test_the_error_lists_the_kinds_that_do_exist() -> None:
+    with pytest.raises(ValueError) as excinfo:
+        _fingerprint().affects("not_a_kind")
+
+    assert "buyback" in str(excinfo.value)
+
+
+def test_every_registered_kind_has_a_sub_digest() -> None:
+    """All eleven, against the real registry rather than the fixture."""
+    fingerprint = current_fingerprint()
+    digests = {
+        kind: fingerprint.affects(kind) for kind in fingerprint.analyzer_versions
+    }
+
+    assert len(digests) == len(fingerprint.analyzer_versions)
+    assert len(set(digests.values())) == len(digests)
+    assert all(len(d) == 64 for d in digests.values())
