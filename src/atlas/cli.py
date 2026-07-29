@@ -2,7 +2,7 @@ import sys
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, TypedDict, cast
 
 import click
 
@@ -582,6 +582,75 @@ def analyze_cmd(company: str, kind_filter: str | None) -> None:
         raise SystemExit(1)
 
     click.echo(f"\nAssertions written to {store.path}")
+
+
+@cli.command("rebuild")
+@click.option("--company", required=True, help="Ticker to rebuild.")
+@click.option(
+    "--from",
+    "source",
+    type=click.Choice(["evidence", "assertions"]),
+    default="assertions",
+    show_default=True,
+    help="evidence: parse, analyze, assert, project. assertions: project only.",
+)
+@click.option(
+    "--verify",
+    is_flag=True,
+    default=False,
+    help="Build and compare without writing anything.",
+)
+def rebuild_cmd(company: str, source: str, verify: bool) -> None:
+    """Rebuild a company's profile and report whether it changed.
+
+    With --verify nothing is written: the profile is built, compared against
+    the stored one, and discarded, so the check is safe to run against a
+    repository someone is relying on. It exits non-zero when the profile would
+    change, which makes it usable as a gate in a script.
+    """
+    from atlas.rebuild import RebuildSource, rebuild
+
+    ticker = company.upper()
+    atlas = Atlas.from_environment()
+    repo_root = atlas.settings.repository_base_path / ticker
+
+    if not repo_root.exists():
+        click.echo(f"No repository for '{ticker}'.", err=True)
+        raise SystemExit(1)
+
+    mode = "verifying" if verify else "rebuilding"
+    click.echo(f"Atlas — {mode} {ticker} from {source}\n")
+
+    outcome = rebuild(
+        repo_root,
+        ticker,
+        source=cast("RebuildSource", source),
+        verify=verify,
+        on_error=lambda note: click.echo(f"  ! {note}", err=True),
+    )
+
+    click.echo(f"  Documents: {outcome.documents}")
+    if outcome.written_to is not None:
+        click.echo(f"  Written:   {outcome.written_to}")
+
+    if outcome.changed is None:
+        click.echo("\nNo previous profile to compare against.")
+        return
+    if not outcome.changed:
+        click.echo("\nProfile unchanged.")
+        return
+
+    click.echo(f"\n{len(outcome.differences)} difference(s):")
+    for line in outcome.differences[:20]:
+        click.echo(f"  {line}")
+    if len(outcome.differences) > 20:
+        click.echo(f"  ... and {len(outcome.differences) - 20} more")
+
+    if verify:
+        # Non-zero only under --verify: a rebuild that legitimately changed a
+        # profile has succeeded, while a verify that found a change has found
+        # exactly what it was run to find.
+        raise SystemExit(1)
 
 
 @cli.group()
