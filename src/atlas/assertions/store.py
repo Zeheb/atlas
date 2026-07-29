@@ -73,7 +73,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from atlas.assertions.model import Assertion, AssertionRun
+from atlas.assertions.model import Assertion, AssertionRun, Mention
 
 #: A schema change: statements issued against an open connection. It must not
 #: commit, roll back, or touch ``user_version`` -- the runner owns both.
@@ -305,12 +305,22 @@ _INSERT_ASSERTION = (
 )
 
 
+_INSERT_MENTION = (
+    "INSERT INTO entity_mentions "
+    "(mention_id, evidence_id, entity_id, entity_kind, canonical_name, "
+    " aliases_json, role, affiliation, identifier, question_text, section, "
+    " char_offset, excerpt, ordinal, analyzer_version, fingerprint) "
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+)
+
+
 @dataclass(frozen=True)
 class StoredRun:
-    """One run as it came back off disk: the envelope and its facts."""
+    """One run as it came back off disk: the envelope, its facts, its mentions."""
 
     run: AssertionRun
     assertions: tuple[Assertion, ...]
+    mentions: tuple[Mention, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -401,6 +411,48 @@ def _row_to_assertion(row: sqlite3.Row) -> Assertion:
     )
 
 
+def _mention_row(item: Mention) -> tuple[object, ...]:
+    return (
+        item.mention_id,
+        item.evidence_id,
+        item.entity_id,
+        item.entity_kind,
+        item.canonical_name,
+        json.dumps(list(item.aliases)),
+        item.role,
+        item.affiliation,
+        item.identifier,
+        item.question_text,
+        item.section,
+        item.char_offset,
+        item.excerpt,
+        item.ordinal,
+        item.analyzer_version,
+        item.fingerprint,
+    )
+
+
+def _row_to_mention(row: sqlite3.Row) -> Mention:
+    return Mention(
+        mention_id=row["mention_id"],
+        evidence_id=row["evidence_id"],
+        entity_id=row["entity_id"],
+        entity_kind=row["entity_kind"],
+        canonical_name=row["canonical_name"],
+        aliases=tuple(json.loads(row["aliases_json"])),
+        role=row["role"],
+        affiliation=row["affiliation"],
+        identifier=row["identifier"],
+        question_text=row["question_text"],
+        section=row["section"],
+        char_offset=row["char_offset"],
+        excerpt=row["excerpt"],
+        ordinal=row["ordinal"],
+        analyzer_version=row["analyzer_version"],
+        fingerprint=row["fingerprint"],
+    )
+
+
 def _reject_foreign_assertions(
     run: AssertionRun, assertions: Sequence[Assertion]
 ) -> None:
@@ -418,6 +470,20 @@ def _reject_foreign_assertions(
         ):
             raise ValueError(
                 f"assertion {item.assertion_id} belongs to "
+                f"({item.evidence_id}, {item.analyzer_version}), not to run "
+                f"({run.evidence_id}, {run.analyzer_version})"
+            )
+
+
+def _reject_foreign_mentions(run: AssertionRun, mentions: Sequence[Mention]) -> None:
+    """Refuse mentions that do not belong to *run*, for the same reason."""
+    for item in mentions:
+        if (
+            item.evidence_id != run.evidence_id
+            or item.analyzer_version != run.analyzer_version
+        ):
+            raise ValueError(
+                f"mention {item.mention_id} belongs to "
                 f"({item.evidence_id}, {item.analyzer_version}), not to run "
                 f"({run.evidence_id}, {run.analyzer_version})"
             )
@@ -461,13 +527,20 @@ class AssertionStore:
     # Reading and writing one analyzer run
     # ------------------------------------------------------------------
 
-    def write_run(self, run: AssertionRun, assertions: Sequence[Assertion]) -> None:
+    def write_run(
+        self,
+        run: AssertionRun,
+        assertions: Sequence[Assertion],
+        mentions: Sequence[Mention] = (),
+    ) -> None:
         """Persist one analyzer pass over one document, atomically.
 
-        The run row and its assertions land together or not at all. A partial
-        write is the worst outcome available here: a run row with missing
-        facts reads as a document that was analyzed and found little, which is
-        indistinguishable from the truth at every layer above.
+        The run row, its assertions and its entity mentions land together or
+        not at all. A partial write is the worst outcome available here: a run
+        row with missing facts reads as a document that was analyzed and found
+        little, which is indistinguishable from the truth at every layer above.
+        Mentions are in the same transaction for the same reason -- a fact
+        stored without the entity it named is a fact whose subject vanished.
 
         Re-writing the same ``(evidence_id, analyzer_version)`` replaces it.
         That is what makes re-running an analyzer safe, and it is scoped to
@@ -477,25 +550,23 @@ class AssertionStore:
         rather than one silently overwriting the other.
         """
         _reject_foreign_assertions(run, assertions)
+        _reject_foreign_mentions(run, mentions)
         created_at = datetime.now(timezone.utc).isoformat()
         key = (run.evidence_id, run.analyzer_version)
 
         with self._db_conn() as conn:
-            conn.execute(
-                "DELETE FROM assertions "
-                "WHERE evidence_id = ? AND analyzer_version = ?",
-                key,
-            )
-            conn.execute(
-                "DELETE FROM assertion_runs "
-                "WHERE evidence_id = ? AND analyzer_version = ?",
-                key,
-            )
+            for table in ("assertions", "entity_mentions", "assertion_runs"):
+                conn.execute(
+                    f"DELETE FROM {table} "  # noqa: S608 - fixed literal names
+                    "WHERE evidence_id = ? AND analyzer_version = ?",
+                    key,
+                )
             conn.execute(_INSERT_RUN, _run_row(run))
             conn.executemany(
                 _INSERT_ASSERTION,
                 [_assertion_row(item, created_at) for item in assertions],
             )
+            conn.executemany(_INSERT_MENTION, [_mention_row(item) for item in mentions])
 
     def read_run(self, evidence_id: str, analyzer_version: str) -> StoredRun | None:
         """Return the stored run and its assertions, or None if absent.
@@ -525,10 +596,17 @@ class AssertionStore:
                 "ORDER BY assertion_id",
                 (evidence_id, analyzer_version),
             ).fetchall()
+            mention_rows = conn.execute(
+                "SELECT * FROM entity_mentions "
+                "WHERE evidence_id = ? AND analyzer_version = ? "
+                "ORDER BY mention_id",
+                (evidence_id, analyzer_version),
+            ).fetchall()
 
         return StoredRun(
             run=_row_to_run(run_row),
             assertions=tuple(_row_to_assertion(row) for row in assertion_rows),
+            mentions=tuple(_row_to_mention(row) for row in mention_rows),
         )
 
     def runs_for(self, evidence_id: str) -> tuple[AssertionRun, ...]:

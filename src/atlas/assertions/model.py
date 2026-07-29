@@ -52,6 +52,7 @@ from atlas.analysis.base import (
     Provenance,
 )
 from atlas.assertions.hashing import canonical_for_hash
+from atlas.knowledge.entities.model import Entity, EntityKind
 
 ValueType = Literal["str", "int", "float", "null"]
 
@@ -292,6 +293,111 @@ def mention_id(
     }
     digest = hashlib.sha256(canonical_for_hash(payload).encode("utf-8"))
     return digest.hexdigest()[:_ID_CHARS]
+
+
+@dataclass(frozen=True)
+class Mention:
+    """One entity mention, made durable.
+
+    Flat, like ``Assertion``: the nested ``Entity`` and ``Provenance`` are
+    spread into columns so a query can filter on a name or a section without
+    decoding anything. ``entity_id`` rides along as data -- it is what the
+    resolver decided in the session that produced this row, worth keeping and
+    not worth hashing.
+    """
+
+    mention_id: str
+    evidence_id: str
+    entity_id: str
+    entity_kind: EntityKind
+    canonical_name: str
+    aliases: tuple[str, ...]
+    role: str | None
+    affiliation: str | None
+    identifier: str | None
+    question_text: str | None
+    section: str | None
+    char_offset: int | None
+    excerpt: str | None
+    ordinal: int
+    analyzer_version: str
+    fingerprint: str
+
+    @classmethod
+    def from_mention(
+        cls,
+        mention: EntityMention,
+        *,
+        evidence_id: str,
+        analyzer_version: str,
+        fingerprint: str,
+        ordinal: int,
+    ) -> Mention:
+        """Build a Mention from an EntityMention.
+
+        Aliases are sorted on the way in. ``Entity.aliases`` is a frozenset,
+        whose iteration order is not stable across processes, and an unsorted
+        JSON list would make two identical stores differ byte for byte.
+        """
+        provenance = mention.provenance
+        entity = mention.entity
+        section = provenance.section if provenance else None
+        char_offset = provenance.char_offset if provenance else None
+        return cls(
+            mention_id=mention_id(
+                evidence_id=evidence_id,
+                canonical_name=entity.canonical_name,
+                section=section,
+                char_offset=char_offset,
+                analyzer_version=analyzer_version,
+                ordinal=ordinal,
+            ),
+            evidence_id=evidence_id,
+            entity_id=entity.entity_id,
+            entity_kind=entity.kind,
+            canonical_name=entity.canonical_name,
+            aliases=tuple(sorted(entity.aliases)),
+            role=mention.role,
+            affiliation=mention.affiliation,
+            identifier=mention.identifier,
+            question_text=mention.question_text,
+            section=section,
+            char_offset=char_offset,
+            excerpt=provenance.excerpt if provenance else None,
+            ordinal=ordinal,
+            analyzer_version=analyzer_version,
+            fingerprint=fingerprint,
+        )
+
+    def to_mention(self) -> EntityMention:
+        """Rebuild the EntityMention this row was made from.
+
+        A NULL section means there was no ``Provenance`` at all, which is a
+        state ``EntityMention`` permits; it is restored as None rather than as
+        an empty one, because "not recorded" and "recorded as blank" are
+        different claims about the document.
+        """
+        return EntityMention(
+            entity=Entity(
+                entity_id=self.entity_id,
+                kind=self.entity_kind,
+                canonical_name=self.canonical_name,
+                aliases=frozenset(self.aliases),
+            ),
+            role=self.role,
+            affiliation=self.affiliation,
+            identifier=self.identifier,
+            question_text=self.question_text,
+            provenance=(
+                None
+                if self.section is None
+                else Provenance(
+                    section=self.section,
+                    char_offset=self.char_offset,
+                    excerpt=self.excerpt,
+                )
+            ),
+        )
 
 
 def assign_mention_ordinals(mentions: list[EntityMention]) -> list[int]:

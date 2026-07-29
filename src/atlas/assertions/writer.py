@@ -38,7 +38,13 @@ from datetime import datetime, timezone
 
 from atlas.analysis.base import AnalysisResult
 from atlas.analysis.registry import analyze, analyzer_versions
-from atlas.assertions.model import Assertion, AssertionRun, assign_ordinals
+from atlas.assertions.model import (
+    Assertion,
+    AssertionRun,
+    Mention,
+    assign_mention_ordinals,
+    assign_ordinals,
+)
 from atlas.assertions.store import AssertionStore
 from atlas.knowledge.base import KnowledgeBase, ParsedDocument
 
@@ -79,12 +85,40 @@ def result_to_rows(
     return run, assertions
 
 
+def result_to_mentions(
+    result: AnalysisResult, *, fingerprint: str
+) -> tuple[Mention, ...]:
+    """Return the entity-mention rows for *result*.
+
+    Separate from ``result_to_rows`` because entities are the envelope's third
+    output category and most analyzers emit none; keeping them apart means the
+    fact mapping does not have to mention them at all.
+
+    Ordinals come from ``assign_mention_ordinals`` over emission order, for the
+    reason facts have them: a transcript names one analyst repeatedly in one
+    section, and the mentions would otherwise hash identically.
+    """
+    ordinals = assign_mention_ordinals(result.entities)
+    return tuple(
+        Mention.from_mention(
+            mention,
+            evidence_id=result.evidence_id,
+            analyzer_version=result.analyzer_version,
+            fingerprint=fingerprint,
+            ordinal=ordinal,
+        )
+        for mention, ordinal in zip(result.entities, ordinals, strict=True)
+    )
+
+
 def write_result(
     store: AssertionStore, result: AnalysisResult, *, fingerprint: str
 ) -> AssertionRun:
-    """Persist *result* and return the run row that was written."""
+    """Persist *result* -- facts and entity mentions together -- and return
+    the run row that was written."""
     run, assertions = result_to_rows(result, fingerprint=fingerprint)
-    store.write_run(run, assertions)
+    mentions = result_to_mentions(result, fingerprint=fingerprint)
+    store.write_run(run, assertions, mentions)
     return run
 
 
