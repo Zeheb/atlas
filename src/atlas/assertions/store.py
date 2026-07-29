@@ -466,6 +466,30 @@ class AssertionStore:
             assertions=tuple(_row_to_assertion(row) for row in assertion_rows),
         )
 
+    def runs_for(self, evidence_id: str) -> tuple[AssertionRun, ...]:
+        """Return every stored run for *evidence_id*, envelopes only.
+
+        Every version, including failed ones: choosing between them is the
+        reader's rule, and a rule that cannot see the failed attempts would
+        answer "nothing here" for a document that was tried and broke.
+        """
+        with self._db_conn() as conn:
+            rows = conn.execute(
+                "SELECT * FROM assertion_runs WHERE evidence_id = ? "
+                "ORDER BY analyzer_version",
+                (evidence_id,),
+            ).fetchall()
+        return tuple(_row_to_run(row) for row in rows)
+
+    def evidence_ids(self) -> tuple[str, ...]:
+        """Return every evidence_id with a run, sorted."""
+        with self._db_conn() as conn:
+            rows = conn.execute(
+                "SELECT DISTINCT evidence_id FROM assertion_runs "
+                "ORDER BY evidence_id"
+            ).fetchall()
+        return tuple(row[0] for row in rows)
+
     @contextmanager
     def _db_conn(self) -> Generator[sqlite3.Connection, None, None]:
         """Yield a connection whose work commits on a clean exit.
