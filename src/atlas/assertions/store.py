@@ -481,6 +481,21 @@ class AssertionStore:
             ).fetchall()
         return tuple(_row_to_run(row) for row in rows)
 
+    def find(self, assertion_id: str) -> Assertion | None:
+        """Return one assertion by its content address, or None.
+
+        The id is the only handle a reader of a profile has when a number
+        looks wrong, so looking one up must not require knowing which document
+        or which analyzer version it came from -- that is what the lookup is
+        for.
+        """
+        with self._db_conn() as conn:
+            row = conn.execute(
+                "SELECT * FROM assertions WHERE assertion_id = ?",
+                (assertion_id,),
+            ).fetchone()
+        return None if row is None else _row_to_assertion(row)
+
     def evidence_ids(self) -> tuple[str, ...]:
         """Return every evidence_id with a run, sorted."""
         with self._db_conn() as conn:

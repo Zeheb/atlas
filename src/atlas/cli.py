@@ -615,6 +615,99 @@ def analyze_cmd(company: str, kind_filter: str | None) -> None:
 
 
 @cli.group()
+def assertion() -> None:
+    """Inspect stored assertions."""
+
+
+#: Characters of source text shown either side of an assertion's char_offset.
+#: Enough to see the sentence the number came out of; short enough to read.
+_EXPLAIN_CONTEXT_CHARS = 200
+
+
+@assertion.command("explain")
+@click.argument("assertion_id")
+@click.option("--company", required=True, help="Ticker whose store holds the id.")
+def assertion_explain(assertion_id: str, company: str) -> None:
+    """Trace one assertion back to the text it came from.
+
+    Prints the whole chain in one place: the stored row, the analyzer and
+    version that produced it, the run it belonged to, the source document, and
+    the surrounding text at its char_offset. Without this, answering "why is
+    this number wrong" means six manual lookups across three layers.
+    """
+    from atlas.assertions.store import AssertionStore
+    from atlas.knowledge.base import KnowledgeBase
+
+    ticker = company.upper()
+    atlas = Atlas.from_environment()
+    repo_root = atlas.settings.repository_base_path / ticker
+
+    if not repo_root.exists():
+        click.echo(f"No repository for '{ticker}'.", err=True)
+        raise SystemExit(1)
+
+    store = AssertionStore(repo_root)
+    found = store.find(assertion_id)
+    if found is None:
+        click.echo(
+            f"No assertion '{assertion_id}' in {store.path}. "
+            f"Run: atlas analyze --company {ticker}",
+            err=True,
+        )
+        raise SystemExit(1)
+
+    click.echo(f"Assertion {found.assertion_id}")
+    click.echo(f"  kind:        {found.kind}")
+    click.echo(f"  value:       {found.value!r} ({found.value_type})")
+    click.echo(f"  unit:        {found.unit or '-'}")
+    click.echo(f"  period:      {found.period or '-'}")
+    click.echo(f"  confidence:  {found.confidence}")
+    click.echo(f"  analyzer:    {found.analyzer_version}")
+    click.echo(f"  fingerprint: {found.fingerprint}")
+
+    stored = store.read_run(found.evidence_id, found.analyzer_version)
+    if stored is not None:
+        run = stored.run
+        click.echo("\nRun")
+        click.echo(f"  evidence_id: {run.evidence_id}")
+        click.echo(f"  status:      {run.status}")
+        click.echo(f"  source_date: {run.source_date.isoformat()}")
+        click.echo(f"  analyzed_at: {run.analyzed_at.isoformat()}")
+        if run.warnings:
+            click.echo(f"  warnings:    {len(run.warnings)}")
+
+    document = KnowledgeBase(repo_root).get(found.evidence_id)
+    click.echo("\nSource document")
+    if document is None:
+        # The store outlives the knowledge base: it is a separate file and
+        # either can be deleted alone. Say so rather than printing nothing.
+        click.echo("  not in the knowledge base (re-parse to restore)")
+    else:
+        click.echo(f"  title:  {document.title}")
+        click.echo(f"  kind:   {document.kind}")
+        click.echo(f"  path:   {document.local_path}")
+
+    click.echo(f"\nSection: {found.section}")
+    if found.excerpt:
+        click.echo(f"  excerpt: {found.excerpt}")
+
+    if found.char_offset is None:
+        click.echo("  offset:  none recorded by this analyzer")
+        return
+
+    click.echo(f"  offset:  {found.char_offset}")
+    content = KnowledgeBase(repo_root).get_content(found.evidence_id)
+    if not content:
+        click.echo("  context: document content unavailable")
+        return
+
+    start = max(0, found.char_offset - _EXPLAIN_CONTEXT_CHARS)
+    end = found.char_offset + _EXPLAIN_CONTEXT_CHARS
+    click.echo("  context:")
+    click.echo(f"    ...{content[start:end]}...")
+
+
+@cli.group()
 def fingerprint() -> None:
     """Inspect the build fingerprint."""
 
