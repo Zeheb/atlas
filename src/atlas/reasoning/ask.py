@@ -26,6 +26,15 @@ of ``SYSTEM_PROMPT`` only asks for them when a RECALLED VIEW was in the
 prompt), so this is additive: every pre-M2.4 fake-LLM response in this
 codebase's tests, none of which emit these keys, produces the exact same
 Finding as before.
+
+M6: every result carries the build fingerprint and the consulted evidence set
+(#43a). ``context.evidence_index`` IS the consulted set -- it is the closed
+world assembled for this question, not the corpus -- so pinning it costs one
+tuple and no new plumbing. Refusals are pinned too: a refusal is still an
+answer this build produced. ``consulted_assertion_ids`` stays empty until the
+retrieval layer reports which rows it read (#43b), and ``profile_built_at``
+until something carries it into the context -- ``CompanyProfile`` does not
+have it; only the stored envelope does.
 """
 
 from __future__ import annotations
@@ -34,6 +43,7 @@ import json
 from collections.abc import Callable
 from typing import Any
 
+from atlas.provenance import current_fingerprint
 from atlas.reasoning.contracts import (
     Claim,
     ConfidenceLevel,
@@ -73,11 +83,13 @@ def ask(
     )
     payload = _parse_json(raw)
     if payload is None:
-        return _refuse(question, "The model returned output that could not be parsed.")
+        return _refuse(
+            question, context, "The model returned output that could not be parsed."
+        )
 
     if payload.get("refused") is True:
         reason = str(payload.get("refusal_reason") or "The model declined to answer.")
-        return _refuse(question, reason)
+        return _refuse(question, context, reason)
 
     by_evidence = _index_claims_by_evidence(context)
     findings: list[Finding] = []
@@ -90,6 +102,7 @@ def ask(
         # The model answered but nothing survived grounding validation.
         return _refuse(
             question,
+            context,
             "No finding could be grounded in the available evidence.",
         )
 
@@ -101,13 +114,24 @@ def ask(
         citations=citations,
         refused=False,
         trace=(f"single-pass grounded reasoning over {len(context.claims)} claims",),
+        fingerprint=current_fingerprint().digest(),
+        consulted_evidence_ids=tuple(context.evidence_index),
     )
 
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-def _refuse(question: Question, reason: str) -> ReasoningResult:
+def _refuse(
+    question: Question, context: GroundingContext, reason: str
+) -> ReasoningResult:
+    """A refusal is still an answer this build produced, so it is pinned too.
+
+    Otherwise "why did Atlas refuse this in July" is unanswerable: the
+    refusals worth investigating are exactly the ones where the evidence the
+    question needed was absent from the closed world, and the consulted set
+    is the record of what was there instead.
+    """
     return ReasoningResult(
         question=question,
         findings=(),
@@ -115,6 +139,8 @@ def _refuse(question: Question, reason: str) -> ReasoningResult:
         citations=frozenset(),
         refused=True,
         refusal_reason=reason,
+        fingerprint=current_fingerprint().digest(),
+        consulted_evidence_ids=tuple(context.evidence_index),
     )
 
 

@@ -19,14 +19,17 @@ from pathlib import Path
 
 import pytest
 
+from atlas.reasoning.ask import ask
 from atlas.reasoning.contracts import (
     Claim,
     EvidenceReference,
     Finding,
+    GroundingContext,
     Question,
     ReasoningResult,
     SubjectRef,
 )
+from atlas.reasoning.llm import FakeLLMClient
 from atlas.research.memory import ThesisStore
 from atlas.research.thesis import Thesis
 
@@ -123,6 +126,100 @@ def test_consulted_ids_do_not_widen_citations() -> None:
     """Otherwise the grounding check would pass on ungrounded claims."""
     result = _result(consulted_evidence_ids=("ev-9",))
     assert "ev-9" not in result.citations
+
+
+# --- #43a population in ask() ------------------------------------------------
+
+
+def _context(*, evidence_index: frozenset[str] | None = None) -> GroundingContext:
+    claim = Claim(
+        subject_ref=_SUBJECT,
+        statement="operating margin = 24.2 (annual, period 2026-03-31)",
+        assertability="fact",
+        confidence="high",
+        evidence=[EvidenceReference(evidence_id="ev-1")],
+    )
+    return GroundingContext(
+        subject_ref=_SUBJECT,
+        claims=[claim],
+        evidence_index=evidence_index or frozenset({"ev-1"}),
+    )
+
+
+def _answer_payload() -> dict[str, object]:
+    return {
+        "refused": False,
+        "overall_confidence": "high",
+        "findings": [
+            {
+                "statement": "Margins held at 24.2%.",
+                "assertability": "fact",
+                "confidence": "high",
+                "supporting_evidence_ids": ["ev-1"],
+            }
+        ],
+    }
+
+
+def _ask(payload: dict[str, object], context: GroundingContext) -> ReasoningResult:
+    return ask(
+        Question(raw_text="How have margins been?", subject_ref=_SUBJECT),
+        context,
+        FakeLLMClient(response=json.dumps(payload)),
+    )
+
+
+def test_an_answer_carries_the_current_build_fingerprint() -> None:
+    from atlas.provenance import current_fingerprint
+
+    result = _ask(_answer_payload(), _context())
+
+    assert result.fingerprint == current_fingerprint().digest()
+
+
+def test_an_answer_records_the_whole_consulted_closed_world() -> None:
+    """Including the document that contributed nothing to any finding."""
+    context = _context(evidence_index=frozenset({"ev-1", "ev-2"}))
+
+    result = _ask(_answer_payload(), context)
+
+    assert result.consulted_evidence_ids == ("ev-1", "ev-2")
+    assert result.citations == frozenset({"ev-1"})
+
+
+def test_two_identical_questions_pin_the_same_fingerprint() -> None:
+    """An unchanged store must not produce a moving digest."""
+    first = _ask(_answer_payload(), _context())
+    second = _ask(_answer_payload(), _context())
+
+    assert first.fingerprint == second.fingerprint
+
+
+def test_a_refusal_is_pinned_too() -> None:
+    """Otherwise 'why did Atlas refuse this' has no build to point at."""
+    context = _context(evidence_index=frozenset({"ev-1", "ev-2"}))
+
+    result = _ask({"refused": True, "refusal_reason": "out of scope"}, context)
+
+    assert result.refused
+    assert result.fingerprint is not None
+    assert result.consulted_evidence_ids == ("ev-1", "ev-2")
+
+
+def test_an_unparseable_response_is_pinned_too() -> None:
+    result = ask(
+        Question(raw_text="How have margins been?", subject_ref=_SUBJECT),
+        _context(),
+        FakeLLMClient(response="not json"),
+    )
+
+    assert result.refused
+    assert result.fingerprint is not None
+
+
+def test_assertion_ids_stay_empty_until_43b() -> None:
+    """Recording what retrieval actually read is the half that may slip."""
+    assert _ask(_answer_payload(), _context()).consulted_assertion_ids == ()
 
 
 # --- #45 pre-pinning theses --------------------------------------------------
