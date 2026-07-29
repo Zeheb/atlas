@@ -843,3 +843,62 @@ class CompanyStore:
                 f"Rebuild from scratch with build_profile() + save()."
             )
         return data
+
+
+# ---------------------------------------------------------------------------
+# Profile diff
+# ---------------------------------------------------------------------------
+
+
+def _walk(node: Any, path: str, into: dict[str, Any]) -> None:
+    """Flatten a serialised profile to {dotted path: leaf value}.
+
+    Lists are indexed rather than matched by key. Snapshot containers are
+    sorted by _finalize_profile, so equal profiles align positionally; when
+    they do not align, an index-based path still points at the first place
+    they diverge, which is what a reader needs.
+    """
+    if isinstance(node, dict):
+        for key, value in node.items():
+            _walk(value, f"{path}.{key}" if path else str(key), into)
+    elif isinstance(node, list):
+        for index, value in enumerate(node):
+            _walk(value, f"{path}[{index}]", into)
+    else:
+        into[path] = node
+
+
+def diff_profiles(left: dict[str, Any], right: dict[str, Any]) -> list[str]:
+    """Return human-readable differences between two serialised profiles.
+
+    Semantic, not textual: reports which paths changed and how, so a failed
+    equivalence check says where to look instead of only that it failed.
+    An empty list means the two profiles are equivalent.
+    """
+    left_flat: dict[str, Any] = {}
+    right_flat: dict[str, Any] = {}
+    _walk(left, "", left_flat)
+    _walk(right, "", right_flat)
+
+    lines: list[str] = []
+    for path in sorted(set(left_flat) - set(right_flat)):
+        lines.append(f"- {path} = {left_flat[path]!r}  (only in left)")
+    for path in sorted(set(right_flat) - set(left_flat)):
+        lines.append(f"+ {path} = {right_flat[path]!r}  (only in right)")
+    for path in sorted(set(left_flat) & set(right_flat)):
+        if left_flat[path] != right_flat[path]:
+            lines.append(f"~ {path}: {left_flat[path]!r} -> {right_flat[path]!r}")
+    return lines
+
+
+def load_profile_payload(path: Path) -> dict[str, Any]:
+    """Read a store file and return its profile object.
+
+    Accepts either a full store envelope or a bare profile document, so the
+    command works on whatever a debugging session has to hand.
+    """
+    data: dict[str, Any] = json.loads(path.read_text(encoding="utf-8"))
+    payload = data.get("profile")
+    if isinstance(payload, dict):
+        return payload
+    return data

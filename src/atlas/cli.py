@@ -500,6 +500,29 @@ def metrics_cmd(domain: str | None) -> None:
             click.echo(f"  {spec.key:<28} {spec.label:<45} [{unit_label}]")
 
 
+@profile.command("diff")
+@click.argument("left", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.argument("right", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+def profile_diff(left: Path, right: Path) -> None:
+    """Show semantic differences between two stored profiles.
+
+    Exits non-zero when they differ, so it doubles as a check in a script.
+    A failed equivalence test says only that two profiles disagree; this
+    says where.
+    """
+    from atlas.company.store import diff_profiles, load_profile_payload
+
+    differences = diff_profiles(load_profile_payload(left), load_profile_payload(right))
+    if not differences:
+        click.echo("Profiles are equivalent.")
+        return
+
+    click.echo(f"{len(differences)} difference(s):")
+    for line in differences:
+        click.echo(f"  {line}")
+    raise SystemExit(1)
+
+
 @cli.group()
 def fingerprint() -> None:
     """Inspect the build fingerprint."""
