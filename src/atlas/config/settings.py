@@ -39,12 +39,17 @@ class Settings(BaseSettings):
     # "assertions" reconstructs AnalysisResult objects from the assertion
     # store instead, without touching builder.py.
     #
-    # Default stays "analyzers" until the equivalence gate is green: the two
-    # paths must be shown to produce byte-identical profiles before the new
-    # one carries real work, and a default that flips before that would make
-    # the comparison a comparison against itself.
+    # Default flipped to "assertions" in M4, once the equivalence gate was
+    # green in both variants and the residual order-dependence #33 exposed was
+    # fixed. Until then it stayed "analyzers", because a default that flipped
+    # before the gate passed would have made the comparison a comparison
+    # against itself.
+    #
+    # Rollback is this one word. The analyzer path stays in the tree, imported
+    # and tested, until M10 ships -- flipping back must not require finding
+    # deleted code.
     profile_source: Literal["analyzers", "assertions"] = Field(
-        default="analyzers",
+        default="assertions",
         description=(
             "Tier a profile is built from: 'analyzers' re-runs analyzers over "
             "evidence, 'assertions' reconstructs results from the assertion "

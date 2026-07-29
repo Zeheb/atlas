@@ -202,22 +202,24 @@ def test_both_paths_yield_the_same_facts(
 
 
 def test_the_default_source_comes_from_settings(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stub_analyzer: AnalysisResult
-) -> None:
-    _seed_evidence(tmp_path)
-    monkeypatch.delenv("ATLAS_PROFILE_SOURCE", raising=False)
-
-    assert load_results(tmp_path).source == "analyzers"
-
-
-def test_the_setting_selects_the_assertions_path(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Since M4's cutover (#35) the default is the store, not the analyzers."""
     store = AssertionStore(tmp_path)
     write_result(store, make_result(_KIND), fingerprint=current_fingerprint().digest())
-    monkeypatch.setenv("ATLAS_PROFILE_SOURCE", "assertions")
+    monkeypatch.delenv("ATLAS_PROFILE_SOURCE", raising=False)
 
     assert load_results(tmp_path).source == "assertions"
+
+
+def test_the_setting_can_select_the_analyzer_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stub_analyzer: AnalysisResult
+) -> None:
+    """The rollback path, which must keep working for a full milestone."""
+    _seed_evidence(tmp_path)
+    monkeypatch.setenv("ATLAS_PROFILE_SOURCE", "analyzers")
+
+    assert load_results(tmp_path).source == "analyzers"
 
 
 def test_an_explicit_source_overrides_the_setting(
