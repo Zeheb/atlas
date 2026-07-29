@@ -50,11 +50,11 @@ algorithm produced the stored profile.
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from atlas.analysis.base import AnalysisResult, FactKind, FactUnit
 from atlas.company.builder import BUILDER_VERSION, merge_result
@@ -902,3 +902,116 @@ def load_profile_payload(path: Path) -> dict[str, Any]:
     if isinstance(payload, dict):
         return payload
     return data
+
+
+# ---------------------------------------------------------------------------
+# Where a profile's inputs come from (M3, #25)
+# ---------------------------------------------------------------------------
+
+#: Which tier supplies the AnalysisResult objects a profile is built from.
+#: Mirrors ``Settings.profile_source``; duplicated as a Literal rather than
+#: imported so this module keeps working when called with an explicit source
+#: and no configuration at all.
+ProfileSource = Literal["analyzers", "assertions"]
+
+
+@dataclass(frozen=True)
+class LoadReport:
+    """The results a profile will be built from, and what it cost to get them.
+
+    The counts exist so the CLI can report a repository where half the
+    documents failed to parse. Silence there is how a profile built from three
+    documents out of ninety looks exactly like a healthy one.
+    """
+
+    results: list[AnalysisResult]
+    source: ProfileSource
+    parsed: int = 0
+    failed_parse: int = 0
+    failed_analyze: int = 0
+    skipped_kind: int = 0
+
+
+def load_results(
+    root: Path,
+    *,
+    source: ProfileSource | None = None,
+    on_error: Callable[[str], None] | None = None,
+) -> LoadReport:
+    """Return the AnalysisResult objects to build *root*'s profile from.
+
+    Two paths, one contract. ``"analyzers"`` parses evidence and re-runs the
+    eleven analyzers, which is what every profile has been built from so far.
+    ``"assertions"`` reconstructs the same objects from the assertion store,
+    without re-reading a single document.
+
+    *source* defaults to ``Settings.profile_source``. Passing it explicitly is
+    what lets the equivalence test build both ways in one process.
+
+    ``builder.py`` is not involved and does not change: both paths hand it the
+    same kind of input, which is the property that makes the swap reversible.
+    """
+    resolved = _resolve_source(source)
+    if resolved == "assertions":
+        from atlas.assertions.reader import results_for
+
+        results = results_for(root)
+        return LoadReport(results=results, source=resolved, parsed=len(results))
+    return _load_from_analyzers(root, on_error=on_error)
+
+
+def _resolve_source(source: ProfileSource | None) -> ProfileSource:
+    if source is not None:
+        return source
+    from atlas.config.settings import Settings
+
+    return Settings().profile_source
+
+
+def _load_from_analyzers(
+    root: Path, *, on_error: Callable[[str], None] | None
+) -> LoadReport:
+    """Parse and analyze every supported document under *root*.
+
+    One bad document does not abort the batch -- a repository of ninety
+    filings should not be unbuildable because one PDF is a scanned image --
+    but every failure is counted and reported rather than absorbed.
+    """
+    from atlas.acquisition.repository import Repository
+    from atlas.analysis.registry import analyze, supported_kinds
+    from atlas.knowledge.base import KnowledgeBase
+
+    kb = KnowledgeBase(root)
+    supported = set(supported_kinds())
+    results: list[AnalysisResult] = []
+    parsed = failed_parse = failed_analyze = skipped_kind = 0
+
+    for entry in Repository(root).list_evidence():
+        if entry.kind not in supported:
+            skipped_kind += 1
+            continue
+        if not entry.local_path:
+            failed_parse += 1
+            continue
+
+        document = kb.parse(entry)
+        if document.status != "ok":
+            failed_parse += 1
+            continue
+        parsed += 1
+
+        try:
+            results.append(analyze(entry.evidence_id, kb))
+        except Exception as exc:  # noqa: BLE001 - one bad document, not one bad run
+            failed_analyze += 1
+            if on_error is not None:
+                on_error(f"analyze failed for {entry.evidence_id}: {exc}")
+
+    return LoadReport(
+        results=results,
+        source="analyzers",
+        parsed=parsed,
+        failed_parse=failed_parse,
+        failed_analyze=failed_analyze,
+        skipped_kind=skipped_kind,
+    )

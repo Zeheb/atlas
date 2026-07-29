@@ -210,11 +210,8 @@ def profile_build(ticker: str, force: bool) -> None:
     Reads from repositories/TICKER/, writes profile to repositories/TICKER/profile.json.
     """
 
-    from atlas.acquisition.repository import Repository
-    from atlas.analysis.registry import analyze, supported_kinds
     from atlas.company.builder import build_profile
-    from atlas.company.store import CompanyStore
-    from atlas.knowledge.base import KnowledgeBase
+    from atlas.company.store import CompanyStore, load_results
 
     ticker = ticker.upper()
     atlas = Atlas.from_environment()
@@ -237,47 +234,20 @@ def profile_build(ticker: str, force: bool) -> None:
 
     click.echo(f"Atlas — Building profile for {ticker}\n")
 
-    repo = Repository(repo_root)
-    kb = KnowledgeBase(repo_root)
-    supported = set(supported_kinds())
+    report = load_results(
+        repo_root, on_error=lambda note: click.echo(f"  ! {note}", err=True)
+    )
+    results = report.results
 
-    entries = repo.list_evidence()
-    click.echo(f"  Catalog: {len(entries)} entries")
-
-    results = []
-    parsed = failed_parse = failed_analyze = skipped_kind = 0
-
-    for entry in entries:
-        if entry.kind not in supported:
-            skipped_kind += 1
-            continue
-        if not entry.local_path:
-            failed_parse += 1
-            continue
-
-        doc = kb.parse(entry)
-        if doc.status != "ok":
-            failed_parse += 1
-            continue
-        parsed += 1
-
-        try:
-            result = analyze(entry.evidence_id, kb)
-            results.append(result)
-        except (
-            Exception  # noqa: BLE001 - one bad document must not abort the batch
-        ) as exc:
-            click.echo(f"  ! analyze failed for {entry.evidence_id}: {exc}", err=True)
-            failed_analyze += 1
-
-    click.echo(f"  Parsed:  {parsed}")
+    click.echo(f"  Source:  {report.source}")
+    click.echo(f"  Parsed:  {report.parsed}")
     click.echo(f"  Analyzed: {len(results)}")
-    if failed_parse:
-        click.echo(f"  Parse failures: {failed_parse}", err=True)
-    if failed_analyze:
-        click.echo(f"  Analyze failures: {failed_analyze}", err=True)
-    if skipped_kind:
-        click.echo(f"  Skipped (unsupported kind): {skipped_kind}")
+    if report.failed_parse:
+        click.echo(f"  Parse failures: {report.failed_parse}", err=True)
+    if report.failed_analyze:
+        click.echo(f"  Analyze failures: {report.failed_analyze}", err=True)
+    if report.skipped_kind:
+        click.echo(f"  Skipped (unsupported kind): {report.skipped_kind}")
 
     if not results:
         click.echo("No results to build a profile from.", err=True)
