@@ -1,4 +1,4 @@
-"""Schema migrations for the assertion store.
+"""The assertion store: its schema, its migrations, and opening it.
 
 The store's schema will churn. M2 adds ``entity_mentions``, later milestones
 add columns and indices, and every one of those changes has to land on
@@ -40,20 +40,102 @@ so the two cannot disagree. SQLite makes DDL transactional and rolls back a
 ``PRAGMA user_version`` write with everything else, so an interrupted or
 failing migration leaves the database at the version it had before -- never
 half-migrated at a version claiming otherwise.
+
+The schema itself
+-----------------
+``assertions`` holds one row per fact, keyed by its content address, with
+``value`` and ``value_type`` as separate columns so ``5``, ``5.0`` and
+``"5"`` survive the round trip as three different things.
+
+``assertion_runs`` holds everything on the ``AnalysisResult`` envelope that
+is not a fact -- result-level confidence, warnings, source date, status --
+which is what lets a reader reconstruct a faithful result later without
+re-reading the document. Its key is ``(evidence_id, analyzer_version)``, so
+several analyzer versions of one document coexist; choosing between them is
+a read-time rule, not a write-time deletion.
 """
 
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Generator, Sequence
+from contextlib import contextmanager
+from pathlib import Path
 
 #: A schema change: statements issued against an open connection. It must not
 #: commit, roll back, or touch ``user_version`` -- the runner owns both.
 Migration = Callable[[sqlite3.Connection], None]
 
+#: Filename inside a company repository, beside ``knowledge.db``. Separate
+#: file, not a second set of tables in the knowledge DB: the two layers are
+#: rebuilt on different triggers -- re-parsing a document versus re-running an
+#: analyzer -- and either must be discardable without disturbing the other.
+DB_FILENAME = "assertions.db"
+
+#: Statement per entry, deliberately not one ``executescript`` blob:
+#: ``executescript`` commits any pending transaction before it runs, which
+#: would take the schema outside the transaction holding its version bump.
+_CREATE_TABLES: tuple[str, ...] = (
+    """
+    CREATE TABLE assertions (
+        -- NOT NULL is not redundant beside PRIMARY KEY: SQLite permits NULLs
+        -- in a non-INTEGER primary key, and permits several of them, so
+        -- without it a content address that failed to compute becomes rows
+        -- that collide with nothing and are found by nothing.
+        assertion_id     TEXT PRIMARY KEY NOT NULL,
+        evidence_id      TEXT NOT NULL,
+        kind             TEXT NOT NULL,
+        value            TEXT,
+        value_type       TEXT NOT NULL,
+        unit             TEXT,
+        period           TEXT,
+        confidence       TEXT NOT NULL,
+        section          TEXT NOT NULL,
+        char_offset      INTEGER,
+        excerpt          TEXT,
+        analyzer_version TEXT NOT NULL,
+        fingerprint      TEXT NOT NULL,
+        created_at       TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX idx_assertions_evidence ON assertions(evidence_id)",
+    "CREATE INDEX idx_assertions_kind ON assertions(kind, period)",
+    """
+    CREATE TABLE assertion_runs (
+        evidence_id       TEXT NOT NULL,
+        analyzer_version  TEXT NOT NULL,
+        fingerprint       TEXT NOT NULL,
+        result_confidence TEXT NOT NULL,
+        source_date       TEXT NOT NULL,
+        analyzed_at       TEXT NOT NULL,
+        warnings_json     TEXT NOT NULL,
+        status            TEXT NOT NULL,
+        error             TEXT,
+        PRIMARY KEY (evidence_id, analyzer_version)
+    )
+    """,
+)
+
+
+def _migration_001_initial_schema(conn: sqlite3.Connection) -> None:
+    """Create ``assertions`` and ``assertion_runs`` with their indices.
+
+    No ``IF NOT EXISTS``. The runner guarantees this body runs once per
+    database; if it ever runs against a database that already has the tables,
+    that is a broken version marker and the resulting error is the report.
+    """
+    for statement in _CREATE_TABLES:
+        conn.execute(statement)
+
+
 #: Append-only. Index + 1 is the ``user_version`` implied by that migration.
 #: Never edit, reorder or delete an entry; databases in the wild have run it.
-MIGRATIONS: tuple[Migration, ...] = ()
+MIGRATIONS: tuple[Migration, ...] = (_migration_001_initial_schema,)
+
+#: Derived, never hand-maintained: the schema version a current build writes.
+#: ``knowledge/base.py`` keeps a literal ``PARSER_VERSION`` next to its
+#: migration list, which is two things to update and one to forget.
+STORE_VERSION = len(MIGRATIONS)
 
 
 class MigrationError(RuntimeError):
@@ -135,3 +217,68 @@ def _apply_one(conn: sqlite3.Connection, migration: Migration, version: int) -> 
     finally:
         if conn.in_transaction:
             conn.rollback()
+
+
+class AssertionStore:
+    """The assertion database for one company repository.
+
+    Opening is creating: a repository that has never been analyzed has no
+    file, and the first open migrates one into existence. There is no
+    separate "initialize the store" step to forget, and no state where the
+    file exists at a version the code does not understand -- that is refused
+    by the migration runner rather than papered over.
+
+    The store is a rebuildable cache over Tier 0 evidence. Deleting the file
+    loses nothing that cannot be regenerated by re-running the analyzers,
+    which is why it is a separate file from ``knowledge.db``.
+    """
+
+    def __init__(self, root: Path) -> None:
+        self._root = root
+        self._db_path = root / DB_FILENAME
+        self._init_db()
+
+    @property
+    def path(self) -> Path:
+        """Location of the database file."""
+        return self._db_path
+
+    @property
+    def root(self) -> Path:
+        """Repository root the store belongs to."""
+        return self._root
+
+    def schema_version(self) -> int:
+        """Return the schema version currently on disk."""
+        with self._db_conn() as conn:
+            return schema_version(conn)
+
+    @contextmanager
+    def _db_conn(self) -> Generator[sqlite3.Connection, None, None]:
+        """Yield a connection whose work commits on a clean exit.
+
+        Same shape as ``knowledge/base.py`` -- ``with conn`` commits or rolls
+        back, ``finally`` closes -- so both stores behave identically at the
+        connection level even though their migration mechanisms differ.
+        """
+        conn = sqlite3.connect(str(self._db_path))
+        conn.row_factory = sqlite3.Row
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
+
+    def _init_db(self) -> None:
+        """Create the file if absent and bring its schema up to date.
+
+        Migration failures propagate: a store whose schema could not be
+        established must not be handed out, because every write against it
+        would be a write against an unknown shape.
+        """
+        self._root.mkdir(parents=True, exist_ok=True)
+        conn = sqlite3.connect(str(self._db_path))
+        try:
+            apply_migrations(conn)
+        finally:
+            conn.close()

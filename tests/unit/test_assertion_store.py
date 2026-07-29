@@ -12,18 +12,27 @@ Failure raises -- a broken migration must stop the open, not be swallowed
 Atomic        -- a failed migration must leave neither its schema changes nor
                  its version bump behind, or the next open trusts a version
                  number that describes a schema that is not there.
+
+The schema tests below are of the same kind. Columns are asserted against a
+list written out by hand, not derived from the DDL, because a check derived
+from the thing it checks agrees with every rename. And the key constraints
+are exercised with real inserts, since a primary key that fails to reject a
+duplicate loses a fact with no error at any layer above it.
 """
 
 from __future__ import annotations
 
 import sqlite3
 from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 import pytest
 
 from atlas.assertions.store import (
     MIGRATIONS,
+    STORE_VERSION,
+    AssertionStore,
     Migration,
     MigrationError,
     apply_migrations,
@@ -37,6 +46,22 @@ def conn(tmp_path: Path) -> Iterator[sqlite3.Connection]:
     connection = sqlite3.connect(str(tmp_path / "assertions.db"))
     try:
         yield connection
+    finally:
+        connection.close()
+
+
+@contextmanager
+def _connect(path: Path) -> Iterator[sqlite3.Connection]:
+    """Open, commit on clean exit, always close.
+
+    Bare ``with sqlite3.connect(...)`` commits but never closes, which leaves
+    a file handle open on Windows and the next assertion reading a database
+    another connection still holds.
+    """
+    connection = sqlite3.connect(str(path))
+    try:
+        with connection:
+            yield connection
     finally:
         connection.close()
 
@@ -257,3 +282,232 @@ def test_autocommit_mode_is_restored_after_a_failure(
         apply_migrations(conn, [_broken])
 
     assert conn.autocommit == before
+
+
+# ---------------------------------------------------------------------------
+# Schema and open/create
+# ---------------------------------------------------------------------------
+
+#: The columns the writer, reader and every later migration are written
+#: against. Spelled out here rather than derived from the DDL so that a
+#: rename or a dropped column fails this test instead of silently agreeing
+#: with itself.
+_ASSERTION_COLUMNS = (
+    "assertion_id",
+    "evidence_id",
+    "kind",
+    "value",
+    "value_type",
+    "unit",
+    "period",
+    "confidence",
+    "section",
+    "char_offset",
+    "excerpt",
+    "analyzer_version",
+    "fingerprint",
+    "created_at",
+)
+
+_RUN_COLUMNS = (
+    "evidence_id",
+    "analyzer_version",
+    "fingerprint",
+    "result_confidence",
+    "source_date",
+    "analyzed_at",
+    "warnings_json",
+    "status",
+    "error",
+)
+
+_NOT_NULL_ASSERTION_COLUMNS = frozenset(
+    {
+        "evidence_id",
+        "kind",
+        "value_type",
+        "confidence",
+        "section",
+        "analyzer_version",
+        "fingerprint",
+        "created_at",
+    }
+)
+
+
+def _ordered_columns(connection: sqlite3.Connection, table: str) -> tuple[str, ...]:
+    rows = connection.execute(f"PRAGMA table_info({table})").fetchall()
+    return tuple(row[1] for row in rows)
+
+
+def test_opening_creates_the_database_file(tmp_path: Path) -> None:
+    store = AssertionStore(tmp_path)
+
+    assert store.path == tmp_path / "assertions.db"
+    assert store.path.exists()
+    assert store.root == tmp_path
+
+
+def test_opening_creates_a_missing_repository_root(tmp_path: Path) -> None:
+    root = tmp_path / "companies" / "TCS"
+
+    store = AssertionStore(root)
+
+    assert store.path.exists()
+
+
+def test_store_is_a_separate_file_from_the_knowledge_database(
+    tmp_path: Path,
+) -> None:
+    """Different rebuild triggers; either must be discardable alone."""
+    store = AssertionStore(tmp_path)
+
+    assert store.path.name != "knowledge.db"
+
+
+def test_new_store_is_at_the_current_schema_version(tmp_path: Path) -> None:
+    store = AssertionStore(tmp_path)
+
+    assert store.schema_version() == STORE_VERSION
+    assert STORE_VERSION == len(MIGRATIONS)
+
+
+def test_schema_has_both_tables_and_both_indices(tmp_path: Path) -> None:
+    store = AssertionStore(tmp_path)
+
+    with _connect(store.path) as connection:
+        tables = _table_names(connection)
+        index_rows = connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'index'"
+        ).fetchall()
+
+    assert {"assertions", "assertion_runs"} <= tables
+    assert {"idx_assertions_evidence", "idx_assertions_kind"} <= {
+        row[0] for row in index_rows
+    }
+
+
+def test_assertion_columns_match_the_specified_schema(tmp_path: Path) -> None:
+    store = AssertionStore(tmp_path)
+
+    with _connect(store.path) as connection:
+        assert _ordered_columns(connection, "assertions") == _ASSERTION_COLUMNS
+        assert _ordered_columns(connection, "assertion_runs") == _RUN_COLUMNS
+
+
+def test_nullable_columns_are_exactly_the_optional_ones(tmp_path: Path) -> None:
+    """``value``, ``unit``, ``period``, ``char_offset``, ``excerpt`` may be
+    absent; a fact legitimately has no unit or no offset. Nothing else may."""
+    store = AssertionStore(tmp_path)
+
+    with _connect(store.path) as connection:
+        rows = connection.execute("PRAGMA table_info(assertions)").fetchall()
+
+    not_null = {row[1] for row in rows if row[3]}
+    assert not_null == _NOT_NULL_ASSERTION_COLUMNS | {"assertion_id"}
+
+
+def test_null_assertion_id_is_rejected(tmp_path: Path) -> None:
+    """SQLite lets a non-INTEGER primary key hold NULL, and hold it twice.
+
+    So the constraint has to be spelled out. Without it, an id that failed to
+    compute produces rows no lookup ever returns.
+    """
+    store = AssertionStore(tmp_path)
+
+    with _connect(store.path) as connection:
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(
+                "INSERT INTO assertions VALUES "
+                "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    None,
+                    "ev-1",
+                    "risk_factor",
+                    "x",
+                    "str",
+                    None,
+                    None,
+                    "high",
+                    "s",
+                    None,
+                    None,
+                    "1.0",
+                    "fp",
+                    "2026-01-01T00:00:00",
+                ),
+            )
+
+
+def test_duplicate_assertion_id_raises(tmp_path: Path) -> None:
+    """A conflicting id must raise, never replace.
+
+    ``INSERT OR REPLACE`` here would let a second fact overwrite a first with
+    no error at any layer, which is the exact silent-loss failure the content
+    addressing exists to make impossible.
+    """
+    store = AssertionStore(tmp_path)
+    row = (
+        "a1",
+        "ev-1",
+        "risk_factor",
+        "x",
+        "str",
+        None,
+        None,
+        "high",
+        "s",
+        None,
+        None,
+        "1.0",
+        "fp",
+        "2026-01-01T00:00:00",
+    )
+    insert = (
+        "INSERT INTO assertions VALUES " "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    )
+
+    with _connect(store.path) as connection:
+        connection.execute(insert, row)
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(insert, row)
+
+
+def test_run_key_is_evidence_and_analyzer_version(tmp_path: Path) -> None:
+    """Two versions of one document coexist; the same version twice does not."""
+    store = AssertionStore(tmp_path)
+    insert = "INSERT INTO assertion_runs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    base = ("ev-1", "1.0", "fp", "high", "2026-01-01", "2026-01-02", "[]", "ok", None)
+    bumped = ("ev-1", "2.0", *base[2:])
+
+    with _connect(store.path) as connection:
+        connection.execute(insert, base)
+        connection.execute(insert, bumped)
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(insert, base)
+
+
+def test_reopening_preserves_rows_and_version(tmp_path: Path) -> None:
+    """The second open migrates nothing and destroys nothing."""
+    store = AssertionStore(tmp_path)
+    with _connect(store.path) as connection:
+        connection.execute(
+            "INSERT INTO assertion_runs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            ("ev-1", "1.0", "fp", "high", "2026-01-01", "2026-01-02", "[]", "ok", None),
+        )
+
+    reopened = AssertionStore(tmp_path)
+
+    assert reopened.schema_version() == STORE_VERSION
+    with _connect(reopened.path) as connection:
+        count = connection.execute("SELECT COUNT(*) FROM assertion_runs").fetchone()
+    assert count[0] == 1
+
+
+def test_opening_a_database_from_a_newer_build_raises(tmp_path: Path) -> None:
+    path = tmp_path / "assertions.db"
+    with _connect(path) as connection:
+        connection.execute(f"PRAGMA user_version = {STORE_VERSION + 1}")
+
+    with pytest.raises(MigrationError):
+        AssertionStore(tmp_path)
