@@ -231,9 +231,11 @@ New DB file, created on demand. No migration of existing data in this milestone 
 **`mention_id` must not include `entity_id`.** `Entity.entity_id` is order-dependent by design — `knowledge/entities/model.py` states both invariants explicitly: the id derives from the *first observed* name, and uniqueness is guaranteed by "a disambiguation suffix when a distinct entity would otherwise collide." Both depend on corpus traversal order. That is correct for in-session identity and wrong for a content address: a backfill run in a different order would mint different mention IDs for the same underlying mentions. Derive instead from the immutable document:
 
 ```
-mention_id = sha256(evidence_id | canonical_name_as_written | section |
-                    char_offset | analyzer_version | ordinal)[:16]
+mention_id = sha256(evidence_id | section | char_offset |
+                    analyzer_version | ordinal)[:16]
 ```
+
+**Corrected while implementing M2 commit 4.** The original form hashed `canonical_name_as_written`, which nothing carries: `EntityMention` (`analysis/base.py:394`) holds the *resolved* `Entity`, and the surface form is discarded at the resolve call site. Hashing the resolved `canonical_name` instead is not a substitute — the resolver upgrades it to the most complete form seen so far, so the same mention of "K S Rao" resolves to `K S Rao` or to `K Srinivasa Rao` depending on which document was read first, which is the failure #74 exists to prevent. Every input is now a position in an immutable document, and `assign_mention_ordinals` groups by `section` alone for the same reason. Cost: two people named in one section at one offset are separated only by emission order, the trade already accepted for facts. Caught by #75's two-process test, which had to be written before the defect was visible.
 
 Store `entity_id` as an ordinary column. No resolver change.
 

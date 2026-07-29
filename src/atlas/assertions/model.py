@@ -262,7 +262,6 @@ def assign_ordinals(facts: list[AnalysisFact]) -> list[int]:
 def mention_id(
     *,
     evidence_id: str,
-    canonical_name: str,
     section: str | None,
     char_offset: int | None,
     analyzer_version: str,
@@ -270,22 +269,27 @@ def mention_id(
 ) -> str:
     """Return the content address for one entity mention.
 
-    Deliberately derived from the document, not from ``Entity.entity_id``.
-    That id is order-dependent by design: ``knowledge/entities/model.py``
-    documents that it comes from the *first observed* name and takes a
-    disambiguation suffix when a distinct entity would otherwise collide.
-    Both depend on the order the corpus was traversed. That is right for
-    identity within a session and wrong for a content address -- a backfill
-    run in a different order would mint different ids for the same mentions,
-    and the set equality that full-vs-incremental comparison rests on would
-    stop meaning anything.
+    Every input is a position in an immutable document. Nothing the resolver
+    produces enters the hash, and that is the whole design: both of its
+    outputs move with corpus traversal order.
 
-    ``canonical_name`` is the name as this document had it, which the document
-    fixes and no later resolution can move.
+    * ``Entity.entity_id`` derives from the first observed name and takes a
+      disambiguation suffix on collision (``knowledge/entities/model.py``).
+    * ``Entity.canonical_name`` is upgraded to the most complete form seen so
+      far, so the *same* mention of "K S Rao" resolves to canonical "K S Rao"
+      or to "K Srinivasa Rao" depending on which document was read first.
+
+    Either one in the hash would make a backfill mint new ids for mentions
+    that had not changed, and the set equality that full-vs-incremental
+    comparison rests on would stop meaning anything.
+
+    What this costs: two different people named in the same section at the
+    same offset are separated only by ``ordinal``, their emission order. That
+    is the same trade already accepted for facts, whose ordinals exist for
+    exactly this reason.
     """
     payload = {
         "evidence_id": evidence_id,
-        "canonical_name": canonical_name,
         "section": section,
         "char_offset": char_offset,
         "analyzer_version": analyzer_version,
@@ -346,7 +350,6 @@ class Mention:
         return cls(
             mention_id=mention_id(
                 evidence_id=evidence_id,
-                canonical_name=entity.canonical_name,
                 section=section,
                 char_offset=char_offset,
                 analyzer_version=analyzer_version,
@@ -403,17 +406,22 @@ class Mention:
 def assign_mention_ordinals(mentions: list[EntityMention]) -> list[int]:
     """Return the ordinal for each mention, in emission order.
 
-    Grouped by ``(canonical_name, section)``, mirroring ``assign_ordinals``:
-    an analyst named twice in the same Q&A section with the same section-level
-    offset is the case this exists for. Grouping keeps an unrelated extra
-    mention elsewhere in the document from shifting every later id.
+    Grouped by ``section`` alone, not by name. ``assign_ordinals`` can group
+    facts by kind because a fact's kind is fixed by the analyzer; a mention's
+    resolved name is not fixed by anything the document controls, and grouping
+    on it would put the resolver's traversal order back into ``mention_id``
+    through the ordinal after :func:`mention_id` was built to keep it out.
+
+    Section is coarser, so an extra mention early in a section shifts the
+    ordinals of the later mentions in that section. That is the cost of an id
+    that survives re-resolution, and it is bounded to one section rather than
+    the whole document.
     """
-    counters: dict[tuple[str, str | None], int] = {}
+    counters: dict[str | None, int] = {}
     ordinals: list[int] = []
     for mention in mentions:
         section = mention.provenance.section if mention.provenance else None
-        key = (mention.entity.canonical_name, section)
-        ordinal = counters.get(key, 0)
-        counters[key] = ordinal + 1
+        ordinal = counters.get(section, 0)
+        counters[section] = ordinal + 1
         ordinals.append(ordinal)
     return ordinals

@@ -45,7 +45,6 @@ def _mention(
 def _id(**overrides: object) -> str:
     kwargs: dict[str, object] = {
         "evidence_id": _EVIDENCE,
-        "canonical_name": "K S Rao",
         "section": "qa",
         "char_offset": 100,
         "analyzer_version": "1.0",
@@ -64,21 +63,24 @@ def test_id_is_deterministic() -> None:
     assert _id() == _id()
 
 
-def test_id_does_not_depend_on_entity_id() -> None:
-    """The whole point of #74: resolution order must not reach the id.
+def test_no_resolver_output_reaches_the_id() -> None:
+    """The whole point of #74, made structural.
 
-    mention_id has no entity_id parameter, so this is structural rather than
-    incidental -- a future change that added one would fail to compile this
-    call, which is the intent.
+    Both of the resolver's outputs move with corpus traversal order --
+    entity_id from the first observed name, canonical_name upgraded to the
+    most complete form seen so far -- so neither may be a parameter. Checking
+    the signature rather than the behaviour means a future change that
+    reintroduces one fails here rather than in a rare ordering.
     """
-    assert "entity_id" not in mention_id.__code__.co_varnames
+    parameters = set(mention_id.__code__.co_varnames)
+    assert "entity_id" not in parameters
+    assert "canonical_name" not in parameters
 
 
 @pytest.mark.parametrize(
     "field,value",
     [
         ("evidence_id", "ev-other"),
-        ("canonical_name", "K Srinivasa Rao"),
         ("section", "prepared_remarks"),
         ("char_offset", 101),
         ("analyzer_version", "2.0"),
@@ -113,10 +115,12 @@ def test_repeated_mention_in_one_section_gets_distinct_ordinals() -> None:
     assert assign_mention_ordinals(mentions) == [0, 1]
 
 
-def test_ordinals_are_scoped_to_name_and_section() -> None:
+def test_ordinals_count_within_a_section_regardless_of_name() -> None:
+    """Grouping by name would put resolution order back into the id through
+    the ordinal, after mention_id was built to keep it out."""
     mentions = [_mention(), _mention("Other Person"), _mention()]
 
-    assert assign_mention_ordinals(mentions) == [0, 0, 1]
+    assert assign_mention_ordinals(mentions) == [0, 1, 2]
 
 
 def test_ordinals_separate_sections() -> None:
@@ -141,23 +145,17 @@ def test_duplicate_mentions_get_different_ids() -> None:
     assert len(ids) == 2
 
 
-def test_a_reordered_corpus_yields_the_same_ids() -> None:
-    """The backfill case. Entity resolution may hand out different entity_ids
-    on a different traversal; the mention ids must not follow."""
-    first_pass = [
-        _mention(entity_id="person-1"),
-        _mention("Other", entity_id="person-2"),
-    ]
-    second_pass = [
-        _mention("Other", entity_id="person-9"),
-        _mention(entity_id="person-7"),
-    ]
+def test_a_rename_by_the_resolver_does_not_move_the_ids() -> None:
+    """The backfill case. A later document can upgrade an entity's canonical
+    name from "K S Rao" to "K Srinivasa Rao"; the ids of mentions already
+    stored must not follow it."""
+    before = [_mention("K S Rao", entity_id="person-1"), _mention("Other")]
+    after = [_mention("K Srinivasa Rao", entity_id="person-9"), _mention("Other")]
 
-    def ids(mentions: list[EntityMention]) -> set[str]:
-        return {
+    def ids(mentions: list[EntityMention]) -> list[str]:
+        return [
             mention_id(
                 evidence_id=_EVIDENCE,
-                canonical_name=mention.entity.canonical_name,
                 section=mention.provenance.section if mention.provenance else None,
                 char_offset=(
                     mention.provenance.char_offset if mention.provenance else None
@@ -168,9 +166,9 @@ def test_a_reordered_corpus_yields_the_same_ids() -> None:
             for mention, ordinal in zip(
                 mentions, assign_mention_ordinals(mentions), strict=True
             )
-        }
+        ]
 
-    assert ids(first_pass) == ids(second_pass)
+    assert ids(before) == ids(after)
 
 
 # ---------------------------------------------------------------------------
