@@ -52,6 +52,19 @@ from atlas.analysis.base import (
     _snip,
 )
 
+# Version of the shared parsing helpers in this module. Bump it whenever a
+# change here could produce a different extracted value from the same input
+# text — a regex widened, a number-format rule corrected, an OCR repair added.
+#
+# Every analyzer carries its own ANALYZER_VERSION, but seven of them import
+# these helpers. A fix to parse_indian_float changes what all seven extract
+# while every ANALYZER_VERSION stays put, so the per-analyzer versions alone
+# cannot signal that cached results are stale. This constant is the missing
+# signal, and it is a component of the build fingerprint for that reason.
+#
+# Pure refactors that cannot change any output do not need a bump.
+SHARED_PARSER_VERSION = "1.0"
+
 # ---------------------------------------------------------------------------
 # parse_iso_date
 # ---------------------------------------------------------------------------
