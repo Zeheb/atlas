@@ -175,28 +175,15 @@ def test_profiles_are_byte_identical(seeded_root: Path, tmp_path: Path) -> None:
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Residual order-dependence, budgeted as M4 #33. _finalize_profile "
-        "(builder.py:1041-1056) sorts sixteen containers and not "
-        "named_shareholders, which therefore keeps the order it was appended "
-        "in (builder.py:588). The analyzer path appends in document order; "
-        "the assertion path appends in mention-id order. Same shareholders, "
-        "different positions, different profile. builder.py is read-only in "
-        "M3, so this is recorded rather than fixed here -- exactly the shape "
-        "of M-PRE's #66, which found the same omission for sources lists."
-    ),
-)
 def test_named_shareholders_survive_the_source_swap(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The divergence the golden corpus found, reproduced without it.
 
     Four named holders in one section: the analyzer emits them in document
-    order, the reader returns them ordered by content address, and nothing
-    downstream re-sorts. Flips to a failure the day #33 lands, which is the
-    point of a strict xfail.
+    order, the reader returns them ordered by content address. Green since
+    #33 gave _finalize_profile a sort for the entity-derived containers; it
+    was a strict xfail for exactly one milestone before that.
     """
     root = tmp_path / "SHP"
     root.mkdir()

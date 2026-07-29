@@ -1055,6 +1055,39 @@ def _finalize_profile(profile: CompanyProfile) -> None:
     profile.governance.director_changes.sort(key=lambda d: d.source_date)
     profile.governance.risk_factors.sort(key=lambda r: r.period)
 
+    # Entity-derived containers. These are appended once per mention, in the
+    # order the analyzer emitted them within a document, and until now nothing
+    # re-sorted them — the same omission this function already carried for
+    # snapshot `sources` lists.
+    #
+    # Emission order is not recoverable from stored rows: the assertion reader
+    # returns mentions ordered by content address, so a profile built from
+    # Tier 1 listed the same shareholders in different positions from one
+    # built by re-running the analyzers. Same set, different bytes, and no
+    # error at any layer.
+    #
+    # The keys are total and content-based. `entity_id` is included last as a
+    # tie-break, not as identity: it is resolution-order dependent, but two
+    # entries agreeing on every field before it are the same appearance
+    # recorded twice, so the tie-break only has to be deterministic.
+    profile.named_shareholders.sort(
+        key=lambda s: (s.source_date, s.evidence_id, s.canonical_name, s.entity_id)
+    )
+    profile.participants.sort(
+        key=lambda p: (
+            p.source_date,
+            p.evidence_id,
+            p.canonical_name,
+            p.role or "",
+            p.affiliation or "",
+            p.question_text or "",
+            p.entity_id,
+        )
+    )
+    profile.directors.sort(
+        key=lambda d: (d.source_date, d.evidence_id, d.canonical_name, d.din)
+    )
+
     # Sort the evidence-id lists inside each snapshot, not just the snapshot
     # containers above. A full build appends them in (priority, source_date)
     # order; an incremental merge appends them as evidence arrives. Both are

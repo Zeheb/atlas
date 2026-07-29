@@ -236,3 +236,55 @@ def test_named_shareholders_do_not_depend_on_document_order(tmp_path: Path) -> N
     )
 
     _assert_same(reversed_build, reference, label="the reverse-order build")
+
+
+def test_entity_containers_do_not_depend_on_mention_order(tmp_path: Path) -> None:
+    """#33: the axis the four ordering tests above cannot reach.
+
+    build_profile sorts its *inputs*, so shuffling the corpus is normalised
+    away inside the builder. What it did not normalise was the order of
+    mentions *within* one result -- which the analyzer emits in document order
+    and the assertion reader returns in content-address order. Same set,
+    different positions, different bytes.
+    """
+    document = _shareholding(
+        "ev-shp-1",
+        day=10,
+        holders=["Sbi Nifty 50 Etf", "LIC of India", "Escrow Account"],
+    )
+    reference = _full([document], tmp_path / "emission.json")
+
+    reshuffled = _shareholding(
+        "ev-shp-1",
+        day=10,
+        holders=["Sbi Nifty 50 Etf", "LIC of India", "Escrow Account"],
+    )
+    reshuffled.entities = list(reversed(reshuffled.entities))
+
+    _assert_same(
+        _full([reshuffled], tmp_path / "reversed-mentions.json"),
+        reference,
+        label="a build whose mentions arrived in reverse",
+    )
+
+
+def test_named_shareholders_come_out_in_sort_key_order(tmp_path: Path) -> None:
+    """The fix, stated directly rather than inferred from two builds agreeing.
+
+    The same omission existed in three entity-derived containers -- shareholders,
+    participants and directors -- so the assertion is on the invariant, not on
+    one container happening to look tidy.
+    """
+    profile = build_profile(_COMPANY, _entity_corpus())
+
+    keys = [
+        (
+            holder.source_date,
+            holder.evidence_id,
+            holder.canonical_name,
+            holder.entity_id,
+        )
+        for holder in profile.named_shareholders
+    ]
+
+    assert keys == sorted(keys)

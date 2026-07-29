@@ -73,19 +73,6 @@ def _analyzable(kb: KnowledgeBase, evidence_id: str) -> bool:
     return bool(kb.get_content(evidence_id))
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "Residual order-dependence, budgeted as M4 #33. named_shareholders is "
-        "appended in result.entities order (builder.py:588) and is the one "
-        "container _finalize_profile does not sort (builder.py:1041-1056), so "
-        "the analyzer path orders it by document position and the assertion "
-        "path by mention id. Found by this test on the TCS corpus: four "
-        "shareholders, same set, four different positions. builder.py is "
-        "read-only in M3; a synthetic reproduction carries the same strict "
-        "xfail in tests/unit/ so CI tracks it too."
-    ),
-)
 def test_analyzer_and_assertion_profiles_are_identical(
     tmp_path: Path, kb: KnowledgeBase
 ) -> None:
