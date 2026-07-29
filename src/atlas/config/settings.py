@@ -32,6 +32,26 @@ class Settings(BaseSettings):
         description="Base directory for company repositories.",
     )
 
+    # --- Profile source (M3) ---
+    #
+    # Which tier a profile is assembled from. "analyzers" re-runs the eleven
+    # analyzers over parsed evidence, the path every profile has taken so far.
+    # "assertions" reconstructs AnalysisResult objects from the assertion
+    # store instead, without touching builder.py.
+    #
+    # Default stays "analyzers" until the equivalence gate is green: the two
+    # paths must be shown to produce byte-identical profiles before the new
+    # one carries real work, and a default that flips before that would make
+    # the comparison a comparison against itself.
+    profile_source: Literal["analyzers", "assertions"] = Field(
+        default="analyzers",
+        description=(
+            "Tier a profile is built from: 'analyzers' re-runs analyzers over "
+            "evidence, 'assertions' reconstructs results from the assertion "
+            "store. Set via ATLAS_PROFILE_SOURCE."
+        ),
+    )
+
     # --- Logging (consumed by F-T3) ---
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = Field(
         default="DEBUG",
