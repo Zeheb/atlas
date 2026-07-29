@@ -22,7 +22,7 @@ from pathlib import Path
 import pytest
 
 from atlas.analysis.base import AnalysisFact, FactKind, Provenance
-from atlas.assertions.model import Assertion, AssertionRun
+from atlas.assertions.model import Assertion, AssertionRun, Mention
 from atlas.assertions.reader import (
     StaleAssertionsError,
     read_facts,
@@ -305,3 +305,120 @@ def test_empty_store_reads_as_no_results(tmp_path: Path) -> None:
     store = AssertionStore(tmp_path)
 
     assert read_results(store, fingerprint=_FINGERPRINT) == []
+
+
+# ---------------------------------------------------------------------------
+# Entity mentions (#20)
+# ---------------------------------------------------------------------------
+
+
+def _mention(
+    run: AssertionRun,
+    *,
+    mention_id: str,
+    name: str = "K S Rao",
+    role: str | None = "analyst",
+    section: str | None = "qa",
+) -> Mention:
+    return Mention(
+        mention_id=mention_id,
+        evidence_id=run.evidence_id,
+        entity_id="person-1",
+        entity_kind="person",
+        canonical_name=name,
+        aliases=("Rao",),
+        role=role,
+        affiliation="Kotak Institutional Equities",
+        identifier="DIN-00121863",
+        question_text="What drove the margin expansion?",
+        section=section,
+        char_offset=None if section is None else 1200,
+        excerpt=None if section is None else "Rao asked",
+        ordinal=0,
+        analyzer_version=run.analyzer_version,
+        fingerprint=run.fingerprint,
+    )
+
+
+def test_mentions_are_reattached_to_the_result(tmp_path: Path) -> None:
+    store = AssertionStore(tmp_path)
+    run = _run()
+    store.write_run(
+        run, [_assertion(run, assertion_id="a1")], [_mention(run, mention_id="m1")]
+    )
+
+    result = read_result(store, "ev-1", fingerprint=_FINGERPRINT)
+
+    assert len(result.entities) == 1
+    assert result.entities[0].entity.canonical_name == "K S Rao"
+
+
+def test_every_context_field_is_reattached(tmp_path: Path) -> None:
+    """Reattaching the name and dropping the role would pass any test that
+    only compared names."""
+    store = AssertionStore(tmp_path)
+    run = _run()
+    store.write_run(run, [], [_mention(run, mention_id="m1")])
+
+    mention = read_result(store, "ev-1", fingerprint=_FINGERPRINT).entities[0]
+
+    assert mention.role == "analyst"
+    assert mention.affiliation == "Kotak Institutional Equities"
+    assert mention.identifier == "DIN-00121863"
+    assert mention.question_text == "What drove the margin expansion?"
+    assert mention.entity.aliases == frozenset({"Rao"})
+    assert mention.provenance is not None
+    assert mention.provenance.section == "qa"
+
+
+def test_a_mention_without_provenance_stays_without_one(tmp_path: Path) -> None:
+    store = AssertionStore(tmp_path)
+    run = _run()
+    store.write_run(run, [], [_mention(run, mention_id="m1", section=None)])
+
+    mention = read_result(store, "ev-1", fingerprint=_FINGERPRINT).entities[0]
+
+    assert mention.provenance is None
+
+
+def test_mentions_come_back_in_a_fixed_order(tmp_path: Path) -> None:
+    store = AssertionStore(tmp_path)
+    run = _run()
+    store.write_run(
+        run,
+        [],
+        [
+            _mention(run, mention_id="c", name="Third"),
+            _mention(run, mention_id="a", name="First"),
+            _mention(run, mention_id="b", name="Second"),
+        ],
+    )
+
+    result = read_result(store, "ev-1", fingerprint=_FINGERPRINT)
+
+    assert [item.entity.canonical_name for item in result.entities] == [
+        "First",
+        "Second",
+        "Third",
+    ]
+
+
+def test_a_result_with_no_mentions_has_no_entities(tmp_path: Path) -> None:
+    """Most analyzers emit none; an empty list is the ordinary case."""
+    store = AssertionStore(tmp_path)
+    run = _run()
+    store.write_run(run, [_assertion(run, assertion_id="a1")])
+
+    assert read_result(store, "ev-1", fingerprint=_FINGERPRINT).entities == []
+
+
+def test_only_the_selected_version_s_mentions_are_returned(tmp_path: Path) -> None:
+    store = AssertionStore(tmp_path)
+    old = _run(analyzer_version="1.0")
+    new = _run(analyzer_version="2.0")
+    store.write_run(old, [], [_mention(old, mention_id="old", name="Old Name")])
+    store.write_run(new, [], [_mention(new, mention_id="new", name="New Name")])
+
+    result = read_result(store, "ev-1", fingerprint=_FINGERPRINT)
+
+    assert [item.entity.canonical_name for item in result.entities] == ["New Name"]

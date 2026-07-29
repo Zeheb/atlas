@@ -89,6 +89,9 @@ def read_result(
 ) -> AnalysisResult:
     """Rebuild the AnalysisResult for *evidence_id* under the current build.
 
+    ``entities`` is reattached from the stored mentions, ordered by mention id
+    on the same principle as the facts: content, not row position.
+
     ``excerpts`` comes back empty. The store never held it: section bodies are
     hundreds to thousands of characters each and nothing downstream reads them
     (``builder.py`` contains no reference to ``.excerpts``). This is the one
@@ -103,6 +106,7 @@ def read_result(
     # read_run already returns assertions ordered by id, which is the
     # within-document tie-breaker: content, not row position.
     facts = [item.to_fact() for item in stored.assertions]
+    entities = [item.to_mention() for item in stored.mentions]
     return AnalysisResult(
         evidence_id=run.evidence_id,
         kind=run.kind,
@@ -113,6 +117,7 @@ def read_result(
         warnings=list(run.warnings),
         facts=facts,
         excerpts={},
+        entities=entities,
     )
 
 

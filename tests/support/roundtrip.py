@@ -25,6 +25,7 @@ from pathlib import Path
 from atlas.analysis.base import (
     AnalysisFact,
     AnalysisResult,
+    EntityMention,
     FactKind,
     FactUnit,
     Provenance,
@@ -32,6 +33,7 @@ from atlas.analysis.base import (
 from atlas.assertions.reader import read_result
 from atlas.assertions.store import AssertionStore
 from atlas.assertions.writer import write_result
+from atlas.knowledge.entities.model import Entity
 
 FINGERPRINT = "fp-roundtrip"
 
@@ -61,6 +63,41 @@ def fact_multiset(facts: Sequence[AnalysisFact]) -> Counter[tuple[str, ...]]:
     return Counter(fact_key(fact) for fact in facts)
 
 
+def mention_key(mention: EntityMention) -> tuple[str, ...]:
+    """Return the comparison key for one entity mention.
+
+    Includes every context field, because those are the whole reason
+    ``EntityMention`` wraps ``Entity`` rather than being one: a round trip that
+    kept the name and dropped the role would look correct in any test that
+    compared names.
+    """
+    entity = mention.entity
+    provenance = mention.provenance
+    return (
+        entity.entity_id,
+        entity.kind,
+        entity.canonical_name,
+        "|".join(sorted(entity.aliases)),
+        mention.role or "",
+        mention.affiliation or "",
+        mention.identifier or "",
+        mention.question_text or "",
+        "none" if provenance is None else provenance.section,
+        (
+            ""
+            if provenance is None or provenance.char_offset is None
+            else str(provenance.char_offset)
+        ),
+        "" if provenance is None else (provenance.excerpt or ""),
+    )
+
+
+def mention_multiset(
+    mentions: Sequence[EntityMention],
+) -> Counter[tuple[str, ...]]:
+    return Counter(mention_key(mention) for mention in mentions)
+
+
 def assert_round_trip(
     root: Path, result: AnalysisResult, *, fingerprint: str = FINGERPRINT
 ) -> AnalysisResult:
@@ -73,6 +110,7 @@ def assert_round_trip(
     restored = read_result(store, result.evidence_id, fingerprint=fingerprint)
 
     assert fact_multiset(restored.facts) == fact_multiset(result.facts)
+    assert mention_multiset(restored.entities) == mention_multiset(result.entities)
     assert restored.evidence_id == result.evidence_id
     assert restored.kind == result.kind
     assert restored.analyzer_version == result.analyzer_version
@@ -115,6 +153,7 @@ def make_result(
     evidence_kind: str,
     *,
     facts: list[AnalysisFact] | None = None,
+    entities: list[EntityMention] | None = None,
     analyzer_version: str = "1.0",
     warnings: list[str] | None = None,
 ) -> AnalysisResult:
@@ -128,7 +167,58 @@ def make_result(
         analyzed_at=datetime(2026, 7, 29, 10, 30, tzinfo=timezone.utc),
         warnings=warnings if warnings is not None else ["one non-fatal warning"],
         facts=facts if facts is not None else default_facts(),
+        entities=entities if entities is not None else default_entities(),
     )
+
+
+def default_entities() -> list[EntityMention]:
+    """Mentions covering the states the store has to reproduce.
+
+    An analyst asked twice from one section (the ordinal case), a director
+    carrying a DIN (the ``identifier`` field, which nothing else exercises),
+    and a mention with no provenance at all -- a state ``EntityMention``
+    permits and a reader must restore as None rather than as an empty one.
+    """
+    analyst = Entity(
+        entity_id="person-analyst",
+        kind="person",
+        canonical_name="K S Rao",
+        aliases=frozenset({"KS Rao", "Rao"}),
+    )
+    return [
+        EntityMention(
+            entity=analyst,
+            role="analyst",
+            affiliation="Kotak Institutional Equities",
+            question_text="What drove the margin expansion?",
+            provenance=Provenance(section="qa", char_offset=1200, excerpt="Rao asked"),
+        ),
+        EntityMention(
+            entity=analyst,
+            role="analyst",
+            affiliation="Kotak Institutional Equities",
+            question_text="And on attrition?",
+            provenance=Provenance(section="qa", char_offset=1200, excerpt="Rao asked"),
+        ),
+        EntityMention(
+            entity=Entity(
+                entity_id="person-director",
+                kind="person",
+                canonical_name="N Chandrasekaran",
+            ),
+            role="chairman",
+            identifier="DIN-00121863",
+            provenance=Provenance(section="board", char_offset=None),
+        ),
+        EntityMention(
+            entity=Entity(
+                entity_id="org-auditor",
+                kind="organization",
+                canonical_name="B S R & Co. LLP",
+            ),
+            role="auditor",
+        ),
+    ]
 
 
 def default_facts() -> list[AnalysisFact]:
