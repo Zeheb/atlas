@@ -12,7 +12,8 @@ Individual analyzer modules remain importable for focused unit testing.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import importlib
+from collections.abc import Callable, Mapping
 
 from atlas.analysis.acquisition import analyze as _acquisition
 from atlas.analysis.agm_notice import analyze as _agm_notice
@@ -73,3 +74,32 @@ def analyze(evidence_id: str, kb: KnowledgeBase) -> AnalysisResult:
 def supported_kinds() -> list[str]:
     """Return all evidence kinds with registered analyzers, sorted alphabetically."""
     return sorted(_REGISTRY.keys())
+
+
+def analyzer_versions() -> Mapping[str, str]:
+    """Return {evidence kind: ANALYZER_VERSION} for every registered analyzer.
+
+    Derived from ``_REGISTRY`` by resolving each analyzer's defining module,
+    not from a hand-maintained parallel table. Registering an analyzer is
+    therefore the only step needed to get it pinned: a second list could fall
+    out of sync with the registry and silently omit an analyzer from the build
+    fingerprint, which is the failure this function exists to prevent.
+
+    Keys are sorted, so the mapping is already canonical for hashing.
+
+    Raises RuntimeError when a registered analyzer's module declares no
+    ANALYZER_VERSION. Failing loudly is deliberate — an unpinned analyzer
+    would make the fingerprint claim more coverage than it has.
+    """
+    versions: dict[str, str] = {}
+    for kind, fn in sorted(_REGISTRY.items()):
+        module = importlib.import_module(fn.__module__)
+        version = getattr(module, "ANALYZER_VERSION", None)
+        if not isinstance(version, str) or not version:
+            raise RuntimeError(
+                f"analyzer module {fn.__module__!r} registered for kind "
+                f"{kind!r} declares no ANALYZER_VERSION; every registered "
+                "analyzer must declare one so the build fingerprint can pin it"
+            )
+        versions[kind] = version
+    return versions
