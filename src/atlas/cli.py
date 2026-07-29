@@ -9,7 +9,7 @@ import click
 if TYPE_CHECKING:
     from atlas.acquisition.repository import Repository
     from atlas.judgment.store import JudgmentStore
-    from atlas.reasoning.contracts import RecalledView
+    from atlas.reasoning.contracts import ReasoningResult, RecalledView
     from atlas.research.staleness import StalenessReport
     from atlas.research.thesis import Thesis
 
@@ -726,6 +726,19 @@ def store_status(company: str) -> None:
     click.echo(f"  profile.json:     {_size_label(profile_path)}")
 
 
+def _echo_pinning_footer(result: "ReasoningResult") -> None:
+    """Print the build this answer came from, or nothing if it predates M6.
+
+    Nothing rather than a placeholder: a stored thesis written before
+    pinning must render exactly as it always did.
+    """
+    from atlas.citation import pinning_footer
+
+    footer = pinning_footer(result)
+    if footer:
+        click.echo(f"\n{footer}")
+
+
 def _size_label(path: Path) -> str:
     """Return a human-readable size, or 'absent' when there is no file."""
     if not path.exists():
@@ -1401,6 +1414,7 @@ def thesis_cmd(
         "\nAtlas does not issue a buy/sell recommendation and has no market "
         "price data -- this is an evidence briefing, not a rating."
     )
+    _echo_pinning_footer(thesis.result)
 
     if remember:
         from atlas.research.memory import ThesisStore
@@ -1520,6 +1534,7 @@ def memory_show_cmd(view_id: str) -> None:
             cited = ", ".join(sorted(finding.evidence_ids))
             click.echo(f"  [{tag}] {finding.statement}")
             click.echo(f"      confidence: {finding.confidence}  |  evidence: {cited}")
+        _echo_pinning_footer(thesis.result)
         return
     click.echo(f"No remembered view with id {view_id!r}.", err=True)
     raise SystemExit(1)

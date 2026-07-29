@@ -431,6 +431,11 @@ class Answer:
     judgment_lines: tuple[str, ...] = ()
     refusal_reason: str | None = None
     follow_up_suggestions: tuple[str, ...] = ()
+    #: M6 — the already-formatted pinning line, carried rather than recomputed.
+    #: An Answer is presentational and holds no ids of its own; copying the
+    #: four pinning fields here would put a second source of truth for
+    #: provenance one layer away from the first.
+    pinning_footer: str = ""
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "citations", _tuple(self.citations))

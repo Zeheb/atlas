@@ -12,6 +12,7 @@ omit it for M0-equivalent behavior (bare evidence_id citations).
 
 from __future__ import annotations
 
+from atlas.citation import pinning_footer
 from atlas.reasoning.contracts import (
     Answer,
     EvidenceReference,
@@ -50,6 +51,7 @@ def to_answer(
             overall_confidence=result.overall_confidence,
             refused=True,
             refusal_reason=result.refusal_reason,
+            pinning_footer=pinning_footer(result),
         )
 
     prose_lines: list[str] = []
@@ -82,6 +84,7 @@ def to_answer(
         refused=False,
         fact_lines=tuple(fact_lines),
         judgment_lines=tuple(judgment_lines),
+        pinning_footer=pinning_footer(result),
     )
 
 
@@ -92,7 +95,11 @@ def format_answer(answer: Answer, *, show_evidence: bool = False) -> str:
     source) when available, and say so plainly when it is not (never silent).
     """
     if answer.refused:
-        return f"Atlas cannot answer this question.\nReason: {answer.refusal_reason}"
+        parts = [
+            "Atlas cannot answer this question.",
+            f"Reason: {answer.refusal_reason}",
+        ]
+        return "\n".join(parts + _footer_lines(answer))
     parts = [answer.prose, "", f"Overall confidence: {answer.overall_confidence}"]
     if answer.citations:
         parts += ["", "Sources:"]
@@ -104,4 +111,16 @@ def format_answer(answer: Answer, *, show_evidence: bool = False) -> str:
                     parts.append(f'      {prefix}"{ref.excerpt}"')
                 else:
                     parts.append("      (no excerpt retrieved)")
-    return "\n".join(parts)
+    return "\n".join(parts + _footer_lines(answer))
+
+
+def _footer_lines(answer: Answer) -> list[str]:
+    """The pinning line, or nothing at all for a pre-pinning answer.
+
+    Empty rather than a placeholder: output for an answer that predates
+    pinning must be byte-identical to what it was, or every stored renderer
+    fixture in this repository changes for a reason unrelated to the answer.
+    """
+    if not answer.pinning_footer:
+        return []
+    return ["", answer.pinning_footer]

@@ -56,9 +56,13 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from atlas.acquisition.catalog import CatalogEntry
 from atlas.company.model import CompanyProfile
+
+if TYPE_CHECKING:
+    from atlas.reasoning.contracts import ReasoningResult
 
 # ---------------------------------------------------------------------------
 # Fiscal period helpers
@@ -350,6 +354,41 @@ def build_citation(
         section=section,
         page=page,
     )
+
+
+# ---------------------------------------------------------------------------
+# Pinning footer (M6, #44)
+# ---------------------------------------------------------------------------
+
+
+def pinning_footer(result: "ReasoningResult") -> str:
+    """One line naming the build that produced *result*, or "" if unpinned.
+
+    ``Atlas 3f9a1c · 47 assertions · 12 documents · profile built 2026-07-14``
+
+    Segments are omitted when their field is empty rather than printed as
+    zero. "0 assertions" would state that the answer consulted none, when
+    what is true is that this build does not yet record which rows retrieval
+    read (#43b) -- and a footer that quietly asserts something false about
+    provenance is worse than a shorter footer.
+
+    Returns "" for a pre-pinning answer (``fingerprint is None``), so a
+    stored thesis written before M6 renders exactly as it did before M6.
+
+    It lives here rather than in a renderer because three surfaces print it
+    and a second copy would drift; ``citation.py`` already owns how evidence
+    is presented to a human.
+    """
+    if result.fingerprint is None:
+        return ""
+    parts = [f"Atlas {result.fingerprint}"]
+    if result.consulted_assertion_ids:
+        parts.append(f"{len(result.consulted_assertion_ids)} assertions")
+    if result.consulted_evidence_ids:
+        parts.append(f"{len(result.consulted_evidence_ids)} documents")
+    if result.profile_built_at:
+        parts.append(f"profile built {result.profile_built_at[:10]}")
+    return " · ".join(parts)
 
 
 def citation_for(
