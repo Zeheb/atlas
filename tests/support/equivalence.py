@@ -20,10 +20,10 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from atlas.assertions.hashing import canonical_for_hash
 from atlas.company.builder import build_profile
-from atlas.company.store import CompanyStore, diff_profiles, load_profile_payload
+from atlas.company.store import CompanyStore, load_profile_payload
 from atlas.company.store import load_results as load_profile_results
+from atlas.rebuild import explain_difference
 
 
 def build_and_serialize(
@@ -43,11 +43,16 @@ def build_and_serialize(
 def assert_profiles_identical(
     left: dict[str, Any], right: dict[str, Any], *, left_label: str, right_label: str
 ) -> None:
-    """Assert two serialised profiles are byte-identical once canonicalised."""
-    if canonical_for_hash(left) == canonical_for_hash(right):
+    """Assert two serialised profiles are byte-identical once canonicalised.
+
+    The comparison itself lives in ``atlas.rebuild``; this only supplies the
+    failure message. A test-local reimplementation would be a second answer to
+    the question the rebuild gate asks in production.
+    """
+    differences = explain_difference(left, right)
+    if not differences:
         return
 
-    differences = diff_profiles(left, right)
     detail = "\n  ".join(differences[:20]) or "(canonical forms differ, no field diff)"
     raise AssertionError(
         f"{left_label} and {right_label} profiles differ "
