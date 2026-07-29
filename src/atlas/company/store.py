@@ -97,7 +97,23 @@ class StaleResultError(Exception):
     """Raised when merge() encounters an evidence_id that is already tracked
     but with a different analyzer_version.
 
-    Recovery: rebuild from scratch with ``build_profile() + store.save()``.
+    Recovery: rebuild from scratch with ``build_profile() + store.save()``,
+    or pass ``allow_reanalysis=True`` to have merge() do it for you.
+    """
+
+
+class ReanalysisUnavailableError(StaleResultError):
+    """Raised when ``merge(..., allow_reanalysis=True)`` cannot re-derive.
+
+    Re-deriving needs every previously ingested result back in hand. When the
+    configured profile source returns fewer than that — an empty assertion
+    store, a document that no longer parses — rebuilding anyway would produce
+    a THINNER profile that looks complete: no exception, no missing key, just
+    a company whose history quietly shrank.
+
+    A subclass of ``StaleResultError`` on purpose. Every existing handler
+    already treats that as "this cannot be merged incrementally, rebuild from
+    scratch", which is exactly the right response here too.
     """
 
 
@@ -764,7 +780,9 @@ class CompanyStore:
         raw = self._load_raw()
         return _deserialize_profile(raw["profile"])
 
-    def merge(self, result: AnalysisResult) -> CompanyProfile:
+    def merge(
+        self, result: AnalysisResult, *, allow_reanalysis: bool = False
+    ) -> CompanyProfile:
         """Apply *result* incrementally to the stored profile and save.
 
         Returns the updated CompanyProfile.
@@ -774,12 +792,32 @@ class CompanyStore:
         - **Idempotent**: if *result.evidence_id* is already tracked with the
           same ``analyzer_version``, the stored profile is returned unchanged.
         - **StaleResultError**: if the evidence_id is already tracked but with
-          a different ``analyzer_version``.  Rebuild from scratch in that case.
+          a different ``analyzer_version``, and ``allow_reanalysis`` is False.
+        - **Re-analysis**: with ``allow_reanalysis=True``, that same case
+          re-derives instead of raising — see below.
         - **Bootstrap**: if the store does not yet exist, a new profile is
           created from this single result and saved.
 
         The same update semantics as :func:`build_profile` apply — see
         :func:`atlas.company.builder.merge_result`.
+
+        Why re-analysis rebuilds rather than subtracts
+        ----------------------------------------------
+        "Drop that evidence's contribution" cannot be done in place. A
+        ``FinancialSnapshot`` holds ``facts`` merged from every source that
+        touched that period and a ``sources`` list saying which those were;
+        the merged VALUE carries no attribution, so there is no operation
+        that removes one contributor from it. Un-merging is not available at
+        any price.
+
+        So re-analysis re-derives: reload every result, swap the stale one
+        for *result*, and rebuild through ``build_profile``. That is the same
+        canonical, order-insensitive derivation the profile came from in the
+        first place, which is what makes the outcome trustworthy rather than
+        approximately right.
+
+        ``allow_reanalysis`` defaults to False, so every existing caller and
+        every existing test is unaffected. Reversal is not passing the flag.
         """
         if not self.exists():
             from atlas.company.builder import build_profile
@@ -798,11 +836,14 @@ class CompanyStore:
             stored_ver = ingested[result.evidence_id]
             if stored_ver == result.analyzer_version:
                 return _deserialize_profile(raw["profile"])
+            if allow_reanalysis:
+                return self._rebuild_replacing(result, raw)
             raise StaleResultError(
                 f"evidence_id {result.evidence_id!r} already ingested with "
                 f"analyzer_version {stored_ver!r} but new result has "
                 f"{result.analyzer_version!r}. "
-                f"Rebuild from scratch with build_profile() + save()."
+                f"Rebuild from scratch with build_profile() + save(), or pass "
+                f"allow_reanalysis=True."
             )
 
         profile = _deserialize_profile(raw["profile"])
@@ -816,6 +857,42 @@ class CompanyStore:
             json.dumps(raw, indent=2, ensure_ascii=False, sort_keys=True),
             encoding="utf-8",
         )
+        return profile
+
+    def _rebuild_replacing(
+        self, result: AnalysisResult, raw: dict[str, Any]
+    ) -> CompanyProfile:
+        """Re-derive the profile with *result* in place of its stale version.
+
+        Reloads every result from the configured profile source — which since
+        M4 is the assertion store, so this re-reads no documents — swaps the
+        one being re-analysed, and rebuilds.
+
+        Refuses if the reload does not return every evidence_id the store had
+        ingested. Building anyway would write a profile missing whole
+        documents, and it would look perfectly well-formed: the failure would
+        surface months later as a number that used to be there and is not.
+        Better a loud error at the moment the information is still available.
+        """
+        from atlas.company.builder import build_profile
+
+        report = load_results(self._path.parent)
+        reloaded = {r.evidence_id: r for r in report.results}
+        reloaded[result.evidence_id] = result
+
+        expected = {r["evidence_id"] for r in raw.get("ingested_results", [])}
+        missing = expected - set(reloaded)
+        if missing:
+            raise ReanalysisUnavailableError(
+                f"cannot re-analyse {result.evidence_id!r}: re-deriving the "
+                f"profile needs every ingested result, but the "
+                f"{report.source!r} source did not return {sorted(missing)}. "
+                f"Rebuild from scratch with build_profile() + save()."
+            )
+
+        results = [reloaded[eid] for eid in sorted(reloaded)]
+        profile = build_profile(self._company_id, results)
+        self.save(profile, results)
         return profile
 
     def get_ingested_ids(self) -> set[str]:

@@ -25,7 +25,11 @@ from atlas.company.model import (
     StrategyEntry,
     StrategyProfile,
 )
-from atlas.company.store import CompanyStore, StaleResultError
+from atlas.company.store import (
+    CompanyStore,
+    ReanalysisUnavailableError,
+    StaleResultError,
+)
 
 __all__ = [
     "AGMResolution",
@@ -52,6 +56,7 @@ __all__ = [
     "StrategyEntry",
     "StrategyProfile",
     "CompanyStore",
+    "ReanalysisUnavailableError",
     "StaleResultError",
     "build_profile",
     "merge_result",
