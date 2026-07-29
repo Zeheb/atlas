@@ -523,6 +523,97 @@ def profile_diff(left: Path, right: Path) -> None:
     raise SystemExit(1)
 
 
+@cli.command("analyze")
+@click.option("--company", required=True, help="Ticker of the repository to analyze.")
+@click.option(
+    "--kind",
+    "kind_filter",
+    default=None,
+    help="Restrict to one evidence kind (default: every supported kind).",
+)
+def analyze_cmd(company: str, kind_filter: str | None) -> None:
+    """Analyze a company's evidence into its assertion store.
+
+    Writes assertions and run records only. No profile is built, read or
+    modified -- the store is populated first and consumed later, so that a
+    bad analyzer run cannot reach a profile before anyone has looked at it.
+
+    Re-running is safe: each document's rows are replaced, not appended.
+    """
+    from atlas.acquisition.repository import Repository
+    from atlas.analysis.registry import supported_kinds
+    from atlas.assertions.store import AssertionStore
+    from atlas.assertions.writer import analyze_and_write
+    from atlas.knowledge.base import KnowledgeBase
+    from atlas.provenance import current_fingerprint
+
+    ticker = company.upper()
+    atlas = Atlas.from_environment()
+    repo_root = atlas.settings.repository_base_path / ticker
+
+    if not repo_root.exists():
+        click.echo(
+            f"No repository for '{ticker}'. Run: atlas repository build {ticker}",
+            err=True,
+        )
+        raise SystemExit(1)
+
+    supported = set(supported_kinds())
+    if kind_filter is not None and kind_filter not in supported:
+        click.echo(
+            f"No analyzer for kind '{kind_filter}'. "
+            f"Supported kinds: {', '.join(sorted(supported))}",
+            err=True,
+        )
+        raise SystemExit(1)
+
+    click.echo(f"Atlas — Analyzing {ticker}\n")
+
+    repo = Repository(repo_root)
+    kb = KnowledgeBase(repo_root)
+    store = AssertionStore(repo_root)
+    digest = current_fingerprint().digest()
+
+    analyzed = failed = unparsed = skipped = 0
+    for entry in repo.list_evidence():
+        if entry.kind not in supported or (
+            kind_filter is not None and entry.kind != kind_filter
+        ):
+            skipped += 1
+            continue
+        if not entry.local_path:
+            unparsed += 1
+            continue
+
+        doc = kb.parse(entry)
+        if doc.status != "ok":
+            unparsed += 1
+            continue
+
+        run = analyze_and_write(entry.evidence_id, kb, store, fingerprint=digest)
+        if run.status == "ok":
+            analyzed += 1
+        else:
+            # Recorded, not swallowed: the store holds the error, and the
+            # exit code stays 0 because a bad document is not a bad run.
+            click.echo(f"  ! {entry.evidence_id}: {run.error}", err=True)
+            failed += 1
+
+    click.echo(f"  Analyzed: {analyzed}")
+    if failed:
+        click.echo(f"  Failed:   {failed}", err=True)
+    if unparsed:
+        click.echo(f"  Unparsed: {unparsed}", err=True)
+    if skipped:
+        click.echo(f"  Skipped (unsupported kind): {skipped}")
+
+    if analyzed == failed == 0:
+        click.echo("\nNothing to analyze.", err=True)
+        raise SystemExit(1)
+
+    click.echo(f"\nAssertions written to {store.path}")
+
+
 @cli.group()
 def fingerprint() -> None:
     """Inspect the build fingerprint."""
