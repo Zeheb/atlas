@@ -14,11 +14,14 @@ the caller believes it is recording something new and is wrong, and
 swallowing that hides the bug at the only layer that could still catch it.
 So ``append`` raises ``DuplicateJudgmentError``.
 
-Nothing is ever removed
------------------------
-There is no update and no overwrite. A revision is a new judgment carrying
-``supersedes``, and the superseded judgment stays exactly where it was.
-Deletion is a separate, explicitly forced operation and does not live here.
+Nothing is overwritten
+----------------------
+There is no update. A revision is a new judgment carrying ``supersedes``,
+and the superseded judgment stays exactly where it was. ``delete`` exists
+only because a typo has to be retractable somehow; it is not part of normal
+operation, the CLI gates it behind ``--force``, and it refuses to remove a
+judgment that another judgment supersedes — that would leave the dangling
+link ``append`` is careful never to create.
 
 ``supersedes`` must resolve
 ---------------------------
@@ -150,6 +153,37 @@ class JudgmentStore:
         self._walk_supersedes(judgment.judgment_id, judgment.supersedes, stored)
         envelope["judgments"].append(_serialize_judgment(judgment))
         self._write(envelope)
+
+    def delete(self, judgment_id: str) -> Judgment:
+        """Remove *judgment_id* and return what was removed.
+
+        The escape hatch for a typo, not a workflow. Refuses if another
+        stored judgment supersedes this one: removing a link mid-chain
+        leaves exactly the dangling reference ``append`` rejects, and
+        ``chain`` would then raise on a history that used to resolve.
+        """
+        envelope = self._load_raw() if self.exists() else self._empty_envelope()
+        records: list[dict[str, Any]] = envelope["judgments"]
+        target = next(
+            (raw for raw in records if raw["judgment_id"] == judgment_id), None
+        )
+        if target is None:
+            raise JudgmentNotFoundError(judgment_id)
+        dependents = sorted(
+            raw["judgment_id"]
+            for raw in records
+            if raw.get("supersedes") == judgment_id
+        )
+        if dependents:
+            raise ValueError(
+                f"Judgment {judgment_id!r} is superseded by "
+                f"{', '.join(repr(d) for d in dependents)}; deleting it would "
+                f"leave a dangling supersedes link. Delete the later judgment "
+                f"first."
+            )
+        envelope["judgments"] = [raw for raw in records if raw is not target]
+        self._write(envelope)
+        return _deserialize_judgment(target)
 
     def get(self, judgment_id: str) -> Judgment:
         """Load one stored judgment by id.

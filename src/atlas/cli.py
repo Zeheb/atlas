@@ -1,6 +1,6 @@
 import sys
 from collections.abc import Iterator
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, TypedDict, cast
 
@@ -8,6 +8,7 @@ import click
 
 if TYPE_CHECKING:
     from atlas.acquisition.repository import Repository
+    from atlas.judgment.store import JudgmentStore
     from atlas.reasoning.contracts import RecalledView
     from atlas.research.staleness import StalenessReport
     from atlas.research.thesis import Thesis
@@ -1617,6 +1618,212 @@ def memory_check_cmd() -> None:
             )
     if not found:
         click.echo("No remembered views to check.")
+
+
+@cli.group("judgment")
+def judgment_group() -> None:
+    """Record and inspect YOUR conclusions — Tier 0, never regenerated.
+
+    Distinct from ``memory``, which holds what the model synthesized. A
+    thesis is derived and a rebuild may replace it; a judgment is a fact
+    about what you concluded and when, and no rebuild touches it. So there
+    is no edit: a change of mind is a new judgment that supersedes the old
+    one, and both stay on the record.
+    """
+
+
+def _judgment_store(ticker: str) -> "JudgmentStore":
+    """Open the judgment store for *ticker*, or exit if there is no repo."""
+    from atlas.judgment.store import JudgmentStore
+
+    atlas = Atlas.from_environment()
+    repo_root = atlas.settings.repository_base_path / ticker
+    if not repo_root.exists():
+        click.echo(f"No repository for '{ticker}'.", err=True)
+        raise SystemExit(1)
+    return JudgmentStore(repo_root / "judgments.json", ticker)
+
+
+def _record_judgment(
+    *,
+    company: str,
+    statement: str,
+    rationale: str,
+    evidence: tuple[str, ...],
+    supersedes: str | None,
+) -> None:
+    """Build, append and report one judgment. Shared by add and supersede."""
+    from atlas.judgment.model import Judgment
+    from atlas.judgment.store import DuplicateJudgmentError, JudgmentNotFoundError
+    from atlas.provenance import current_fingerprint
+    from atlas.reasoning.contracts import SubjectRef
+
+    ticker = company.upper()
+    store = _judgment_store(ticker)
+    judgment = Judgment.create(
+        subject=SubjectRef(subject_id=ticker, display=ticker),
+        statement=statement,
+        rationale=rationale,
+        evidence_ids=evidence,
+        asserted_at=datetime.now(timezone.utc),
+        fingerprint=current_fingerprint().digest(),
+        supersedes=supersedes,
+    )
+    try:
+        store.append(judgment)
+    except DuplicateJudgmentError:
+        # Same content, same fingerprint, same subject -- already on record.
+        # Nothing was written, so say so rather than implying a new entry.
+        click.echo(
+            f"Already recorded as {judgment.judgment_id}. To revise it, use: "
+            f"atlas judgment supersede {judgment.judgment_id} --company {ticker}",
+            err=True,
+        )
+        raise SystemExit(1) from None
+    except JudgmentNotFoundError:
+        click.echo(
+            f"No judgment {supersedes!r} recorded for {ticker}; nothing to "
+            f"supersede.",
+            err=True,
+        )
+        raise SystemExit(1) from None
+    click.echo(f"Recorded judgment {judgment.judgment_id} for {ticker}.")
+    if supersedes:
+        click.echo(f"  supersedes {supersedes}")
+
+
+@judgment_group.command("add")
+@click.option("--company", required=True, help="Ticker this judgment is about.")
+@click.option("--statement", required=True, help="What you concluded.")
+@click.option("--rationale", default="", help="Why you concluded it.")
+@click.option(
+    "--evidence",
+    multiple=True,
+    help="Evidence id this rests on. Repeatable.",
+)
+def judgment_add(
+    company: str, statement: str, rationale: str, evidence: tuple[str, ...]
+) -> None:
+    """Record a new judgment about COMPANY.
+
+    The current build fingerprint is stamped on it, so what Atlas was
+    showing you when you concluded this stays recoverable even after the
+    numbers move.
+    """
+    _record_judgment(
+        company=company,
+        statement=statement,
+        rationale=rationale,
+        evidence=evidence,
+        supersedes=None,
+    )
+
+
+@judgment_group.command("supersede")
+@click.argument("judgment_id")
+@click.option("--company", required=True, help="Ticker this judgment is about.")
+@click.option("--statement", required=True, help="What you now conclude.")
+@click.option("--rationale", default="", help="Why you changed your mind.")
+@click.option(
+    "--evidence",
+    multiple=True,
+    help="Evidence id this rests on. Repeatable.",
+)
+def judgment_supersede(
+    judgment_id: str,
+    company: str,
+    statement: str,
+    rationale: str,
+    evidence: tuple[str, ...],
+) -> None:
+    """Replace JUDGMENT_ID with a revised judgment, keeping both.
+
+    The superseded judgment is not deleted or edited. It remains a true
+    record of what you believed on the evidence you had.
+    """
+    _record_judgment(
+        company=company,
+        statement=statement,
+        rationale=rationale,
+        evidence=evidence,
+        supersedes=judgment_id,
+    )
+
+
+@judgment_group.command("list")
+@click.option("--company", required=True, help="Ticker to list judgments for.")
+def judgment_list(company: str) -> None:
+    """List every judgment recorded for COMPANY, oldest first.
+
+    Superseded entries are shown, not hidden — the whole point of an
+    append-only store is that the earlier position stays visible.
+    """
+    ticker = company.upper()
+    store = _judgment_store(ticker)
+    judgments = store.list()
+    if not judgments:
+        click.echo(
+            f"No judgments recorded for {ticker}. Record one with: "
+            f"atlas judgment add --company {ticker} --statement '...'"
+        )
+        return
+
+    superseded_by = {
+        j.supersedes: j.judgment_id for j in judgments if j.supersedes is not None
+    }
+    click.echo(f"Atlas — judgments for {ticker}\n")
+    for judgment in judgments:
+        replacement = superseded_by.get(judgment.judgment_id)
+        marker = f"  [superseded by {replacement}]" if replacement else ""
+        click.echo(
+            f"{judgment.judgment_id}  {judgment.asserted_at.isoformat()}{marker}"
+        )
+        click.echo(f"    {judgment.statement}")
+        if judgment.rationale:
+            click.echo(f"    rationale: {judgment.rationale}")
+        if judgment.evidence_ids:
+            click.echo(f"    evidence:  {', '.join(judgment.evidence_ids)}")
+        click.echo(f"    build:     {judgment.fingerprint}")
+
+
+@judgment_group.command("delete")
+@click.argument("judgment_id")
+@click.option("--company", required=True, help="Ticker this judgment is about.")
+@click.option(
+    "--force",
+    is_flag=True,
+    help="Required. Deleting a Tier 0 judgment destroys a historical record.",
+)
+def judgment_delete(judgment_id: str, company: str, force: bool) -> None:
+    """Delete JUDGMENT_ID. Requires --force.
+
+    The escape hatch for a typo, not a way to change your mind — for that,
+    use ``supersede``, which keeps both positions on the record.
+    """
+    from atlas.judgment.store import JudgmentNotFoundError
+
+    ticker = company.upper()
+    if not force:
+        click.echo(
+            f"Refusing to delete {judgment_id} without --force. A judgment is "
+            f"Tier 0: deleting it destroys the record that you held that view. "
+            f"If you changed your mind, use: atlas judgment supersede "
+            f"{judgment_id} --company {ticker} --statement '...'",
+            err=True,
+        )
+        raise SystemExit(1)
+
+    store = _judgment_store(ticker)
+    try:
+        deleted = store.delete(judgment_id)
+    except JudgmentNotFoundError:
+        click.echo(f"No judgment {judgment_id!r} recorded for {ticker}.", err=True)
+        raise SystemExit(1) from None
+    except ValueError as exc:
+        click.echo(str(exc), err=True)
+        raise SystemExit(1) from None
+    click.echo(f"Deleted judgment {deleted.judgment_id} for {ticker}.")
+    click.echo(f"    {deleted.statement}")
 
 
 @cli.group("eval")
