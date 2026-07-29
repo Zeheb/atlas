@@ -120,6 +120,10 @@ def _serialize_thesis(thesis: Thesis) -> dict[str, Any]:
             "trace": list(result.trace),
             "known_unknowns": list(result.known_unknowns),
             "findings": [_serialize_finding(f) for f in result.findings],
+            "fingerprint": result.fingerprint,
+            "consulted_assertion_ids": list(result.consulted_assertion_ids),
+            "consulted_evidence_ids": list(result.consulted_evidence_ids),
+            "profile_built_at": result.profile_built_at,
         },
         "dispositions": [
             {
@@ -146,6 +150,16 @@ def _deserialize_thesis(d: dict[str, Any]) -> Thesis:
         refused=False,
         trace=tuple(r.get("trace", ())),
         known_unknowns=tuple(r.get("known_unknowns", ())),
+        # Pre-pinning theses (written before M6) carry none of these keys.
+        # They load as fingerprint=None, which reads as "this answer predates
+        # pinning" -- distinct from an answer whose build could not be
+        # determined, which does not occur. No store_version bump: the shape
+        # is a superset and old files stay readable, which is the whole point
+        # of #45.
+        fingerprint=r.get("fingerprint"),
+        consulted_assertion_ids=tuple(r.get("consulted_assertion_ids", ())),
+        consulted_evidence_ids=tuple(r.get("consulted_evidence_ids", ())),
+        profile_built_at=r.get("profile_built_at"),
     )
     return Thesis(
         question=d["question"],

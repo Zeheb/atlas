@@ -12,6 +12,13 @@ the first contract-version bump since M0; every existing construction site
 (reasoning, research, eval, tests) is source-compatible because the field
 already defaulted to ``None``.
 
+CONTRACT VERSION 3 (M6): C8 ``ReasoningResult`` gains four pinning fields --
+``fingerprint``, ``consulted_assertion_ids``, ``consulted_evidence_ids``,
+``profile_built_at``. Purely additive: every field has a default, so every
+existing construction site is source-compatible and every existing behaviour
+is unchanged. An answer produced before this bump reads back with
+``fingerprint=None``, which means "pre-pinning" and not "unknown build".
+
 Every class carries its contract id (C1..C9). Invariants from §10 are enforced
 in ``__post_init__`` and raise ``ValueError`` — the guarantees (§8.4) are thereby
 type-level facts, not conventions:
@@ -341,6 +348,22 @@ class ReasoningResult:
     ``citations`` must cover every evidence_id its findings rest on, and (checked
     where the context is in scope) be a subset of the GroundingContext index. A
     refused result carries a reason and no findings (G8).
+
+    Pinning (M6, contract version 3)
+    --------------------------------
+    ``fingerprint``, ``consulted_assertion_ids``, ``consulted_evidence_ids``
+    and ``profile_built_at`` record WHICH BUILD produced this answer, so a
+    number in an old answer can still be traced to the rows it came from
+    after the store has moved on. All four are additive with defaults:
+    ``fingerprint=None`` means pre-pinning, not "unknown build".
+
+    ``consulted_*`` is deliberately not ``citations``. ``citations`` is what
+    the findings rest on — the grounding set, narrowed by every G1/G10 check
+    in this module. ``consulted_*`` is what was READ to produce the answer,
+    including documents that contributed nothing, and it is a superset. They
+    are separate fields because rendering the wrong one as sources would
+    attribute claims to documents that never supported them, and no
+    grounding test would catch it: the citation chain would still be valid.
     """
 
     question: Question
@@ -351,12 +374,29 @@ class ReasoningResult:
     trace: tuple[str, ...] = ()
     known_unknowns: tuple[str, ...] = ()
     refusal_reason: str | None = None
+    fingerprint: str | None = None
+    consulted_assertion_ids: tuple[str, ...] = ()
+    consulted_evidence_ids: tuple[str, ...] = ()
+    profile_built_at: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "findings", _tuple(self.findings))
         object.__setattr__(self, "trace", _tuple(self.trace))
         object.__setattr__(self, "known_unknowns", _tuple(self.known_unknowns))
         object.__setattr__(self, "citations", frozenset(self.citations))
+        # Consulted sets carry no order and no multiplicity: reading one
+        # document twice does not make it two sources, and two runs that
+        # consulted the same set must compare equal.
+        object.__setattr__(
+            self,
+            "consulted_assertion_ids",
+            tuple(sorted(set(self.consulted_assertion_ids))),
+        )
+        object.__setattr__(
+            self,
+            "consulted_evidence_ids",
+            tuple(sorted(set(self.consulted_evidence_ids))),
+        )
         if self.refused:
             if self.findings:
                 raise ValueError("A refused ReasoningResult must have no findings (G8)")
