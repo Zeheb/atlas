@@ -267,6 +267,25 @@ class StoredRun:
     assertions: tuple[Assertion, ...]
 
 
+@dataclass(frozen=True)
+class StoreStats:
+    """What is in the store, counted in one pass.
+
+    ``fingerprints`` is every distinct build that wrote here, sorted. More
+    than one is the interesting case: it means part of the store was produced
+    by code that is no longer running, and the reader will refuse those rows
+    rather than serve them.
+    """
+
+    documents: int
+    runs: int
+    failed_runs: int
+    assertions: int
+    fingerprints: tuple[str, ...]
+    last_analyzed_at: datetime | None
+    size_bytes: int
+
+
 def _run_row(run: AssertionRun) -> tuple[object, ...]:
     return (
         run.evidence_id,
@@ -480,6 +499,34 @@ class AssertionStore:
                 (evidence_id,),
             ).fetchall()
         return tuple(_row_to_run(row) for row in rows)
+
+    def stats(self) -> StoreStats:
+        """Return counts, distinct fingerprints and file size in one pass."""
+        with self._db_conn() as conn:
+            runs, failed, documents, last_analyzed = conn.execute(
+                "SELECT COUNT(*), "
+                "       SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), "
+                "       COUNT(DISTINCT evidence_id), "
+                "       MAX(analyzed_at) "
+                "FROM assertion_runs"
+            ).fetchone()
+            assertions = conn.execute("SELECT COUNT(*) FROM assertions").fetchone()[0]
+            fingerprints = conn.execute(
+                "SELECT DISTINCT fingerprint FROM assertion_runs ORDER BY fingerprint"
+            ).fetchall()
+
+        return StoreStats(
+            documents=documents,
+            runs=runs,
+            # SUM over no rows is NULL, not 0.
+            failed_runs=failed or 0,
+            assertions=assertions,
+            fingerprints=tuple(row[0] for row in fingerprints),
+            last_analyzed_at=(
+                datetime.fromisoformat(last_analyzed) if last_analyzed else None
+            ),
+            size_bytes=self._db_path.stat().st_size,
+        )
 
     def find(self, assertion_id: str) -> Assertion | None:
         """Return one assertion by its content address, or None.

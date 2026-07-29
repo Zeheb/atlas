@@ -615,6 +615,85 @@ def analyze_cmd(company: str, kind_filter: str | None) -> None:
 
 
 @cli.group()
+def store() -> None:
+    """Inspect the storage tiers of a company repository."""
+
+
+@store.command("status")
+@click.option("--company", required=True, help="Ticker to report on.")
+def store_status(company: str) -> None:
+    """Report what each tier holds, and whether it came from this build.
+
+    Sizes, row counts and fingerprints in one screen. The number that matters
+    is the fingerprint comparison: assertions written by a build that is no
+    longer running are refused at read time, so a store can be full and still
+    be unusable, and nothing else on this screen would show it.
+    """
+    from atlas.acquisition.repository import Repository
+    from atlas.assertions.store import AssertionStore
+    from atlas.knowledge.base import KnowledgeBase
+    from atlas.provenance import current_fingerprint
+
+    ticker = company.upper()
+    atlas = Atlas.from_environment()
+    repo_root = atlas.settings.repository_base_path / ticker
+
+    if not repo_root.exists():
+        click.echo(f"No repository for '{ticker}'.", err=True)
+        raise SystemExit(1)
+
+    click.echo(f"Atlas — store status for {ticker}\n")
+
+    entries = Repository(repo_root).list_evidence()
+    kb = KnowledgeBase(repo_root)
+    knowledge_db = repo_root / "knowledge.db"
+    known = kb.known_ids() if knowledge_db.exists() else frozenset()
+    usable = kb.ok_ids() if knowledge_db.exists() else frozenset()
+
+    click.echo("Tier 0 — evidence")
+    click.echo(f"  catalog entries:  {len(entries)}")
+    click.echo(f"  parsed documents: {len(known)} ({len(usable)} usable)")
+    click.echo(f"  knowledge.db:     {_size_label(knowledge_db)}")
+
+    assertion_store = AssertionStore(repo_root)
+    stats = assertion_store.stats()
+    digest = current_fingerprint().digest()
+
+    click.echo("\nTier 1 — assertions")
+    click.echo(f"  documents:        {stats.documents}")
+    click.echo(f"  runs:             {stats.runs} ({stats.failed_runs} failed)")
+    click.echo(f"  assertions:       {stats.assertions}")
+    click.echo(f"  assertions.db:    {_size_label(assertion_store.path)}")
+    click.echo(f"  schema version:   {assertion_store.schema_version()}")
+    last = stats.last_analyzed_at
+    click.echo(f"  last analyzed:    {last.isoformat() if last else 'never'}")
+
+    click.echo(f"\n  current build:    {digest}")
+    if not stats.fingerprints:
+        click.echo("  stored builds:    none — nothing analyzed yet")
+    else:
+        for stored_digest in stats.fingerprints:
+            marker = "current" if stored_digest == digest else "STALE"
+            click.echo(f"  stored build:     {stored_digest} [{marker}]")
+        if digest not in stats.fingerprints:
+            click.echo(
+                "  Every stored run is from another build; reads will raise. "
+                f"Run: atlas analyze --company {ticker}"
+            )
+
+    profile_path = repo_root / "profile.json"
+    click.echo("\nTier 2 — profile")
+    click.echo(f"  profile.json:     {_size_label(profile_path)}")
+
+
+def _size_label(path: Path) -> str:
+    """Return a human-readable size, or 'absent' when there is no file."""
+    if not path.exists():
+        return "absent"
+    return f"{path.stat().st_size:,} bytes"
+
+
+@cli.group()
 def assertion() -> None:
     """Inspect stored assertions."""
 
