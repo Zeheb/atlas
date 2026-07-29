@@ -500,6 +500,59 @@ def metrics_cmd(domain: str | None) -> None:
             click.echo(f"  {spec.key:<28} {spec.label:<45} [{unit_label}]")
 
 
+@cli.group()
+def fingerprint() -> None:
+    """Inspect the build fingerprint."""
+
+
+@fingerprint.command("show")
+@click.option(
+    "--explain",
+    is_flag=True,
+    help="Also show which module each component comes from.",
+)
+def fingerprint_show(explain: bool) -> None:
+    """Print the current build fingerprint and every component.
+
+    The first thing to run when a digest moves unexpectedly: it shows which
+    component is responsible, which a digest alone cannot.
+    """
+    from atlas.provenance import current_fingerprint
+
+    fp = current_fingerprint()
+    sources = {
+        "ontology_version": "atlas.analysis.base.ONTOLOGY_VERSION",
+        "parser_version": "atlas.knowledge.base.PARSER_VERSION",
+        "shared_parser_version": "atlas.analysis.patterns.SHARED_PARSER_VERSION",
+        "builder_version": "atlas.company.builder.BUILDER_VERSION",
+    }
+    components = {
+        "ontology_version": fp.ontology_version,
+        "parser_version": fp.parser_version,
+        "shared_parser_version": fp.shared_parser_version,
+        "builder_version": fp.builder_version,
+    }
+
+    click.echo(f"digest    {fp.digest()}")
+    click.echo(f"code_rev  {fp.code_rev or '(not a git checkout)'}")
+    if explain:
+        click.echo("          code_rev is recorded but NOT hashed — a digest")
+        click.echo("          that moved every commit would invalidate every")
+        click.echo("          cached artifact every commit.")
+
+    click.echo("")
+    for name, value in components.items():
+        click.echo(f"{name:<22} {value}")
+        if explain:
+            click.echo(f"{'':<22} from {sources[name]}")
+
+    versions = fp.analyzer_versions
+    click.echo("")
+    click.echo(f"analyzer_versions ({len(versions)})")
+    for kind, version in sorted(versions.items()):
+        click.echo(f"  {kind:<24} {version}")
+
+
 @cli.command("research")
 @click.argument("ticker")
 @click.option(
