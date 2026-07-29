@@ -342,6 +342,33 @@ class StoreStats:
     size_bytes: int
 
 
+@dataclass(frozen=True)
+class StaleRun:
+    """One run that a different build wrote.
+
+    Carries ``kind`` and ``analyzer_version`` because the caller re-analysing
+    it needs both, and reaching back into the database for them would be a
+    second query answering a question this one already answered.
+    """
+
+    evidence_id: str
+    kind: str
+    analyzer_version: str
+    stored_fingerprint: str
+
+
+def _current_digest() -> str:
+    """The running build's digest, imported late to keep the cycle open.
+
+    ``provenance`` imports ``company.builder``, which imports nothing here,
+    but a module-level import in this direction would still tie Tier 1's
+    schema module to the fingerprint at import time for no gain.
+    """
+    from atlas.provenance import current_fingerprint
+
+    return current_fingerprint().digest()
+
+
 def _run_row(run: AssertionRun) -> tuple[object, ...]:
     return (
         run.evidence_id,
@@ -666,6 +693,63 @@ class AssertionStore:
                 (assertion_id,),
             ).fetchone()
         return None if row is None else _row_to_assertion(row)
+
+    def stale_evidence(self, *, fingerprint: str | None = None) -> tuple[StaleRun, ...]:
+        """Return every run whose stored fingerprint is not *fingerprint*.
+
+        *fingerprint* defaults to the current build's. These are the rows the
+        reader already refuses to serve — this is the same judgement, asked
+        ahead of time so a rebuild can act on it instead of failing on it.
+
+        Sorted by ``(evidence_id, kind, analyzer_version)`` so two callers,
+        or one caller twice, see the same order.
+
+        Why this compares whole digests, not per-kind sub-digests
+        --------------------------------------------------------
+        ``assertion_runs.fingerprint`` holds ``BuildFingerprint.digest()`` —
+        the whole build. sha256 does not invert, so a stored digest cannot be
+        asked which of its components moved, and ``affects(kind)`` therefore
+        has nothing here to compare against. Narrowing by kind needs the
+        sub-digest RECORDED at write time, which no row carries yet.
+
+        What survives is still exact rather than approximate: a row either
+        was or was not written by the running build. That is whole-store
+        invalidation, which the milestone names as the correct default
+        whenever the narrow answer is not available — over-invalidating costs
+        time, under-invalidating serves stale data as though it were current.
+        """
+        target = fingerprint if fingerprint is not None else _current_digest()
+        with self._db_conn() as conn:
+            rows = conn.execute(
+                "SELECT evidence_id, kind, analyzer_version, fingerprint "
+                "FROM assertion_runs WHERE fingerprint != ? "
+                "ORDER BY evidence_id, kind, analyzer_version",
+                (target,),
+            ).fetchall()
+        return tuple(
+            StaleRun(
+                evidence_id=row["evidence_id"],
+                kind=row["kind"],
+                analyzer_version=row["analyzer_version"],
+                stored_fingerprint=row["fingerprint"],
+            )
+            for row in rows
+        )
+
+    def stale_evidence_ids(self, *, fingerprint: str | None = None) -> tuple[str, ...]:
+        """Return the distinct evidence_ids of :meth:`stale_evidence`, sorted.
+
+        A document is stale if ANY of its runs is: re-analysing it is
+        per-document work, so one stale run condemns the document.
+        """
+        return tuple(
+            sorted(
+                {
+                    run.evidence_id
+                    for run in self.stale_evidence(fingerprint=fingerprint)
+                }
+            )
+        )
 
     def evidence_ids(self) -> tuple[str, ...]:
         """Return every evidence_id with a run, sorted."""
