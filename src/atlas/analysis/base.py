@@ -25,6 +25,17 @@ from typing import Literal
 
 from atlas.knowledge.entities import Entity
 
+# Version of the FactKind vocabulary below. Bump this whenever a member is
+# added, removed, or renamed, and update tests/unit/data/factkind_snapshot.txt
+# in the same commit — test_ontology_version.py enforces that the two agree.
+#
+# The vocabulary is a frozen ontology, not a convenience enum: ADR-0012
+# admits new kinds only against a three-condition test, and downstream
+# consumers cache extraction results keyed by the version that produced them.
+# A silent vocabulary change makes those caches wrong without invalidating
+# them, so the bump is the invalidation signal.
+ONTOLOGY_VERSION = "1.0"
+
 
 class FactKind(enum.Enum):
     """All extractable fact types across all evidence kinds.
