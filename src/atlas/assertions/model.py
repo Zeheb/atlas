@@ -1,0 +1,252 @@
+"""Assertion and AssertionRun — the persisted form of analyzer output.
+
+One ``Assertion`` is one ``AnalysisFact`` made durable. One ``AssertionRun``
+carries everything on the ``AnalysisResult`` envelope that is not a fact:
+result-level confidence, warnings, source date, status. Together they hold
+enough to reconstruct a faithful ``AnalysisResult`` without re-reading the
+document.
+
+Content-addressed ids
+---------------------
+``assertion_id`` is a hash of what the assertion says, not a counter. Two
+runs of the same analyzer over the same document therefore produce the same
+ids, which is what lets a full rebuild and an incremental rebuild be
+compared by set equality rather than by fuzzy diffing.
+
+``ordinal`` is part of that hash and is not optional. Analyzers legitimately
+emit several facts that share every other component: ``annual_report``
+constructs every ``RISK_FACTOR`` in one loop with the same
+``section="mda_risk"`` and the same ``char_offset`` — the offset of the
+section, not of the individual risk — and ``_extract_risks`` deduplicates on
+neither of its two paths. Two equal risk strings would collapse to one row.
+The ordinal distinguishes them while staying deterministic, because analyzer
+emission order is fixed for a given document and version.
+
+A spike over the 54 shareholding-pattern documents in this repository found
+no collisions in 299 facts, so this is insurance rather than an observed
+failure. It is cheap insurance: the alternative is a fact silently vanishing
+from a profile with no error at any layer.
+
+Value fidelity
+--------------
+``value`` is ``str | int | float | None``, and the distinction matters:
+``5``, ``5.0`` and ``"5"`` are three different assertions. Storage is
+therefore a text column plus an explicit ``value_type``, never a text column
+alone with the type inferred back. Python's ``repr`` is shortest-round-trip
+for floats, so ``float -> str -> float`` is exact, including ``-0.0`` and
+values like ``0.1 + 0.2``.
+"""
+
+from __future__ import annotations
+
+import hashlib
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Literal
+
+from atlas.analysis.base import AnalysisFact, FactKind, FactUnit, Provenance
+from atlas.assertions.hashing import canonical_for_hash
+
+ValueType = Literal["str", "int", "float", "null"]
+
+Confidence = Literal["high", "medium", "low"]
+
+RunStatus = Literal["ok", "failed"]
+
+#: Length of the hex id prefix retained. 16 hex chars = 64 bits; at the
+#: scale of one company repository the birthday bound is far away, and a
+#: shorter id keeps the store readable during debugging.
+_ID_CHARS = 16
+
+
+def encode_value(value: str | int | float | None) -> tuple[str | None, ValueType]:
+    """Return the storable text for *value* and the type tag to restore it.
+
+    Strings are stored as themselves rather than as ``repr``, so the column
+    stays readable and a quoted form never has to be unwrapped. Numbers use
+    ``repr``, which round-trips exactly.
+    """
+    if value is None:
+        return None, "null"
+    if isinstance(value, bool):
+        # bool is a subclass of int; AnalysisFact.value is never a bool, and
+        # silently storing one as an int would be a lie about the source.
+        raise TypeError("AnalysisFact.value must not be a bool")
+    if isinstance(value, str):
+        return value, "str"
+    if isinstance(value, int):
+        return repr(value), "int"
+    if isinstance(value, float):
+        return repr(value), "float"
+    raise TypeError(f"unsupported value type {type(value).__name__}")
+
+
+def decode_value(raw: str | None, value_type: ValueType) -> str | int | float | None:
+    """Inverse of :func:`encode_value`."""
+    if value_type == "null":
+        return None
+    if raw is None:
+        raise ValueError(f"value_type {value_type!r} requires a non-null value")
+    if value_type == "str":
+        return raw
+    if value_type == "int":
+        return int(raw)
+    if value_type == "float":
+        return float(raw)
+    raise ValueError(f"unknown value_type {value_type!r}")
+
+
+def assertion_id(
+    *,
+    evidence_id: str,
+    kind: str,
+    value: str | None,
+    value_type: ValueType,
+    unit: str | None,
+    period: str | None,
+    section: str,
+    char_offset: int | None,
+    analyzer_version: str,
+    ordinal: int,
+) -> str:
+    """Return the content address for one assertion.
+
+    Deterministic: the same inputs always produce the same id, in any
+    process, on any machine. Built through ``canonical_for_hash`` so the
+    canonicalisation rules live in exactly one place.
+    """
+    payload = {
+        "evidence_id": evidence_id,
+        "kind": kind,
+        "value": value,
+        "value_type": value_type,
+        "unit": unit,
+        "period": period,
+        "section": section,
+        "char_offset": char_offset,
+        "analyzer_version": analyzer_version,
+        "ordinal": ordinal,
+    }
+    digest = hashlib.sha256(canonical_for_hash(payload).encode("utf-8"))
+    return digest.hexdigest()[:_ID_CHARS]
+
+
+@dataclass(frozen=True)
+class Assertion:
+    """One extracted fact, made durable."""
+
+    assertion_id: str
+    evidence_id: str
+    kind: str
+    value: str | None
+    value_type: ValueType
+    unit: str | None
+    period: str | None
+    confidence: Confidence
+    section: str
+    char_offset: int | None
+    excerpt: str | None
+    analyzer_version: str
+    fingerprint: str
+    ordinal: int
+
+    @classmethod
+    def from_fact(
+        cls,
+        fact: AnalysisFact,
+        *,
+        evidence_id: str,
+        analyzer_version: str,
+        fingerprint: str,
+        ordinal: int,
+    ) -> Assertion:
+        """Build an Assertion from an AnalysisFact.
+
+        *ordinal* is the fact's 0-based index within its
+        ``(evidence_id, kind, section)`` group, in analyzer emission order.
+        """
+        value, value_type = encode_value(fact.value)
+        provenance = fact.provenance
+        section = provenance.section
+        char_offset = provenance.char_offset
+        return cls(
+            assertion_id=assertion_id(
+                evidence_id=evidence_id,
+                kind=fact.kind.value,
+                value=value,
+                value_type=value_type,
+                unit=fact.unit.value if fact.unit else None,
+                period=fact.period,
+                section=section,
+                char_offset=char_offset,
+                analyzer_version=analyzer_version,
+                ordinal=ordinal,
+            ),
+            evidence_id=evidence_id,
+            kind=fact.kind.value,
+            value=value,
+            value_type=value_type,
+            unit=fact.unit.value if fact.unit else None,
+            period=fact.period,
+            confidence=fact.confidence,
+            section=section,
+            char_offset=char_offset,
+            excerpt=provenance.excerpt,
+            analyzer_version=analyzer_version,
+            fingerprint=fingerprint,
+            ordinal=ordinal,
+        )
+
+    def to_fact(self) -> AnalysisFact:
+        """Rebuild the AnalysisFact this assertion was made from."""
+        return AnalysisFact(
+            kind=FactKind(self.kind),
+            value=decode_value(self.value, self.value_type),
+            unit=FactUnit(self.unit) if self.unit else None,
+            period=self.period,
+            confidence=self.confidence,
+            provenance=Provenance(
+                section=self.section,
+                char_offset=self.char_offset,
+                excerpt=self.excerpt,
+            ),
+        )
+
+
+@dataclass(frozen=True)
+class AssertionRun:
+    """One analyzer pass over one document — the envelope, minus the facts.
+
+    A failed run is recorded rather than dropped. "This document was tried
+    and the analyzer raised" and "this document was never tried" are
+    different states, and only the second should cause a retry.
+    """
+
+    evidence_id: str
+    kind: str
+    analyzer_version: str
+    fingerprint: str
+    result_confidence: Confidence
+    source_date: datetime
+    analyzed_at: datetime
+    warnings: tuple[str, ...]
+    status: RunStatus
+    error: str | None = None
+
+
+def assign_ordinals(facts: list[AnalysisFact]) -> list[int]:
+    """Return the ordinal for each fact, in emission order.
+
+    Grouped by ``(kind, section)``: the ordinal only has to disambiguate
+    facts that would otherwise hash identically, and a global counter would
+    make every id depend on how many unrelated facts preceded it — so
+    extracting one extra fact anywhere would change every later id.
+    """
+    counters: dict[tuple[str, str], int] = {}
+    ordinals: list[int] = []
+    for fact in facts:
+        key = (fact.kind.value, fact.provenance.section)
+        ordinal = counters.get(key, 0)
+        counters[key] = ordinal + 1
+        ordinals.append(ordinal)
+    return ordinals
