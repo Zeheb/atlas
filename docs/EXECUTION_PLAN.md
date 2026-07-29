@@ -158,7 +158,7 @@ Deterministic IDs are what make "full rebuild == incremental rebuild" checkable 
 
 ```sql
 CREATE TABLE assertions (
-    assertion_id     TEXT PRIMARY KEY,
+    assertion_id     TEXT PRIMARY KEY NOT NULL,
     evidence_id      TEXT NOT NULL,
     kind             TEXT NOT NULL,      -- FactKind.value
     value            TEXT,               -- scalar, stringified
@@ -168,6 +168,7 @@ CREATE TABLE assertions (
     confidence       TEXT NOT NULL,      -- high|medium|low
     section          TEXT NOT NULL,
     char_offset      INTEGER,
+    ordinal          INTEGER NOT NULL,   -- emission-order index; an id input
     excerpt          TEXT,               -- ≤120 char micro-proof, per Provenance
     analyzer_version TEXT NOT NULL,
     fingerprint      TEXT NOT NULL,
@@ -178,6 +179,7 @@ CREATE INDEX idx_assertions_kind     ON assertions(kind, period);
 
 CREATE TABLE assertion_runs (
     evidence_id      TEXT NOT NULL,
+    kind             TEXT NOT NULL,      -- EvidenceKind.value
     analyzer_version TEXT NOT NULL,
     fingerprint      TEXT NOT NULL,
     result_confidence TEXT NOT NULL,
@@ -189,6 +191,12 @@ CREATE TABLE assertion_runs (
     PRIMARY KEY (evidence_id, analyzer_version)
 );
 ```
+
+**Schema corrections, made while implementing M1 commit 4.** Three columns as first written could not carry what the models and the reader need:
+
+- `assertions.ordinal` was missing. It is an input to `assertion_id` and is recoverable from nothing else — stored rows do not preserve analyzer emission order — so without the column a row read back can never have its own id re-derived.
+- `assertion_runs.kind` was missing. `AnalysisResult.kind` is required (`analysis/base.py:493`); reading it from `knowledge.db` instead would make an independently rebuildable store depend on a second file.
+- `assertion_id TEXT PRIMARY KEY` alone permits NULL, and permits several: SQLite enforces NOT NULL on a primary key only for `INTEGER PRIMARY KEY`. Now declared explicitly.
 
 `assertion_runs` carries everything on the `AnalysisResult` envelope that is not a fact: result-level confidence, warnings, source_date, analyzed_at. This is what lets `reader.py` reconstruct a faithful `AnalysisResult` in M3 without changing `builder.py`.
 

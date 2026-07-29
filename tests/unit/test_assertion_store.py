@@ -303,6 +303,7 @@ _ASSERTION_COLUMNS = (
     "confidence",
     "section",
     "char_offset",
+    "ordinal",
     "excerpt",
     "analyzer_version",
     "fingerprint",
@@ -311,6 +312,7 @@ _ASSERTION_COLUMNS = (
 
 _RUN_COLUMNS = (
     "evidence_id",
+    "kind",
     "analyzer_version",
     "fingerprint",
     "result_confidence",
@@ -328,11 +330,66 @@ _NOT_NULL_ASSERTION_COLUMNS = frozenset(
         "value_type",
         "confidence",
         "section",
+        "ordinal",
         "analyzer_version",
         "fingerprint",
         "created_at",
     }
 )
+
+
+def _insert_assertion(
+    connection: sqlite3.Connection,
+    *,
+    assertion_id: str | None,
+    ordinal: int | None = 0,
+) -> None:
+    """Insert a minimal row, naming columns so order changes cannot hide."""
+    connection.execute(
+        "INSERT INTO assertions "
+        "(assertion_id, evidence_id, kind, value, value_type, confidence, "
+        " section, ordinal, analyzer_version, fingerprint, created_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            assertion_id,
+            "ev-1",
+            "risk_factor",
+            "x",
+            "str",
+            "high",
+            "mda_risk",
+            ordinal,
+            "1.0",
+            "fp",
+            "2026-01-01T00:00:00",
+        ),
+    )
+
+
+def _insert_run(
+    connection: sqlite3.Connection,
+    *,
+    kind: str | None = "annual_report",
+    analyzer_version: str = "1.0",
+) -> None:
+    connection.execute(
+        "INSERT INTO assertion_runs "
+        "(evidence_id, kind, analyzer_version, fingerprint, result_confidence, "
+        " source_date, analyzed_at, warnings_json, status, error) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            "ev-1",
+            kind,
+            analyzer_version,
+            "fp",
+            "high",
+            "2026-01-01",
+            "2026-01-02",
+            "[]",
+            "ok",
+            None,
+        ),
+    )
 
 
 def _ordered_columns(connection: sqlite3.Connection, table: str) -> tuple[str, ...]:
@@ -417,26 +474,7 @@ def test_null_assertion_id_is_rejected(tmp_path: Path) -> None:
 
     with _connect(store.path) as connection:
         with pytest.raises(sqlite3.IntegrityError):
-            connection.execute(
-                "INSERT INTO assertions VALUES "
-                "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                (
-                    None,
-                    "ev-1",
-                    "risk_factor",
-                    "x",
-                    "str",
-                    None,
-                    None,
-                    "high",
-                    "s",
-                    None,
-                    None,
-                    "1.0",
-                    "fp",
-                    "2026-01-01T00:00:00",
-                ),
-            )
+            _insert_assertion(connection, assertion_id=None)
 
 
 def test_duplicate_assertion_id_raises(tmp_path: Path) -> None:
@@ -447,54 +485,47 @@ def test_duplicate_assertion_id_raises(tmp_path: Path) -> None:
     addressing exists to make impossible.
     """
     store = AssertionStore(tmp_path)
-    row = (
-        "a1",
-        "ev-1",
-        "risk_factor",
-        "x",
-        "str",
-        None,
-        None,
-        "high",
-        "s",
-        None,
-        None,
-        "1.0",
-        "fp",
-        "2026-01-01T00:00:00",
-    )
-    insert = (
-        "INSERT INTO assertions VALUES " "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-    )
 
     with _connect(store.path) as connection:
-        connection.execute(insert, row)
+        _insert_assertion(connection, assertion_id="a1")
         with pytest.raises(sqlite3.IntegrityError):
-            connection.execute(insert, row)
+            _insert_assertion(connection, assertion_id="a1")
+
+
+def test_assertion_ordinal_is_required(tmp_path: Path) -> None:
+    """Emission order is an input to the id and survives nowhere else."""
+    store = AssertionStore(tmp_path)
+
+    with _connect(store.path) as connection:
+        with pytest.raises(sqlite3.IntegrityError):
+            _insert_assertion(connection, assertion_id="a1", ordinal=None)
+
+
+def test_run_kind_is_required(tmp_path: Path) -> None:
+    """AnalysisResult cannot be rebuilt without the document's kind."""
+    store = AssertionStore(tmp_path)
+
+    with _connect(store.path) as connection:
+        with pytest.raises(sqlite3.IntegrityError):
+            _insert_run(connection, kind=None)
 
 
 def test_run_key_is_evidence_and_analyzer_version(tmp_path: Path) -> None:
     """Two versions of one document coexist; the same version twice does not."""
     store = AssertionStore(tmp_path)
-    insert = "INSERT INTO assertion_runs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
-    base = ("ev-1", "1.0", "fp", "high", "2026-01-01", "2026-01-02", "[]", "ok", None)
-    bumped = ("ev-1", "2.0", *base[2:])
 
     with _connect(store.path) as connection:
-        connection.execute(insert, base)
-        connection.execute(insert, bumped)
+        _insert_run(connection, analyzer_version="1.0")
+        _insert_run(connection, analyzer_version="2.0")
         with pytest.raises(sqlite3.IntegrityError):
-            connection.execute(insert, base)
+            _insert_run(connection, analyzer_version="1.0")
 
 
 def test_reopening_preserves_rows_and_version(tmp_path: Path) -> None:
     """The second open migrates nothing and destroys nothing."""
     store = AssertionStore(tmp_path)
     with _connect(store.path) as connection:
-        connection.execute(
-            "INSERT INTO assertion_runs VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            ("ev-1", "1.0", "fp", "high", "2026-01-01", "2026-01-02", "[]", "ok", None),
-        )
+        _insert_run(connection)
 
     reopened = AssertionStore(tmp_path)
 

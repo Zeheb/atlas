@@ -92,6 +92,12 @@ _CREATE_TABLES: tuple[str, ...] = (
         confidence       TEXT NOT NULL,
         section          TEXT NOT NULL,
         char_offset      INTEGER,
+        -- An input to assertion_id, and recoverable from nothing else: it is
+        -- the fact's position in analyzer emission order, which stored rows
+        -- do not preserve. Unstored, a row read back could never have its own
+        -- id re-derived without re-running the analyzer -- the one thing the
+        -- store exists to make unnecessary.
+        ordinal          INTEGER NOT NULL,
         excerpt          TEXT,
         analyzer_version TEXT NOT NULL,
         fingerprint      TEXT NOT NULL,
@@ -103,6 +109,11 @@ _CREATE_TABLES: tuple[str, ...] = (
     """
     CREATE TABLE assertion_runs (
         evidence_id       TEXT NOT NULL,
+        -- EvidenceKind of the document, required to rebuild AnalysisResult
+        -- and held nowhere else in this database. Reading it out of
+        -- knowledge.db instead would make a store that is supposed to be
+        -- independently rebuildable depend on a second file.
+        kind              TEXT NOT NULL,
         analyzer_version  TEXT NOT NULL,
         fingerprint       TEXT NOT NULL,
         result_confidence TEXT NOT NULL,
