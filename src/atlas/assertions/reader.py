@@ -37,6 +37,7 @@ address.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from pathlib import Path
 
 from atlas.analysis.base import AnalysisFact, AnalysisResult
 from atlas.assertions.model import AssertionRun
@@ -135,6 +136,28 @@ def read_results(store: AssertionStore, *, fingerprint: str) -> list[AnalysisRes
     ]
     results.sort(key=lambda result: (result.source_date, result.evidence_id))
     return results
+
+
+def results_for(root: Path, *, fingerprint: str | None = None) -> list[AnalysisResult]:
+    """Rebuild every result in one company repository, ready for the builder.
+
+    The entry point M3 routes profile builds through. It takes the repository
+    root rather than a company id because the store is per-repository and
+    holds no company id anywhere; resolving one would mean reaching into
+    settings from inside Tier 1, which is a dependency this layer does not
+    otherwise have.
+
+    *fingerprint* defaults to the current build's, which is the only value a
+    caller should normally pass. It stays an argument so a test can ask what
+    the store holds for some other build without monkeypatching provenance.
+    """
+    # Local import: provenance pulls in the registry and the builder, and this
+    # module is imported by company.store, which the builder must not depend
+    # on in either direction.
+    from atlas.provenance import current_fingerprint
+
+    digest = current_fingerprint().digest() if fingerprint is None else fingerprint
+    return read_results(AssertionStore(root), fingerprint=digest)
 
 
 def read_facts(store: AssertionStore, *, fingerprint: str) -> list[AnalysisFact]:

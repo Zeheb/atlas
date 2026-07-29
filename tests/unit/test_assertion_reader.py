@@ -28,10 +28,12 @@ from atlas.assertions.reader import (
     read_facts,
     read_result,
     read_results,
+    results_for,
     select_run,
     version_key,
 )
 from atlas.assertions.store import AssertionStore
+from atlas.provenance import current_fingerprint
 
 _FINGERPRINT = "fp-current"
 _STALE = "fp-old"
@@ -305,6 +307,94 @@ def test_empty_store_reads_as_no_results(tmp_path: Path) -> None:
     store = AssertionStore(tmp_path)
 
     assert read_results(store, fingerprint=_FINGERPRINT) == []
+
+
+# ---------------------------------------------------------------------------
+# results_for and determinism (#23, #27)
+# ---------------------------------------------------------------------------
+
+
+def test_results_for_reads_a_repository_root(tmp_path: Path) -> None:
+    store = AssertionStore(tmp_path)
+    run = _run()
+    store.write_run(run, [_assertion(run, assertion_id="a1")])
+
+    results = results_for(tmp_path, fingerprint=_FINGERPRINT)
+
+    assert [result.evidence_id for result in results] == ["ev-1"]
+    assert results[0].excerpts == {}
+
+
+def test_results_for_defaults_to_the_current_build(tmp_path: Path) -> None:
+    """The only value a caller should normally pass is the one it computes."""
+    store = AssertionStore(tmp_path)
+    run = _run(fingerprint=current_fingerprint().digest())
+    store.write_run(run, [_assertion(run, assertion_id="a1")])
+
+    assert len(results_for(tmp_path)) == 1
+
+
+def test_results_for_raises_on_a_store_from_another_build(tmp_path: Path) -> None:
+    store = AssertionStore(tmp_path)
+    run = _run(fingerprint=_STALE)
+    store.write_run(run, [_assertion(run, assertion_id="a1")])
+
+    with pytest.raises(StaleAssertionsError):
+        results_for(tmp_path)
+
+
+def test_results_for_on_an_empty_repository_is_empty(tmp_path: Path) -> None:
+    assert results_for(tmp_path, fingerprint=_FINGERPRINT) == []
+
+
+def test_ten_reads_return_identical_ordering(tmp_path: Path) -> None:
+    """#27. The builder sorts stably, so anything that ties on its key keeps
+    arrival order -- which makes read order part of the profile."""
+    store = AssertionStore(tmp_path)
+    _seed_three(store)
+
+    orders = {
+        tuple(
+            (result.evidence_id, tuple(fact.value for fact in result.facts))
+            for result in results_for(tmp_path, fingerprint=_FINGERPRINT)
+        )
+        for _ in range(10)
+    }
+
+    assert len(orders) == 1
+
+
+def test_ordering_does_not_depend_on_insertion_order(tmp_path: Path) -> None:
+    """Two stores with the same content written in opposite orders must read
+    back the same, or a backfill would produce a different profile."""
+    forward = tmp_path / "forward"
+    backward = tmp_path / "backward"
+    runs = [
+        _run(
+            evidence_id="ev-a",
+            source_date=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        ),
+        _run(
+            evidence_id="ev-b",
+            source_date=datetime(2026, 6, 1, tzinfo=timezone.utc),
+        ),
+        _run(
+            evidence_id="ev-c",
+            source_date=datetime(2026, 6, 1, tzinfo=timezone.utc),
+        ),
+    ]
+    for root, order in ((forward, runs), (backward, list(reversed(runs)))):
+        store = AssertionStore(root)
+        for run in order:
+            store.write_run(
+                run, [_assertion(run, assertion_id=f"id-{run.evidence_id}")]
+            )
+
+    assert [
+        result.evidence_id for result in results_for(forward, fingerprint=_FINGERPRINT)
+    ] == [
+        result.evidence_id for result in results_for(backward, fingerprint=_FINGERPRINT)
+    ]
 
 
 # ---------------------------------------------------------------------------
