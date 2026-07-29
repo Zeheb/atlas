@@ -39,8 +39,6 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-import pytest
-
 from atlas.analysis.base import (
     AnalysisFact,
     AnalysisResult,
@@ -213,16 +211,6 @@ def test_the_fixture_actually_shares_a_snapshot(tmp_path: Path) -> None:
     )
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "_finalize_profile() sorts 16 containers but never the sources lists "
-        "inside them, so a full build orders sources by (priority, "
-        "source_date) while an incremental merge keeps arrival order. Fact "
-        "keys differ for the same reason -- json.dumps has no sort_keys. "
-        "Fixed by M-PRE commit 2 (#66 + #61)."
-    ),
-)
 def test_full_build_equals_incremental_merge(tmp_path: Path) -> None:
     results = _results()
     assert _built_at_once(tmp_path / "full", results) == _built_incrementally(
@@ -244,15 +232,6 @@ def test_full_build_is_order_invariant(tmp_path: Path) -> None:
         assert actual == expected, f"permutation {index} diverged"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "build_profile()'s sort key is (priority, source_date) and sorted() "
-        "is stable, so two same-kind results sharing a source_date keep "
-        "input order and append to sources in that order. Fixed by M-PRE "
-        "commit 2 (#66)."
-    ),
-)
 def test_same_day_filings_of_the_same_kind_are_order_invariant(
     tmp_path: Path,
 ) -> None:

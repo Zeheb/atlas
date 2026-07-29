@@ -1055,6 +1055,22 @@ def _finalize_profile(profile: CompanyProfile) -> None:
     profile.governance.director_changes.sort(key=lambda d: d.source_date)
     profile.governance.risk_factors.sort(key=lambda r: r.period)
 
+    # Sort the evidence-id lists inside each snapshot, not just the snapshot
+    # containers above. A full build appends them in (priority, source_date)
+    # order; an incremental merge appends them as evidence arrives. Both are
+    # the same set, so leaving them unsorted made two equivalent profiles
+    # serialise differently and defeated any byte comparison downstream.
+    #
+    # Sorted, not deduplicated: a repeated evidence_id would say something
+    # real about ingestion, and collapsing it is a semantic change that
+    # belongs to whoever needs it, not to a canonicalisation pass.
+    for snapshot in profile.financial.snapshots:
+        snapshot.sources.sort()
+    for esg_snapshot in profile.esg.snapshots:
+        esg_snapshot.sources.sort()
+    for ownership_snapshot in profile.ownership.snapshots:
+        ownership_snapshot.sources.sort()
+
 
 # ---------------------------------------------------------------------------
 # Dispatch table

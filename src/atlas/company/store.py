@@ -750,7 +750,7 @@ class CompanyStore:
         }
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._path.write_text(
-            json.dumps(envelope, indent=2, ensure_ascii=False),
+            json.dumps(envelope, indent=2, ensure_ascii=False, sort_keys=True),
             encoding="utf-8",
         )
 
@@ -813,7 +813,7 @@ class CompanyStore:
         raw["ingested_results"].append(_ResultRecord.from_result(result).to_dict())
 
         self._path.write_text(
-            json.dumps(raw, indent=2, ensure_ascii=False),
+            json.dumps(raw, indent=2, ensure_ascii=False, sort_keys=True),
             encoding="utf-8",
         )
         return profile
