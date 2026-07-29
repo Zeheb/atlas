@@ -44,7 +44,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
 
-from atlas.analysis.base import AnalysisFact, FactKind, FactUnit, Provenance
+from atlas.analysis.base import (
+    AnalysisFact,
+    EntityMention,
+    FactKind,
+    FactUnit,
+    Provenance,
+)
 from atlas.assertions.hashing import canonical_for_hash
 
 ValueType = Literal["str", "int", "float", "null"]
@@ -246,6 +252,61 @@ def assign_ordinals(facts: list[AnalysisFact]) -> list[int]:
     ordinals: list[int] = []
     for fact in facts:
         key = (fact.kind.value, fact.provenance.section)
+        ordinal = counters.get(key, 0)
+        counters[key] = ordinal + 1
+        ordinals.append(ordinal)
+    return ordinals
+
+
+def mention_id(
+    *,
+    evidence_id: str,
+    canonical_name: str,
+    section: str | None,
+    char_offset: int | None,
+    analyzer_version: str,
+    ordinal: int,
+) -> str:
+    """Return the content address for one entity mention.
+
+    Deliberately derived from the document, not from ``Entity.entity_id``.
+    That id is order-dependent by design: ``knowledge/entities/model.py``
+    documents that it comes from the *first observed* name and takes a
+    disambiguation suffix when a distinct entity would otherwise collide.
+    Both depend on the order the corpus was traversed. That is right for
+    identity within a session and wrong for a content address -- a backfill
+    run in a different order would mint different ids for the same mentions,
+    and the set equality that full-vs-incremental comparison rests on would
+    stop meaning anything.
+
+    ``canonical_name`` is the name as this document had it, which the document
+    fixes and no later resolution can move.
+    """
+    payload = {
+        "evidence_id": evidence_id,
+        "canonical_name": canonical_name,
+        "section": section,
+        "char_offset": char_offset,
+        "analyzer_version": analyzer_version,
+        "ordinal": ordinal,
+    }
+    digest = hashlib.sha256(canonical_for_hash(payload).encode("utf-8"))
+    return digest.hexdigest()[:_ID_CHARS]
+
+
+def assign_mention_ordinals(mentions: list[EntityMention]) -> list[int]:
+    """Return the ordinal for each mention, in emission order.
+
+    Grouped by ``(canonical_name, section)``, mirroring ``assign_ordinals``:
+    an analyst named twice in the same Q&A section with the same section-level
+    offset is the case this exists for. Grouping keeps an unrelated extra
+    mention elsewhere in the document from shifting every later id.
+    """
+    counters: dict[tuple[str, str | None], int] = {}
+    ordinals: list[int] = []
+    for mention in mentions:
+        section = mention.provenance.section if mention.provenance else None
+        key = (mention.entity.canonical_name, section)
         ordinal = counters.get(key, 0)
         counters[key] = ordinal + 1
         ordinals.append(ordinal)

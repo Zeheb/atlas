@@ -152,9 +152,55 @@ def _migration_001_initial_schema(conn: sqlite3.Connection) -> None:
         conn.execute(statement)
 
 
+#: Added in migration 2. Entities live in this database rather than their own:
+#: they share a lifecycle with the facts they were found beside, are
+#: invalidated by the same events, and must be written in the same
+#: transaction. A second file would turn that into a two-phase commit for no
+#: benefit.
+_CREATE_ENTITY_MENTIONS: tuple[str, ...] = (
+    """
+    CREATE TABLE entity_mentions (
+        mention_id       TEXT PRIMARY KEY NOT NULL,
+        evidence_id      TEXT NOT NULL,
+        -- Stored, never hashed. Entity.entity_id derives from the first
+        -- observed name and takes a disambiguation suffix on collision, so it
+        -- depends on corpus traversal order -- correct for in-session
+        -- identity, wrong for a content address. See mention_id().
+        entity_id        TEXT NOT NULL,
+        entity_kind      TEXT NOT NULL,
+        canonical_name   TEXT NOT NULL,
+        aliases_json     TEXT NOT NULL,
+        role             TEXT,
+        affiliation      TEXT,
+        identifier       TEXT,
+        question_text    TEXT,
+        -- NULL section means the mention carried no Provenance at all, which
+        -- is a state EntityMention permits and a reader has to reproduce.
+        section          TEXT,
+        char_offset      INTEGER,
+        excerpt          TEXT,
+        ordinal          INTEGER NOT NULL,
+        analyzer_version TEXT NOT NULL,
+        fingerprint      TEXT NOT NULL
+    )
+    """,
+    "CREATE INDEX idx_mentions_evidence ON entity_mentions(evidence_id)",
+    "CREATE INDEX idx_mentions_entity ON entity_mentions(entity_id)",
+)
+
+
+def _migration_002_entity_mentions(conn: sqlite3.Connection) -> None:
+    """Add ``entity_mentions``, additive: nothing existing is touched."""
+    for statement in _CREATE_ENTITY_MENTIONS:
+        conn.execute(statement)
+
+
 #: Append-only. Index + 1 is the ``user_version`` implied by that migration.
 #: Never edit, reorder or delete an entry; databases in the wild have run it.
-MIGRATIONS: tuple[Migration, ...] = (_migration_001_initial_schema,)
+MIGRATIONS: tuple[Migration, ...] = (
+    _migration_001_initial_schema,
+    _migration_002_entity_mentions,
+)
 
 #: Derived, never hand-maintained: the schema version a current build writes.
 #: ``knowledge/base.py`` keeps a literal ``PARSER_VERSION`` next to its

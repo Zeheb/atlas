@@ -239,8 +239,9 @@ Store `entity_id` as an ordinary column. No resolver change.
 
 ```sql
 CREATE TABLE entity_mentions (
-    mention_id       TEXT PRIMARY KEY,   -- content-addressed, same scheme
+    mention_id       TEXT PRIMARY KEY NOT NULL,  -- content-addressed
     evidence_id      TEXT NOT NULL,
+    entity_id        TEXT NOT NULL,      -- stored, never hashed
     entity_kind      TEXT NOT NULL,
     canonical_name   TEXT NOT NULL,
     aliases_json     TEXT NOT NULL,
@@ -248,12 +249,16 @@ CREATE TABLE entity_mentions (
     affiliation      TEXT,
     identifier       TEXT,               -- e.g. DIN
     question_text    TEXT,
-    section          TEXT,
+    section          TEXT,               -- NULL when the mention had no Provenance
     char_offset      INTEGER,
+    excerpt          TEXT,
+    ordinal          INTEGER NOT NULL,   -- emission-order index; an id input
     analyzer_version TEXT NOT NULL,
     fingerprint      TEXT NOT NULL
 );
 ```
+
+**Schema corrections, made while implementing M2 commit 1.** Three columns the prose above requires and the DDL as first written omitted, the same class of gap corrected in M1: `entity_id` ("Store `entity_id` as an ordinary column" — it was named in the text and absent from the table), `ordinal` (an input to `mention_id`, recoverable from nothing else), and `excerpt` (`Provenance` carries one, and #21 requires provenance to survive the round trip). `mention_id` is also `NOT NULL`: SQLite enforces it on a non-INTEGER primary key only when told.
 
 **Migrations:** additive table on the M1 DB, applied as migration #2 under the `user_version` mechanism built in M1. Not the `_MIGRATE_V*` pattern — see M1.
 
