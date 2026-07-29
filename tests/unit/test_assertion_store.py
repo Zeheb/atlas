@@ -25,10 +25,12 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Iterator
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
+from atlas.assertions.model import Assertion, AssertionRun, RunStatus, ValueType
 from atlas.assertions.store import (
     MIGRATIONS,
     STORE_VERSION,
@@ -542,3 +544,223 @@ def test_opening_a_database_from_a_newer_build_raises(tmp_path: Path) -> None:
 
     with pytest.raises(MigrationError):
         AssertionStore(tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# write_run / read_run
+# ---------------------------------------------------------------------------
+
+_EVIDENCE = "ev-2024-ar"
+_VERSION = "1.0"
+_FINGERPRINT = "fp-abc"
+
+
+def _assertion(
+    *,
+    assertion_id: str = "a1",
+    value: str | None = "Cyber security risk",
+    value_type: ValueType = "str",
+    unit: str | None = None,
+    period: str | None = "2024-03-31",
+    char_offset: int | None = 100,
+    excerpt: str | None = "the excerpt",
+    ordinal: int = 0,
+    evidence_id: str = _EVIDENCE,
+    analyzer_version: str = _VERSION,
+) -> Assertion:
+    return Assertion(
+        assertion_id=assertion_id,
+        evidence_id=evidence_id,
+        kind="risk_factor",
+        value=value,
+        value_type=value_type,
+        unit=unit,
+        period=period,
+        confidence="high",
+        section="mda_risk",
+        char_offset=char_offset,
+        excerpt=excerpt,
+        analyzer_version=analyzer_version,
+        fingerprint=_FINGERPRINT,
+        ordinal=ordinal,
+    )
+
+
+def _run(
+    *,
+    analyzer_version: str = _VERSION,
+    status: RunStatus = "ok",
+    error: str | None = None,
+    warnings: tuple[str, ...] = ("page 3 unreadable",),
+) -> AssertionRun:
+    return AssertionRun(
+        evidence_id=_EVIDENCE,
+        kind="annual_report",
+        analyzer_version=analyzer_version,
+        fingerprint=_FINGERPRINT,
+        result_confidence="high",
+        source_date=datetime(2024, 6, 1, tzinfo=timezone.utc),
+        analyzed_at=datetime(2026, 7, 29, 10, 30, tzinfo=timezone.utc),
+        warnings=warnings,
+        status=status,
+        error=error,
+    )
+
+
+def _row_counts(store: AssertionStore) -> tuple[int, int]:
+    with _connect(store.path) as connection:
+        runs = connection.execute("SELECT COUNT(*) FROM assertion_runs").fetchone()
+        facts = connection.execute("SELECT COUNT(*) FROM assertions").fetchone()
+    return runs[0], facts[0]
+
+
+def test_round_trip_returns_what_was_written(tmp_path: Path) -> None:
+    store = AssertionStore(tmp_path)
+    run = _run()
+    written = (_assertion(assertion_id="a1"), _assertion(assertion_id="a2", ordinal=1))
+
+    store.write_run(run, written)
+    stored = store.read_run(_EVIDENCE, _VERSION)
+
+    assert stored is not None
+    assert stored.run == run
+    assert stored.assertions == written
+
+
+def test_round_trip_preserves_nulls_and_ordinal(tmp_path: Path) -> None:
+    """Every nullable column, and the one column no other layer can rebuild."""
+    store = AssertionStore(tmp_path)
+    sparse = _assertion(
+        value=None,
+        value_type="null",
+        unit=None,
+        period=None,
+        char_offset=None,
+        excerpt=None,
+        ordinal=7,
+    )
+
+    store.write_run(_run(), [sparse])
+    stored = store.read_run(_EVIDENCE, _VERSION)
+
+    assert stored is not None
+    assert stored.assertions == (sparse,)
+
+
+def test_unknown_run_reads_as_none(tmp_path: Path) -> None:
+    store = AssertionStore(tmp_path)
+
+    assert store.read_run(_EVIDENCE, _VERSION) is None
+
+
+def test_failed_run_is_recorded_with_no_assertions(tmp_path: Path) -> None:
+    """Tried and failed is not the same state as never tried."""
+    store = AssertionStore(tmp_path)
+    failed = _run(status="failed", error="pdfminer raised", warnings=())
+
+    store.write_run(failed, [])
+    stored = store.read_run(_EVIDENCE, _VERSION)
+
+    assert stored is not None
+    assert stored.run.status == "failed"
+    assert stored.run.error == "pdfminer raised"
+    assert stored.assertions == ()
+
+
+def test_rewriting_the_same_run_adds_no_rows(tmp_path: Path) -> None:
+    store = AssertionStore(tmp_path)
+    assertions = [_assertion()]
+
+    store.write_run(_run(), assertions)
+    store.write_run(_run(), assertions)
+
+    assert _row_counts(store) == (1, 1)
+
+
+def test_rewriting_replaces_the_previous_assertions(tmp_path: Path) -> None:
+    """Re-running a fixed analyzer must not leave its old output behind."""
+    store = AssertionStore(tmp_path)
+    store.write_run(_run(), [_assertion(assertion_id="stale")])
+
+    store.write_run(_run(), [_assertion(assertion_id="fresh")])
+
+    stored = store.read_run(_EVIDENCE, _VERSION)
+    assert stored is not None
+    assert [item.assertion_id for item in stored.assertions] == ["fresh"]
+
+
+def test_bumped_version_keeps_the_older_rows(tmp_path: Path) -> None:
+    """The PK admits several versions per document; a write must not prune."""
+    store = AssertionStore(tmp_path)
+    store.write_run(_run(), [_assertion(assertion_id="old")])
+
+    store.write_run(
+        _run(analyzer_version="2.0"),
+        [_assertion(assertion_id="new", analyzer_version="2.0")],
+    )
+
+    first = store.read_run(_EVIDENCE, "1.0")
+    second = store.read_run(_EVIDENCE, "2.0")
+    assert first is not None and second is not None
+    assert [item.assertion_id for item in first.assertions] == ["old"]
+    assert [item.assertion_id for item in second.assertions] == ["new"]
+
+
+def test_assertions_come_back_in_a_fixed_order(tmp_path: Path) -> None:
+    store = AssertionStore(tmp_path)
+    store.write_run(
+        _run(),
+        [
+            _assertion(assertion_id="c", ordinal=0),
+            _assertion(assertion_id="a", ordinal=1),
+            _assertion(assertion_id="b", ordinal=2),
+        ],
+    )
+
+    stored = store.read_run(_EVIDENCE, _VERSION)
+
+    assert stored is not None
+    assert [item.assertion_id for item in stored.assertions] == ["a", "b", "c"]
+
+
+def test_duplicate_id_within_one_write_writes_nothing(tmp_path: Path) -> None:
+    """The whole run is one transaction, including the run row itself."""
+    store = AssertionStore(tmp_path)
+
+    with pytest.raises(sqlite3.IntegrityError):
+        store.write_run(_run(), [_assertion(), _assertion()])
+
+    assert _row_counts(store) == (0, 0)
+    assert store.read_run(_EVIDENCE, _VERSION) is None
+
+
+def test_a_failed_rewrite_leaves_the_previous_run_intact(tmp_path: Path) -> None:
+    """Rollback restores the rows the rewrite had already deleted."""
+    store = AssertionStore(tmp_path)
+    store.write_run(_run(), [_assertion(assertion_id="original")])
+
+    with pytest.raises(sqlite3.IntegrityError):
+        store.write_run(_run(), [_assertion(assertion_id="dup")] * 2)
+
+    stored = store.read_run(_EVIDENCE, _VERSION)
+    assert stored is not None
+    assert [item.assertion_id for item in stored.assertions] == ["original"]
+
+
+def test_assertion_from_another_run_is_refused(tmp_path: Path) -> None:
+    """Such a row is unreachable: no read returns it, no rewrite explains it."""
+    store = AssertionStore(tmp_path)
+
+    with pytest.raises(ValueError, match="belongs to"):
+        store.write_run(_run(), [_assertion(evidence_id="ev-other")])
+
+    assert _row_counts(store) == (0, 0)
+
+
+def test_assertion_from_another_version_is_refused(tmp_path: Path) -> None:
+    store = AssertionStore(tmp_path)
+
+    with pytest.raises(ValueError, match="belongs to"):
+        store.write_run(_run(), [_assertion(analyzer_version="9.9")])
+
+    assert _row_counts(store) == (0, 0)

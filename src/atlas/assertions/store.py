@@ -1,4 +1,4 @@
-"""The assertion store: its schema, its migrations, and opening it.
+"""The assertion store: its schema, its migrations, and one run at a time.
 
 The store's schema will churn. M2 adds ``entity_mentions``, later milestones
 add columns and indices, and every one of those changes has to land on
@@ -53,14 +53,27 @@ which is what lets a reader reconstruct a faithful result later without
 re-reading the document. Its key is ``(evidence_id, analyzer_version)``, so
 several analyzer versions of one document coexist; choosing between them is
 a read-time rule, not a write-time deletion.
+
+The unit of work
+----------------
+One analyzer run over one document, written whole. ``write_run`` puts the
+envelope and every fact in a single transaction, because a run row without
+its facts is not a visible error -- it reads as a document that was analyzed
+and yielded little, which is exactly what a document that genuinely yielded
+little also reads as.
 """
 
 from __future__ import annotations
 
+import json
 import sqlite3
 from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
+from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
+
+from atlas.assertions.model import Assertion, AssertionRun
 
 #: A schema change: statements issued against an open connection. It must not
 #: commit, roll back, or touch ``user_version`` -- the runner owns both.
@@ -230,6 +243,121 @@ def _apply_one(conn: sqlite3.Connection, migration: Migration, version: int) -> 
             conn.rollback()
 
 
+_INSERT_RUN = (
+    "INSERT INTO assertion_runs "
+    "(evidence_id, kind, analyzer_version, fingerprint, result_confidence, "
+    " source_date, analyzed_at, warnings_json, status, error) "
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+)
+
+_INSERT_ASSERTION = (
+    "INSERT INTO assertions "
+    "(assertion_id, evidence_id, kind, value, value_type, unit, period, "
+    " confidence, section, char_offset, ordinal, excerpt, analyzer_version, "
+    " fingerprint, created_at) "
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+)
+
+
+@dataclass(frozen=True)
+class StoredRun:
+    """One run as it came back off disk: the envelope and its facts."""
+
+    run: AssertionRun
+    assertions: tuple[Assertion, ...]
+
+
+def _run_row(run: AssertionRun) -> tuple[object, ...]:
+    return (
+        run.evidence_id,
+        run.kind,
+        run.analyzer_version,
+        run.fingerprint,
+        run.result_confidence,
+        run.source_date.isoformat(),
+        run.analyzed_at.isoformat(),
+        json.dumps(list(run.warnings)),
+        run.status,
+        run.error,
+    )
+
+
+def _assertion_row(item: Assertion, created_at: str) -> tuple[object, ...]:
+    return (
+        item.assertion_id,
+        item.evidence_id,
+        item.kind,
+        item.value,
+        item.value_type,
+        item.unit,
+        item.period,
+        item.confidence,
+        item.section,
+        item.char_offset,
+        item.ordinal,
+        item.excerpt,
+        item.analyzer_version,
+        item.fingerprint,
+        created_at,
+    )
+
+
+def _row_to_run(row: sqlite3.Row) -> AssertionRun:
+    return AssertionRun(
+        evidence_id=row["evidence_id"],
+        kind=row["kind"],
+        analyzer_version=row["analyzer_version"],
+        fingerprint=row["fingerprint"],
+        result_confidence=row["result_confidence"],
+        source_date=datetime.fromisoformat(row["source_date"]),
+        analyzed_at=datetime.fromisoformat(row["analyzed_at"]),
+        warnings=tuple(json.loads(row["warnings_json"])),
+        status=row["status"],
+        error=row["error"],
+    )
+
+
+def _row_to_assertion(row: sqlite3.Row) -> Assertion:
+    return Assertion(
+        assertion_id=row["assertion_id"],
+        evidence_id=row["evidence_id"],
+        kind=row["kind"],
+        value=row["value"],
+        value_type=row["value_type"],
+        unit=row["unit"],
+        period=row["period"],
+        confidence=row["confidence"],
+        section=row["section"],
+        char_offset=row["char_offset"],
+        excerpt=row["excerpt"],
+        analyzer_version=row["analyzer_version"],
+        fingerprint=row["fingerprint"],
+        ordinal=row["ordinal"],
+    )
+
+
+def _reject_foreign_assertions(
+    run: AssertionRun, assertions: Sequence[Assertion]
+) -> None:
+    """Refuse assertions that do not belong to *run*.
+
+    A row whose ``(evidence_id, analyzer_version)`` differs from its run's is
+    unreachable: ``read_run`` selects on that pair, and a later re-write of
+    the run it claims to belong to deletes it. Storing it would be storing a
+    fact that no read ever returns and no delete ever explains.
+    """
+    for item in assertions:
+        if (
+            item.evidence_id != run.evidence_id
+            or item.analyzer_version != run.analyzer_version
+        ):
+            raise ValueError(
+                f"assertion {item.assertion_id} belongs to "
+                f"({item.evidence_id}, {item.analyzer_version}), not to run "
+                f"({run.evidence_id}, {run.analyzer_version})"
+            )
+
+
 class AssertionStore:
     """The assertion database for one company repository.
 
@@ -263,6 +391,80 @@ class AssertionStore:
         """Return the schema version currently on disk."""
         with self._db_conn() as conn:
             return schema_version(conn)
+
+    # ------------------------------------------------------------------
+    # Reading and writing one analyzer run
+    # ------------------------------------------------------------------
+
+    def write_run(self, run: AssertionRun, assertions: Sequence[Assertion]) -> None:
+        """Persist one analyzer pass over one document, atomically.
+
+        The run row and its assertions land together or not at all. A partial
+        write is the worst outcome available here: a run row with missing
+        facts reads as a document that was analyzed and found little, which is
+        indistinguishable from the truth at every layer above.
+
+        Re-writing the same ``(evidence_id, analyzer_version)`` replaces it.
+        That is what makes re-running an analyzer safe, and it is scoped to
+        that pair, so a bumped version adds rows beside the old ones instead
+        of destroying them. Note what this is *not*: within a single write the
+        inserts are plain ``INSERT``, so two assertions sharing an id raise
+        rather than one silently overwriting the other.
+        """
+        _reject_foreign_assertions(run, assertions)
+        created_at = datetime.now(timezone.utc).isoformat()
+        key = (run.evidence_id, run.analyzer_version)
+
+        with self._db_conn() as conn:
+            conn.execute(
+                "DELETE FROM assertions "
+                "WHERE evidence_id = ? AND analyzer_version = ?",
+                key,
+            )
+            conn.execute(
+                "DELETE FROM assertion_runs "
+                "WHERE evidence_id = ? AND analyzer_version = ?",
+                key,
+            )
+            conn.execute(_INSERT_RUN, _run_row(run))
+            conn.executemany(
+                _INSERT_ASSERTION,
+                [_assertion_row(item, created_at) for item in assertions],
+            )
+
+    def read_run(self, evidence_id: str, analyzer_version: str) -> StoredRun | None:
+        """Return the stored run and its assertions, or None if absent.
+
+        None rather than an exception: "this document was never analyzed by
+        this version" is an ordinary answer that callers act on by analyzing
+        it. A run that was attempted and failed is *not* this case -- it comes
+        back with ``status='failed'`` and no assertions, because retrying a
+        known failure and retrying an untried document are different
+        decisions.
+
+        Assertions come back ordered by id, which is arbitrary but fixed. The
+        source-order rule that reconstruction needs belongs to the reader, not
+        here.
+        """
+        with self._db_conn() as conn:
+            run_row = conn.execute(
+                "SELECT * FROM assertion_runs "
+                "WHERE evidence_id = ? AND analyzer_version = ?",
+                (evidence_id, analyzer_version),
+            ).fetchone()
+            if run_row is None:
+                return None
+            assertion_rows = conn.execute(
+                "SELECT * FROM assertions "
+                "WHERE evidence_id = ? AND analyzer_version = ? "
+                "ORDER BY assertion_id",
+                (evidence_id, analyzer_version),
+            ).fetchall()
+
+        return StoredRun(
+            run=_row_to_run(run_row),
+            assertions=tuple(_row_to_assertion(row) for row in assertion_rows),
+        )
 
     @contextmanager
     def _db_conn(self) -> Generator[sqlite3.Connection, None, None]:
