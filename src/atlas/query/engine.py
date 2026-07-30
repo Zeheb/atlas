@@ -18,6 +18,7 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from datetime import datetime
+from functools import lru_cache
 from typing import Callable
 
 from atlas.acquisition.repository import Repository
@@ -32,6 +33,7 @@ from atlas.company.model import (
     StrategyEntry,
 )
 from atlas.knowledge.entities import EntityResolver
+from atlas.provenance import current_fingerprint
 from atlas.query import metrics
 
 # ---------------------------------------------------------------------------
@@ -48,15 +50,47 @@ class TableSection:
     rows: list[list[str]]
 
 
+@lru_cache(maxsize=1)
+def _build_digest() -> str:
+    """The running build's digest, computed once per process.
+
+    ``current_fingerprint()`` shells out to ``git describe`` for ``code_rev``,
+    and a query result is built for every query a session runs. Caching turns
+    that into one subprocess per process instead of one per result. Nothing it
+    reads can change while the process is alive: the digest covers five
+    declared version constants, all of them module-level.
+    """
+    return current_fingerprint().digest()
+
+
 @dataclass
 class QueryResult:
-    """The output of a single investor query."""
+    """The output of a single investor query.
+
+    ``fingerprint`` records which build answered (#51). It defaults to the
+    running build's digest rather than being passed in at each of the nineteen
+    construction sites, and that is a deliberate departure from how M6 pinned
+    ``ReasoningResult``:
+
+    * a ``ReasoningResult`` is stored and re-loaded, so it needs
+      ``fingerprint=None`` to mean "written before pinning existed". A
+      ``QueryResult`` is never serialised -- there is no ``json``, ``asdict``
+      or store path anywhere in ``src`` -- so it is always built by running
+      code, and an unpinned one could only ever mean a construction site
+      someone forgot;
+    * one of those sites is ``query/screen.py``, which is not registered in
+      ``_QUERIES`` and which #53's inventory test therefore cannot see. A
+      default covers it, and covers the next surface added the same way.
+
+    Pass it explicitly to describe some other build; nothing in ``src`` does.
+    """
 
     query: str
     company_id: str
     title: str
     sections: list[TableSection] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    fingerprint: str = field(default_factory=_build_digest)
 
     def is_empty(self) -> bool:
         return all(not s.rows for s in self.sections)
