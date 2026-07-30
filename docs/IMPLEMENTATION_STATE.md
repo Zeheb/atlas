@@ -18,10 +18,10 @@ real job is to let the next chat resume cold. Optimize it for that.
 | | |
 |---|---|
 | Branch | `claude/continue-implementation-commits-064c2e` (worktree of `main`) |
-| Last completed commit | `2a62903` — `feat(cli): add migrate assertions with dry-run` |
-| Next planned commit | **M10 commit 2** — `feat(cli): gate migration on normalized profile equality` (#55) |
-| Tests | 3496 passed, 2 skipped, 663 deselected, 0 xfailed (`pytest -m "not integration"`) |
-| Coverage | 92.43% (gate: `--cov-fail-under=80`) |
+| Last completed commit | `9537f7c` — `feat(cli): add store verify` |
+| Next planned commit | **M10 commit 4** — `chore: migrate existing company repos` (#59). **Blocked on the user: this is a data operation on real repositories, not a code change.** See the note under outstanding items. |
+| Tests | 3518 passed, 2 skipped, 663 deselected, 0 xfailed (`pytest -m "not integration"`) |
+| Coverage | 92.49% (gate: `--cov-fail-under=80`) |
 
 ## Milestones
 
@@ -38,7 +38,7 @@ real job is to let the next chat resume cold. Optimize it for that.
 | M6 — Answer pinning | ✅ complete except #43b | `5bd6e4a` … `f52d3b2` |
 | M7 — Selective invalidation | ✅ complete (7 commits, not 4) | `33d61f7` … `ca9d51d` |
 | M8 — Metrics pinning | ✅ complete | `fb17fe8` … `6a00109` |
-| M10 — Backfill & operator CLI | 🔄 1 of 5 commits | `2a62903` |
+| M10 — Backfill & operator CLI | 🔄 3 of 5 commits | `2a62903` … `9537f7c` |
 
 `AssertionStore` is the default profile source as of `b82bdba` (#35 cutover).
 
@@ -57,7 +57,20 @@ real job is to let the next chat resume cold. Optimize it for that.
 - **`profile_built_at` is likewise unpopulated and has no issue number.** `CompanyProfile`
   has no `built_at`; only the stored envelope does (`store.py:747`). Wiring it means
   carrying it into `GroundingContext`. Worth an issue before M10.
-- **M10** — backfill, plus new issue **#78** (remove the analyzer profile path and the `profile_source` flag), which may only land after #59 confirms every repo migrated.
+- **M10 commit 4 (#59) — a data operation, and the milestone's blocking point.**
+  It rewrites `assertions.db` in the operator's real repositories, which is outside
+  the worktree and cannot be undone by `git revert`. Repository state as of this
+  checkpoint (read-only check, `repositories/` in the main checkout): **SBIN,
+  TATASTEEL and TCS each hold a `profile.json` and no `assertions.db`** — so all
+  three are exactly the case M10 exists for, and all three will be first migrations
+  with `verified` compared against a profile built by the analyzer path.
+  Expect refusals to be informative rather than alarming: a stored profile written
+  by an older analyzer is what #55's gate is designed to catch, and the remedy is
+  `atlas rebuild --company X` after migrating, not weakening the gate.
+  **Do not run it without the operator asking for it.**
+- **#78** (remove the analyzer profile path and the `profile_source` flag) may only
+  land after #59 confirms every repo migrated. It is therefore blocked behind the
+  same decision.
 
 ## Implementation discoveries
 
@@ -155,6 +168,8 @@ Repository-verified. Do not regress these.
 | D12 | `--stale-only` does not re-analyse documents with no stored run | **Applied, deliberate.** Not stale, just new; a full `--from evidence` rebuild ingests them. Widening it would make the flag's cost depend on how much unanalysed evidence a repository holds. |
 | D13 | `QueryResult.fingerprint` is pinned by field default (`str`), not populated per construction site as an `Optional` like `ReasoningResult` | **Applied.** `QueryResult` has no serialization path anywhere in `src`, so `None` ("written before pinning") is unreachable and an unpinned result could only mean a forgotten call site. One of the 19 sites — `query/screen.py:155` — is not in `_QUERIES` and is invisible to #53's inventory; the default covers it and every surface added later. |
 | D14 | #52's "text fixtures updated" is a non-event | **Confirmed, like D3.** No fixture holds rendered query output; the three `render_result` call sites in tests are all integration substring assertions. |
+| D15 | #57's "merge with `doctor` naming per the audit" is a non-event | **Confirmed.** No `doctor` command exists anywhere in `src`. The command landed as `atlas store verify`, in the existing `store` group beside `status`. |
+| D16 | Migration verification raises `MigrationVerificationError` rather than returning `committed=False` | **Applied.** A report with `committed=False` reads identically to a dry run, and a refused migration must not be mistakable for a successful no-op. The error carries the staged path and the differences; a verification failure is the one exit that keeps the staging directory, because it is the only artifact that can say which document moved. |
 
 ## Gates
 
