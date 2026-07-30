@@ -199,8 +199,31 @@ def _connect(path: Path) -> sqlite3.Connection:
     return sqlite3.connect(str(path))
 
 
-def test_store_version_is_now_two(tmp_path: Path) -> None:
-    assert AssertionStore(tmp_path).schema_version() == STORE_VERSION == 2
+def test_the_mentions_table_arrives_at_migration_two(tmp_path: Path) -> None:
+    """Pinned to migration 2 itself, not to the migration count.
+
+    This asserted ``STORE_VERSION == 2`` until migration 3 was appended, which
+    made it a test of how many migrations exist rather than of where
+    ``entity_mentions`` comes from. The version a fresh store reports is
+    covered by ``test_assertion_store``; what belongs here is that this
+    table is migration 2's contribution and stays that way.
+    """
+    from atlas.assertions.store import MIGRATIONS, apply_migrations
+
+    connection = _connect(tmp_path / "assertions.db")
+    try:
+        assert apply_migrations(connection, MIGRATIONS[:2]) == 2
+        tables = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            ).fetchall()
+        }
+    finally:
+        connection.close()
+
+    assert "entity_mentions" in tables
+    assert AssertionStore(tmp_path).schema_version() == STORE_VERSION
 
 
 def test_table_and_indices_exist(tmp_path: Path) -> None:
@@ -272,7 +295,10 @@ def test_a_version_one_database_upgrades_in_place(tmp_path: Path) -> None:
 
     store = AssertionStore(tmp_path)
 
-    assert store.schema_version() == 2
+    # Opening applies every outstanding migration, not just the next one, so
+    # this is STORE_VERSION rather than 2 -- a v1 database opened by a build
+    # with three migrations must end up at three.
+    assert store.schema_version() == STORE_VERSION
     assert store.evidence_ids() == ("ev-1",)
 
 

@@ -323,6 +323,10 @@ _RUN_COLUMNS = (
     "warnings_json",
     "status",
     "error",
+    # Migration 3. Appended, not inserted: ADD COLUMN can only append, and a
+    # database that migrated in place must report the same order as one
+    # created fresh.
+    "affects_digest",
 )
 
 _NOT_NULL_ASSERTION_COLUMNS = frozenset(

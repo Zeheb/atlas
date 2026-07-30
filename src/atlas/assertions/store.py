@@ -195,11 +195,43 @@ def _migration_002_entity_mentions(conn: sqlite3.Connection) -> None:
         conn.execute(statement)
 
 
+#: Added in migration 3, and NULLABLE for a reason that is not laziness.
+#:
+#: ``fingerprint`` records the whole build. Deciding that one analyzer's output
+#: is stale while the other ten are current needs the narrower question --
+#: which components could affect THIS kind -- answered at write time, because
+#: sha256 does not invert: a stored whole digest cannot be asked afterwards
+#: which of its parts moved.
+#:
+#: Existing rows cannot be backfilled. Their sub-digest would have to be
+#: recomputed from the ontology, parser, shared-parser and analyzer versions
+#: that were current when they were written, and the only record of those is
+#: the whole digest they are folded into. So the column is NULL for every row
+#: predating this migration, and NULL means "unknown", which readers must
+#: treat as stale. Over-invalidating costs a re-analysis; under-invalidating
+#: serves stale data as though it were current.
+_ALTER_ADD_AFFECTS_DIGEST = (
+    "ALTER TABLE assertion_runs ADD COLUMN affects_digest TEXT",
+)
+
+
+def _migration_003_affects_digest(conn: sqlite3.Connection) -> None:
+    """Add ``assertion_runs.affects_digest``, additive and non-destructive.
+
+    ``ADD COLUMN`` only, no table rebuild: existing rows keep every value they
+    had and gain a NULL. SQLite cannot add a NOT NULL column without a
+    default, and there is no honest default here -- see the note above.
+    """
+    for statement in _ALTER_ADD_AFFECTS_DIGEST:
+        conn.execute(statement)
+
+
 #: Append-only. Index + 1 is the ``user_version`` implied by that migration.
 #: Never edit, reorder or delete an entry; databases in the wild have run it.
 MIGRATIONS: tuple[Migration, ...] = (
     _migration_001_initial_schema,
     _migration_002_entity_mentions,
+    _migration_003_affects_digest,
 )
 
 #: Derived, never hand-maintained: the schema version a current build writes.
@@ -292,8 +324,8 @@ def _apply_one(conn: sqlite3.Connection, migration: Migration, version: int) -> 
 _INSERT_RUN = (
     "INSERT INTO assertion_runs "
     "(evidence_id, kind, analyzer_version, fingerprint, result_confidence, "
-    " source_date, analyzed_at, warnings_json, status, error) "
-    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+    " source_date, analyzed_at, warnings_json, status, error, affects_digest) "
+    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 )
 
 _INSERT_ASSERTION = (
@@ -381,6 +413,7 @@ def _run_row(run: AssertionRun) -> tuple[object, ...]:
         json.dumps(list(run.warnings)),
         run.status,
         run.error,
+        run.affects_digest,
     )
 
 
@@ -416,6 +449,7 @@ def _row_to_run(row: sqlite3.Row) -> AssertionRun:
         warnings=tuple(json.loads(row["warnings_json"])),
         status=row["status"],
         error=row["error"],
+        affects_digest=row["affects_digest"],
     )
 
 

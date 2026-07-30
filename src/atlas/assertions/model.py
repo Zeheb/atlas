@@ -227,6 +227,19 @@ class AssertionRun:
     A failed run is recorded rather than dropped. "This document was tried
     and the analyzer raised" and "this document was never tried" are
     different states, and only the second should cause a retry.
+
+    ``fingerprint`` is the whole build's digest; ``affects_digest`` is the
+    sub-digest of just the components that can change THIS kind's output
+    (``BuildFingerprint.affects(kind)``). Both are stored because they answer
+    different questions: the first is "was this row written by the running
+    build", the second is "could anything that matters to this kind have
+    moved". A whole digest cannot be narrowed after the fact -- sha256 does
+    not invert -- so the narrow answer has to be recorded when it is known.
+
+    ``affects_digest`` is ``None`` for a run written before the sub-digest
+    existed. None means unknown, and unknown must be read as stale: there is
+    no way to recompute it, because the versions it was derived from survive
+    only inside the whole digest.
     """
 
     evidence_id: str
@@ -239,6 +252,7 @@ class AssertionRun:
     warnings: tuple[str, ...]
     status: RunStatus
     error: str | None = None
+    affects_digest: str | None = None
 
 
 def assign_ordinals(facts: list[AnalysisFact]) -> list[int]:
