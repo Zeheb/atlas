@@ -685,6 +685,69 @@ def rebuild_cmd(company: str, source: str, verify: bool, stale_only: bool) -> No
 
 
 @cli.group()
+def migrate() -> None:
+    """Backfill storage tiers for repositories that predate them."""
+
+
+@migrate.command("assertions")
+@click.option("--company", required=True, help="Ticker to backfill.")
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="Do the whole backfill into a temporary store, then discard it.",
+)
+def migrate_assertions_cmd(company: str, dry_run: bool) -> None:
+    """Fill a repository's assertion store from its acquired evidence.
+
+    For repositories built before the store existed: they hold a profile and
+    no assertions, and profiles are now built from assertions, so they are one
+    rebuild away from being empty.
+
+    The backfill is written to a temporary database and moved into place only
+    once it is complete, so an interrupted run leaves the repository exactly
+    as it was. --dry-run does all of the same work and discards the result:
+    the counts it prints are what actually happened, not an estimate, because
+    the failures worth knowing about only appear when the analyzers run.
+    """
+    from atlas.migrate import migrate_assertions
+
+    ticker = company.upper()
+    atlas = Atlas.from_environment()
+    repo_root = atlas.settings.repository_base_path / ticker
+
+    if not repo_root.exists():
+        click.echo(f"No repository for '{ticker}'.", err=True)
+        raise SystemExit(1)
+
+    mode = "dry run" if dry_run else "migrating"
+    click.echo(f"Atlas — {mode} {ticker}\n")
+
+    report = migrate_assertions(
+        repo_root,
+        ticker,
+        dry_run=dry_run,
+        on_error=lambda note: click.echo(f"  ! {note}", err=True),
+    )
+
+    click.echo(f"  Documents:  {report.documents}")
+    click.echo(f"  Runs:       {report.runs_written}")
+    click.echo(f"  Assertions: {report.assertions_written}")
+    if report.existing_runs:
+        click.echo(f"  Already held: {report.existing_runs} run(s) — this is a re-run.")
+    if report.failed_parse or report.failed_analyze:
+        click.echo(
+            f"  Skipped:    {report.failed_parse} unparseable, "
+            f"{report.failed_analyze} failed to analyze"
+        )
+
+    if report.committed:
+        click.echo("\nStore replaced.")
+    else:
+        click.echo("\nNothing written. Re-run without --dry-run to keep it.")
+
+
+@cli.group()
 def store() -> None:
     """Inspect the storage tiers of a company repository."""
 
