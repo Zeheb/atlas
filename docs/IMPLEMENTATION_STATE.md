@@ -17,11 +17,11 @@ real job is to let the next chat resume cold. Optimize it for that.
 
 | | |
 |---|---|
-| Branch | `claude/atlas-implementation-13a264` (worktree of `main`) |
-| Last completed commit | `dea5322` — `feat(assertions): add stale_evidence query` |
-| Next planned commit | **M7 commit 4** — `feat(rebuild): add stale-only mode` (#49 + #50 + #77). **Read the "Migration 3" note below before starting: this commit is larger than COMMIT_PLAN assumes.** |
-| Tests | 3399 passed, 2 skipped, 663 deselected (`pytest -m "not integration"`) |
-| Coverage | 92.10% (gate: `--cov-fail-under=80`) |
+| Branch | `claude/continue-implementation-commits-064c2e` (worktree of `main`) |
+| Last completed commit | `ca9d51d` — `feat(rebuild): add stale-only mode` |
+| Next planned commit | **M8 commit 1** — `test(query): assert every registered query returns a pinned result` (#53, `xfail(strict=True)`) |
+| Tests | 3452 passed, 2 skipped, 663 deselected (`pytest -m "not integration"`) |
+| Coverage | 92.15% (gate: `--cov-fail-under=80`) |
 
 ## Milestones
 
@@ -36,7 +36,7 @@ real job is to let the next chat resume cold. Optimize it for that.
 | M4 — Rebuild engine | ✅ complete | `5e10dca` … `b82bdba` |
 | M5 — Judgment store | ✅ complete | `c167876` … `d0d2a76` |
 | M6 — Answer pinning | ✅ complete except #43b | `5bd6e4a` … `f52d3b2` |
-| M7 — Selective invalidation | 🔄 3 of 4 commits | `33d61f7` … `dea5322` |
+| M7 — Selective invalidation | ✅ complete (7 commits, not 4) | `33d61f7` … `ca9d51d` |
 | M8 — Metrics pinning | ⬜ not started | |
 | M10 — Backfill & operator CLI | ⬜ not started | |
 
@@ -57,23 +57,6 @@ real job is to let the next chat resume cold. Optimize it for that.
 - **`profile_built_at` is likewise unpopulated and has no issue number.** `CompanyProfile`
   has no `built_at`; only the stored envelope does (`store.py:747`). Wiring it means
   carrying it into `GroundingContext`. Worth an issue before M10.
-- **M7 commit 4 — `--stale-only` (#49, #50, #77). Migration 3 is a prerequisite, and
-  COMMIT_PLAN does not budget for it.** Selective invalidation by kind is impossible
-  against the current schema: `assertion_runs.fingerprint` stores
-  `BuildFingerprint.digest()`, the whole build, and sha256 does not invert — a stored
-  digest cannot be asked *which* component moved, so `affects(kind)` has nothing to
-  compare against. `stale_evidence()` therefore compares whole digests today, which is
-  exact but never narrow. To make `--stale-only` narrow soundly, commit 4 must:
-  1. add migration 3 putting an `affects_digest` column on `assertion_runs`
-     (the runner from #68 exists and M2 already used it once for migration 2);
-  2. have `assertions/writer.py` stamp `fingerprint.affects(result.kind)` alongside
-     the full digest;
-  3. teach `stale_evidence()` to narrow on it **only when the column is populated** —
-     a pre-migration row has `NULL` and must be treated as stale, per the milestone's
-     rule that ambiguity defaults to whole-store invalidation;
-  4. then `--stale-only`, #50's scope tests, and #77's row-count invariant.
-  Doing 4 without 1–3 produces a flag that silently under-invalidates, which the
-  milestone names as worse than over-invalidating.
 - **M8** — metrics pinning across ~30 query functions.
 - **M10** — backfill, plus new issue **#78** (remove the analyzer profile path and the `profile_source` flag), which may only land after #59 confirms every repo migrated.
 
@@ -127,6 +110,17 @@ Repository-verified. Do not regress these.
    COMMIT_PLAN exactly. Verify in code, always. Rebuild the graph before trusting it.
 16. **Python 3.14 (PEP 758) allows `except A, B:` without parentheses.**
    `provenance.py:118` uses it. It is valid, not a latent syntax error.
+17. **Narrowing staleness only works if the reader narrows with it.** `select_run()`
+   refuses any run whose stored value does not match the running build, so narrowing
+   `stale_evidence()` alone produced a `--stale-only` that re-analysed the narrow set
+   and left every other document unreadable — under-invalidation, which the milestone
+   names as worse than over-invalidating. Both now go through
+   `store.run_is_current()`; one rule, two call sites. Held by
+   `test_the_reader_serves_every_row_this_calls_current`.
+18. **A document with no run is not stale.** `stale_evidence()` reads existing rows, so
+   `--stale-only` never picks up newly acquired evidence. Deliberate and tested — a
+   full `--from evidence` rebuild is what ingests it — but it means `--stale-only` is
+   not a substitute for a first build.
 
 ## Accepted deviations
 
@@ -144,7 +138,9 @@ Repository-verified. Do not regress these.
 | D7 | `JudgmentStore.delete` landed in the CLI commit, not the store commit | **Applied.** #38 includes deletion; the CLI commit is the one that introduces its only caller. |
 | D8 | `merge(allow_reanalysis=True)` re-derives via `build_profile` instead of subtracting the stale evidence in place | **Applied, forced.** Merged snapshot values carry no per-source attribution, so in-place subtraction does not exist. New `ReanalysisUnavailableError` (a `StaleResultError` subclass) refuses rather than rebuilding from an incomplete result set. |
 | D9 | `affects()` excludes `builder_version` | **Applied, determinate.** Assertions are Tier 1, written by `assertions/writer.py` from analyzer output; the builder assembles Tier 2 downstream. A builder bump cannot change an assertion row. |
-| D10 | `stale_evidence()` compares whole digests, not per-kind sub-digests | **Applied, forced by the schema.** See the Migration 3 note under outstanding items. Exact but never narrow — the milestone's stated default when the narrow answer is unavailable. |
+| D10 | ~~`stale_evidence()` compares whole digests, not per-kind sub-digests~~ | **Superseded by D11.** True only until migration 3 existed. |
+| D11 | M7 commit 4 landed as 4 commits (migration, writer stamping, query narrowing, reader narrowing) plus `--stale-only`, and the reader changed | **Applied, forced.** COMMIT_PLAN budgets one commit and assumes the schema already supports per-kind comparison; it does not. The reader change is not in any issue and is not optional: narrowing one side alone ships a flag that under-invalidates (discovery 17). Decision confirmed by the user before implementation. |
+| D12 | `--stale-only` does not re-analyse documents with no stored run | **Applied, deliberate.** Not stale, just new; a full `--from evidence` rebuild ingests them. Widening it would make the flag's cost depend on how much unanalysed evidence a repository holds. |
 
 ## Gates
 
