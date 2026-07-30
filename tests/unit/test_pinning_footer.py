@@ -159,3 +159,33 @@ def test_an_unpinned_refusal_renders_exactly_as_before() -> None:
     text = format_answer(to_answer(refusal))
 
     assert text == ("Atlas cannot answer this question.\nReason: out of scope")
+
+
+# --- shared with the query renderer (#52) ------------------------------------
+
+
+def test_the_prefix_is_the_one_the_query_renderer_uses() -> None:
+    """Two surfaces, one spelling, so two outputs can be compared by eye.
+
+    ``build_pin`` is the single definition. If the answer footer said
+    ``Atlas <digest>`` and a query result said ``build <digest>``, nobody
+    reading both could tell at a glance that the same code produced them --
+    which is the only reason either line is printed.
+    """
+    from atlas.citation import build_pin
+    from atlas.query.engine import QueryResult
+    from atlas.query.render import render_result
+
+    digest = "a" * 64
+    answer = pinning_footer(_result(fingerprint=digest))
+    rendered = render_result(
+        QueryResult(query="revenue", company_id="TCS", title="T", fingerprint=digest)
+    )
+
+    assert answer.startswith(build_pin(digest))
+    assert rendered.endswith(build_pin(digest))
+
+
+def test_a_blank_fingerprint_has_no_footer_either() -> None:
+    """Not ``Atlas ``. An empty pin names no build, so it prints nothing."""
+    assert pinning_footer(_result(fingerprint="")) == ""

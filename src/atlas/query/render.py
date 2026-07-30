@@ -6,6 +6,7 @@ Tests should inspect QueryResult.sections directly — this module is for CLI us
 
 from __future__ import annotations
 
+from atlas.citation import build_pin
 from atlas.query.engine import QueryResult, TableSection
 
 
@@ -51,5 +52,14 @@ def render_result(result: QueryResult) -> str:
         lines.append("\nNotes:")
         for note in result.notes:
             lines.append(f"  * {note}")
+
+    # Last, and after the notes: a number someone is reading off the screen
+    # matters more than the build that produced it, right up until the moment
+    # two people compare numbers and need to know whether the same code
+    # produced both. An empty result gets it too -- "this build found nothing"
+    # is a different claim from "nothing was asked".
+    pin = build_pin(result.fingerprint)
+    if pin:
+        lines.append(f"\n{pin}")
 
     return "\n".join(lines)

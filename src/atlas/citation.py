@@ -361,6 +361,21 @@ def build_citation(
 # ---------------------------------------------------------------------------
 
 
+def build_pin(fingerprint: str | None) -> str:
+    """``Atlas <digest>``, or "" when there is no build to name.
+
+    The one place that prefix is spelled. Answers print it with the consulted
+    counts beside it and query results print it alone, but a reader comparing
+    two outputs has to be able to see at a glance that they came from the same
+    build -- which fails the moment one surface abbreviates the digest or
+    renames the prefix.
+
+    Empty for ``None`` (a pre-pinning answer) and for ``""``, so a caller that
+    blanks the field gets no footer rather than a footer naming nothing.
+    """
+    return f"Atlas {fingerprint}" if fingerprint else ""
+
+
 def pinning_footer(result: "ReasoningResult") -> str:
     """One line naming the build that produced *result*, or "" if unpinned.
 
@@ -379,9 +394,10 @@ def pinning_footer(result: "ReasoningResult") -> str:
     and a second copy would drift; ``citation.py`` already owns how evidence
     is presented to a human.
     """
-    if result.fingerprint is None:
+    pin = build_pin(result.fingerprint)
+    if not pin:
         return ""
-    parts = [f"Atlas {result.fingerprint}"]
+    parts = [pin]
     if result.consulted_assertion_ids:
         parts.append(f"{len(result.consulted_assertion_ids)} assertions")
     if result.consulted_evidence_ids:
