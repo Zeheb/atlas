@@ -99,7 +99,9 @@ The aim is to bring together the relevant evidence so that an investor can make 
 
 Atlas has completed Stages 1 and 2, a working Stage 3 (`CompanyProfile` + `CompanyStore` + an entity model over an OCR-hardened knowledge layer), and a substantial Stage 4: a deterministic query engine, an LLM-backed grounded reasoning layer with citation validation, a research engine that plans and executes multi-step investigations into a written thesis, a reasoning-memory layer that recalls and re-checks prior views, and an evaluation harness with a capability benchmark that grades what the system cannot yet do. Three companies are used as the reference set, chosen to span sectors: **TCS** (IT services), **Tata Steel** (manufacturing), **SBI** (banking).
 
-Engineering baseline: 3,430 tests across 155 files, clean under `ruff`, `black` and `mypy --strict`, enforced by pre-commit and CI. Fourteen ADRs in `docs/adr/` record the decisions behind the design.
+Cutting across all four stages, a **provenance and rebuild layer** is now in place: every derived artifact records which build produced it, and every layer above raw evidence can be rebuilt from the layer below and checked for byte-identity. That work is described in its own section below.
+
+Engineering baseline: 4,183 tests across 207 files (3,520 run in CI; the golden-corpus and integration suites are deselected there and run locally), clean under `ruff`, `black` and `mypy --strict`, enforced by pre-commit and CI. Fifteen ADRs in `docs/adr/` record the decisions behind the design.
 
 ---
 
@@ -189,6 +191,28 @@ An **entity model** (`atlas.knowledge.entities`, ADR-0013) resolves people and o
 
 ---
 
+### Provenance and rebuild: Working
+
+The question this layer answers is "which code produced this number, and can I get it back?" Previously a profile was a projection of whatever the analyzers happened to return when it was built, with no record of what that code was and no way to re-derive it without re-reading every PDF.
+
+**Build fingerprint** (`atlas.provenance`) — a `BuildFingerprint` over five declared version constants (ontology, parser, shared parser helpers, per-analyzer versions, builder). `digest()` is a stable sha256 over canonical JSON; `code_rev` is recorded for forensics but deliberately excluded from the hash, since a digest that moved on every commit would invalidate every cached artifact on every commit. `affects(kind)` narrows it to just the components that can change one evidence kind's output, which is what makes selective invalidation possible. A guard test fails if a versioned extraction module is ever added without a fingerprint component.
+
+**Assertion store** (`atlas.assertions`) — a per-repository SQLite tier holding one row per extracted fact, content-addressed, with `PRAGMA user_version` migrations (three so far). Facts, run envelopes and entity mentions round-trip through it for all eleven analyzers, with `value_type` stored separately so `5`, `5.0` and `"5"` survive as three different things. Reads are deterministically ordered by content, never by row position. **`CompanyProfile` is now built from this tier by default** rather than by re-running analyzers, so a profile can be re-derived without re-reading a single document.
+
+**Rebuild engine** (`atlas.rebuild`) — `atlas rebuild --from evidence|assertions`, with `--verify` that builds, compares and writes nothing. Comparison is byte-identity of a canonical form (wall-clock fields excluded through one shared exclusion list), not field sampling. An equivalence gate asserts that full, incremental, shuffled and reversed ingestion orders all produce identical profiles — the property that made several latent ordering bugs visible.
+
+**Selective invalidation** — `atlas rebuild --stale-only` re-analyzes only documents the running build cannot reproduce, judged on the per-kind sub-digest rather than the whole build, so bumping one analyzer costs that kind's documents instead of the repository. The staleness query and the store reader share one definition of "current", because two copies would drift into a rebuild that reports nothing to do against a store the reader then refuses.
+
+**Answer and metrics pinning** — every `ReasoningResult` and every `QueryResult` records the build that produced it and prints it as an `Atlas <digest>` footer, so two numbers can be compared with certainty about whether the same code produced them.
+
+**Judgment store** (`atlas.judgment`) — append-only, content-addressed records of what *you* concluded, with a supersede chain and cycle rejection. Deliberately outside the rebuild path (an import-boundary test enforces it): a thesis is derived and a rebuild may replace it, while a judgment is a fact about your own reasoning that no rebuild may touch.
+
+**Operator tooling** — `atlas migrate assertions` backfills the store for repositories that predate it, staging into a temporary database and moving it into place only if the resulting profile matches the one the repository already holds; an interrupted migration leaves the repository byte-identical. `atlas store verify` reports whether a rebuild would work right now and names the command that fixes it when it would not.
+
+Migration of the three real reference repositories has not been run yet — it is the one remaining step of this layer, and it is a data operation rather than a code change.
+
+---
+
 ### Stage 4 — Research: Working
 
 Four layers now sit on top of `CompanyProfile`, in increasing order of freedom.
@@ -203,7 +227,9 @@ Four layers now sit on top of `CompanyProfile`, in increasing order of freedom.
 
 **Evaluation and benchmark** (`atlas.eval`, `atlas.benchmark`) — an acceptance suite of graded cases with deterministic correctness and grounding scorers, an evidence-aware LLM-as-judge scoring reasoning quality, usefulness and evidence use, refusal judging with an `honest_negative` expected-behaviour class, machine-readable run reports, and `ComparisonEngine` for milestone-over-milestone diffs. A response cache and `--judge-sample` make the harness runnable on free-tier API quotas. On the benchmark side, two orthogonal taxonomies (ADR-0005, ADR-0011): six `RetrievalScenario` classes describing the retrieval problem a case poses, and 24 `AtlasCapability` ids describing what the system must be able to do at all — grouped `acq.*` (acquisition coverage), `struct.*` (structured extraction), `reason.*`, `mem.*`, `ext.*` (genuinely external data), `eval.*`. `CoverageAnalyzer` reports suite coverage against both axes, and provenance validation machine-checks that a case's claimed evidence actually exists in the corpus rather than being an abstract exercise.
 
-CLI: `atlas repository build`, `atlas acquire`, `atlas profile build`, `atlas query`, `atlas screen`, `atlas metrics`, `atlas ask`, `atlas research`, `atlas investigate`, `atlas thesis`, `atlas memory list/show/diff/check`, `atlas eval run/compare/compare-retrieval/coverage/validate-cases`.
+CLI: `atlas repository build`, `atlas acquire`, `atlas profile build`, `atlas profile diff`, `atlas query`, `atlas screen`, `atlas metrics`, `atlas ask`, `atlas research`, `atlas investigate`, `atlas thesis`, `atlas memory list/show/diff/check`, `atlas eval run/compare/compare-retrieval/coverage/validate-cases`.
+
+Provenance CLI: `atlas fingerprint show [--explain]`, `atlas analyze --company X [--kind K]`, `atlas assertion explain <id>`, `atlas store status/verify`, `atlas rebuild [--from evidence|assertions] [--verify] [--stale-only]`, `atlas migrate assertions [--dry-run]`, `atlas judgment add/list/supersede/delete`.
 
 **Measured position.** The last frozen baseline (`eval_reports/M1.5-baseline.json`, gemini-2.5-flash) scored 84.6% correctness and 92.3% grounding on 31 active cases out of 44, at 70.5% suite coverage. The suite has since grown to 99 cases at 85.9% coverage, but **no baseline has been re-frozen against it** — the numbers above are the honest last-known-good, not current.
 
@@ -233,6 +259,10 @@ Ranked by incremental investment insight, not engineering elegance. The top thre
 * **Backfill quarterly coverage before adding new document types.** Q1/Q3 transcripts and results, and the full quarterly shareholding-pattern series, are missing across all three companies. This is the cheapest large gain available: it converts "what changed since last quarter" and "has ownership moved" from partial to full, needs no new analyzer, and every downstream layer already handles the shapes. Related-party Reg. 23(9) half-yearly filings are similarly thin — 3 of ~14 half-years for TCS.
 * **Cross-repository comparative queries.** The three reference companies were deliberately chosen to span sectors, but nothing can currently read two of them at once. `atlas screen` is the seam this should grow from. Until it exists, one full class of investment question is closed regardless of corpus quality.
 * **Re-freeze an evaluation baseline against the 99-case suite.** The suite grew 44 → 99 cases while the last frozen baseline stayed at M1.5, so there is currently no defensible answer to "did the last five milestones make Atlas better." Every capability claim above is unmeasured against current code.
+
+**Provenance — one step left**
+
+* **Migrate the three reference repositories into the assertion store.** SBIN, TATASTEEL and TCS each hold a `profile.json` and no `assertions.db`, so they are still served by the legacy analyzer path. The tooling and its safety properties are built and tested; what remains is running it against real data and recording the before/after numbers. Removing the analyzer path and the `profile_source` flag is gated behind that run, deliberately: the flag is the way back if the migrated profiles disagree.
 
 **Extraction quality — closing the gap to the raw text**
 
