@@ -774,6 +774,45 @@ def store() -> None:
     """Inspect the storage tiers of a company repository."""
 
 
+@store.command("verify")
+@click.option("--company", required=True, help="Ticker to verify.")
+def store_verify(company: str) -> None:
+    """Check whether this repository's storage is usable by the running build.
+
+    `store status` reports what the tiers hold; this answers whether a rebuild
+    would work right now, and names the command that fixes it when it would
+    not. Exits non-zero on the first failing check, so it can gate a script.
+
+    Writes nothing, including on a repository with no store -- opening one
+    would create it, and the verifier must not build the thing it was asked to
+    find missing.
+    """
+    from atlas.verify import verify_store
+
+    ticker = company.upper()
+    atlas = Atlas.from_environment()
+    repo_root = atlas.settings.repository_base_path / ticker
+
+    if not repo_root.exists():
+        click.echo(f"No repository for '{ticker}'.", err=True)
+        raise SystemExit(1)
+
+    click.echo(f"Atlas — verifying {ticker}\n")
+    report = verify_store(repo_root, ticker)
+
+    for check in report.checks:
+        mark = "ok  " if check.passed else "FAIL"
+        click.echo(f"  [{mark}] {check.name}: {check.detail}")
+
+    failure = report.failure
+    if failure is None:
+        click.echo("\nStorage is usable by this build.")
+        return
+
+    click.echo(f"\nFix: {failure.remedy}", err=True)
+    raise SystemExit(1)
+
+
 @store.command("status")
 @click.option("--company", required=True, help="Ticker to report on.")
 def store_status(company: str) -> None:
