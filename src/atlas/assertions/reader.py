@@ -188,6 +188,39 @@ def read_results(
         read_result(store, evidence_id, fingerprint=fingerprint)
         for evidence_id in store.evidence_ids()
     ]
+    return _ordered(results)
+
+
+def current_results(
+    store: AssertionStore, *, fingerprint: BuildFingerprint
+) -> list[AnalysisResult]:
+    """Like :func:`read_results`, but omitting documents this build cannot serve.
+
+    The one caller is ``rebuild --stale-only --verify``, which holds the
+    freshly analysed results for exactly the omitted documents in memory and
+    is about to put them back. Skipping is safe there and nowhere else, which
+    is why it is a second function rather than a flag on the first: a flag
+    would let a caller silently turn the corpus-completeness guarantee off,
+    and a profile quietly missing a document is the failure this project
+    exists to prevent.
+    """
+    results = [
+        read_result(store, evidence_id, fingerprint=fingerprint)
+        for evidence_id in store.evidence_ids()
+        if any(
+            run_is_current(
+                stored_affects_digest=run.affects_digest,
+                kind=run.kind,
+                fingerprint=fingerprint,
+            )
+            for run in store.runs_for(evidence_id)
+        )
+    ]
+    return _ordered(results)
+
+
+def _ordered(results: list[AnalysisResult]) -> list[AnalysisResult]:
+    """Sort by ``(source_date, evidence_id)`` -- content, not row position."""
     results.sort(key=lambda result: (result.source_date, result.evidence_id))
     return results
 

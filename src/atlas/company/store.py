@@ -50,7 +50,7 @@ algorithm produced the stored profile.
 from __future__ import annotations
 
 import json
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Collection, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1014,6 +1014,7 @@ def load_results(
     *,
     source: ProfileSource | None = None,
     on_error: Callable[[str], None] | None = None,
+    only: Collection[str] | None = None,
 ) -> LoadReport:
     """Return the AnalysisResult objects to build *root*'s profile from.
 
@@ -1025,16 +1026,28 @@ def load_results(
     *source* defaults to ``Settings.profile_source``. Passing it explicitly is
     what lets the equivalence test build both ways in one process.
 
+    *only* restricts the analyzer path to the named evidence ids, which is how
+    ``rebuild --stale-only`` re-runs three documents in a repository of ninety.
+    It is rejected on the assertion path rather than ignored: reading the store
+    is already cheap, so a caller passing it there has confused "which
+    documents to re-analyse" with "which results to return, and silently
+    returning a partial corpus is the failure this layer exists to prevent.
+
     ``builder.py`` is not involved and does not change: both paths hand it the
     same kind of input, which is the property that makes the swap reversible.
     """
     resolved = _resolve_source(source)
     if resolved == "assertions":
+        if only is not None:
+            raise ValueError(
+                "only= restricts which documents are re-analysed and has no "
+                "meaning when reading the assertion store"
+            )
         from atlas.assertions.reader import results_for
 
         results = results_for(root)
         return LoadReport(results=results, source=resolved, parsed=len(results))
-    return _load_from_analyzers(root, on_error=on_error)
+    return _load_from_analyzers(root, on_error=on_error, only=only)
 
 
 def _resolve_source(source: ProfileSource | None) -> ProfileSource:
@@ -1046,14 +1059,22 @@ def _resolve_source(source: ProfileSource | None) -> ProfileSource:
 
 
 def _load_from_analyzers(
-    root: Path, *, on_error: Callable[[str], None] | None
+    root: Path,
+    *,
+    on_error: Callable[[str], None] | None,
+    only: Collection[str] | None = None,
 ) -> LoadReport:
     """Parse and analyze every supported document under *root*.
 
     One bad document does not abort the batch -- a repository of ninety
     filings should not be unbuildable because one PDF is a scanned image --
     but every failure is counted and reported rather than absorbed.
+
+    With *only*, documents outside the set are never parsed. Skipping the
+    analyze call but still parsing would keep the expensive half: parsing is
+    what reads the PDF.
     """
+    wanted = None if only is None else set(only)
     from atlas.acquisition.repository import Repository
     from atlas.analysis.registry import analyze, supported_kinds
     from atlas.knowledge.base import KnowledgeBase
@@ -1064,6 +1085,8 @@ def _load_from_analyzers(
     parsed = failed_parse = failed_analyze = skipped_kind = 0
 
     for entry in Repository(root).list_evidence():
+        if wanted is not None and entry.evidence_id not in wanted:
+            continue
         if entry.kind not in supported:
             skipped_kind += 1
             continue

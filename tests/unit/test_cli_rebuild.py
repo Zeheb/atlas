@@ -55,14 +55,23 @@ def repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> list[AnalysisResult
     (tmp_path / _TICKER).mkdir()
     results = [_result()]
 
-    def _load(root: Path, *, source: object = None, on_error: object = None):
+    def _load(
+        root: Path,
+        *,
+        source: object = None,
+        on_error: object = None,
+        only: object = None,
+    ):
         if source == "assertions":
             from atlas.assertions.reader import results_for
 
             return LoadReport(results=results_for(root), source="assertions")
-        return LoadReport(
-            results=list(results), source="analyzers", parsed=len(results)
+        wanted = (
+            list(results)
+            if only is None
+            else [r for r in results if r.evidence_id in set(only)]  # type: ignore[arg-type]
         )
+        return LoadReport(results=wanted, source="analyzers", parsed=len(wanted))
 
     monkeypatch.setattr("atlas.rebuild.load_results", _load)
     return results
@@ -193,3 +202,64 @@ def test_an_unknown_source_is_rejected(
 
     assert result.exit_code != 0
     assert "vibes" in result.output
+
+
+# --- --stale-only (#49) ------------------------------------------------------
+
+
+def test_stale_only_reports_nothing_to_do_on_a_current_store(
+    tmp_path: Path, repo: list[AnalysisResult]
+) -> None:
+    """Zero is printed, not omitted: it is the answer the flag exists to give."""
+    _run("--from", "evidence")
+
+    result = _run("--from", "evidence", "--stale-only")
+
+    assert result.exit_code == 0, result.output
+    assert "stale only" in result.output
+    assert "Re-analyzed: 0" in result.output
+
+
+def test_stale_only_names_what_it_re_analyzed(
+    tmp_path: Path, repo: list[AnalysisResult]
+) -> None:
+    from atlas.assertions.store import AssertionStore
+    from atlas.assertions.writer import write_result
+    from tests.support.roundtrip import foreign_fingerprint
+
+    write_result(
+        AssertionStore(tmp_path / _TICKER), _result(), fingerprint=foreign_fingerprint()
+    )
+
+    result = _run("--from", "evidence", "--stale-only")
+
+    assert result.exit_code == 0, result.output
+    assert "Re-analyzed: 1" in result.output
+    assert "ev-1" in result.output
+
+
+def test_stale_only_does_not_pick_up_a_never_analyzed_document(
+    tmp_path: Path, repo: list[AnalysisResult]
+) -> None:
+    """The boundary of the flag, stated rather than discovered.
+
+    A document with no run is not stale — nothing produced rows that this
+    build cannot serve. Ingesting new evidence is what a full --from evidence
+    rebuild is for, and quietly widening --stale-only to cover it would make
+    the flag's cost unpredictable.
+    """
+    result = _run("--from", "evidence", "--stale-only")
+
+    assert result.exit_code == 0, result.output
+    assert "Re-analyzed: 0" in result.output
+    assert "Documents: 0" in result.output
+
+
+def test_stale_only_requires_from_evidence(
+    tmp_path: Path, repo: list[AnalysisResult]
+) -> None:
+    """Reading the assertion store again returns the same stale rows."""
+    result = _run("--stale-only")
+
+    assert result.exit_code == 1
+    assert "needs --from evidence" in result.output

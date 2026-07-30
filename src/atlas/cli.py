@@ -603,13 +603,24 @@ def analyze_cmd(company: str, kind_filter: str | None) -> None:
     default=False,
     help="Build and compare without writing anything.",
 )
-def rebuild_cmd(company: str, source: str, verify: bool) -> None:
+@click.option(
+    "--stale-only",
+    is_flag=True,
+    default=False,
+    help="Re-analyze only documents this build cannot serve. Needs --from evidence.",
+)
+def rebuild_cmd(company: str, source: str, verify: bool, stale_only: bool) -> None:
     """Rebuild a company's profile and report whether it changed.
 
     With --verify nothing is written: the profile is built, compared against
     the stored one, and discarded, so the check is safe to run against a
     repository someone is relying on. It exits non-zero when the profile would
     change, which makes it usable as a gate in a script.
+
+    With --stale-only only the documents the running build cannot serve are
+    re-analyzed; the rest of the profile is projected from rows already in the
+    assertion store. A bump to one analyzer then costs one kind's documents
+    rather than the whole repository.
     """
     from atlas.rebuild import RebuildSource, rebuild
 
@@ -621,18 +632,35 @@ def rebuild_cmd(company: str, source: str, verify: bool) -> None:
         click.echo(f"No repository for '{ticker}'.", err=True)
         raise SystemExit(1)
 
+    if stale_only and source != "evidence":
+        click.echo(
+            "--stale-only re-analyzes documents, so it needs --from evidence.",
+            err=True,
+        )
+        raise SystemExit(1)
+
     mode = "verifying" if verify else "rebuilding"
-    click.echo(f"Atlas — {mode} {ticker} from {source}\n")
+    scope = " (stale only)" if stale_only else ""
+    click.echo(f"Atlas — {mode} {ticker} from {source}{scope}\n")
 
     outcome = rebuild(
         repo_root,
         ticker,
         source=cast("RebuildSource", source),
         verify=verify,
+        stale_only=stale_only,
         on_error=lambda note: click.echo(f"  ! {note}", err=True),
     )
 
     click.echo(f"  Documents: {outcome.documents}")
+    if stale_only:
+        # Zero is the interesting number, so it is printed rather than
+        # omitted: "nothing was stale" is the answer the flag exists to give.
+        click.echo(f"  Re-analyzed: {len(outcome.reanalyzed)}")
+        for evidence_id in outcome.reanalyzed[:20]:
+            click.echo(f"    {evidence_id}")
+        if len(outcome.reanalyzed) > 20:
+            click.echo(f"    ... and {len(outcome.reanalyzed) - 20} more")
     if outcome.written_to is not None:
         click.echo(f"  Written:   {outcome.written_to}")
 

@@ -98,6 +98,12 @@ class RebuildResult:
     build. That is different from False, which means a rebuild ran and the
     profile came out identical, and the two must not be collapsed: "nothing
     changed" is reassuring, "there was nothing to change from" is not.
+
+    ``reanalyzed`` names the documents a ``--stale-only`` run re-ran, and is
+    empty for every other mode -- including a stale-only run that found
+    nothing to do, which is the answer that makes the flag worth having.
+    ``documents`` still counts the whole corpus the profile was built from,
+    because that is what the profile covers.
     """
 
     profile: CompanyProfile
@@ -106,6 +112,7 @@ class RebuildResult:
     written_to: Path | None
     changed: bool | None
     differences: tuple[str, ...] = ()
+    reanalyzed: tuple[str, ...] = ()
 
 
 def rebuild(
@@ -114,6 +121,7 @@ def rebuild(
     *,
     source: RebuildSource = "assertions",
     verify: bool = False,
+    stale_only: bool = False,
     on_error: Callable[[str], None] | None = None,
 ) -> RebuildResult:
     """Rebuild *company_id*'s profile and report whether it moved.
@@ -123,6 +131,11 @@ def rebuild(
     against a repository someone else is relying on -- the check cannot be the
     thing that breaks it.
 
+    With ``stale_only=True`` only the documents the running build cannot serve
+    are re-analysed, and the rest of the profile comes from rows already in
+    the store. Requires ``source="evidence"``: staleness is fixed by re-running
+    an analyzer, and reading the store again returns the same stale rows.
+
     Orchestration only. Every stage already exists and is tested on its own;
     this decides the order and compares the ends, and deliberately contains no
     extraction, assembly or serialisation logic of its own.
@@ -131,6 +144,15 @@ def rebuild(
     from atlas.assertions.writer import write_result
     from atlas.company.builder import build_profile
     from atlas.provenance import current_fingerprint
+
+    if stale_only:
+        if source != "evidence":
+            raise ValueError(
+                "--stale-only re-analyses documents, so it needs "
+                "--from evidence; reading the assertion store again returns "
+                "the same stale rows"
+            )
+        return _rebuild_stale_only(root, company_id, verify=verify, on_error=on_error)
 
     report = load_results(root, source=_load_source(source), on_error=on_error)
 
@@ -173,6 +195,94 @@ def rebuild(
         written_to=path,
         changed=changed,
         differences=differences,
+    )
+
+
+def _rebuild_stale_only(
+    root: Path,
+    company_id: str,
+    *,
+    verify: bool,
+    on_error: Callable[[str], None] | None,
+) -> RebuildResult:
+    """Re-analyse only what this build cannot serve, then project.
+
+    The narrow set comes from ``stale_evidence_ids()``, which compares the
+    per-kind sub-digest: a bump to one analyzer condemns that kind's documents
+    and leaves the other ten alone. Every document it does not name is served
+    from rows already in the store, unread and unrewritten -- which is the
+    whole economy of the flag, and the invariant #77 checks by counting rows.
+
+    The profile is then built from the store rather than from what was just
+    analysed, so re-analysed and untouched documents reach the builder through
+    one path. Merging two lists here would make the profile depend on which
+    documents happened to be stale.
+
+    A document with no run at all is NOT in scope. Nothing produced rows this
+    build cannot serve, so it is new evidence rather than stale evidence, and
+    ingesting it is what a full ``--from evidence`` rebuild does. Widening the
+    flag to cover it would make its cost depend on how much unanalysed
+    evidence the repository happens to hold, which is the unpredictability the
+    flag exists to remove.
+    """
+    from atlas.assertions.reader import current_results, results_for
+    from atlas.assertions.store import AssertionStore
+    from atlas.assertions.writer import write_result
+    from atlas.company.builder import build_profile
+    from atlas.provenance import current_fingerprint
+
+    fingerprint = current_fingerprint()
+    store = AssertionStore(root)
+    stale = store.stale_evidence_ids()
+    fresh = (
+        load_results(root, source="analyzers", only=stale, on_error=on_error).results
+        if stale
+        else []
+    )
+
+    if verify:
+        # Nothing written, so the store still holds the stale rows: the
+        # candidate corpus is what the store can serve plus what was just
+        # analysed for the documents it cannot.
+        results = current_results(store, fingerprint=fingerprint)
+        results.extend(fresh)
+        results.sort(key=lambda result: (result.source_date, result.evidence_id))
+    else:
+        for result in fresh:
+            write_result(store, result, fingerprint=fingerprint)
+        results = results_for(root)
+
+    profile = build_profile(company_id, results)
+    path = root / PROFILE_FILENAME
+    previous = _stored_payload(path)
+    reanalyzed = tuple(sorted(result.evidence_id for result in fresh))
+
+    if verify:
+        changed, differences = _compare(
+            previous, _serialised(profile, results, company_id)
+        )
+        return RebuildResult(
+            profile=profile,
+            source="evidence",
+            documents=len(results),
+            written_to=None,
+            changed=changed,
+            differences=differences,
+            reanalyzed=reanalyzed,
+        )
+
+    CompanyStore(path, company_id).save(profile, results)
+    written = _stored_payload(path)
+    assert written is not None  # just written by the line above
+    changed, differences = _compare(previous, written)
+    return RebuildResult(
+        profile=profile,
+        source="evidence",
+        documents=len(results),
+        written_to=path,
+        changed=changed,
+        differences=differences,
+        reanalyzed=reanalyzed,
     )
 
 
