@@ -18,10 +18,10 @@ real job is to let the next chat resume cold. Optimize it for that.
 | | |
 |---|---|
 | Branch | `claude/continue-implementation-commits-064c2e` (worktree of `main`) |
-| Last completed commit | `fb17fe8` — `test(query): assert every registered query returns a pinned result` |
-| Next planned commit | **M8 commit 2** — `feat(query): pin fingerprint on QueryResult` (#51), and **remove the `xfail(strict=True)` in `tests/unit/test_query_pinning.py`** in the same commit |
-| Tests | 3453 passed, 2 skipped, 663 deselected, 18 xfailed (`pytest -m "not integration"`) |
-| Coverage | 92.15% (gate: `--cov-fail-under=80`) |
+| Last completed commit | `6a00109` — `feat(query): render fingerprint in query output` |
+| Next planned commit | **M10 commit 1** — `feat(cli): add migrate assertions with dry-run` (#54 + #58) |
+| Tests | 3481 passed, 2 skipped, 663 deselected, 0 xfailed (`pytest -m "not integration"`) |
+| Coverage | 92.39% (gate: `--cov-fail-under=80`) |
 
 ## Milestones
 
@@ -37,7 +37,7 @@ real job is to let the next chat resume cold. Optimize it for that.
 | M5 — Judgment store | ✅ complete | `c167876` … `d0d2a76` |
 | M6 — Answer pinning | ✅ complete except #43b | `5bd6e4a` … `f52d3b2` |
 | M7 — Selective invalidation | ✅ complete (7 commits, not 4) | `33d61f7` … `ca9d51d` |
-| M8 — Metrics pinning | 🔄 1 of 3 commits | `fb17fe8` |
+| M8 — Metrics pinning | ✅ complete | `fb17fe8` … `6a00109` |
 | M10 — Backfill & operator CLI | ⬜ not started | |
 
 `AssertionStore` is the default profile source as of `b82bdba` (#35 cutover).
@@ -57,15 +57,6 @@ real job is to let the next chat resume cold. Optimize it for that.
 - **`profile_built_at` is likewise unpopulated and has no issue number.** `CompanyProfile`
   has no `built_at`; only the stored envelope does (`store.py:747`). Wiring it means
   carrying it into `GroundingContext`. Worth an issue before M10.
-- **M8 commit 2 — the sweep is 18 call sites, not ~30.** `_QUERIES`
-  (`query/engine.py:1823`) registers exactly 18 names, and the inventory test
-  parametrizes over `available_queries()`, so the xfail list is the checklist. One
-  approach worth *verifying* before taking it: a default on the dataclass field
-  (`fingerprint: str = field(default_factory=...)`) would pin all 18 without editing
-  any construction site. Not yet checked for an import cycle — `query/engine.py`
-  imports `company.model`, and `provenance` imports `company.builder`. If it cycles,
-  fall back to editing the construction sites, which is what COMMIT_PLAN assumes.
-  Either way the strict xfail is what proves the sweep was complete.
 - **M10** — backfill, plus new issue **#78** (remove the analyzer profile path and the `profile_source` flag), which may only land after #59 confirms every repo migrated.
 
 ## Implementation discoveries
@@ -129,6 +120,14 @@ Repository-verified. Do not regress these.
    `--stale-only` never picks up newly acquired evidence. Deliberate and tested — a
    full `--from evidence` rebuild is what ingests it — but it means `--stale-only` is
    not a substitute for a first build.
+19. **`atlas.query` can import `atlas.provenance` at module level.** Nothing in
+   provenance's closure (`analysis.base`, `analysis.patterns`, `analysis.registry`,
+   `knowledge.base`, `company.builder`) imports `atlas.query`. Verified by importing
+   both in one process, not only by reading the graph. `reasoning/ask.py:46` is the
+   precedent.
+20. **`citation.build_pin()` is the one spelling of `Atlas <digest>`.** Both the answer
+   footer and the query renderer call it. A second copy would let two surfaces name the
+   same build differently, which defeats the only reason either line is printed.
 
 ## Accepted deviations
 
@@ -149,6 +148,8 @@ Repository-verified. Do not regress these.
 | D10 | ~~`stale_evidence()` compares whole digests, not per-kind sub-digests~~ | **Superseded by D11.** True only until migration 3 existed. |
 | D11 | M7 commit 4 landed as 4 commits (migration, writer stamping, query narrowing, reader narrowing) plus `--stale-only`, and the reader changed | **Applied, forced.** COMMIT_PLAN budgets one commit and assumes the schema already supports per-kind comparison; it does not. The reader change is not in any issue and is not optional: narrowing one side alone ships a flag that under-invalidates (discovery 17). Decision confirmed by the user before implementation. |
 | D12 | `--stale-only` does not re-analyse documents with no stored run | **Applied, deliberate.** Not stale, just new; a full `--from evidence` rebuild ingests them. Widening it would make the flag's cost depend on how much unanalysed evidence a repository holds. |
+| D13 | `QueryResult.fingerprint` is pinned by field default (`str`), not populated per construction site as an `Optional` like `ReasoningResult` | **Applied.** `QueryResult` has no serialization path anywhere in `src`, so `None` ("written before pinning") is unreachable and an unpinned result could only mean a forgotten call site. One of the 19 sites — `query/screen.py:155` — is not in `_QUERIES` and is invisible to #53's inventory; the default covers it and every surface added later. |
+| D14 | #52's "text fixtures updated" is a non-event | **Confirmed, like D3.** No fixture holds rendered query output; the three `render_result` call sites in tests are all integration substring assertions. |
 
 ## Gates
 
