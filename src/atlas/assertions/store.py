@@ -72,8 +72,14 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from atlas.assertions.model import Assertion, AssertionRun, Mention
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    # Type position only. The runtime import stays inside
+    # ``_current_fingerprint`` for the reason documented there.
+    from atlas.provenance import BuildFingerprint
 
 #: A schema change: statements issued against an open connection. It must not
 #: commit, roll back, or touch ``user_version`` -- the runner owns both.
@@ -376,21 +382,27 @@ class StoreStats:
 
 @dataclass(frozen=True)
 class StaleRun:
-    """One run that a different build wrote.
+    """One run whose output the running build could not reproduce.
 
     Carries ``kind`` and ``analyzer_version`` because the caller re-analysing
     it needs both, and reaching back into the database for them would be a
     second query answering a question this one already answered.
+
+    ``stored_affects_digest`` is ``None`` for a row written before migration 3,
+    which is also the reason such a row is here: the sub-digest cannot be
+    recomputed from what survives, so "could anything relevant have moved" has
+    no answer and the conservative one is taken.
     """
 
     evidence_id: str
     kind: str
     analyzer_version: str
     stored_fingerprint: str
+    stored_affects_digest: str | None = None
 
 
-def _current_digest() -> str:
-    """The running build's digest, imported late to keep the cycle open.
+def _current_fingerprint() -> BuildFingerprint:
+    """The running build's fingerprint, imported late to keep the cycle open.
 
     ``provenance`` imports ``company.builder``, which imports nothing here,
     but a module-level import in this direction would still tie Tier 1's
@@ -398,7 +410,69 @@ def _current_digest() -> str:
     """
     from atlas.provenance import current_fingerprint
 
-    return current_fingerprint().digest()
+    return current_fingerprint()
+
+
+def run_is_current(
+    *,
+    stored_affects_digest: str | None,
+    kind: str,
+    fingerprint: BuildFingerprint,
+) -> bool:
+    """Whether *fingerprint*'s code would reproduce a run stamped this way.
+
+    The single definition of "current" for a stored run. Staleness is asked in
+    two places — ahead of time by :meth:`AssertionStore.stale_evidence`, and at
+    read time by the reader choosing which run to serve — and the two answers
+    have to be the same one. Two copies of this comparison would drift, and the
+    symptom would be a rebuild that reports nothing to do against a store the
+    reader then refuses.
+
+    ``None`` is never current: a run written before ``affects_digest`` existed
+    carries no evidence either way, and the missing sub-digest cannot be
+    recovered from the whole one.
+    """
+    return _matches(stored_affects_digest, _affects_or_none(fingerprint, kind))
+
+
+def _affects_or_none(fingerprint: BuildFingerprint, kind: str) -> str | None:
+    """``fingerprint.affects(kind)``, or None for a kind with no analyzer.
+
+    None because nothing this build runs can produce that kind's rows, which
+    is a different statement from "the rows are out of date" but has the same
+    consequence: they are not current. Letting the ``ValueError`` escape would
+    make a single retired analyzer turn a whole-store staleness query into an
+    exception.
+    """
+    try:
+        return fingerprint.affects(kind)
+    except ValueError:
+        return None
+
+
+def _matches(stored: str | None, expected: str | None) -> bool:
+    """Whether two sub-digests agree, with None never agreeing with anything.
+
+    Including with itself: two unknowns are not evidence of sameness, and
+    ``None == None`` would quietly make them so.
+    """
+    return stored is not None and expected is not None and stored == expected
+
+
+def _is_stale(
+    row: sqlite3.Row, fingerprint: BuildFingerprint, expected: dict[str, str | None]
+) -> bool:
+    """``run_is_current`` inverted, memoising ``affects()`` per kind.
+
+    ``affects()`` hashes a small payload, but a store holds a row per document
+    and the kinds repeat; computing it once per distinct kind keeps the query
+    linear in rows rather than in rows times hashes. The comparison itself is
+    the shared one -- this function adds the cache, not a second rule.
+    """
+    kind = row["kind"]
+    if kind not in expected:
+        expected[kind] = _affects_or_none(fingerprint, kind)
+    return not _matches(row["affects_digest"], expected[kind])
 
 
 def _run_row(run: AssertionRun) -> tuple[object, ...]:
@@ -728,49 +802,68 @@ class AssertionStore:
             ).fetchone()
         return None if row is None else _row_to_assertion(row)
 
-    def stale_evidence(self, *, fingerprint: str | None = None) -> tuple[StaleRun, ...]:
-        """Return every run whose stored fingerprint is not *fingerprint*.
+    def stale_evidence(
+        self, *, fingerprint: BuildFingerprint | None = None
+    ) -> tuple[StaleRun, ...]:
+        """Return every run *fingerprint*'s code could not reproduce.
 
-        *fingerprint* defaults to the current build's. These are the rows the
-        reader already refuses to serve — this is the same judgement, asked
-        ahead of time so a rebuild can act on it instead of failing on it.
+        *fingerprint* defaults to the running build's. These are the rows that
+        have to be re-analysed before the store speaks for this build — the
+        same judgement the reader makes at read time, asked ahead of it so a
+        rebuild can act on it instead of failing on it.
 
         Sorted by ``(evidence_id, kind, analyzer_version)`` so two callers,
         or one caller twice, see the same order.
 
-        Why this compares whole digests, not per-kind sub-digests
-        --------------------------------------------------------
-        ``assertion_runs.fingerprint`` holds ``BuildFingerprint.digest()`` —
-        the whole build. sha256 does not invert, so a stored digest cannot be
-        asked which of its components moved, and ``affects(kind)`` therefore
-        has nothing here to compare against. Narrowing by kind needs the
-        sub-digest RECORDED at write time, which no row carries yet.
+        Why the sub-digest and not the whole one
+        ----------------------------------------
+        ``assertion_runs.fingerprint`` holds ``BuildFingerprint.digest()``,
+        which moves when *any* of the eleven analyzers is bumped. Comparing it
+        marks all eleven kinds stale to fix one, and re-analysing a document
+        whose inputs are provably unchanged produces the rows it already has.
+        ``affects_digest`` holds ``affects(kind)`` — only the components that
+        can reach this kind's assertions — so comparing that asks the question
+        the caller actually has.
 
-        What survives is still exact rather than approximate: a row either
-        was or was not written by the running build. That is whole-store
-        invalidation, which the milestone names as the correct default
-        whenever the narrow answer is not available — over-invalidating costs
-        time, under-invalidating serves stale data as though it were current.
+        Three ways a row lands here, and each is the conservative reading:
+
+        * ``affects_digest IS NULL`` — written before migration 3. Unknown,
+          and unknown cannot be recomputed: the versions it would be derived
+          from survive only inside the whole digest, which does not invert.
+        * the kind has no registered analyzer under *fingerprint*, so
+          ``affects()`` raises. Nothing can reproduce the row, including a
+          re-analysis; reporting it is how that becomes visible.
+        * the sub-digests differ. The ordinary case.
+
+        A row whose sub-digest matches is served even though a different build
+        wrote it, which is the point: ``affects(kind)`` covers every input to
+        an assertion row, so the two builds produce identical rows for it.
+        ``builder_version`` is deliberately outside that set (D9) — it shapes
+        Tier 2 and cannot reach a Tier 1 row.
         """
-        target = fingerprint if fingerprint is not None else _current_digest()
+        build = fingerprint if fingerprint is not None else _current_fingerprint()
         with self._db_conn() as conn:
             rows = conn.execute(
-                "SELECT evidence_id, kind, analyzer_version, fingerprint "
-                "FROM assertion_runs WHERE fingerprint != ? "
-                "ORDER BY evidence_id, kind, analyzer_version",
-                (target,),
+                "SELECT evidence_id, kind, analyzer_version, fingerprint, "
+                "affects_digest FROM assertion_runs "
+                "ORDER BY evidence_id, kind, analyzer_version"
             ).fetchall()
+        expected: dict[str, str | None] = {}
         return tuple(
             StaleRun(
                 evidence_id=row["evidence_id"],
                 kind=row["kind"],
                 analyzer_version=row["analyzer_version"],
                 stored_fingerprint=row["fingerprint"],
+                stored_affects_digest=row["affects_digest"],
             )
             for row in rows
+            if _is_stale(row, build, expected)
         )
 
-    def stale_evidence_ids(self, *, fingerprint: str | None = None) -> tuple[str, ...]:
+    def stale_evidence_ids(
+        self, *, fingerprint: BuildFingerprint | None = None
+    ) -> tuple[str, ...]:
         """Return the distinct evidence_ids of :meth:`stale_evidence`, sorted.
 
         A document is stale if ANY of its runs is: re-analysing it is

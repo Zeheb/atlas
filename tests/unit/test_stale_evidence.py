@@ -1,24 +1,33 @@
 """``AssertionStore.stale_evidence()`` — #48.
 
-Staleness asked ahead of time. The reader already refuses rows written by a
-build that is no longer running; this is the same judgement made early, so a
-rebuild can act on it instead of failing on it.
+Staleness asked ahead of time, so a rebuild can act on it instead of failing
+on it.
 
 The property that matters is symmetry with the reader. A row this query
 calls current must be one the reader will serve, and a row it calls stale
 must be one the reader refuses. A query that disagreed with the reader in
 either direction would be worse than no query: one direction hides work
 that needs doing, the other schedules work that does not.
+
+The question asked is the narrow one: not "did this build write the row" but
+"could anything that reaches this kind's assertions have moved". The two
+differ whenever a bump misses a kind — another analyzer, or the builder — and
+that difference is the whole of selective invalidation.
+
+The reader still asks the whole-build question. One test here holds the
+symmetry under the narrow rule and is ``xfail(strict=True)`` until it does.
 """
 
 from __future__ import annotations
 
+import dataclasses
+import sqlite3
 from pathlib import Path
 
 import pytest
 
 from atlas.analysis.base import AnalysisResult, FactKind, FactUnit
-from atlas.assertions.store import AssertionStore, StaleRun
+from atlas.assertions.store import DB_FILENAME, AssertionStore, StaleRun
 from atlas.assertions.writer import write_result
 from atlas.provenance import current_fingerprint
 from tests.support.roundtrip import (
@@ -57,6 +66,21 @@ def _result(evidence_id: str, *, kind: str = "financial_results") -> AnalysisRes
 @pytest.fixture
 def store(tmp_path: Path) -> AssertionStore:
     return AssertionStore(tmp_path)
+
+
+def _clear_sub_digests(root: Path) -> None:
+    """Put the store back into its pre-migration-3 state.
+
+    Through sqlite directly, because no writer produces such a row any more:
+    this is what a repository analysed before migration 3 actually holds, and
+    the query has to answer for it.
+    """
+    conn = sqlite3.connect(str(root / DB_FILENAME))
+    try:
+        with conn:
+            conn.execute("UPDATE assertion_runs SET affects_digest = NULL")
+    finally:
+        conn.close()
 
 
 # --- nothing stale -----------------------------------------------------------
@@ -121,10 +145,124 @@ def test_an_explicit_fingerprint_overrides_the_current_build(
     """So a caller can ask what some other build would consider stale."""
     write_result(store, _result("ev-1"), fingerprint=_FOREIGN)
 
-    # The query takes a digest, not the object: asking "what would build X
-    # consider stale" is a whole-build comparison against stored rows.
-    assert store.stale_evidence(fingerprint=_FOREIGN.digest()) == ()
-    assert len(store.stale_evidence(fingerprint="a-third-build")) == 1
+    # The object, not a digest: the comparison is per-kind, so the query has
+    # to be able to compute ``affects(kind)`` for the build being asked about.
+    assert store.stale_evidence(fingerprint=_FOREIGN) == ()
+    assert len(store.stale_evidence(fingerprint=current_fingerprint())) == 1
+
+
+# --- narrowing: which bumps actually reach a row -----------------------------
+
+
+def test_a_builder_bump_alone_leaves_nothing_stale(store: AssertionStore) -> None:
+    """The case whole-digest comparison gets wrong, and the reason for D9.
+
+    ``builder_version`` shapes Tier 2. An assertion row is Tier 1, written by
+    the writer from analyzer output, so a builder bump provably cannot change
+    one — but it does move the whole digest, and comparing that would re-run
+    every analyzer in the repository to fix a profile-assembly change.
+    """
+    older = dataclasses.replace(current_fingerprint(), builder_version="0.9")
+    write_result(store, _result("ev-1"), fingerprint=older)
+
+    assert older.digest() != current_fingerprint().digest()
+    assert store.stale_evidence() == ()
+
+
+def test_another_kinds_analyzer_bump_leaves_this_row_alone(
+    store: AssertionStore,
+) -> None:
+    """Selective invalidation, stated as a test."""
+    current = current_fingerprint()
+    older = dataclasses.replace(
+        current,
+        analyzer_versions={**current.analyzer_versions, "buyback": "0.9"},
+    )
+    write_result(store, _result("ev-fr", kind="financial_results"), fingerprint=older)
+    write_result(store, _result("ev-bb", kind="buyback"), fingerprint=older)
+
+    assert store.stale_evidence_ids() == ("ev-bb",)
+
+
+def test_this_kinds_analyzer_bump_makes_the_row_stale(store: AssertionStore) -> None:
+    current = current_fingerprint()
+    older = dataclasses.replace(
+        current,
+        analyzer_versions={**current.analyzer_versions, "financial_results": "0.9"},
+    )
+    write_result(store, _result("ev-1"), fingerprint=older)
+
+    assert store.stale_evidence_ids() == ("ev-1",)
+
+
+def test_a_shared_parser_bump_makes_every_row_stale(store: AssertionStore) -> None:
+    """``shared_parser_version`` is in every sub-digest, by design.
+
+    It is the component a per-kind digest is most likely to omit, and the one
+    whose omission would be hardest to notice: the helpers seven analyzers
+    share change extracted values without moving any ANALYZER_VERSION.
+    """
+    older = dataclasses.replace(
+        current_fingerprint(), shared_parser_version="helpers-from-elsewhere"
+    )
+    write_result(store, _result("ev-fr"), fingerprint=older)
+    write_result(store, _result("ev-bb", kind="buyback"), fingerprint=older)
+
+    assert store.stale_evidence_ids() == ("ev-bb", "ev-fr")
+
+
+def test_a_row_with_no_sub_digest_is_stale(
+    store: AssertionStore, tmp_path: Path
+) -> None:
+    """A row from before migration 3. Unknown reads as stale.
+
+    Unknown cannot be resolved later, either: the versions the sub-digest
+    would be derived from survive only inside the whole digest, and sha256
+    does not invert. Guessing "probably fine" here would serve rows no
+    running code can account for.
+    """
+    write_result(store, _result("ev-1"), fingerprint=current_fingerprint())
+    _clear_sub_digests(tmp_path)
+
+    stale = store.stale_evidence()
+
+    assert [run.evidence_id for run in stale] == ["ev-1"]
+    assert stale[0].stored_affects_digest is None
+
+
+def test_a_kind_with_no_registered_analyzer_is_stale(store: AssertionStore) -> None:
+    """A retired analyzer. Nothing can reproduce the row, so nothing serves it.
+
+    ``affects()`` raises for an unregistered kind rather than returning a
+    digest, and letting that escape would turn one retired analyzer into an
+    exception from a whole-store query.
+    """
+    current = current_fingerprint()
+    write_result(store, _result("ev-1"), fingerprint=current)
+    retired = dataclasses.replace(
+        current,
+        analyzer_versions={
+            kind: version
+            for kind, version in current.analyzer_versions.items()
+            if kind != "financial_results"
+        },
+    )
+
+    assert store.stale_evidence_ids(fingerprint=retired) == ("ev-1",)
+
+
+def test_a_stale_run_carries_the_sub_digest_it_was_stamped_with(
+    store: AssertionStore,
+) -> None:
+    """So a caller can say which of the two comparisons condemned the row."""
+    write_result(store, _result("ev-1"), fingerprint=_FOREIGN)
+
+    run = store.stale_evidence()[0]
+
+    assert run.stored_affects_digest == _FOREIGN.affects("financial_results")
+    assert run.stored_affects_digest != current_fingerprint().affects(
+        "financial_results"
+    )
 
 
 # --- evidence ids ------------------------------------------------------------
@@ -182,6 +320,37 @@ def test_a_store_this_reports_clean_reads_without_raising(
     from atlas.assertions.reader import results_for
 
     write_result(store, _result("ev-1"), fingerprint=current_fingerprint())
+
+    assert store.stale_evidence_ids() == ()
+    assert [result.evidence_id for result in results_for(tmp_path)] == ["ev-1"]
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "the reader still selects on the whole digest, so it refuses a row "
+        "this query calls current; the reader-narrowing commit removes this "
+        "marker"
+    ),
+)
+def test_the_reader_serves_every_row_this_calls_current(
+    store: AssertionStore, tmp_path: Path
+) -> None:
+    """The symmetry, under the narrow rule.
+
+    A builder bump moves the whole digest and no sub-digest. This query
+    therefore reports nothing to re-analyse — correctly, since re-analysing
+    would rewrite the rows byte for byte — while ``select_run`` still asks
+    whether the running build wrote the row and refuses.
+
+    Until both ask the same question, ``--stale-only`` would re-analyse the
+    narrow set and leave the rest unreadable, which is under-invalidation
+    wearing the costume of a fix.
+    """
+    from atlas.assertions.reader import results_for
+
+    older = dataclasses.replace(current_fingerprint(), builder_version="0.9")
+    write_result(store, _result("ev-1"), fingerprint=older)
 
     assert store.stale_evidence_ids() == ()
     assert [result.evidence_id for result in results_for(tmp_path)] == ["ev-1"]
