@@ -77,7 +77,7 @@ def store(tmp_path: Path) -> CompanyStore:
 def _seed_tier1(root: Path, results: list[AnalysisResult]) -> None:
     """Put *results* in the assertion store, which is what merge reloads from."""
     assertion_store = AssertionStore(root)
-    fingerprint = current_fingerprint().digest()
+    fingerprint = current_fingerprint()
     for result in results:
         write_result(assertion_store, result, fingerprint=fingerprint)
 

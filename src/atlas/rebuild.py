@@ -139,7 +139,10 @@ def rebuild(
         # later --from assertions rebuild sees this run's output rather than
         # the previous one's.
         store = AssertionStore(root)
-        fingerprint = current_fingerprint().digest()
+        # The object, not its digest: the writer derives both the whole digest
+        # and the per-kind sub-digest from it, and two separately-passed
+        # strings could come from different builds.
+        fingerprint = current_fingerprint()
         for result in report.results:
             write_result(store, result, fingerprint=fingerprint)
 

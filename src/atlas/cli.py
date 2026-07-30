@@ -543,7 +543,9 @@ def analyze_cmd(company: str, kind_filter: str | None) -> None:
     repo = Repository(repo_root)
     kb = KnowledgeBase(repo_root)
     store = AssertionStore(repo_root)
-    digest = current_fingerprint().digest()
+    # The object, not its digest: the writer needs both the whole digest and
+    # the per-kind sub-digest, and they must come from one build.
+    fingerprint = current_fingerprint()
 
     analyzed = failed = unparsed = skipped = 0
     for entry in repo.list_evidence():
@@ -561,7 +563,7 @@ def analyze_cmd(company: str, kind_filter: str | None) -> None:
             unparsed += 1
             continue
 
-        run = analyze_and_write(entry.evidence_id, kb, store, fingerprint=digest)
+        run = analyze_and_write(entry.evidence_id, kb, store, fingerprint=fingerprint)
         if run.status == "ok":
             analyzed += 1
         else:

@@ -120,7 +120,7 @@ def seeded_root(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 
     store = AssertionStore(root)
     for result in results:
-        write_result(store, result, fingerprint=current_fingerprint().digest())
+        write_result(store, result, fingerprint=current_fingerprint())
 
     def _from_analyzers(
         target: Path, *, source: object = None, on_error: object = None
@@ -196,7 +196,7 @@ def test_named_shareholders_survive_the_source_swap(
     result = make_result("shareholding_pattern", facts=[], entities=holders)
     result.evidence_id = "ev-shp"
     store = AssertionStore(root)
-    write_result(store, result, fingerprint=current_fingerprint().digest())
+    write_result(store, result, fingerprint=current_fingerprint())
 
     from atlas.assertions.reader import results_for
     from atlas.company.builder import build_profile

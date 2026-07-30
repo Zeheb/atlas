@@ -76,7 +76,7 @@ def _analyzable(kb: KnowledgeBase, evidence_id: str) -> bool:
 def test_analyzer_and_assertion_profiles_are_identical(
     tmp_path: Path, kb: KnowledgeBase
 ) -> None:
-    fingerprint = current_fingerprint().digest()
+    fingerprint = current_fingerprint()
     store_root = tmp_path / "store"
     store = AssertionStore(store_root)
 
@@ -93,7 +93,7 @@ def test_analyzer_and_assertion_profiles_are_identical(
 
     from atlas.assertions.reader import results_for
 
-    from_assertions = results_for(store_root, fingerprint=fingerprint)
+    from_assertions = results_for(store_root, fingerprint=fingerprint.digest())
     assert len(from_assertions) == len(from_analyzers)
 
     left_path = tmp_path / "analyzers.json"

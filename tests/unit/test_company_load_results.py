@@ -155,7 +155,7 @@ def test_one_failing_analyzer_does_not_abort_the_batch(
 def test_assertions_path_reads_the_store(tmp_path: Path) -> None:
     store = AssertionStore(tmp_path)
     original = make_result(_KIND)
-    write_result(store, original, fingerprint=current_fingerprint().digest())
+    write_result(store, original, fingerprint=current_fingerprint())
 
     report = load_results(tmp_path, source="assertions")
 
@@ -169,7 +169,7 @@ def test_assertions_path_never_touches_the_knowledge_base(tmp_path: Path) -> Non
     No catalog, no parsed documents, no PDFs on disk -- only the store.
     """
     store = AssertionStore(tmp_path)
-    write_result(store, make_result(_KIND), fingerprint=current_fingerprint().digest())
+    write_result(store, make_result(_KIND), fingerprint=current_fingerprint())
 
     report = load_results(tmp_path, source="assertions")
 
@@ -185,7 +185,7 @@ def test_both_paths_yield_the_same_facts(
     from_analyzers = load_results(tmp_path, source="analyzers")
     store = AssertionStore(tmp_path)
     for result in from_analyzers.results:
-        write_result(store, result, fingerprint=current_fingerprint().digest())
+        write_result(store, result, fingerprint=current_fingerprint())
 
     from_assertions = load_results(tmp_path, source="assertions")
 
@@ -206,7 +206,7 @@ def test_the_default_source_comes_from_settings(
 ) -> None:
     """Since M4's cutover (#35) the default is the store, not the analyzers."""
     store = AssertionStore(tmp_path)
-    write_result(store, make_result(_KIND), fingerprint=current_fingerprint().digest())
+    write_result(store, make_result(_KIND), fingerprint=current_fingerprint())
     monkeypatch.delenv("ATLAS_PROFILE_SOURCE", raising=False)
 
     assert load_results(tmp_path).source == "assertions"

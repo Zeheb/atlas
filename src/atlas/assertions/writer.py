@@ -30,11 +30,28 @@ outside world; the failure modes are not enumerable, and the point of catching
 them is precisely that any of them must be recorded rather than propagated
 into an aborted batch. C3's named-exceptions rule constrains the migration and
 store code, where every failure mode *is* known.
+
+The fingerprint arrives as an object, not a digest
+--------------------------------------------------
+Every function here takes a ``BuildFingerprint``, and the two values that
+reach the database -- ``fingerprint`` (the whole build) and ``affects_digest``
+(just what can change this kind) -- are derived from that one instance at the
+row-building step. Taking two strings instead would let a caller pass a whole
+digest from one build and a sub-digest from another, and the result would be a
+row that reads as current under one test and stale under the other. Nothing
+downstream could detect it: both columns would look like perfectly good
+hashes. Deriving both from one object makes the inconsistent pair
+unrepresentable rather than merely discouraged.
+
+The split happens here, at the persistence boundary, because this is where
+rows are built. ``Assertion`` and ``Mention`` take the whole digest only --
+their tables have no sub-digest column, since invalidation is decided per run.
 """
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING
 
 from atlas.analysis.base import AnalysisResult
 from atlas.analysis.registry import analyze, analyzer_versions
@@ -48,9 +65,15 @@ from atlas.assertions.model import (
 from atlas.assertions.store import AssertionStore
 from atlas.knowledge.base import KnowledgeBase, ParsedDocument
 
+if TYPE_CHECKING:
+    # Type-only: this module calls methods on a BuildFingerprint and never
+    # constructs one, so there is no runtime import and no import cycle to
+    # route around.
+    from atlas.provenance import BuildFingerprint
+
 
 def result_to_rows(
-    result: AnalysisResult, *, fingerprint: str
+    result: AnalysisResult, *, fingerprint: BuildFingerprint
 ) -> tuple[AssertionRun, tuple[Assertion, ...]]:
     """Return the run row and assertion rows for *result*.
 
@@ -58,14 +81,24 @@ def result_to_rows(
     result already, so the same result and fingerprint always produce the same
     rows -- which is what makes the ids comparable between a full rebuild and
     an incremental one.
+
+    Both stamped values come from *fingerprint* itself, so the whole digest
+    and the per-kind sub-digest always describe the same build.
+
+    Raises ``ValueError`` (from ``affects``) if ``result.kind`` has no
+    registered analyzer. That state is unreachable through the normal path --
+    a result exists because an analyzer produced it -- and raising beats
+    storing a NULL sub-digest, which would silently mark the row
+    permanently stale.
     """
+    digest = fingerprint.digest()
     ordinals = assign_ordinals(result.facts)
     assertions = tuple(
         Assertion.from_fact(
             fact,
             evidence_id=result.evidence_id,
             analyzer_version=result.analyzer_version,
-            fingerprint=fingerprint,
+            fingerprint=digest,
             ordinal=ordinal,
         )
         for fact, ordinal in zip(result.facts, ordinals, strict=True)
@@ -74,19 +107,20 @@ def result_to_rows(
         evidence_id=result.evidence_id,
         kind=result.kind,
         analyzer_version=result.analyzer_version,
-        fingerprint=fingerprint,
+        fingerprint=digest,
         result_confidence=result.confidence,
         source_date=result.source_date,
         analyzed_at=result.analyzed_at,
         warnings=tuple(result.warnings),
         status="ok",
         error=None,
+        affects_digest=fingerprint.affects(result.kind),
     )
     return run, assertions
 
 
 def result_to_mentions(
-    result: AnalysisResult, *, fingerprint: str
+    result: AnalysisResult, *, fingerprint: BuildFingerprint
 ) -> tuple[Mention, ...]:
     """Return the entity-mention rows for *result*.
 
@@ -98,13 +132,14 @@ def result_to_mentions(
     reason facts have them: a transcript names one analyst repeatedly in one
     section, and the mentions would otherwise hash identically.
     """
+    digest = fingerprint.digest()
     ordinals = assign_mention_ordinals(result.entities)
     return tuple(
         Mention.from_mention(
             mention,
             evidence_id=result.evidence_id,
             analyzer_version=result.analyzer_version,
-            fingerprint=fingerprint,
+            fingerprint=digest,
             ordinal=ordinal,
         )
         for mention, ordinal in zip(result.entities, ordinals, strict=True)
@@ -112,10 +147,15 @@ def result_to_mentions(
 
 
 def write_result(
-    store: AssertionStore, result: AnalysisResult, *, fingerprint: str
+    store: AssertionStore, result: AnalysisResult, *, fingerprint: BuildFingerprint
 ) -> AssertionRun:
     """Persist *result* -- facts and entity mentions together -- and return
-    the run row that was written."""
+    the run row that was written.
+
+    One ``BuildFingerprint`` reaches both row builders, so the run's whole
+    digest, its sub-digest, and every assertion and mention written alongside
+    it describe the same build.
+    """
     run, assertions = result_to_rows(result, fingerprint=fingerprint)
     mentions = result_to_mentions(result, fingerprint=fingerprint)
     store.write_run(run, assertions, mentions)
@@ -126,7 +166,7 @@ def failure_run(
     document: ParsedDocument,
     *,
     analyzer_version: str,
-    fingerprint: str,
+    fingerprint: BuildFingerprint,
     error: str,
 ) -> AssertionRun:
     """Return the run row recording that analysis of *document* failed.
@@ -134,18 +174,23 @@ def failure_run(
     ``result_confidence`` is ``"low"``: a run that produced nothing cannot
     claim otherwise, and the column is not nullable because every other run
     has a real value for it.
+
+    The sub-digest is stamped on a failure too. "This build tried and failed"
+    has to be distinguishable from "an older build tried and failed", or a
+    re-analysis after fixing the analyzer would look like work already done.
     """
     return AssertionRun(
         evidence_id=document.evidence_id,
         kind=document.kind,
         analyzer_version=analyzer_version,
-        fingerprint=fingerprint,
+        fingerprint=fingerprint.digest(),
         result_confidence="low",
         source_date=datetime.fromisoformat(document.source_date),
         analyzed_at=datetime.now(timezone.utc),
         warnings=(),
         status="failed",
         error=error,
+        affects_digest=fingerprint.affects(document.kind),
     )
 
 
@@ -154,7 +199,7 @@ def analyze_and_write(
     kb: KnowledgeBase,
     store: AssertionStore,
     *,
-    fingerprint: str,
+    fingerprint: BuildFingerprint,
 ) -> AssertionRun:
     """Analyze one document and persist the outcome, success or failure.
 

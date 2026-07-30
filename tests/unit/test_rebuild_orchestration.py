@@ -128,7 +128,7 @@ def test_changed_inputs_are_reported_with_the_difference(
 def test_rebuild_from_assertions_uses_the_store(tmp_path: Path) -> None:
     """The fast path, and the reason the store exists: no document is read."""
     store = AssertionStore(tmp_path)
-    write_result(store, _result(), fingerprint=current_fingerprint().digest())
+    write_result(store, _result(), fingerprint=current_fingerprint())
 
     outcome = rebuild(tmp_path, _COMPANY, source="assertions")
 

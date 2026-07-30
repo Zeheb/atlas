@@ -15,6 +15,7 @@ Failure    -- a run that raised must be recorded, not dropped. Dropped, the
 
 from __future__ import annotations
 
+import dataclasses
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -31,14 +32,19 @@ from atlas.assertions.store import AssertionStore
 from atlas.assertions.writer import (
     analyze_and_write,
     failure_run,
+    result_to_mentions,
     result_to_rows,
     write_result,
 )
 from atlas.knowledge.base import KnowledgeBase, ParsedDocument
+from atlas.provenance import current_fingerprint
+from tests.support.roundtrip import default_entities, foreign_fingerprint
 
 _EVIDENCE = "bse-news-e1"
 _KIND = "financial_results"
-_FINGERPRINT = "fp-abc"
+# The writer takes a BuildFingerprint, not a digest: a run's whole digest
+# and its per-kind sub-digest must come from one build.
+_FINGERPRINT = current_fingerprint()
 _SOURCE_DATE = "2026-04-09T00:00:00+00:00"
 
 
@@ -108,7 +114,7 @@ def test_envelope_becomes_the_run_row() -> None:
     assert run.evidence_id == _EVIDENCE
     assert run.kind == _KIND
     assert run.analyzer_version == "1.0"
-    assert run.fingerprint == _FINGERPRINT
+    assert run.fingerprint == _FINGERPRINT.digest()
     assert run.result_confidence == "high"
     assert run.source_date == result.source_date
     assert run.analyzed_at == result.analyzed_at
@@ -330,3 +336,115 @@ def test_unregistered_kind_raises(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="no analyzer registered"):
         analyze_and_write(_EVIDENCE, kb, store, fingerprint=_FINGERPRINT)
+
+
+# ---------------------------------------------------------------------------
+# One fingerprint object, two stamped values (#47 / migration 3)
+# ---------------------------------------------------------------------------
+#
+# The writer takes a BuildFingerprint rather than a digest string so that the
+# whole digest and the per-kind sub-digest cannot come from different builds.
+# Nothing downstream could detect that: both columns would hold perfectly
+# well-formed hashes, and the row would read as current under one comparison
+# and stale under the other. The tests below are about that pairing, not about
+# either value on its own.
+
+
+def test_the_run_carries_both_digests() -> None:
+    result = _result()
+
+    run, _ = result_to_rows(result, fingerprint=_FINGERPRINT)
+
+    assert run.fingerprint == _FINGERPRINT.digest()
+    assert run.affects_digest == _FINGERPRINT.affects(_KIND)
+
+
+def test_the_two_digests_are_different_values() -> None:
+    """A sub-digest equal to the whole digest would narrow nothing."""
+    run, _ = result_to_rows(_result(), fingerprint=_FINGERPRINT)
+
+    assert run.affects_digest != run.fingerprint
+
+
+def test_both_digests_come_from_the_same_build() -> None:
+    """The invariant. Written against a foreign fingerprint, BOTH values move.
+
+    If the writer took two strings, a caller could pair this build's whole
+    digest with another build's sub-digest and no layer would object.
+    """
+    foreign = foreign_fingerprint()
+
+    mine, _ = result_to_rows(_result(), fingerprint=_FINGERPRINT)
+    theirs, _ = result_to_rows(_result(), fingerprint=foreign)
+
+    assert theirs.fingerprint != mine.fingerprint
+    assert theirs.affects_digest != mine.affects_digest
+    assert theirs.fingerprint == foreign.digest()
+    assert theirs.affects_digest == foreign.affects(_KIND)
+
+
+def test_bumping_one_analyzer_moves_only_the_affected_kind() -> None:
+    """What the sub-digest is for: selectivity the whole digest cannot express."""
+    other_kind = "buyback"
+    bumped = dataclasses.replace(
+        _FINGERPRINT,
+        analyzer_versions={**_FINGERPRINT.analyzer_versions, _KIND: "99.0"},
+    )
+
+    assert bumped.digest() != _FINGERPRINT.digest()
+    assert bumped.affects(_KIND) != _FINGERPRINT.affects(_KIND)
+    assert bumped.affects(other_kind) == _FINGERPRINT.affects(other_kind)
+
+
+def test_the_sub_digest_reaches_the_database(tmp_path: Path) -> None:
+    store = AssertionStore(tmp_path)
+
+    write_result(store, _result(), fingerprint=_FINGERPRINT)
+
+    stored = store.runs_for(_EVIDENCE)[0]
+    assert stored.fingerprint == _FINGERPRINT.digest()
+    assert stored.affects_digest == _FINGERPRINT.affects(_KIND)
+
+
+def test_assertions_carry_the_whole_digest_only() -> None:
+    """Their table has no sub-digest column: invalidation is per run."""
+    _, assertions = result_to_rows(_result(), fingerprint=_FINGERPRINT)
+
+    assert assertions
+    assert all(item.fingerprint == _FINGERPRINT.digest() for item in assertions)
+
+
+def test_mentions_carry_the_whole_digest_only() -> None:
+    result = _result()
+    result.entities = list(default_entities())
+
+    mentions = result_to_mentions(result, fingerprint=_FINGERPRINT)
+
+    assert mentions
+    assert all(item.fingerprint == _FINGERPRINT.digest() for item in mentions)
+
+
+def test_a_failure_run_is_also_stamped_with_both(tmp_path: Path) -> None:
+    """Otherwise re-analysis after fixing an analyzer looks like work done."""
+    kb = KnowledgeBase(tmp_path)
+    document = _seed_document(kb)
+
+    run = failure_run(
+        document,
+        analyzer_version="1.0",
+        fingerprint=_FINGERPRINT,
+        error="ValueError: boom",
+    )
+
+    assert run.status == "failed"
+    assert run.fingerprint == _FINGERPRINT.digest()
+    assert run.affects_digest == _FINGERPRINT.affects(document.kind)
+
+
+def test_an_unregistered_kind_raises_rather_than_storing_null() -> None:
+    """A NULL sub-digest marks the row permanently stale, silently."""
+    result = _result()
+    result.kind = "press_clipping"
+
+    with pytest.raises(ValueError, match="no registered analyzer"):
+        result_to_rows(result, fingerprint=_FINGERPRINT)

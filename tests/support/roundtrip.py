@@ -17,6 +17,7 @@ which facts exist and what they say.
 
 from __future__ import annotations
 
+import dataclasses
 from collections import Counter
 from collections.abc import Sequence
 from datetime import datetime, timezone
@@ -34,8 +35,29 @@ from atlas.assertions.reader import read_result
 from atlas.assertions.store import AssertionStore
 from atlas.assertions.writer import write_result
 from atlas.knowledge.entities.model import Entity
+from atlas.provenance import BuildFingerprint, current_fingerprint
 
-FINGERPRINT = "fp-roundtrip"
+#: The writer takes a ``BuildFingerprint``, not a digest string, so that a
+#: run's whole digest and its per-kind sub-digest cannot come from different
+#: builds. Tests therefore need a real one.
+#:
+#: The running build's, rather than a synthetic fingerprint with two invented
+#: analyzers: ``affects(kind)`` raises for a kind with no registered analyzer,
+#: and these helpers are used across all eleven.
+FINGERPRINT = current_fingerprint()
+
+
+def foreign_fingerprint() -> BuildFingerprint:
+    """A fingerprint from a build that is not this one.
+
+    Every digest it produces -- whole and per-kind -- differs from
+    ``FINGERPRINT``'s, because ``parser_version`` feeds both. That is what
+    "written by another build" actually means, and it is stronger than the
+    invented digest strings these tests used before: an arbitrary string could
+    never have been produced by any build, so it could not exercise the
+    comparison the way a real competing fingerprint does.
+    """
+    return dataclasses.replace(FINGERPRINT, parser_version="parser-from-elsewhere")
 
 
 def fact_key(fact: AnalysisFact) -> tuple[str, ...]:
@@ -99,15 +121,21 @@ def mention_multiset(
 
 
 def assert_round_trip(
-    root: Path, result: AnalysisResult, *, fingerprint: str = FINGERPRINT
+    root: Path,
+    result: AnalysisResult,
+    *,
+    fingerprint: BuildFingerprint = FINGERPRINT,
 ) -> AnalysisResult:
     """Write *result*, read it back, and assert nothing changed.
 
     Returns the restored result so a caller can make further assertions on it.
+
+    The writer takes the fingerprint object; the reader takes its digest,
+    because selecting which stored run to serve is a whole-build question.
     """
     store = AssertionStore(root)
     write_result(store, result, fingerprint=fingerprint)
-    restored = read_result(store, result.evidence_id, fingerprint=fingerprint)
+    restored = read_result(store, result.evidence_id, fingerprint=fingerprint.digest())
 
     assert fact_multiset(restored.facts) == fact_multiset(result.facts)
     assert mention_multiset(restored.entities) == mention_multiset(result.entities)

@@ -26,10 +26,13 @@ from atlas.assertions.model import Assertion, AssertionRun, Mention
 from atlas.assertions.store import AssertionStore
 from atlas.assertions.writer import result_to_mentions, write_result
 from atlas.knowledge.entities.model import Entity
+from atlas.provenance import current_fingerprint
 
 _EVIDENCE = "ev-transcript-1"
 _VERSION = "1.0"
-_FINGERPRINT = "fp-abc"
+_FINGERPRINT = current_fingerprint()
+#: Model objects store the whole digest; only the writer needs the object.
+_DIGEST = _FINGERPRINT.digest()
 
 
 def _entity_mention(
@@ -238,7 +241,7 @@ def _assertion(assertion_id: str = "a1") -> Assertion:
         char_offset=1,
         excerpt=None,
         analyzer_version=_VERSION,
-        fingerprint=_FINGERPRINT,
+        fingerprint=_DIGEST,
         ordinal=0,
     )
 
@@ -248,7 +251,7 @@ def _run() -> AssertionRun:
         evidence_id=_EVIDENCE,
         kind="earnings_transcript",
         analyzer_version=_VERSION,
-        fingerprint=_FINGERPRINT,
+        fingerprint=_DIGEST,
         result_confidence="high",
         source_date=datetime(2026, 4, 9, tzinfo=timezone.utc),
         analyzed_at=datetime(2026, 7, 29, tzinfo=timezone.utc),
@@ -275,7 +278,7 @@ def _mention_row(mention_id: str = "m1", *, evidence_id: str = _EVIDENCE) -> Men
         excerpt=None,
         ordinal=0,
         analyzer_version=_VERSION,
-        fingerprint=_FINGERPRINT,
+        fingerprint=_DIGEST,
     )
 
 

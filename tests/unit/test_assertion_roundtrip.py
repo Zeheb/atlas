@@ -123,7 +123,7 @@ def test_reading_after_a_bump_returns_the_newer_version(tmp_path: Path) -> None:
         fingerprint=FINGERPRINT,
     )
 
-    restored = read_result(store, "ev-annual_report", fingerprint=FINGERPRINT)
+    restored = read_result(store, "ev-annual_report", fingerprint=FINGERPRINT.digest())
 
     assert restored.analyzer_version == "2.0"
 

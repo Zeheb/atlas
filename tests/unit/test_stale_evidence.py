@@ -21,9 +21,19 @@ from atlas.analysis.base import AnalysisResult, FactKind, FactUnit
 from atlas.assertions.store import AssertionStore, StaleRun
 from atlas.assertions.writer import write_result
 from atlas.provenance import current_fingerprint
-from tests.support.roundtrip import make_fact, make_result
+from tests.support.roundtrip import (
+    foreign_fingerprint,
+    make_fact,
+    make_result,
+)
 
-_OTHER = "a-digest-from-another-build"
+#: A real fingerprint from a build that is not this one, rather than an
+#: invented digest string. An arbitrary string could never have been produced
+#: by any build, so it cannot exercise the comparison the way a genuine
+#: competing fingerprint does -- and since the writer now derives the whole
+#: digest and the sub-digest from one object, there is no way to hand it a
+#: bare string anyway.
+_FOREIGN = foreign_fingerprint()
 
 
 def _result(evidence_id: str, *, kind: str = "financial_results") -> AnalysisResult:
@@ -57,7 +67,7 @@ def test_an_empty_store_has_nothing_stale(store: AssertionStore) -> None:
 
 
 def test_rows_from_the_current_build_are_not_stale(store: AssertionStore) -> None:
-    write_result(store, _result("ev-1"), fingerprint=current_fingerprint().digest())
+    write_result(store, _result("ev-1"), fingerprint=current_fingerprint())
 
     assert store.stale_evidence() == ()
 
@@ -66,18 +76,18 @@ def test_rows_from_the_current_build_are_not_stale(store: AssertionStore) -> Non
 
 
 def test_rows_from_another_build_are_stale(store: AssertionStore) -> None:
-    write_result(store, _result("ev-1"), fingerprint=_OTHER)
+    write_result(store, _result("ev-1"), fingerprint=_FOREIGN)
 
     stale = store.stale_evidence()
 
     assert len(stale) == 1
     assert stale[0].evidence_id == "ev-1"
-    assert stale[0].stored_fingerprint == _OTHER
+    assert stale[0].stored_fingerprint == _FOREIGN.digest()
 
 
 def test_a_stale_run_carries_what_re_analysis_needs(store: AssertionStore) -> None:
     """kind and analyzer_version, so the caller needs no second query."""
-    write_result(store, _result("ev-1"), fingerprint=_OTHER)
+    write_result(store, _result("ev-1"), fingerprint=_FOREIGN)
 
     run = store.stale_evidence()[0]
 
@@ -87,8 +97,8 @@ def test_a_stale_run_carries_what_re_analysis_needs(store: AssertionStore) -> No
 
 
 def test_only_the_rows_from_another_build_are_returned(store: AssertionStore) -> None:
-    write_result(store, _result("ev-old"), fingerprint=_OTHER)
-    write_result(store, _result("ev-new"), fingerprint=current_fingerprint().digest())
+    write_result(store, _result("ev-old"), fingerprint=_FOREIGN)
+    write_result(store, _result("ev-new"), fingerprint=current_fingerprint())
 
     assert [run.evidence_id for run in store.stale_evidence()] == ["ev-old"]
 
@@ -96,7 +106,7 @@ def test_only_the_rows_from_another_build_are_returned(store: AssertionStore) ->
 def test_results_are_sorted(store: AssertionStore) -> None:
     """Two callers, or one caller twice, must see the same order."""
     for evidence_id in ("ev-c", "ev-a", "ev-b"):
-        write_result(store, _result(evidence_id), fingerprint=_OTHER)
+        write_result(store, _result(evidence_id), fingerprint=_FOREIGN)
 
     assert [run.evidence_id for run in store.stale_evidence()] == [
         "ev-a",
@@ -109,9 +119,11 @@ def test_an_explicit_fingerprint_overrides_the_current_build(
     store: AssertionStore,
 ) -> None:
     """So a caller can ask what some other build would consider stale."""
-    write_result(store, _result("ev-1"), fingerprint=_OTHER)
+    write_result(store, _result("ev-1"), fingerprint=_FOREIGN)
 
-    assert store.stale_evidence(fingerprint=_OTHER) == ()
+    # The query takes a digest, not the object: asking "what would build X
+    # consider stale" is a whole-build comparison against stored rows.
+    assert store.stale_evidence(fingerprint=_FOREIGN.digest()) == ()
     assert len(store.stale_evidence(fingerprint="a-third-build")) == 1
 
 
@@ -119,22 +131,22 @@ def test_an_explicit_fingerprint_overrides_the_current_build(
 
 
 def test_stale_evidence_ids_are_distinct_and_sorted(store: AssertionStore) -> None:
-    write_result(store, _result("ev-b"), fingerprint=_OTHER)
-    write_result(store, _result("ev-a", kind="buyback"), fingerprint=_OTHER)
+    write_result(store, _result("ev-b"), fingerprint=_FOREIGN)
+    write_result(store, _result("ev-a", kind="buyback"), fingerprint=_FOREIGN)
 
     assert store.stale_evidence_ids() == ("ev-a", "ev-b")
 
 
 def test_one_stale_run_condemns_the_document(store: AssertionStore) -> None:
     """Re-analysis is per-document, so a partly stale document is stale."""
-    write_result(store, _result("ev-1"), fingerprint=current_fingerprint().digest())
-    write_result(store, _result("ev-1", kind="buyback"), fingerprint=_OTHER)
+    write_result(store, _result("ev-1"), fingerprint=current_fingerprint())
+    write_result(store, _result("ev-1", kind="buyback"), fingerprint=_FOREIGN)
 
     assert store.stale_evidence_ids() == ("ev-1",)
 
 
 def test_a_clean_store_reports_no_stale_ids(store: AssertionStore) -> None:
-    write_result(store, _result("ev-1"), fingerprint=current_fingerprint().digest())
+    write_result(store, _result("ev-1"), fingerprint=current_fingerprint())
 
     assert store.stale_evidence_ids() == ()
 
@@ -155,8 +167,8 @@ def test_this_predicts_the_reader_refusing(
     """
     from atlas.assertions.reader import StaleAssertionsError, results_for
 
-    write_result(store, _result("ev-old"), fingerprint=_OTHER)
-    write_result(store, _result("ev-new"), fingerprint=current_fingerprint().digest())
+    write_result(store, _result("ev-old"), fingerprint=_FOREIGN)
+    write_result(store, _result("ev-new"), fingerprint=current_fingerprint())
 
     with pytest.raises(StaleAssertionsError):
         results_for(tmp_path)
@@ -169,7 +181,7 @@ def test_a_store_this_reports_clean_reads_without_raising(
     """The other direction: no stale rows must mean no refusal."""
     from atlas.assertions.reader import results_for
 
-    write_result(store, _result("ev-1"), fingerprint=current_fingerprint().digest())
+    write_result(store, _result("ev-1"), fingerprint=current_fingerprint())
 
     assert store.stale_evidence_ids() == ()
     assert [result.evidence_id for result in results_for(tmp_path)] == ["ev-1"]
@@ -179,6 +191,6 @@ def test_failed_runs_are_still_subject_to_staleness(store: AssertionStore) -> No
     """A failure recorded by an old build says nothing about the new one."""
     failing = _result("ev-1")
     failing.warnings = ["analyzer raised"]
-    write_result(store, failing, fingerprint=_OTHER)
+    write_result(store, failing, fingerprint=_FOREIGN)
 
     assert store.stale_evidence_ids() == ("ev-1",)
