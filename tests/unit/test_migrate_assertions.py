@@ -14,6 +14,11 @@ Re-run        -- running it twice is not an error and does not accumulate.
                  Assertion ids are content addresses, so the second run
                  writes the same rows.
 
+Verified    -- #55. A store can be complete and still wrong: the backfill runs
+               today's analyzers over evidence whose profile may predate them.
+               The move happens only if the staged store rebuilds the profile
+               the repository already holds.
+
 The interruption test injects a failure rather than simulating one: a writer
 that raises on the second document is the same shape as a full disk, a
 keyboard interrupt, or one analyzer breaking on document sixty.
@@ -33,7 +38,7 @@ from atlas.assertions.store import DB_FILENAME, AssertionStore
 #: the documents it is not failing on.
 from atlas.assertions.writer import write_result as _real_write
 from atlas.company.store import LoadReport
-from atlas.migrate import migrate_assertions
+from atlas.migrate import MigrationVerificationError, migrate_assertions
 from tests.support.roundtrip import make_fact, make_result
 
 _COMPANY = "TCS"
@@ -55,6 +60,18 @@ def _result(evidence_id: str, kind: str = "financial_results") -> AnalysisResult
     )
     result.evidence_id = evidence_id
     result.source_date = datetime(2026, 4, 9, tzinfo=timezone.utc)
+    return result
+
+
+def _stale_result(evidence_id: str) -> AnalysisResult:
+    """The same document with a different number in it.
+
+    What "the profile was written by an older analyzer" looks like from the
+    migration's side: the store is complete and still projects a profile the
+    repository does not hold.
+    """
+    result = _result(evidence_id)
+    result.facts[0].value = 70000
     return result
 
 
@@ -228,3 +245,116 @@ def test_a_re_run_says_it_is_one(
     assert first.is_noop is False
     assert second.existing_runs == 2
     assert second.is_noop is True
+
+
+# --- verification before the move (#55) --------------------------------------
+
+
+def _write_profile(root: Path, results: list[AnalysisResult]) -> None:
+    """Store a profile the way a repository already holds one."""
+    from atlas.company.builder import build_profile
+    from atlas.company.store import CompanyStore
+    from atlas.rebuild import PROFILE_FILENAME
+
+    CompanyStore(root / PROFILE_FILENAME, _COMPANY).save(
+        build_profile(_COMPANY, results), results
+    )
+
+
+def test_a_matching_profile_lets_the_migration_through(
+    tmp_path: Path, analyzer_output: list[AnalysisResult]
+) -> None:
+    _write_profile(tmp_path, analyzer_output)
+
+    report = migrate_assertions(tmp_path, _COMPANY)
+
+    assert report.verified is True
+    assert report.differences == ()
+    assert report.committed is True
+
+
+def test_no_stored_profile_verifies_as_none_not_true(
+    tmp_path: Path, analyzer_output: list[AnalysisResult]
+) -> None:
+    """ "It matches" and "there was nothing to match" must not read alike."""
+    report = migrate_assertions(tmp_path, _COMPANY)
+
+    assert report.verified is None
+    assert report.committed is True
+
+
+def test_a_differing_profile_refuses_the_move(
+    tmp_path: Path, analyzer_output: list[AnalysisResult]
+) -> None:
+    """The failure the gate exists for: a complete store that is not the right one.
+
+    The stored profile was built from a different revenue figure, which is
+    what an analyzer changing since the profile was written looks like from
+    here.
+    """
+    _write_profile(tmp_path, [_stale_result("ev-1"), _result("ev-2", kind="buyback")])
+
+    with pytest.raises(MigrationVerificationError) as caught:
+        migrate_assertions(tmp_path, _COMPANY)
+
+    assert caught.value.differences
+    assert not (tmp_path / DB_FILENAME).exists()
+
+
+def test_a_refusal_keeps_the_staged_store_for_inspection(
+    tmp_path: Path, analyzer_output: list[AnalysisResult]
+) -> None:
+    """The staged store is the evidence: it is what the operator diffs."""
+    _write_profile(tmp_path, [_stale_result("ev-1"), _result("ev-2", kind="buyback")])
+
+    with pytest.raises(MigrationVerificationError) as caught:
+        migrate_assertions(tmp_path, _COMPANY)
+
+    staged = caught.value.staged_root
+    assert staged.exists()
+    assert (staged / DB_FILENAME).exists()
+    assert _staging_leftovers(tmp_path) == [staged]
+
+
+def test_a_refusal_leaves_an_existing_store_byte_identical(
+    tmp_path: Path, analyzer_output: list[AnalysisResult]
+) -> None:
+    """Atomicity is not weakened by the gate: the move simply does not happen."""
+    migrate_assertions(tmp_path, _COMPANY)
+    before = (tmp_path / DB_FILENAME).read_bytes()
+    _write_profile(tmp_path, [_stale_result("ev-1"), _result("ev-2", kind="buyback")])
+
+    with pytest.raises(MigrationVerificationError):
+        migrate_assertions(tmp_path, _COMPANY)
+
+    assert (tmp_path / DB_FILENAME).read_bytes() == before
+
+
+def test_a_dry_run_reports_a_mismatch_without_raising(
+    tmp_path: Path, analyzer_output: list[AnalysisResult]
+) -> None:
+    """A dry run answers the question; it does not refuse a job nobody asked for."""
+    _write_profile(tmp_path, [_stale_result("ev-1"), _result("ev-2", kind="buyback")])
+
+    report = migrate_assertions(tmp_path, _COMPANY, dry_run=True)
+
+    assert report.verified is False
+    assert report.differences
+    assert report.committed is False
+    assert _staging_leftovers(tmp_path) == []
+
+
+def test_the_comparison_ignores_wall_clock_fields(
+    tmp_path: Path, analyzer_output: list[AnalysisResult]
+) -> None:
+    """Otherwise every migration fails on built_at, which differs by construction.
+
+    Delegating to rebuild.profiles_match is what buys this; a fresh equality
+    check here would have to restate the exclusion list and would drift from
+    the one the rebuild gate uses.
+    """
+    _write_profile(tmp_path, analyzer_output)
+
+    report = migrate_assertions(tmp_path, _COMPANY)
+
+    assert report.verified is True

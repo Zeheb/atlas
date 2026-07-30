@@ -710,7 +710,7 @@ def migrate_assertions_cmd(company: str, dry_run: bool) -> None:
     the counts it prints are what actually happened, not an estimate, because
     the failures worth knowing about only appear when the analyzers run.
     """
-    from atlas.migrate import migrate_assertions
+    from atlas.migrate import MigrationVerificationError, migrate_assertions
 
     ticker = company.upper()
     atlas = Atlas.from_environment()
@@ -723,12 +723,21 @@ def migrate_assertions_cmd(company: str, dry_run: bool) -> None:
     mode = "dry run" if dry_run else "migrating"
     click.echo(f"Atlas — {mode} {ticker}\n")
 
-    report = migrate_assertions(
-        repo_root,
-        ticker,
-        dry_run=dry_run,
-        on_error=lambda note: click.echo(f"  ! {note}", err=True),
-    )
+    try:
+        report = migrate_assertions(
+            repo_root,
+            ticker,
+            dry_run=dry_run,
+            on_error=lambda note: click.echo(f"  ! {note}", err=True),
+        )
+    except MigrationVerificationError as exc:
+        click.echo("Refused: the migrated store would change the profile.\n", err=True)
+        for line in exc.differences[:20]:
+            click.echo(f"  {line}", err=True)
+        if len(exc.differences) > 20:
+            click.echo(f"  ... and {len(exc.differences) - 20} more", err=True)
+        click.echo(f"\nStore unchanged. Staged store kept at {exc.staged_root}")
+        raise SystemExit(1) from exc
 
     click.echo(f"  Documents:  {report.documents}")
     click.echo(f"  Runs:       {report.runs_written}")
@@ -741,8 +750,21 @@ def migrate_assertions_cmd(company: str, dry_run: bool) -> None:
             f"{report.failed_analyze} failed to analyze"
         )
 
+    if report.verified is None:
+        click.echo("  Verified:   no stored profile to compare against")
+    elif report.verified:
+        click.echo("  Verified:   profile unchanged")
+    else:
+        click.echo(f"  Verified:   NO — {len(report.differences)} difference(s)")
+        for line in report.differences[:20]:
+            click.echo(f"    {line}")
+
     if report.committed:
         click.echo("\nStore replaced.")
+    elif report.verified is False:
+        # Dry run only: a real migration raises rather than reaching here.
+        click.echo("\nNothing written, and a real run would refuse this.")
+        raise SystemExit(1)
     else:
         click.echo("\nNothing written. Re-run without --dry-run to keep it.")
 

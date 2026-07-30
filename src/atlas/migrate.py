@@ -28,11 +28,18 @@ file is created inside the repository so it is on the same one. A move across
 filesystems degrades to copy-then-delete, which is exactly the partial state
 this design exists to avoid.
 
-What this module does not do
-----------------------------
-It does not compare the resulting profile against the stored one. Gating the
-move on that comparison is #55, the next commit; until it lands, a caller who
-wants that check runs ``atlas rebuild --verify`` after migrating.
+What is checked before the move
+-------------------------------
+A store that is complete is not necessarily a store that is *right*. The
+backfill re-runs today's analyzers over evidence whose profile may have been
+written by older ones, so the rows can all be present and still project a
+different profile than the repository holds -- and replacing the store would
+then silently change every number downstream of it.
+
+So the profile is built from the staged store and compared against the stored
+one, through ``rebuild.profiles_match``, immediately before the move. A
+mismatch refuses the migration and keeps the staged store, which is the only
+artifact that can say which document moved.
 """
 
 from __future__ import annotations
@@ -48,6 +55,29 @@ from atlas.assertions.store import DB_FILENAME, AssertionStore
 from atlas.company.store import load_results
 
 
+class MigrationVerificationError(RuntimeError):
+    """The migrated store would not rebuild the profile the repository holds.
+
+    Named, and carrying both the staged path and the differences, because the
+    operator's next action depends on which it is. A difference in one
+    document's facts means an analyzer changed since the profile was written;
+    a difference everywhere means the profile predates something larger. The
+    refusal alone distinguishes neither.
+
+    Raised instead of returning a report because the caller asked for a
+    migration and did not get one. A report with ``committed=False`` reads the
+    same as a dry run, and the one thing that must not happen here is a failed
+    migration being mistaken for a successful no-op.
+    """
+
+    def __init__(
+        self, message: str, *, staged_root: Path, differences: tuple[str, ...]
+    ) -> None:
+        super().__init__(message)
+        self.staged_root = staged_root
+        self.differences = differences
+
+
 @dataclass(frozen=True)
 class MigrationReport:
     """What a backfill found, wrote, and whether it kept it.
@@ -60,6 +90,11 @@ class MigrationReport:
     ``existing_runs`` is what the store held before. Non-zero means this is a
     re-run rather than a first migration, which is a different situation and
     should not look the same on screen.
+
+    ``verified`` is ``None`` when the repository held no profile to compare
+    against -- a first build, not a passing check. ``False`` only ever reaches
+    a caller from a dry run; a real migration raises instead, because a
+    refused migration must not read like a successful one.
     """
 
     company_id: str
@@ -68,6 +103,8 @@ class MigrationReport:
     assertions_written: int
     existing_runs: int
     committed: bool
+    verified: bool | None = None
+    differences: tuple[str, ...] = ()
     failed_parse: int = 0
     failed_analyze: int = 0
     notes: tuple[str, ...] = ()
@@ -118,6 +155,7 @@ def migrate_assertions(
     root.mkdir(parents=True, exist_ok=True)
     staged_root = Path(tempfile.mkdtemp(prefix=".assertions-migrate-", dir=root))
 
+    keep_staging = False
     try:
         store = AssertionStore(staged_root)
         runs = assertions = 0
@@ -125,6 +163,8 @@ def migrate_assertions(
             write_result(store, result, fingerprint=fingerprint)
             runs += 1
             assertions += len(result.facts)
+
+        verified, differences = _verify(staged_root, root, company_id)
 
         if dry_run:
             return MigrationReport(
@@ -134,9 +174,22 @@ def migrate_assertions(
                 assertions_written=assertions,
                 existing_runs=existing_runs,
                 committed=False,
+                verified=verified,
+                differences=differences,
                 failed_parse=report.failed_parse,
                 failed_analyze=report.failed_analyze,
                 notes=("dry run: nothing was written",),
+            )
+
+        if verified is False:
+            keep_staging = True
+            raise MigrationVerificationError(
+                f"the profile built from the migrated store differs from "
+                f"{company_id}'s stored profile in {len(differences)} place(s); "
+                f"the store was left unchanged and the staged store kept at "
+                f"{staged_root}",
+                staged_root=staged_root,
+                differences=differences,
             )
 
         os.replace(store.path, target)
@@ -147,6 +200,8 @@ def migrate_assertions(
             assertions_written=assertions,
             existing_runs=existing_runs,
             committed=True,
+            verified=verified,
+            differences=differences,
             failed_parse=report.failed_parse,
             failed_analyze=report.failed_analyze,
         )
@@ -155,7 +210,57 @@ def migrate_assertions(
         # successful move (where the database file is already gone). Leaving a
         # stray .assertions-migrate-*/ in a company repository would hold
         # something shaped exactly like a store that nothing reads.
-        shutil.rmtree(staged_root, ignore_errors=True)
+        #
+        # The exception is a verification failure, which is the one case where
+        # the staged store is the evidence: it is what the operator diffs
+        # against the live one to find out which document moved. Deleting it
+        # would leave them with a refusal and nothing to act on.
+        if not keep_staging:
+            shutil.rmtree(staged_root, ignore_errors=True)
+
+
+def _verify(
+    staged_root: Path, root: Path, company_id: str
+) -> tuple[bool | None, tuple[str, ...]]:
+    """Whether a profile built from the staged store matches the stored one.
+
+    ``None`` when there is no stored profile to compare against, which is a
+    first build rather than a passing check -- the same distinction
+    ``RebuildResult.changed`` draws, and for the same reason: "it matches" and
+    "there was nothing to match" must not read alike.
+
+    The comparison is ``rebuild.profiles_match``, the canonical one from #31.
+    Not a fresh equality test: that helper already strips the wall-clock
+    fields (``built_at``, ``analyzed_at``, ``created_at``) that differ between
+    any two builds by construction, and a second implementation would drift
+    from the one the rebuild gate uses -- leaving migration and rebuild
+    disagreeing about whether a profile moved.
+
+    The candidate goes through ``CompanyStore.save`` into the staging
+    directory rather than through the private serialiser, so what is compared
+    is what a later ``atlas rebuild`` would actually write.
+    """
+    from atlas.company.builder import build_profile
+    from atlas.company.store import CompanyStore, load_profile_payload
+    from atlas.rebuild import PROFILE_FILENAME, explain_difference, profiles_match
+
+    stored_path = root / PROFILE_FILENAME
+    if not stored_path.exists():
+        return None, ()
+
+    from atlas.assertions.reader import results_for
+
+    results = results_for(staged_root)
+    candidate_path = staged_root / PROFILE_FILENAME
+    CompanyStore(candidate_path, company_id).save(
+        build_profile(company_id, results), results
+    )
+
+    stored = load_profile_payload(stored_path)
+    candidate = load_profile_payload(candidate_path)
+    if profiles_match(stored, candidate):
+        return True, ()
+    return False, tuple(explain_difference(stored, candidate))
 
 
 def _existing_runs(root: Path) -> int:

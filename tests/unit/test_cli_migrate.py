@@ -117,3 +117,58 @@ def test_a_missing_repository_is_reported(
 
     assert result.exit_code == 1
     assert "No repository for 'NOSUCH'" in result.output
+
+
+# --- verification (#55) ------------------------------------------------------
+
+
+def _write_profile(root: Path, revenue: int) -> None:
+    from atlas.company.builder import build_profile
+    from atlas.company.store import CompanyStore
+    from atlas.rebuild import PROFILE_FILENAME
+
+    result = _result()
+    result.facts[0].value = revenue
+    CompanyStore(root / PROFILE_FILENAME, _TICKER).save(
+        build_profile(_TICKER, [result]), [result]
+    )
+
+
+def test_a_verified_migration_says_so(repo: Path) -> None:
+    _write_profile(repo, 64988)
+
+    result = _run()
+
+    assert result.exit_code == 0, result.output
+    assert "Verified:   profile unchanged" in result.output
+    assert "Store replaced." in result.output
+
+
+def test_a_refusal_exits_non_zero_and_names_the_staged_store(repo: Path) -> None:
+    """The operator needs the path: it is the only thing left to diff."""
+    _write_profile(repo, 70000)
+
+    result = _run()
+
+    assert result.exit_code == 1
+    assert "Refused" in result.output
+    assert "Staged store kept at" in result.output
+    assert not (repo / DB_FILENAME).exists()
+
+
+def test_a_dry_run_that_would_be_refused_exits_non_zero(repo: Path) -> None:
+    """So --dry-run is usable as a gate in a script, like rebuild --verify."""
+    _write_profile(repo, 70000)
+
+    result = _run("--dry-run")
+
+    assert result.exit_code == 1
+    assert "a real run would refuse this" in result.output
+    assert not (repo / DB_FILENAME).exists()
+
+
+def test_no_stored_profile_is_reported_as_such(repo: Path) -> None:
+    result = _run()
+
+    assert result.exit_code == 0, result.output
+    assert "no stored profile to compare against" in result.output
