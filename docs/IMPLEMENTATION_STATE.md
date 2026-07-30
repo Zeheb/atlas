@@ -18,10 +18,10 @@ real job is to let the next chat resume cold. Optimize it for that.
 | | |
 |---|---|
 | Branch | `claude/continue-implementation-commits-064c2e` (worktree of `main`) |
-| Last completed commit | `6a00109` — `feat(query): render fingerprint in query output` |
-| Next planned commit | **M10 commit 1** — `feat(cli): add migrate assertions with dry-run` (#54 + #58) |
-| Tests | 3481 passed, 2 skipped, 663 deselected, 0 xfailed (`pytest -m "not integration"`) |
-| Coverage | 92.39% (gate: `--cov-fail-under=80`) |
+| Last completed commit | `2a62903` — `feat(cli): add migrate assertions with dry-run` |
+| Next planned commit | **M10 commit 2** — `feat(cli): gate migration on normalized profile equality` (#55) |
+| Tests | 3496 passed, 2 skipped, 663 deselected, 0 xfailed (`pytest -m "not integration"`) |
+| Coverage | 92.43% (gate: `--cov-fail-under=80`) |
 
 ## Milestones
 
@@ -38,7 +38,7 @@ real job is to let the next chat resume cold. Optimize it for that.
 | M6 — Answer pinning | ✅ complete except #43b | `5bd6e4a` … `f52d3b2` |
 | M7 — Selective invalidation | ✅ complete (7 commits, not 4) | `33d61f7` … `ca9d51d` |
 | M8 — Metrics pinning | ✅ complete | `fb17fe8` … `6a00109` |
-| M10 — Backfill & operator CLI | ⬜ not started | |
+| M10 — Backfill & operator CLI | 🔄 1 of 5 commits | `2a62903` |
 
 `AssertionStore` is the default profile source as of `b82bdba` (#35 cutover).
 
@@ -128,6 +128,11 @@ Repository-verified. Do not regress these.
 20. **`citation.build_pin()` is the one spelling of `Atlas <digest>`.** Both the answer
    footer and the query renderer call it. A second copy would let two surfaces name the
    same build differently, which defeats the only reason either line is printed.
+21. **`AssertionStore(path)` takes a repository *root*, not a database file**, and
+   opening one creates it. Both matter to `migrate.py`: staging is a temp *directory*
+   inside the repository (`migrate.py` moves `store.path`, not the directory), and
+   counting existing rows checks `(root / DB_FILENAME).exists()` first, or a dry run
+   converts "no store" into "empty store" and has modified what it inspected.
 
 ## Accepted deviations
 
