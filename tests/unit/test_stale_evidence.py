@@ -325,27 +325,19 @@ def test_a_store_this_reports_clean_reads_without_raising(
     assert [result.evidence_id for result in results_for(tmp_path)] == ["ev-1"]
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "the reader still selects on the whole digest, so it refuses a row "
-        "this query calls current; the reader-narrowing commit removes this "
-        "marker"
-    ),
-)
 def test_the_reader_serves_every_row_this_calls_current(
     store: AssertionStore, tmp_path: Path
 ) -> None:
     """The symmetry, under the narrow rule.
 
     A builder bump moves the whole digest and no sub-digest. This query
-    therefore reports nothing to re-analyse — correctly, since re-analysing
-    would rewrite the rows byte for byte — while ``select_run`` still asks
-    whether the running build wrote the row and refuses.
+    reports nothing to re-analyse — correctly, since re-analysing would
+    rewrite the rows byte for byte — and ``select_run`` now asks the same
+    question, so the row it calls current is one the reader serves.
 
-    Until both ask the same question, ``--stale-only`` would re-analyse the
-    narrow set and leave the rest unreadable, which is under-invalidation
-    wearing the costume of a fix.
+    If the two disagreed, ``--stale-only`` would re-analyse the narrow set
+    and leave the rest unreadable, which is under-invalidation wearing the
+    costume of a fix.
     """
     from atlas.assertions.reader import results_for
 

@@ -93,7 +93,7 @@ def test_analyzer_and_assertion_profiles_are_identical(
 
     from atlas.assertions.reader import results_for
 
-    from_assertions = results_for(store_root, fingerprint=fingerprint.digest())
+    from_assertions = results_for(store_root, fingerprint=fingerprint)
     assert len(from_assertions) == len(from_analyzers)
 
     left_path = tmp_path / "analyzers.json"

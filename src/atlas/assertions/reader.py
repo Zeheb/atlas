@@ -7,14 +7,29 @@ Which version wins
 ------------------
 The run key ``(evidence_id, analyzer_version)`` admits several versions of the
 same document, and something has to choose. The rule is: **the highest
-analyzer version whose stored fingerprint matches the current build; if none
-matches, raise.**
+analyzer version the running build could reproduce; if none could, raise.**
 
 Raising is the point. The alternative -- falling back to the newest row that
 exists -- answers every query with facts extracted by code that is no longer
 running, and nothing downstream can tell. A profile built that way is wrong in
 a way no test of the profile itself can catch. An empty store and a stale
 store are different problems, and only one of them is fixed by re-analyzing.
+
+"Could reproduce" is the per-kind question, not the whole-build one, and it is
+asked through ``store.run_is_current`` so that this rule and
+``stale_evidence()`` are one rule. A run is served when its stored
+``affects_digest`` equals ``fingerprint.affects(kind)`` -- every component that
+can reach an assertion row -- even when another build wrote it, because two
+builds agreeing on those components produce that row identically. Asking the
+whole digest instead would refuse every row in the repository over a
+``builder_version`` bump that provably cannot change one, and a ``--stale-only``
+rebuild would have no way to make the store readable short of re-analysing
+everything.
+
+A run with no stored ``affects_digest`` -- written before migration 3 -- is
+never served. The sub-digest cannot be recovered from the whole one, so there
+is no evidence either way, and re-analysing the document is the only thing
+that produces some.
 
 Failed runs are candidates like any other. A run that was attempted under the
 current build and raised is the current state of that document; skipping it to
@@ -38,10 +53,17 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from atlas.analysis.base import AnalysisFact, AnalysisResult
 from atlas.assertions.model import AssertionRun
-from atlas.assertions.store import AssertionStore
+from atlas.assertions.store import AssertionStore, run_is_current
+
+if TYPE_CHECKING:  # pragma: no cover - typing only
+    # Type position only. ``provenance`` pulls in the registry and the builder,
+    # and this module is imported by ``company.store``; the runtime import
+    # stays inside ``results_for`` for the reason stated there.
+    from atlas.provenance import BuildFingerprint
 
 
 class StaleAssertionsError(RuntimeError):
@@ -68,25 +90,55 @@ def version_key(analyzer_version: str) -> tuple[int, ...]:
     return tuple(key)
 
 
-def select_run(runs: Sequence[AssertionRun], *, fingerprint: str) -> AssertionRun:
-    """Return the run to read, or raise if none was produced by this build.
+def select_run(
+    runs: Sequence[AssertionRun], *, fingerprint: BuildFingerprint
+) -> AssertionRun:
+    """Return the run to read, or raise if this build could reproduce none.
 
     A pure function of the runs given: the same set in any order returns the
-    same run, because the choice is made on version and fingerprint, never on
+    same run, because the choice is made on version and sub-digest, never on
     position.
+
+    The message names the sub-digests, not the whole ones, because those are
+    what the decision turned on -- reporting a whole-digest mismatch for a row
+    refused on a sub-digest would send the reader looking at the wrong bump.
     """
-    matching = [run for run in runs if run.fingerprint == fingerprint]
+    matching = [
+        run
+        for run in runs
+        if run_is_current(
+            stored_affects_digest=run.affects_digest,
+            kind=run.kind,
+            fingerprint=fingerprint,
+        )
+    ]
     if not matching:
-        stored = sorted({run.fingerprint for run in runs})
+        stored = sorted({run.affects_digest or "none" for run in runs})
+        kinds = sorted({run.kind for run in runs})
         raise StaleAssertionsError(
-            f"no stored run matches the current fingerprint {fingerprint!r}; "
-            f"stored fingerprints: {stored or ['none']}"
+            "no stored run matches the current build; expected sub-digests "
+            f"{[_expected(fingerprint, kind) for kind in kinds]} for kinds "
+            f"{kinds or ['none']}; stored: {stored or ['none']}"
         )
     return max(matching, key=lambda run: version_key(run.analyzer_version))
 
 
+def _expected(fingerprint: BuildFingerprint, kind: str) -> str:
+    """``affects(kind)`` for an error message, never raising in one.
+
+    A retired analyzer is one of the ways selection fails, so the failure
+    message has to survive the case rather than replacing a
+    ``StaleAssertionsError`` the caller handles with a ``ValueError`` it
+    does not.
+    """
+    try:
+        return fingerprint.affects(kind)
+    except ValueError:
+        return "no registered analyzer"
+
+
 def read_result(
-    store: AssertionStore, evidence_id: str, *, fingerprint: str
+    store: AssertionStore, evidence_id: str, *, fingerprint: BuildFingerprint
 ) -> AnalysisResult:
     """Rebuild the AnalysisResult for *evidence_id* under the current build.
 
@@ -122,7 +174,9 @@ def read_result(
     )
 
 
-def read_results(store: AssertionStore, *, fingerprint: str) -> list[AnalysisResult]:
+def read_results(
+    store: AssertionStore, *, fingerprint: BuildFingerprint
+) -> list[AnalysisResult]:
     """Rebuild every document's result, ordered by ``(source_date, evidence_id)``.
 
     Raises ``StaleAssertionsError`` on the first document with no run from this
@@ -138,7 +192,9 @@ def read_results(store: AssertionStore, *, fingerprint: str) -> list[AnalysisRes
     return results
 
 
-def results_for(root: Path, *, fingerprint: str | None = None) -> list[AnalysisResult]:
+def results_for(
+    root: Path, *, fingerprint: BuildFingerprint | None = None
+) -> list[AnalysisResult]:
     """Rebuild every result in one company repository, ready for the builder.
 
     The entry point M3 routes profile builds through. It takes the repository
@@ -156,11 +212,13 @@ def results_for(root: Path, *, fingerprint: str | None = None) -> list[AnalysisR
     # on in either direction.
     from atlas.provenance import current_fingerprint
 
-    digest = current_fingerprint().digest() if fingerprint is None else fingerprint
-    return read_results(AssertionStore(root), fingerprint=digest)
+    build = current_fingerprint() if fingerprint is None else fingerprint
+    return read_results(AssertionStore(root), fingerprint=build)
 
 
-def read_facts(store: AssertionStore, *, fingerprint: str) -> list[AnalysisFact]:
+def read_facts(
+    store: AssertionStore, *, fingerprint: BuildFingerprint
+) -> list[AnalysisFact]:
     """Return every fact in the store, in ``(source_date, evidence_id, id)`` order."""
     return [
         fact

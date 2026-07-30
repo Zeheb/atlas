@@ -130,12 +130,13 @@ def assert_round_trip(
 
     Returns the restored result so a caller can make further assertions on it.
 
-    The writer takes the fingerprint object; the reader takes its digest,
-    because selecting which stored run to serve is a whole-build question.
+    Both sides take the fingerprint object: selecting which stored run to
+    serve is a per-kind question, so the reader needs to be able to compute
+    ``affects(kind)`` rather than being handed one digest.
     """
     store = AssertionStore(root)
     write_result(store, result, fingerprint=fingerprint)
-    restored = read_result(store, result.evidence_id, fingerprint=fingerprint.digest())
+    restored = read_result(store, result.evidence_id, fingerprint=fingerprint)
 
     assert fact_multiset(restored.facts) == fact_multiset(result.facts)
     assert mention_multiset(restored.entities) == mention_multiset(result.entities)

@@ -15,6 +15,7 @@ Order      -- build_profile sorts stably, so results that tie on its key keep
 
 from __future__ import annotations
 
+import dataclasses
 import itertools
 from datetime import datetime, timezone
 from pathlib import Path
@@ -33,33 +34,53 @@ from atlas.assertions.reader import (
     version_key,
 )
 from atlas.assertions.store import AssertionStore
-from atlas.provenance import current_fingerprint
+from atlas.provenance import BuildFingerprint, current_fingerprint
+from tests.support.roundtrip import foreign_fingerprint
 
-_FINGERPRINT = "fp-current"
-_STALE = "fp-old"
+#: Real fingerprints rather than invented digest strings. Selection compares
+#: ``affects(kind)``, which only a real fingerprint can produce, and a build
+#: that could never have existed cannot exercise the comparison.
+_FINGERPRINT = current_fingerprint()
+_STALE = foreign_fingerprint()
+_KIND = "financial_results"
 
 
 def _run(
     *,
     evidence_id: str = "ev-1",
     analyzer_version: str = "1.0",
-    fingerprint: str = _FINGERPRINT,
+    fingerprint: BuildFingerprint = _FINGERPRINT,
     source_date: datetime = datetime(2026, 4, 9, tzinfo=timezone.utc),
     status: str = "ok",
     error: str | None = None,
 ) -> AssertionRun:
+    """A run stamped the way the writer stamps one.
+
+    Both digests come from the same fingerprint object, because that is the
+    only pairing the writer can produce.
+    """
     return AssertionRun(
         evidence_id=evidence_id,
-        kind="financial_results",
+        kind=_KIND,
         analyzer_version=analyzer_version,
-        fingerprint=fingerprint,
+        fingerprint=fingerprint.digest(),
         result_confidence="high",
         source_date=source_date,
         analyzed_at=datetime(2026, 7, 29, tzinfo=timezone.utc),
         warnings=("page 3 unreadable",),
         status=status,  # type: ignore[arg-type]
         error=error,
+        affects_digest=fingerprint.affects(_KIND),
     )
+
+
+def _pre_migration_run(**kwargs: object) -> AssertionRun:
+    """A run from before migration 3: whole digest stamped, sub-digest absent.
+
+    Built by mutation because no writer produces one any more, and the reader
+    still has to answer for the rows already in existing repositories.
+    """
+    return dataclasses.replace(_run(**kwargs), affects_digest=None)  # type: ignore[arg-type]
 
 
 def _assertion(
@@ -129,6 +150,49 @@ def test_no_matching_fingerprint_raises() -> None:
 def test_empty_store_raises_the_same_way() -> None:
     with pytest.raises(StaleAssertionsError):
         select_run([], fingerprint=_FINGERPRINT)
+
+
+def test_a_row_a_builder_bump_could_not_have_touched_is_served() -> None:
+    """The narrow rule, and the reason the whole digest is the wrong question.
+
+    ``builder_version`` moves the whole digest and no sub-digest. Refusing on
+    it would make every row in the repository unreadable over a Tier 2 change
+    that provably cannot reach a Tier 1 row, and no ``--stale-only`` rebuild
+    could repair the store short of re-analysing all of it.
+    """
+    older = dataclasses.replace(_FINGERPRINT, builder_version="0.9")
+    runs = [_run(fingerprint=older)]
+
+    assert older.digest() != _FINGERPRINT.digest()
+    assert select_run(runs, fingerprint=_FINGERPRINT).analyzer_version == "1.0"
+
+
+def test_a_run_with_no_sub_digest_is_never_served() -> None:
+    """Written before migration 3. Unknown, and unrecoverably so."""
+    runs = [_pre_migration_run()]
+
+    with pytest.raises(StaleAssertionsError, match="no stored run matches"):
+        select_run(runs, fingerprint=_FINGERPRINT)
+
+
+def test_a_kind_with_no_registered_analyzer_is_never_served() -> None:
+    """A retired analyzer fails selection rather than the process.
+
+    ``affects()`` raises for an unregistered kind, and letting that escape
+    would replace the ``StaleAssertionsError`` callers handle with a
+    ``ValueError`` they do not.
+    """
+    retired = dataclasses.replace(
+        _FINGERPRINT,
+        analyzer_versions={
+            kind: version
+            for kind, version in _FINGERPRINT.analyzer_versions.items()
+            if kind != _KIND
+        },
+    )
+
+    with pytest.raises(StaleAssertionsError, match="no registered analyzer"):
+        select_run([_run()], fingerprint=retired)
 
 
 def test_a_failed_run_from_this_build_is_still_the_answer() -> None:
@@ -328,7 +392,7 @@ def test_results_for_reads_a_repository_root(tmp_path: Path) -> None:
 def test_results_for_defaults_to_the_current_build(tmp_path: Path) -> None:
     """The only value a caller should normally pass is the one it computes."""
     store = AssertionStore(tmp_path)
-    run = _run(fingerprint=current_fingerprint().digest())
+    run = _run(fingerprint=current_fingerprint())
     store.write_run(run, [_assertion(run, assertion_id="a1")])
 
     assert len(results_for(tmp_path)) == 1
