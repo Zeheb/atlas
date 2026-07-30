@@ -18,9 +18,9 @@ real job is to let the next chat resume cold. Optimize it for that.
 | | |
 |---|---|
 | Branch | `claude/continue-implementation-commits-064c2e` (worktree of `main`) |
-| Last completed commit | `ca9d51d` — `feat(rebuild): add stale-only mode` |
-| Next planned commit | **M8 commit 1** — `test(query): assert every registered query returns a pinned result` (#53, `xfail(strict=True)`) |
-| Tests | 3452 passed, 2 skipped, 663 deselected (`pytest -m "not integration"`) |
+| Last completed commit | `fb17fe8` — `test(query): assert every registered query returns a pinned result` |
+| Next planned commit | **M8 commit 2** — `feat(query): pin fingerprint on QueryResult` (#51), and **remove the `xfail(strict=True)` in `tests/unit/test_query_pinning.py`** in the same commit |
+| Tests | 3453 passed, 2 skipped, 663 deselected, 18 xfailed (`pytest -m "not integration"`) |
 | Coverage | 92.15% (gate: `--cov-fail-under=80`) |
 
 ## Milestones
@@ -37,7 +37,7 @@ real job is to let the next chat resume cold. Optimize it for that.
 | M5 — Judgment store | ✅ complete | `c167876` … `d0d2a76` |
 | M6 — Answer pinning | ✅ complete except #43b | `5bd6e4a` … `f52d3b2` |
 | M7 — Selective invalidation | ✅ complete (7 commits, not 4) | `33d61f7` … `ca9d51d` |
-| M8 — Metrics pinning | ⬜ not started | |
+| M8 — Metrics pinning | 🔄 1 of 3 commits | `fb17fe8` |
 | M10 — Backfill & operator CLI | ⬜ not started | |
 
 `AssertionStore` is the default profile source as of `b82bdba` (#35 cutover).
@@ -57,7 +57,15 @@ real job is to let the next chat resume cold. Optimize it for that.
 - **`profile_built_at` is likewise unpopulated and has no issue number.** `CompanyProfile`
   has no `built_at`; only the stored envelope does (`store.py:747`). Wiring it means
   carrying it into `GroundingContext`. Worth an issue before M10.
-- **M8** — metrics pinning across ~30 query functions.
+- **M8 commit 2 — the sweep is 18 call sites, not ~30.** `_QUERIES`
+  (`query/engine.py:1823`) registers exactly 18 names, and the inventory test
+  parametrizes over `available_queries()`, so the xfail list is the checklist. One
+  approach worth *verifying* before taking it: a default on the dataclass field
+  (`fingerprint: str = field(default_factory=...)`) would pin all 18 without editing
+  any construction site. Not yet checked for an import cycle — `query/engine.py`
+  imports `company.model`, and `provenance` imports `company.builder`. If it cycles,
+  fall back to editing the construction sites, which is what COMMIT_PLAN assumes.
+  Either way the strict xfail is what proves the sweep was complete.
 - **M10** — backfill, plus new issue **#78** (remove the analyzer profile path and the `profile_source` flag), which may only land after #59 confirms every repo migrated.
 
 ## Implementation discoveries
