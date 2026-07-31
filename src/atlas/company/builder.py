@@ -32,6 +32,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Sequence
+from datetime import datetime
 
 from atlas.analysis.base import AnalysisFact, AnalysisResult, FactKind, FactUnit
 from atlas.company.model import (
@@ -1037,23 +1038,162 @@ def _ingest_segment_facts(result: AnalysisResult, profile: CompanyProfile) -> No
 # ---------------------------------------------------------------------------
 
 
+def _sort_key(value: object) -> str:
+    """Render a field as a sortable string, ``None`` sorting first.
+
+    Entry containers mix ``str | None``, ``float | None`` and enums, and a
+    tuple key holding a raw ``float | None`` raises ``TypeError`` the first
+    time two entries disagree about whether the field is set -- which is
+    exactly when the tie-break is needed. Normalising to ``str`` makes every
+    field comparable without special-casing each one.
+
+    ``None`` becomes the empty string, which sorts before any value. That is
+    a choice, not a law; what matters is that it is the same choice on both
+    tiers.
+    """
+    return "" if value is None else str(value)
+
+
+def _credit_rating_key(entry: CreditRatingEntry) -> tuple[str | datetime, ...]:
+    """Total ordering for a credit rating, shared by both rating lists.
+
+    ``debt_ratings`` and ``esg_ratings`` hold the same type and had the same
+    non-total key; giving them one named key keeps them from drifting apart
+    the next time either is touched.
+    """
+    return (
+        entry.source_date,
+        entry.agency,
+        _sort_key(entry.instrument),
+        _sort_key(entry.rating),
+        _sort_key(entry.outlook),
+        _sort_key(entry.action),
+        _sort_key(entry.amount),
+        entry.evidence_id,
+    )
+
+
 def _finalize_profile(profile: CompanyProfile) -> None:
+    # The three snapshot containers key on their merge key, which is unique by
+    # construction: two results describing the same (period, basis) are merged
+    # into one snapshot rather than appended, so these cannot tie.
     profile.financial.snapshots.sort(key=lambda s: (s.period, s.basis))
     profile.esg.snapshots.sort(key=lambda s: s.period)
     profile.ownership.snapshots.sort(key=lambda s: s.period)
-    profile.segments.entries.sort(key=lambda e: (e.period, e.name))
-    profile.credit_history.debt_ratings.sort(key=lambda e: e.source_date)
-    profile.credit_history.esg_ratings.sort(key=lambda e: e.source_date)
-    profile.capital_events.dividends.sort(key=lambda e: e.source_date)
-    profile.capital_events.buybacks.sort(key=lambda e: e.source_date)
-    profile.capital_events.acquisitions.sort(key=lambda e: e.source_date)
-    profile.capital_events.investments.sort(key=lambda e: e.source_date)
-    profile.capital_events.fundraises.sort(key=lambda e: e.source_date)
-    profile.strategy.entries.sort(key=lambda e: e.source_date)
-    profile.strategy.csat.sort(key=lambda e: e.period)
-    profile.governance.resolutions.sort(key=lambda r: (r.period or "", r.title))
-    profile.governance.director_changes.sort(key=lambda d: d.source_date)
-    profile.governance.risk_factors.sort(key=lambda r: r.period)
+
+    # Everything below is appended one entry per fact, in result.facts order,
+    # and nothing merges them -- so the sort key is the only thing standing
+    # between the container and its arrival order. Each key therefore runs to
+    # the full field set, ending on evidence_id.
+    #
+    # Leading fields are unchanged; these are tie-breaks appended to the keys
+    # that were already here, not a re-ordering. A profile whose entries never
+    # tied serialises exactly as before.
+    #
+    # #33, reopened. The original fix canonicalised the entity-derived
+    # containers below and the snapshot `sources` lists, and stopped there.
+    # It missed that permuting *results* -- which is what the equivalence
+    # tests do -- never disturbs the order of facts *within* one result, so a
+    # container fed by a single document's facts kept emission order and no
+    # test could see it. The two tiers emit in different orders: analyzers in
+    # document order, the assertion reader in content-address order. TCS's
+    # backfill refused on 184 such differences, all pure permutations of
+    # `risk_factors` and `strategy.entries`.
+    #
+    # `_sort_key` renders optional and numeric fields as strings. After the
+    # leading fields these are tie-breaks, not an ordering the caller reads,
+    # so lexicographic ordering of a number is a determinism device and not a
+    # claim that 100.0 precedes 20.0 for any reason anyone should depend on.
+    profile.segments.entries.sort(
+        key=lambda e: (
+            e.period,
+            e.name,
+            _sort_key(e.revenue),
+            _sort_key(e.ebit),
+            _sort_key(e.growth_pct),
+            e.evidence_id,
+        )
+    )
+    profile.credit_history.debt_ratings.sort(key=_credit_rating_key)
+    profile.credit_history.esg_ratings.sort(key=_credit_rating_key)
+    profile.capital_events.dividends.sort(
+        key=lambda e: (
+            e.source_date,
+            e.dividend_type,
+            _sort_key(e.per_share),
+            _sort_key(e.record_date),
+            _sort_key(e.payment_date),
+            e.evidence_id,
+        )
+    )
+    profile.capital_events.buybacks.sort(
+        key=lambda e: (
+            e.source_date,
+            e.sub_type,
+            _sort_key(e.amount),
+            _sort_key(e.price_per_share),
+            _sort_key(e.shares_offered),
+            _sort_key(e.shares_bought),
+            _sort_key(e.record_date),
+            e.evidence_id,
+        )
+    )
+    profile.capital_events.acquisitions.sort(
+        key=lambda e: (
+            e.source_date,
+            e.target_name,
+            _sort_key(e.consideration_type),
+            _sort_key(e.enterprise_value),
+            _sort_key(e.enterprise_value_unit),
+            _sort_key(e.stake_pct),
+            _sort_key(e.expected_completion),
+            e.evidence_id,
+        )
+    )
+    profile.capital_events.investments.sort(
+        key=lambda e: (
+            e.source_date,
+            e.target_name,
+            _sort_key(e.amount),
+            _sort_key(e.amount_unit),
+            e.evidence_id,
+        )
+    )
+    profile.capital_events.fundraises.sort(
+        key=lambda e: (
+            e.source_date,
+            e.fundraise_type,
+            _sort_key(e.amount),
+            e.evidence_id,
+        )
+    )
+    profile.strategy.entries.sort(
+        key=lambda e: (e.source_date, e.kind, e.text, e.evidence_id)
+    )
+    profile.strategy.csat.sort(key=lambda e: (e.period, e.score, e.evidence_id))
+    profile.governance.resolutions.sort(
+        key=lambda r: (
+            r.period or "",
+            r.title,
+            r.resolution_type,
+            _sort_key(r.outcome),
+            _sort_key(r.pct_for),
+            _sort_key(r.pct_against),
+            r.evidence_id,
+        )
+    )
+    profile.governance.director_changes.sort(
+        key=lambda d: (
+            d.source_date,
+            d.change_type,
+            d.name,
+            _sort_key(d.role),
+            d.evidence_id,
+        )
+    )
+    profile.governance.risk_factors.sort(
+        key=lambda r: (r.period, r.text, r.evidence_id)
+    )
 
     # Entity-derived containers. These are appended once per mention, in the
     # order the analyzer emitted them within a document, and until now nothing
