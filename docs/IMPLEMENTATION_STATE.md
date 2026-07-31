@@ -17,11 +17,11 @@ real job is to let the next chat resume cold. Optimize it for that.
 
 | | |
 |---|---|
-| Branch | `claude/continue-implementation-commits-064c2e` (worktree of `main`) |
-| Last completed commit | `9537f7c` — `feat(cli): add store verify` |
-| Next planned commit | **M10 commit 4** — `chore: migrate existing company repos` (#59). **Blocked on the user: this is a data operation on real repositories, not a code change.** See the note under outstanding items. |
-| Tests | 3518 passed, 2 skipped, 663 deselected, 0 xfailed (`pytest -m "not integration"`) |
-| Coverage | 92.49% (gate: `--cov-fail-under=80`) |
+| Branch | `claude/atlas-implementation-continue-c2bdbd` (worktree of `main`) |
+| Last completed commit | `f93c3a8` — `fix(company): make entry-list sort keys total in _finalize_profile` |
+| Next planned commit | **M10 commit 4 continued** — migrate SBIN and TATASTEEL (#59). TCS is done and verified. **Blocked on the user: a data operation on real repositories.** |
+| Tests | 3521 passed, 2 skipped, 663 deselected, 0 xfailed (`pytest -m "not integration"`) |
+| Coverage | 92.51% (gate: `--cov-fail-under=80`) |
 
 ## Milestones
 
@@ -38,7 +38,7 @@ real job is to let the next chat resume cold. Optimize it for that.
 | M6 — Answer pinning | ✅ complete except #43b | `5bd6e4a` … `f52d3b2` |
 | M7 — Selective invalidation | ✅ complete (7 commits, not 4) | `33d61f7` … `ca9d51d` |
 | M8 — Metrics pinning | ✅ complete | `fb17fe8` … `6a00109` |
-| M10 — Backfill & operator CLI | 🔄 3 of 5 commits | `2a62903` … `9537f7c` |
+| M10 — Backfill & operator CLI | 🔄 commit 4 partial (TCS migrated; SBIN, TATASTEEL pending) | `2a62903` … `f93c3a8` |
 
 `AssertionStore` is the default profile source as of `b82bdba` (#35 cutover).
 
@@ -57,17 +57,34 @@ real job is to let the next chat resume cold. Optimize it for that.
 - **`profile_built_at` is likewise unpopulated and has no issue number.** `CompanyProfile`
   has no `built_at`; only the stored envelope does (`store.py:747`). Wiring it means
   carrying it into `GroundingContext`. Worth an issue before M10.
-- **M10 commit 4 (#59) — a data operation, and the milestone's blocking point.**
+- **M10 commit 4 (#59) — TCS migrated and verified; SBIN and TATASTEEL still pending.**
   It rewrites `assertions.db` in the operator's real repositories, which is outside
-  the worktree and cannot be undone by `git revert`. Repository state as of this
-  checkpoint (read-only check, `repositories/` in the main checkout): **SBIN,
-  TATASTEEL and TCS each hold a `profile.json` and no `assertions.db`** — so all
-  three are exactly the case M10 exists for, and all three will be first migrations
-  with `verified` compared against a profile built by the analyzer path.
-  Expect refusals to be informative rather than alarming: a stored profile written
-  by an older analyzer is what #55's gate is designed to catch, and the remedy is
-  `atlas rebuild --company X` after migrating, not weakening the gate.
+  the worktree and cannot be undone by `git revert`.
   **Do not run it without the operator asking for it.**
+
+  **TCS, done.** 140 documents, 140 runs, 737 assertions, 548,864-byte
+  `assertions.db`, fingerprint `3f6dba65…0fa8`, `Verified: profile unchanged`,
+  and `atlas rebuild --company TCS --verify` clean afterwards. It took two
+  refusals and a code fix to get there, and both refusals were the gate working.
+
+  **The operational prerequisite #59 needs and the plan never stated:** refresh
+  `profile.json` *before* migrating whenever the stored profile predates the
+  evidence corpus. #55 compares the assertion-path profile against the profile on
+  disk, so a Tier 2 artifact older than Tier 0 refuses on staleness alone. TCS's
+  profile was built `2026-07-03T07:45:17Z` and covered 122 evidence ids; 42 of its
+  156 documents — including 18 annual reports carrying 414 KB–1.09 MB of text each
+  — were first parsed ~20 hours later. The refusal listed 1,661 differences, but
+  the candidate covered 140 evidence ids against the stored 122, **a strict
+  superset with nothing lost**. This checkpoint previously said the remedy was
+  `atlas rebuild` *after* migrating; that is impossible, because the migration
+  refuses and never writes a store to rebuild from. Rebuild first, then migrate.
+  **All three repositories share this staleness** — SBIN 27 documents parsed after
+  its profile was built, TATASTEEL 30 — so both will refuse the same way.
+
+  **#55 is correct and must not be weakened.** It caught a stale Tier 2 artifact
+  and then caught a genuine correctness bug (#33, below), on a repository where
+  every individual row was valid and no other layer would have complained. Both
+  times the printed differences were enough to diagnose the cause in one pass.
 - **#78** (remove the analyzer profile path and the `profile_source` flag) may only
   land after #59 confirms every repo migrated. It is therefore blocked behind the
   same decision.
@@ -141,7 +158,32 @@ Repository-verified. Do not regress these.
 20. **`citation.build_pin()` is the one spelling of `Atlas <digest>`.** Both the answer
    footer and the query renderer call it. A second copy would let two surfaces name the
    same build differently, which defeats the only reason either line is printed.
-21. **`AssertionStore(path)` takes a repository *root*, not a database file**, and
+21. **#33 was closed on tests that cannot see half the defect. Reopened in M10, fixed
+   again.** Permuting *results* — what every equivalence test does — never disturbs
+   the order of facts *within* one result. Containers appended one entry per fact
+   (`governance.risk_factors`, keyed on `period` alone; `strategy.entries`, on
+   `source_date` alone) therefore kept analyzer emission order, and the assertion
+   reader emits in content-address order, so the two tiers serialised the same data
+   differently. TCS's backfill refused with 184 such differences, every one a pure
+   permutation: 207 risk factors both sides, identical multiset of
+   `(text, evidence_id, period)`. The regression test reverses the facts inside a
+   single result, which is the smallest faithful model of the tier divergence.
+   Every non-total key in `_finalize_profile` now runs to the full field set.
+   **The general lesson: a sort key that is not total is a latent order-dependence,
+   and "the tests pass" only means no fixture happened to tie.**
+22. **D1 was load-bearing, and this is the proof.** #26 and #32 assert exactly the
+   equivalence that #33 broke and are green in CI — but only in their synthetic
+   variants, whose fixtures produce no ties. The golden-corpus variants that would
+   have caught it are marked `integration` and never run. The first real exercise of
+   Tier 1 against a full corpus was a production migration, not a test.
+23. **`rebuild --from evidence` is itself a backfill.** It writes every analyzed
+   result into the assertion store (`rebuild.py:161-168`) before building the
+   profile, so a rebuild leaves a populated `assertions.db` and the migration that
+   follows reports `Already held: N run(s)` and is a content-identical no-op
+   replacement. Harmless — content addresses make the stores equivalent — but it
+   means `migrate assertions` and `rebuild --from evidence` are not distinct
+   operations at Tier 1. See #82.
+24. **`AssertionStore(path)` takes a repository *root*, not a database file**, and
    opening one creates it. Both matter to `migrate.py`: staging is a temp *directory*
    inside the repository (`migrate.py` moves `store.path`, not the directory), and
    counting existing rows checks `(root / DB_FILENAME).exists()` first, or a dry run
@@ -169,6 +211,8 @@ Repository-verified. Do not regress these.
 | D13 | `QueryResult.fingerprint` is pinned by field default (`str`), not populated per construction site as an `Optional` like `ReasoningResult` | **Applied.** `QueryResult` has no serialization path anywhere in `src`, so `None` ("written before pinning") is unreachable and an unpinned result could only mean a forgotten call site. One of the 19 sites — `query/screen.py:155` — is not in `_QUERIES` and is invisible to #53's inventory; the default covers it and every surface added later. |
 | D14 | #52's "text fixtures updated" is a non-event | **Confirmed, like D3.** No fixture holds rendered query output; the three `render_result` call sites in tests are all integration substring assertions. |
 | D15 | #57's "merge with `doctor` naming per the audit" is a non-event | **Confirmed.** No `doctor` command exists anywhere in `src`. The command landed as `atlas store verify`, in the existing `store` group beside `status`. |
+| D17 | #59 landed as four commits, not one, and two of them change code | **Applied, forced.** COMMIT_PLAN says "no code change" for M10 commit 4. Running it produced a `.gitignore` gap (`assertions.db` untracked and unignored), a stale Tier 2 artifact needing a rebuild, and a real order-dependence bug (#33). `86cdb96` ignore rules, `bdbda9d` TCS profile refresh, `f93c3a8` the #33 fix, then the migration itself. A data operation that finds three defects is not a data operation. |
+| D18 | The #33 fix extends every non-total sort key in `_finalize_profile`, not only the two that diverged | **Applied.** `risk_factors` and `strategy.entries` are what TCS exposed, but eleven other containers had the same defect latent. SBIN and TATASTEEL are migrated next, and a partial fix only moves the refusal to whichever container first ties there. Leading fields are unchanged, so profiles that never tied serialise exactly as before. |
 | D16 | Migration verification raises `MigrationVerificationError` rather than returning `committed=False` | **Applied.** A report with `committed=False` reads identically to a dry run, and a refused migration must not be mistakable for a successful no-op. The error carries the staged path and the differences; a verification failure is the one exit that keeps the staging directory, because it is the only artifact that can say which document moved. |
 
 ## Gates

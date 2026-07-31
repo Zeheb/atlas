@@ -1,983 +1,983 @@
 {
   "builder_version": "1.0",
-  "built_at": "2026-07-31T03:44:07.255382+00:00",
+  "built_at": "2026-07-31T04:18:18.024283+00:00",
   "company_id": "TCS",
   "ingested_results": [
     {
-      "analyzed_at": "2026-07-30T23:45:29.323788+00:00",
+      "analyzed_at": "2026-07-31T04:01:16.517151+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-ar-532540-5325400311.pdf",
       "kind": "annual_report",
       "source_date": "2012-03-26T00:00:00+00:00"
     },
     {
-      "analyzed_at": "2026-07-30T23:52:36.348354+00:00",
+      "analyzed_at": "2026-07-31T04:07:43.827118+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-ar-532540-5325400310.pdf",
       "kind": "annual_report",
       "source_date": "2012-03-26T00:00:00+00:00"
     },
     {
-      "analyzed_at": "2026-07-30T23:52:37.368685+00:00",
+      "analyzed_at": "2026-07-31T04:07:44.777948+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-ar-532540-5325400312.pdf",
       "kind": "annual_report",
       "source_date": "2012-06-07T16:13:19+00:00"
     },
     {
-      "analyzed_at": "2026-07-30T23:59:52.978910+00:00",
+      "analyzed_at": "2026-07-31T04:14:28.214762+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-ar-532540-5325400313.pdf",
       "kind": "annual_report",
       "source_date": "2013-09-16T15:43:22+00:00"
     },
     {
-      "analyzed_at": "2026-07-30T23:59:54.828973+00:00",
+      "analyzed_at": "2026-07-31T04:14:29.862867+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-ar-532540-5325400314.pdf",
       "kind": "annual_report",
       "source_date": "2014-06-02T18:56:10+00:00"
     },
     {
-      "analyzed_at": "2026-07-30T23:59:57.164370+00:00",
+      "analyzed_at": "2026-07-31T04:14:31.565973+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-ar-532540-5325400315.pdf",
       "kind": "annual_report",
       "source_date": "2016-06-24T14:07:30+00:00"
     },
     {
-      "analyzed_at": "2026-07-30T23:59:59.889873+00:00",
+      "analyzed_at": "2026-07-31T04:14:33.544751+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-ar-532540-5325400316.pdf",
       "kind": "annual_report",
       "source_date": "2016-07-04T16:13:04+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:00:02.109891+00:00",
+      "analyzed_at": "2026-07-31T04:14:35.232001+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-ar-532540-5325400317.pdf",
       "kind": "annual_report",
       "source_date": "2017-07-20T14:58:16+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:00:04.461160+00:00",
+      "analyzed_at": "2026-07-31T04:14:36.911509+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-ar-532540-5325400318.pdf",
       "kind": "annual_report",
       "source_date": "2018-06-21T10:53:04+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:00:06.686616+00:00",
+      "analyzed_at": "2026-07-31T04:14:38.950557+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-ar-532540-5325400319.pdf",
       "kind": "annual_report",
       "source_date": "2019-05-17T11:54:18+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:00:06.716533+00:00",
+      "analyzed_at": "2026-07-31T04:14:39.014411+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-7a65d7c7-e135-46eb-aae1-48f08cf578ae",
       "kind": "investor_presentation",
       "source_date": "2019-05-31T11:01:41+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:00:44.773965+00:00",
+      "analyzed_at": "2026-07-31T04:15:16.436358+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-08340197-0234-43f0-8add-dac658035134",
       "kind": "agm_notice",
       "source_date": "2019-06-14T12:37:55+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:19.542585+00:00",
+      "analyzed_at": "2026-07-31T04:15:53.759502+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-446fd8e4-2247-4918-a854-2930841749bd",
       "kind": "agm_notice",
       "source_date": "2019-06-14T12:42:48+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:21.659111+00:00",
+      "analyzed_at": "2026-07-31T04:15:55.830891+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-cede1b14-3043-4c46-9f9a-2b7378b4804b",
       "kind": "investor_presentation",
       "source_date": "2019-06-28T12:55:48+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:21.695894+00:00",
+      "analyzed_at": "2026-07-31T04:15:55.877067+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-c1bc27e0-3fb0-4ab2-8d2e-7bec3ff36851",
       "kind": "investor_presentation",
       "source_date": "2019-11-01T11:26:03+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:21.903616+00:00",
+      "analyzed_at": "2026-07-31T04:15:56.016072+00:00",
       "analyzer_version": "1.1",
       "evidence_id": "bse-news-1ef33f82-823f-48bd-9a72-efcf1f27451b",
       "kind": "financial_results",
       "source_date": "2019-11-07T12:49:34+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:21.932285+00:00",
+      "analyzed_at": "2026-07-31T04:15:56.071549+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-32757661-0644-4706-a11f-61249bea7dd3",
       "kind": "investor_presentation",
       "source_date": "2019-11-29T10:03:11+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:24.224232+00:00",
+      "analyzed_at": "2026-07-31T04:15:58.746094+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-news-3d97b6d5-e16a-43a3-853d-d3dbd3fe649a",
       "kind": "annual_report",
       "source_date": "2020-05-19T19:34:10+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:24.300193+00:00",
+      "analyzed_at": "2026-07-31T04:15:58.848029+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-cbe5877b-c6be-4688-aae5-3b92ac461e80",
       "kind": "agm_notice",
       "source_date": "2020-05-19T19:40:56+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:24.326892+00:00",
+      "analyzed_at": "2026-07-31T04:15:58.928178+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-a9aa9233-6193-4a12-99f4-a6959ca140b8",
       "kind": "investor_presentation",
       "source_date": "2020-05-29T16:34:29+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:26.577763+00:00",
+      "analyzed_at": "2026-07-31T04:16:00.839273+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-news-b5ab3591-87ea-4b1c-a20f-8a27eebddd27",
       "kind": "annual_report",
       "source_date": "2020-06-08T15:59:43+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:29.392484+00:00",
+      "analyzed_at": "2026-07-31T04:16:02.721022+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-ar-532540-5325400320.pdf",
       "kind": "annual_report",
       "source_date": "2020-06-10T12:14:50+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:29.520153+00:00",
+      "analyzed_at": "2026-07-31T04:16:02.846763+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-13261f7e-d6ea-4352-852e-1a5590e99702",
       "kind": "agm_notice",
       "source_date": "2020-06-12T12:56:18+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:29.644541+00:00",
+      "analyzed_at": "2026-07-31T04:16:02.962583+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-7daf32ec-cdfa-43b4-89c1-75eb3b2259a2",
       "kind": "agm_notice",
       "source_date": "2020-06-12T12:57:15+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:29.772827+00:00",
+      "analyzed_at": "2026-07-31T04:16:03.070663+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-9172e009-f682-4507-b8f6-b31cfe996c8b",
       "kind": "agm_notice",
       "source_date": "2020-06-12T13:03:35+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:29.796694+00:00",
+      "analyzed_at": "2026-07-31T04:16:03.110070+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-4e329587-95dc-4347-acf7-3f49215c5db2",
       "kind": "investor_presentation",
       "source_date": "2020-06-30T15:18:00+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:29.859535+00:00",
+      "analyzed_at": "2026-07-31T04:16:03.188280+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-7de8b400-caad-47cb-99c6-6ee63fa86c58",
       "kind": "agm_notice",
       "source_date": "2020-11-18T16:31:31+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:30.024929+00:00",
+      "analyzed_at": "2026-07-31T04:16:03.387237+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-853000ae-953d-4891-a58d-074e435e0de5",
       "kind": "buyback",
       "source_date": "2020-11-20T16:31:58+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:30.049480+00:00",
+      "analyzed_at": "2026-07-31T04:16:03.427153+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-690b085a-eb12-47aa-9a3d-ab5bbf95daf6",
       "kind": "investor_presentation",
       "source_date": "2020-11-30T14:04:45+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:30.075213+00:00",
+      "analyzed_at": "2026-07-31T04:16:03.463807+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-b1dc2c18-b69e-41c1-8e44-0614630cea37",
       "kind": "buyback",
       "source_date": "2020-12-09T13:25:24+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:30.104726+00:00",
+      "analyzed_at": "2026-07-31T04:16:03.510685+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-357f4620-959b-43a1-a826-cc35c5960b9b",
       "kind": "investor_presentation",
       "source_date": "2020-12-31T13:55:36+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:32.831174+00:00",
+      "analyzed_at": "2026-07-31T04:16:05.721956+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-news-5cca1cd9-e145-4f6e-90de-79196ed31586",
       "kind": "annual_report",
       "source_date": "2021-05-18T14:56:20+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:32.945177+00:00",
+      "analyzed_at": "2026-07-31T04:16:05.853384+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-d3e394d6-b27b-4839-a285-b0c7a5fa42d3",
       "kind": "agm_notice",
       "source_date": "2021-05-18T15:00:11+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:35.778828+00:00",
+      "analyzed_at": "2026-07-31T04:16:08.373879+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-news-68e21f0a-b5f7-4f6f-ae6a-07cca5850648",
       "kind": "annual_report",
       "source_date": "2021-05-24T06:48:47+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:38.445042+00:00",
+      "analyzed_at": "2026-07-31T04:16:10.641751+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-ar-532540-68468532540_25_05_21.pdf",
       "kind": "annual_report",
       "source_date": "2021-05-25T13:08:24+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:40.727588+00:00",
+      "analyzed_at": "2026-07-31T04:16:12.605017+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-9b669fb2-2250-45b2-838c-d78f9d20d357",
       "kind": "investor_presentation",
       "source_date": "2021-05-31T12:27:47+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:40.845005+00:00",
+      "analyzed_at": "2026-07-31T04:16:12.754786+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-5c5a428e-86e3-4f99-82a0-b677037edd1a",
       "kind": "agm_notice",
       "source_date": "2021-06-11T13:17:59+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:40.963248+00:00",
+      "analyzed_at": "2026-07-31T04:16:12.877561+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-350d7c75-8c25-4a85-8ac4-b1f2df4e962d",
       "kind": "agm_notice",
       "source_date": "2021-06-11T13:19:56+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:40.985959+00:00",
+      "analyzed_at": "2026-07-31T04:16:12.915234+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-ab33b83c-0917-4b46-8ccf-8795400ec157",
       "kind": "investor_presentation",
       "source_date": "2021-06-11T14:11:14+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:41.008516+00:00",
+      "analyzed_at": "2026-07-31T04:16:12.953546+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-4d739a58-a713-4811-b9bd-c4bf88b500ad",
       "kind": "investor_presentation",
       "source_date": "2021-06-30T11:44:14+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:41.059245+00:00",
+      "analyzed_at": "2026-07-31T04:16:13.006777+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-d9acf380-7641-4438-bad0-7927354ef40b",
       "kind": "investor_presentation",
       "source_date": "2021-11-30T12:22:19+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:41.101479+00:00",
+      "analyzed_at": "2026-07-31T04:16:13.054030+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-7f824417-9ead-465f-a1c9-8980591188ae",
       "kind": "investor_presentation",
       "source_date": "2021-12-31T11:12:17+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:41.542028+00:00",
+      "analyzed_at": "2026-07-31T04:16:13.402035+00:00",
       "analyzer_version": "1.1",
       "evidence_id": "bse-news-45390bc2-f788-4472-a7b9-fd0ff8adbb77",
       "kind": "financial_results",
       "source_date": "2022-04-26T18:09:44+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:41.572950+00:00",
+      "analyzed_at": "2026-07-31T04:16:13.458118+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-427ce541-69c9-4645-8335-132683507bcc",
       "kind": "investor_presentation",
       "source_date": "2022-04-29T14:22:56+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:44.304094+00:00",
+      "analyzed_at": "2026-07-31T04:16:15.667142+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-news-53706155-95ff-4c10-8218-9a363088a8f6",
       "kind": "annual_report",
       "source_date": "2022-05-18T15:39:54+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:44.531042+00:00",
+      "analyzed_at": "2026-07-31T04:16:15.891450+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-6083e18c-99b9-46d9-92a3-2e7e10aaa2fd",
       "kind": "agm_notice",
       "source_date": "2022-05-18T15:43:38+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:44.568905+00:00",
+      "analyzed_at": "2026-07-31T04:16:15.930221+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-fab8521f-78e4-4fd9-8175-60022eb3e43a",
       "kind": "investor_presentation",
       "source_date": "2022-05-31T15:24:41+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:47.597834+00:00",
+      "analyzed_at": "2026-07-31T04:16:18.200567+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-news-6d9e6b13-c0d4-42d0-8f49-23fb18c85d62",
       "kind": "annual_report",
       "source_date": "2022-06-02T11:54:13+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:50.499872+00:00",
+      "analyzed_at": "2026-07-31T04:16:20.485716+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-ar-532540-72996532540_17_06_22.pdf",
       "kind": "annual_report",
       "source_date": "2022-06-17T14:45:35+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:50.552310+00:00",
+      "analyzed_at": "2026-07-31T04:16:20.562998+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-6ae9210f-57b0-4c73-9c09-6f785f989de6",
       "kind": "investor_presentation",
       "source_date": "2022-06-30T15:35:08+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:51.053647+00:00",
+      "analyzed_at": "2026-07-31T04:16:21.150661+00:00",
       "analyzer_version": "1.1",
       "evidence_id": "bse-news-00d2a511-dbce-4479-bac2-a40dcaec2533",
       "kind": "financial_results",
       "source_date": "2022-10-25T12:58:14+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:51.115525+00:00",
+      "analyzed_at": "2026-07-31T04:16:21.220745+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-f1d4ddd6-0339-48b5-88eb-15fc9a27a1f2",
       "kind": "investor_presentation",
       "source_date": "2022-10-31T17:23:30+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:51.155216+00:00",
+      "analyzed_at": "2026-07-31T04:16:21.277643+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-0c8140e6-59d2-4e78-8ecb-a031b3081a6c",
       "kind": "investor_presentation",
       "source_date": "2022-11-30T10:48:03+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:51.194409+00:00",
+      "analyzed_at": "2026-07-31T04:16:21.343055+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-18d37d8d-ea40-4039-b1ef-22ff2bb3e447",
       "kind": "investor_presentation",
       "source_date": "2022-12-30T15:08:28+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:51.223262+00:00",
+      "analyzed_at": "2026-07-31T04:16:21.414316+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-78ad925b-1b88-40d2-9fa0-4f039f1c537a",
       "kind": "investor_presentation",
       "source_date": "2023-04-28T12:56:46+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:54.229326+00:00",
+      "analyzed_at": "2026-07-31T04:16:24.043220+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-news-add490c8-9b8e-4a65-b87f-144e4140d9d2",
       "kind": "annual_report",
       "source_date": "2023-06-06T21:41:32+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:54.463528+00:00",
+      "analyzed_at": "2026-07-31T04:16:24.307891+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-6872a96f-55bd-4d93-b386-8f19d0c5230c",
       "kind": "agm_notice",
       "source_date": "2023-06-06T21:49:02+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:54.730387+00:00",
+      "analyzed_at": "2026-07-31T04:16:24.565286+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-bb1cd39b-eeb4-4b23-baef-a4cb402fd832",
       "kind": "brsr",
       "source_date": "2023-06-06T21:52:21+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:57.071166+00:00",
+      "analyzed_at": "2026-07-31T04:16:26.948865+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-ar-532540-3837c1b7-9308-436d-9636-1d6856edf74e.pdf.pdf",
       "kind": "annual_report",
       "source_date": "2023-06-07T03:11:32+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:57.097264+00:00",
+      "analyzed_at": "2026-07-31T04:16:27.023973+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-8ba6c510-d7dc-406b-8f76-8d089c2d8d6c",
       "kind": "investor_presentation",
       "source_date": "2023-06-08T14:33:02+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:01:59.355620+00:00",
+      "analyzed_at": "2026-07-31T04:16:29.333569+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-news-20f58c04-9bce-4535-94cf-e6d48d4329ce",
       "kind": "annual_report",
       "source_date": "2023-06-09T13:26:48+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:02:01.551296+00:00",
+      "analyzed_at": "2026-07-31T04:16:31.869173+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-ar-532540-085896fa-2e3b-4ecc-b9f1-31a31b7204b5.pdf.pdf",
       "kind": "annual_report",
       "source_date": "2023-06-09T18:56:48+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:02:01.607781+00:00",
+      "analyzed_at": "2026-07-31T04:16:31.961900+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-4dc07443-2a49-4336-adea-924552b175b6",
       "kind": "agm_notice",
       "source_date": "2023-06-30T10:46:36+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:02:01.663690+00:00",
+      "analyzed_at": "2026-07-31T04:16:32.046764+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-749fdeca-1694-4b5f-89f3-2773db377190",
       "kind": "agm_notice",
       "source_date": "2023-06-30T10:54:26+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:02:01.700734+00:00",
+      "analyzed_at": "2026-07-31T04:16:32.118955+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-a323aea2-0fd9-48a7-b1ff-7ca4178b35c5",
       "kind": "investor_presentation",
       "source_date": "2023-06-30T17:26:15+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T00:02:01.814129+00:00",
+      "analyzed_at": "2026-07-31T04:16:32.272999+00:00",
       "analyzer_version": "2.3",
       "evidence_id": "bse-news-4e4696b2-e74b-48e1-9c9f-5f692945de1c",
       "kind": "earnings_transcript",
       "source_date": "2023-10-13T13:35:25+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:03:20.816316+00:00",
+      "analyzed_at": "2026-07-31T04:17:43.788510+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-893c7f3a-6133-432f-8bf4-3b58fb39bddd",
       "kind": "agm_notice",
       "source_date": "2023-10-16T14:55:30+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:03:20.909090+00:00",
+      "analyzed_at": "2026-07-31T04:17:43.812211+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-cf72a8bd-e1a4-426d-9573-9089cebd6c3d",
       "kind": "investor_presentation",
       "source_date": "2023-10-18T13:05:49+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:03:20.984690+00:00",
+      "analyzed_at": "2026-07-31T04:17:43.841953+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-2eedc4dd-f0a5-4b8e-acce-8e4d0d0b8cbd",
       "kind": "investor_presentation",
       "source_date": "2023-10-26T12:32:03+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:03:21.058233+00:00",
+      "analyzed_at": "2026-07-31T04:17:43.887505+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-d8c6add5-759c-4646-844a-b29a75450d47",
       "kind": "investor_presentation",
       "source_date": "2023-10-31T14:04:38+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:03:21.201399+00:00",
+      "analyzed_at": "2026-07-31T04:17:43.982654+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-be75ff91-2bdb-4cfb-9486-e4a9be9a18e7",
       "kind": "agm_notice",
       "source_date": "2023-11-15T15:51:33+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:03:21.472228+00:00",
+      "analyzed_at": "2026-07-31T04:17:44.147535+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-f700cb4c-7985-41df-a34c-59c3c29fa8fa",
       "kind": "agm_notice",
       "source_date": "2023-11-15T15:54:47+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:03:21.974200+00:00",
+      "analyzed_at": "2026-07-31T04:17:44.508593+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-6233389e-6f1b-4545-a03b-d3fca0b40cfb",
       "kind": "buyback",
       "source_date": "2023-11-17T12:29:21+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:03:22.050902+00:00",
+      "analyzed_at": "2026-07-31T04:17:44.532261+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-bc69272a-521d-4d7f-b431-3a0e634a3546",
       "kind": "investor_presentation",
       "source_date": "2023-11-22T14:21:12+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:03:22.161187+00:00",
+      "analyzed_at": "2026-07-31T04:17:44.563596+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-d0bf9988-5cc4-40f5-ad02-cb58d6682674",
       "kind": "investor_presentation",
       "source_date": "2023-11-30T12:35:44+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:03:22.228462+00:00",
+      "analyzed_at": "2026-07-31T04:17:44.593588+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-c78dbffb-3fc1-498f-80b2-a1d7ae3fc214",
       "kind": "investor_presentation",
       "source_date": "2023-12-08T14:33:51+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:03:22.624648+00:00",
+      "analyzed_at": "2026-07-31T04:17:44.891172+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-4d4a5575-3bbf-40c5-9e32-613f51c84105",
       "kind": "buyback",
       "source_date": "2023-12-13T11:00:29+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:03:22.721701+00:00",
+      "analyzed_at": "2026-07-31T04:17:44.946459+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-8b2b0027-67c5-4eb6-8012-153d22b30750",
       "kind": "buyback",
       "source_date": "2023-12-13T16:23:34+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:03:22.801946+00:00",
+      "analyzed_at": "2026-07-31T04:17:44.986429+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-ca8854a6-bcae-49aa-9d20-46446625db73",
       "kind": "investor_presentation",
       "source_date": "2023-12-29T14:22:48+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:03:23.019378+00:00",
+      "analyzed_at": "2026-07-31T04:17:45.128739+00:00",
       "analyzer_version": "2.3",
       "evidence_id": "bse-news-9d45b943-7361-4ca4-8393-e40fb5534b83",
       "kind": "earnings_transcript",
       "source_date": "2024-04-17T14:47:43+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:03:23.109931+00:00",
+      "analyzed_at": "2026-07-31T04:17:45.175420+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-e79ee399-9d4c-441d-9d1d-f7a4668cd6fa",
       "kind": "investor_presentation",
       "source_date": "2024-05-01T10:17:51+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:03:23.381222+00:00",
+      "analyzed_at": "2026-07-31T04:17:45.376915+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-baa91706-ad94-45ca-bf30-5035c4aefeb7",
       "kind": "agm_notice",
       "source_date": "2024-05-08T18:45:45+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:16.412716+00:00",
+      "analyzed_at": "2026-07-31T04:17:47.775326+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-news-a8be8b1d-ebc8-4ab7-8081-668fadaf6ecb",
       "kind": "annual_report",
       "source_date": "2024-05-08T19:10:13+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:18.318205+00:00",
+      "analyzed_at": "2026-07-31T04:17:48.082306+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-85c29641-f356-4579-95eb-3d8e9d2915c8",
       "kind": "brsr",
       "source_date": "2024-05-08T19:16:31+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:24.539988+00:00",
+      "analyzed_at": "2026-07-31T04:17:50.609740+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-ar-532540-d57e49b6-fd89-4fa8-b591-4f590100db1e.pdf.pdf",
       "kind": "annual_report",
       "source_date": "2024-05-09T00:40:13+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:24.623348+00:00",
+      "analyzed_at": "2026-07-31T04:17:50.646034+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-7b03e074-e729-42bb-ae94-b7f040c30db3",
       "kind": "investor_presentation",
       "source_date": "2024-05-23T11:16:02+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:24.710856+00:00",
+      "analyzed_at": "2026-07-31T04:17:50.679145+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-1b04874c-aa7d-49c7-9b42-4850980803f2",
       "kind": "investor_presentation",
       "source_date": "2024-05-27T14:46:51+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:24.791978+00:00",
+      "analyzed_at": "2026-07-31T04:17:50.712286+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-10cd1ea2-671a-48a7-9a25-97deb0cf5050",
       "kind": "agm_notice",
       "source_date": "2024-05-31T20:32:06+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:25.283969+00:00",
+      "analyzed_at": "2026-07-31T04:17:50.861408+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-481ce326-fd14-4e6f-9676-1d68115654bb",
       "kind": "agm_notice",
       "source_date": "2024-06-03T12:25:30+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:25.562155+00:00",
+      "analyzed_at": "2026-07-31T04:17:50.898013+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-42e4ce34-83de-437e-bde2-282f26984b0f",
       "kind": "investor_presentation",
       "source_date": "2024-06-05T07:12:03+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:25.735181+00:00",
+      "analyzed_at": "2026-07-31T04:17:50.931536+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-ab9cc02c-1d46-4421-ad2e-8b402c80b366",
       "kind": "investor_presentation",
       "source_date": "2024-06-28T14:41:32+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:25.881239+00:00",
+      "analyzed_at": "2026-07-31T04:17:50.966222+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-d7cbf711-df07-49a3-a850-6ba0030b89b4",
       "kind": "investor_presentation",
       "source_date": "2024-09-30T13:09:25+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:26.197034+00:00",
+      "analyzed_at": "2026-07-31T04:17:51.068560+00:00",
       "analyzer_version": "1.1",
       "evidence_id": "bse-news-c8be78c9-b40f-486a-853b-825e1919c160",
       "kind": "board_outcome",
       "source_date": "2024-10-10T10:36:28+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:26.747263+00:00",
+      "analyzed_at": "2026-07-31T04:17:51.187101+00:00",
       "analyzer_version": "1.1",
       "evidence_id": "bse-news-373a3674-df22-42d5-ac50-1d77941355cd",
       "kind": "financial_results",
       "source_date": "2024-10-10T10:39:49+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:26.930009+00:00",
+      "analyzed_at": "2026-07-31T04:17:51.222996+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-00014b92-e2fb-414e-908c-f895219d3270",
       "kind": "investor_presentation",
       "source_date": "2024-10-11T14:05:16+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:27.337426+00:00",
+      "analyzed_at": "2026-07-31T04:17:51.327309+00:00",
       "analyzer_version": "2.3",
       "evidence_id": "bse-news-9946569a-50a1-4e19-a987-5f5bdce8f06a",
       "kind": "earnings_transcript",
       "source_date": "2024-10-14T13:31:56+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:27.537286+00:00",
+      "analyzed_at": "2026-07-31T04:17:51.363149+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-6dbd1210-761f-49a4-a763-8cdf60ab061e",
       "kind": "investor_presentation",
       "source_date": "2024-10-30T12:39:54+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:27.638421+00:00",
+      "analyzed_at": "2026-07-31T04:17:51.385366+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-b5ca5f23-7d66-4613-ba53-2410f4d59e76",
       "kind": "investor_presentation",
       "source_date": "2024-11-30T13:34:05+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:27.773752+00:00",
+      "analyzed_at": "2026-07-31T04:17:51.405727+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-8ba63343-855d-4e33-9837-6dd1d8161f65",
       "kind": "investor_presentation",
       "source_date": "2024-12-16T15:16:33+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:28.354941+00:00",
+      "analyzed_at": "2026-07-31T04:17:51.506293+00:00",
       "analyzer_version": "2.3",
       "evidence_id": "bse-news-4b68b72b-6735-4e94-a1ea-5150aa11dac9",
       "kind": "earnings_transcript",
       "source_date": "2025-04-12T12:20:17+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:28.540787+00:00",
+      "analyzed_at": "2026-07-31T04:17:51.548055+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-820cd8b2-2882-4766-819e-10f0c0dc8714",
       "kind": "credit_rating_report",
       "source_date": "2025-04-18T12:26:19+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:28.703359+00:00",
+      "analyzed_at": "2026-07-31T04:17:51.570622+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-68a48e7d-1b35-4c7b-807a-ea11756473d2",
       "kind": "agm_notice",
       "source_date": "2025-04-30T15:45:58+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:28.816944+00:00",
+      "analyzed_at": "2026-07-31T04:17:51.598936+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-8717525d-2fd7-42c3-b72f-6cc21884c8c8",
       "kind": "investor_presentation",
       "source_date": "2025-04-30T16:08:30+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:28.893292+00:00",
+      "analyzed_at": "2026-07-31T04:17:51.615796+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-6526a894-ab8e-42a7-92fc-2ad9407d9f26",
       "kind": "acquisition",
       "source_date": "2025-04-30T17:40:35+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:34.942184+00:00",
+      "analyzed_at": "2026-07-31T04:17:54.770954+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-51735e15-b0b8-4eb4-9ce5-1a9d880cd6fc",
       "kind": "agm_notice",
       "source_date": "2025-05-27T18:00:07+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:41.324880+00:00",
+      "analyzed_at": "2026-07-31T04:17:58.490646+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-news-5f265e1c-6312-4556-b208-749bfa2caf8f",
       "kind": "annual_report",
       "source_date": "2025-05-27T18:04:35+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:41.819005+00:00",
+      "analyzed_at": "2026-07-31T04:17:58.844521+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-2e389663-765c-46b8-975a-7d07faf5c25e",
       "kind": "brsr",
       "source_date": "2025-05-27T18:07:07+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:46.608523+00:00",
+      "analyzed_at": "2026-07-31T04:18:02.613018+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-ar-532540-bb9f9e0a-e4ce-4a4e-997e-0b5de8c2bec0.pdf.pdf",
       "kind": "annual_report",
       "source_date": "2025-05-27T23:34:35+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:46.658452+00:00",
+      "analyzed_at": "2026-07-31T04:18:02.657234+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-3816a7ad-f9e2-4212-a4f2-2993c7c86015",
       "kind": "investor_presentation",
       "source_date": "2025-06-05T14:03:25+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:46.708172+00:00",
+      "analyzed_at": "2026-07-31T04:18:02.691876+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-cc058c30-6e60-4779-b61e-67f67028408d",
       "kind": "credit_rating_report",
       "source_date": "2025-06-06T13:47:56+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:46.760480+00:00",
+      "analyzed_at": "2026-07-31T04:18:02.737760+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-52061436-bc8d-4f85-9bbe-aae935065357",
       "kind": "investor_presentation",
       "source_date": "2025-06-09T13:08:08+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:47.103998+00:00",
+      "analyzed_at": "2026-07-31T04:18:03.060790+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-142ec3b0-9c40-44d4-a91a-90209663497a",
       "kind": "agm_notice",
       "source_date": "2025-06-19T16:56:05+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:47.437499+00:00",
+      "analyzed_at": "2026-07-31T04:18:03.329113+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-37554f65-a12f-4ab5-aed7-d31205cc35e5",
       "kind": "agm_notice",
       "source_date": "2025-06-19T16:58:24+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:47.655372+00:00",
+      "analyzed_at": "2026-07-31T04:18:03.488666+00:00",
       "analyzer_version": "2.3",
       "evidence_id": "bse-news-b60eabf7-2ff3-4f91-9aa6-20885f494608",
       "kind": "earnings_transcript",
       "source_date": "2025-10-15T09:57:50+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:47.753210+00:00",
+      "analyzed_at": "2026-07-31T04:18:03.559791+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-c8297860-b595-4154-8b7b-1011c65e6d10",
       "kind": "investor_presentation",
       "source_date": "2025-10-27T14:56:48+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:47.805033+00:00",
+      "analyzed_at": "2026-07-31T04:18:03.590033+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-de5103de-ad7c-4136-839d-b5b3cfccaf05",
       "kind": "acquisition",
       "source_date": "2025-10-30T09:49:09+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:47.886420+00:00",
+      "analyzed_at": "2026-07-31T04:18:03.630536+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-2e79afde-de61-4bac-806b-1ae2deb33a9c",
       "kind": "investor_presentation",
       "source_date": "2025-11-17T11:31:43+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:47.979807+00:00",
+      "analyzed_at": "2026-07-31T04:18:03.690314+00:00",
       "analyzer_version": "1.1",
       "evidence_id": "bse-news-6f7c8d3d-ab76-46cb-bca9-efda08d9d559",
       "kind": "board_outcome",
       "source_date": "2025-11-20T11:31:55+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:48.033509+00:00",
+      "analyzed_at": "2026-07-31T04:18:03.716922+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-26f31299-97b7-4146-95f1-9bc338387ffe",
       "kind": "investor_presentation",
       "source_date": "2025-12-04T13:34:07+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:48.146335+00:00",
+      "analyzed_at": "2026-07-31T04:18:03.785655+00:00",
       "analyzer_version": "1.1",
       "evidence_id": "bse-news-2636b0ad-4ee8-4506-8ba5-9eaeaf800020",
       "kind": "board_outcome",
       "source_date": "2025-12-10T15:43:42+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:48.256667+00:00",
+      "analyzed_at": "2026-07-31T04:18:03.854440+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-c6427530-ce9c-4ed6-88a5-bdf314aeca25",
       "kind": "acquisition",
       "source_date": "2025-12-10T15:45:38+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:48.320756+00:00",
+      "analyzed_at": "2026-07-31T04:18:03.888440+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-6613014d-32d9-4e2b-830a-ac2f95a2bde8",
       "kind": "investor_presentation",
       "source_date": "2025-12-11T13:12:22+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:48.369298+00:00",
+      "analyzed_at": "2026-07-31T04:18:03.915218+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-f5e7effc-58ad-40dd-9418-cd55733c6b8c",
       "kind": "credit_rating_report",
       "source_date": "2025-12-12T06:08:59+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:48.415566+00:00",
+      "analyzed_at": "2026-07-31T04:18:03.948801+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-0179b556-ec38-4936-8855-496263416d64",
       "kind": "acquisition",
       "source_date": "2025-12-16T14:24:46+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:48.477390+00:00",
+      "analyzed_at": "2026-07-31T04:18:03.986963+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-f4a6b240-0d7e-4f6f-9c4e-df11afd53c99",
       "kind": "acquisition",
       "source_date": "2025-12-17T06:01:57+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:48.736777+00:00",
+      "analyzed_at": "2026-07-31T04:18:04.143222+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-d4482add-0416-449e-babc-d6e5aeefe1ab",
       "kind": "investor_presentation",
       "source_date": "2025-12-17T10:22:14+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:48.816961+00:00",
+      "analyzed_at": "2026-07-31T04:18:04.176597+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-4a229f29-4d77-4b17-894b-bc2564f5014e",
       "kind": "acquisition",
       "source_date": "2025-12-18T14:07:19+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:48.938539+00:00",
+      "analyzed_at": "2026-07-31T04:18:04.228852+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-96d9ebef-e300-467e-97e5-2d4111673909",
       "kind": "investor_presentation",
       "source_date": "2026-03-27T07:43:21+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:49.533154+00:00",
+      "analyzed_at": "2026-07-31T04:18:04.625411+00:00",
       "analyzer_version": "1.1",
       "evidence_id": "bse-news-6f1cf0de-6044-4195-8d91-f479cbfa778a",
       "kind": "board_outcome",
       "source_date": "2026-04-09T10:26:11+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:50.069021+00:00",
+      "analyzed_at": "2026-07-31T04:18:05.069716+00:00",
       "analyzer_version": "1.1",
       "evidence_id": "bse-news-e4ffa3fc-e4f0-4da0-89fe-75d2f7b7b956",
       "kind": "financial_results",
       "source_date": "2026-04-09T10:30:30+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:50.249257+00:00",
+      "analyzed_at": "2026-07-31T04:18:05.197467+00:00",
       "analyzer_version": "2.3",
       "evidence_id": "bse-news-7ff81737-8eeb-4f5a-afad-f5f79b216e83",
       "kind": "earnings_transcript",
       "source_date": "2026-04-14T14:34:50+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:51.809829+00:00",
+      "analyzed_at": "2026-07-31T04:18:06.581415+00:00",
       "analyzer_version": "1.1",
       "evidence_id": "bse-shp-532540-129",
       "kind": "shareholding_pattern",
       "source_date": "2026-04-21T10:21:39+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:43:56.222572+00:00",
+      "analyzed_at": "2026-07-31T04:18:09.621874+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-8cc8ab31-ec18-4ca9-8bb4-8ddec9f1f8cf",
       "kind": "agm_notice",
       "source_date": "2026-05-15T18:16:18+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:44:00.526382+00:00",
+      "analyzed_at": "2026-07-31T04:18:12.840815+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-news-6e49b04e-0256-4d93-b50e-a91ee2773bf2",
       "kind": "annual_report",
       "source_date": "2026-05-15T18:20:38+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:44:01.037028+00:00",
+      "analyzed_at": "2026-07-31T04:18:13.208734+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-ffe33416-6ca6-4c63-ae04-f914bb97c4cc",
       "kind": "brsr",
       "source_date": "2026-05-15T18:22:37+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:44:05.131977+00:00",
+      "analyzed_at": "2026-07-31T04:18:16.528806+00:00",
       "analyzer_version": "3.4",
       "evidence_id": "bse-ar-532540-ad42e748-d73c-4c79-8c52-bcf1b1399bc1.pdf.pdf",
       "kind": "annual_report",
       "source_date": "2026-05-15T23:50:38+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:44:05.231781+00:00",
+      "analyzed_at": "2026-07-31T04:18:16.568041+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-0e25ea2e-72f9-4030-8928-3787b91861fd",
       "kind": "investor_presentation",
       "source_date": "2026-05-26T06:49:51+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:44:05.425199+00:00",
+      "analyzed_at": "2026-07-31T04:18:16.688422+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-d73b015e-301e-43d4-a739-f44bdbaaf3c9",
       "kind": "agm_notice",
       "source_date": "2026-06-09T12:47:50+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:44:05.588325+00:00",
+      "analyzed_at": "2026-07-31T04:18:16.804948+00:00",
       "analyzer_version": "1.0",
       "evidence_id": "bse-news-d2035b82-b8c1-4dd5-a510-924f88f5acb1",
       "kind": "agm_notice",
       "source_date": "2026-06-09T12:50:29+00:00"
     },
     {
-      "analyzed_at": "2026-07-31T03:44:05.667956+00:00",
+      "analyzed_at": "2026-07-31T04:18:16.842624+00:00",
       "analyzer_version": "2.0",
       "evidence_id": "bse-news-fe6e397f-761f-484d-a99a-70d5569054be",
       "kind": "investor_presentation",
@@ -2304,16 +2304,6 @@
           "title": "To receive, consider and adopt: a. the Audited Standalone Financial Statements of the Company for the financial year ended March 31, 2025, together with the Reports of the Board of Directors and the Auditors thereon; and b. the Audited Consolidated Financial Statements of the Company for the financial year ended March 31, 2025, together with the Report of the Auditors thereon"
         },
         {
-          "evidence_id": "bse-news-d73b015e-301e-43d4-a739-f44bdbaaf3c9",
-          "outcome": "passed",
-          "pct_against": 3.5064,
-          "pct_for": 96.4936,
-          "period": "2026-06-09",
-          "resolution_type": "ordinary",
-          "source_date": "2026-06-09T12:47:50+00:00",
-          "title": "To appoint a Director in place of N Chandrasekaran (DIN 00121863), who retires by rotation and being eligible, offers himself for re-appointment."
-        },
-        {
           "evidence_id": "bse-news-d2035b82-b8c1-4dd5-a510-924f88f5acb1",
           "outcome": "passed",
           "pct_against": 3.5064,
@@ -2326,12 +2316,12 @@
         {
           "evidence_id": "bse-news-d73b015e-301e-43d4-a739-f44bdbaaf3c9",
           "outcome": "passed",
-          "pct_against": 0.0001,
-          "pct_for": 99.9999,
+          "pct_against": 3.5064,
+          "pct_for": 96.4936,
           "period": "2026-06-09",
           "resolution_type": "ordinary",
           "source_date": "2026-06-09T12:47:50+00:00",
-          "title": "To confirm the payment of Interim Dividends (including a special dividend) on Equity Shares and to declare a Final Dividend on Equity Shares for the financial year ended March 31, 2026."
+          "title": "To appoint a Director in place of N Chandrasekaran (DIN 00121863), who retires by rotation and being eligible, offers himself for re-appointment."
         },
         {
           "evidence_id": "bse-news-d2035b82-b8c1-4dd5-a510-924f88f5acb1",
@@ -2345,22 +2335,32 @@
         },
         {
           "evidence_id": "bse-news-d73b015e-301e-43d4-a739-f44bdbaaf3c9",
+          "outcome": "passed",
+          "pct_against": 0.0001,
+          "pct_for": 99.9999,
+          "period": "2026-06-09",
+          "resolution_type": "ordinary",
+          "source_date": "2026-06-09T12:47:50+00:00",
+          "title": "To confirm the payment of Interim Dividends (including a special dividend) on Equity Shares and to declare a Final Dividend on Equity Shares for the financial year ended March 31, 2026."
+        },
+        {
+          "evidence_id": "bse-news-d2035b82-b8c1-4dd5-a510-924f88f5acb1",
           "outcome": "passed",
           "pct_against": 0.0003,
           "pct_for": 99.9997,
           "period": "2026-06-09",
           "resolution_type": "ordinary",
-          "source_date": "2026-06-09T12:47:50+00:00",
+          "source_date": "2026-06-09T12:50:29+00:00",
           "title": "To receive, consider and adopt: a. the Audited Standalone Financial Statements of the Company for the financial year ended March 31, 2026, together with the Reports of the Board of Directors and the Auditors thereon; and b. the Audited Consolidated Financial Statements of the Company for the financial year ended March 31, 2026, together with the Report of the Auditors thereon."
         },
         {
-          "evidence_id": "bse-news-d2035b82-b8c1-4dd5-a510-924f88f5acb1",
+          "evidence_id": "bse-news-d73b015e-301e-43d4-a739-f44bdbaaf3c9",
           "outcome": "passed",
           "pct_against": 0.0003,
           "pct_for": 99.9997,
           "period": "2026-06-09",
           "resolution_type": "ordinary",
-          "source_date": "2026-06-09T12:50:29+00:00",
+          "source_date": "2026-06-09T12:47:50+00:00",
           "title": "To receive, consider and adopt: a. the Audited Standalone Financial Statements of the Company for the financial year ended March 31, 2026, together with the Reports of the Board of Directors and the Auditors thereon; and b. the Audited Consolidated Financial Statements of the Company for the financial year ended March 31, 2026, together with the Report of the Auditors thereon."
         }
       ],
@@ -2368,17 +2368,7 @@
         {
           "evidence_id": "bse-ar-532540-5325400311.pdf",
           "period": "2011-03-31",
-          "text": "due to sustained demand"
-        },
-        {
-          "evidence_id": "bse-ar-532540-5325400311.pdf",
-          "period": "2011-03-31",
           "text": "As a percentage of revenues these expenses"
-        },
-        {
-          "evidence_id": "bse-ar-532540-5325400311.pdf",
-          "period": "2011-03-31",
-          "text": "This is primarily due to increase of proﬁts in two"
         },
         {
           "evidence_id": "bse-ar-532540-5325400311.pdf",
@@ -2388,7 +2378,22 @@
         {
           "evidence_id": "bse-ar-532540-5325400311.pdf",
           "period": "2011-03-31",
+          "text": "The decrease of 1.88% was primarily due to:"
+        },
+        {
+          "evidence_id": "bse-ar-532540-5325400311.pdf",
+          "period": "2011-03-31",
+          "text": "This is primarily due to increase of proﬁts in two"
+        },
+        {
+          "evidence_id": "bse-ar-532540-5325400311.pdf",
+          "period": "2011-03-31",
           "text": "and has contributed 9.69% of total segment result"
+        },
+        {
+          "evidence_id": "bse-ar-532540-5325400311.pdf",
+          "period": "2011-03-31",
+          "text": "due to sustained demand"
         },
         {
           "evidence_id": "bse-ar-532540-5325400311.pdf",
@@ -2396,9 +2401,24 @@
           "text": "mostly related to construction / improvement of"
         },
         {
-          "evidence_id": "bse-ar-532540-5325400311.pdf",
-          "period": "2011-03-31",
-          "text": "The decrease of 1.88% was primarily due to:"
+          "evidence_id": "bse-ar-532540-5325400312.pdf",
+          "period": "2012-03-31",
+          "text": "Advance planning for visas"
+        },
+        {
+          "evidence_id": "bse-ar-532540-5325400312.pdf",
+          "period": "2012-03-31",
+          "text": "Broad-basing the number of key clients by gradually moving"
+        },
+        {
+          "evidence_id": "bse-ar-532540-5325400312.pdf",
+          "period": "2012-03-31",
+          "text": "Broadening the Company’s service offerings to become an"
+        },
+        {
+          "evidence_id": "bse-ar-532540-5325400312.pdf",
+          "period": "2012-03-31",
+          "text": "Building greater client intimacy by optimising operating metrics"
         },
         {
           "evidence_id": "bse-ar-532540-5325400312.pdf",
@@ -2413,22 +2433,7 @@
         {
           "evidence_id": "bse-ar-532540-5325400312.pdf",
           "period": "2012-03-31",
-          "text": "Building greater client intimacy by optimising operating metrics"
-        },
-        {
-          "evidence_id": "bse-ar-532540-5325400312.pdf",
-          "period": "2012-03-31",
-          "text": "Broad-basing the number of key clients by gradually moving"
-        },
-        {
-          "evidence_id": "bse-ar-532540-5325400312.pdf",
-          "period": "2012-03-31",
-          "text": "Leveraging the GNDM™"
-        },
-        {
-          "evidence_id": "bse-ar-532540-5325400312.pdf",
-          "period": "2012-03-31",
-          "text": "Advance planning for visas"
+          "text": "Greater focus"
         },
         {
           "evidence_id": "bse-ar-532540-5325400312.pdf",
@@ -2438,22 +2443,17 @@
         {
           "evidence_id": "bse-ar-532540-5325400312.pdf",
           "period": "2012-03-31",
+          "text": "Leveraging the GNDM™"
+        },
+        {
+          "evidence_id": "bse-ar-532540-5325400312.pdf",
+          "period": "2012-03-31",
           "text": "Working through industry bodies to articulate the Company’s"
-        },
-        {
-          "evidence_id": "bse-ar-532540-5325400312.pdf",
-          "period": "2012-03-31",
-          "text": "Broadening the Company’s service offerings to become an"
-        },
-        {
-          "evidence_id": "bse-ar-532540-5325400312.pdf",
-          "period": "2012-03-31",
-          "text": "Greater focus"
         },
         {
           "evidence_id": "bse-ar-532540-5325400314.pdf",
           "period": "2014-03-31",
-          "text": "The increase was spread across all asset groups,"
+          "text": "ARCH\u0000\u0013\u0011\f\u0000\u0012\u0010\u0011\u0013\t\u000e\u0000.OTE\u0000\u0014\u0012\u0000TO\u0000THE\u0000CONSOLIDATED\u0000lNANCIAL\u0000statements gives details of movements in the hedging"
         },
         {
           "evidence_id": "bse-ar-532540-5325400314.pdf",
@@ -2463,17 +2463,32 @@
         {
           "evidence_id": "bse-ar-532540-5325400314.pdf",
           "period": "2014-03-31",
-          "text": "ARCH\u0000\u0013\u0011\f\u0000\u0012\u0010\u0011\u0013\t\u000e\u0000.OTE\u0000\u0014\u0012\u0000TO\u0000THE\u0000CONSOLIDATED\u0000lNANCIAL\u0000statements gives details of movements in the hedging"
+          "text": "The increase was spread across all asset groups,"
         },
         {
           "evidence_id": "bse-ar-532540-5325400315.pdf",
           "period": "2016-03-31",
-          "text": "Since this information is for part of the year, the same is not comparable."
+          "text": "0.028"
         },
         {
           "evidence_id": "bse-ar-532540-5325400315.pdf",
           "period": "2016-03-31",
-          "text": "Since this information is for part of the year, the same is not comparable."
+          "text": "0.096"
+        },
+        {
+          "evidence_id": "bse-ar-532540-5325400315.pdf",
+          "period": "2016-03-31",
+          "text": "0.297"
+        },
+        {
+          "evidence_id": "bse-ar-532540-5325400315.pdf",
+          "period": "2016-03-31",
+          "text": "0.379"
+        },
+        {
+          "evidence_id": "bse-ar-532540-5325400315.pdf",
+          "period": "2016-03-31",
+          "text": "1.167"
         },
         {
           "evidence_id": "bse-ar-532540-5325400315.pdf",
@@ -2486,6 +2501,11 @@
           "text": "Chandrasekaran"
         },
         {
+          "evidence_id": "bse-ar-532540-5325400316.pdf",
+          "period": "2016-03-31",
+          "text": "In the following discussions, the impact of the one-time employee reward on cash ﬂow from operating activities"
+        },
+        {
           "evidence_id": "bse-ar-532540-5325400315.pdf",
           "period": "2016-03-31",
           "text": "Promoters"
@@ -2493,37 +2513,32 @@
         {
           "evidence_id": "bse-ar-532540-5325400315.pdf",
           "period": "2016-03-31",
-          "text": "0.379"
+          "text": "Since this information is for part of the year, the same is not comparable."
         },
         {
           "evidence_id": "bse-ar-532540-5325400315.pdf",
           "period": "2016-03-31",
-          "text": "0.297"
+          "text": "Since this information is for part of the year, the same is not comparable."
         },
         {
-          "evidence_id": "bse-ar-532540-5325400315.pdf",
+          "evidence_id": "bse-ar-532540-5325400316.pdf",
           "period": "2016-03-31",
-          "text": "1.167"
+          "text": "The increase was primarily due to:"
         },
         {
-          "evidence_id": "bse-ar-532540-5325400315.pdf",
+          "evidence_id": "bse-ar-532540-5325400316.pdf",
           "period": "2016-03-31",
-          "text": "0.096"
+          "text": "cloud based sales and marketing transformation,"
         },
         {
-          "evidence_id": "bse-ar-532540-5325400315.pdf",
+          "evidence_id": "bse-ar-532540-5325400316.pdf",
           "period": "2016-03-31",
-          "text": "0.028"
+          "text": "excluding impact of one-time employee reward"
         },
         {
           "evidence_id": "bse-ar-532540-5325400316.pdf",
           "period": "2016-03-31",
           "text": "excluding one-\u0002me employee reward"
-        },
-        {
-          "evidence_id": "bse-ar-532540-5325400316.pdf",
-          "period": "2016-03-31",
-          "text": "excluding-one \u0002me employee reward"
         },
         {
           "evidence_id": "bse-ar-532540-5325400316.pdf",
@@ -2538,17 +2553,7 @@
         {
           "evidence_id": "bse-ar-532540-5325400316.pdf",
           "period": "2016-03-31",
-          "text": "cloud based sales and marketing transformation,"
-        },
-        {
-          "evidence_id": "bse-ar-532540-5325400316.pdf",
-          "period": "2016-03-31",
-          "text": "omni-channel supply chain solutions, d) next generation"
-        },
-        {
-          "evidence_id": "bse-ar-532540-5325400316.pdf",
-          "period": "2016-03-31",
-          "text": "The increase was primarily due to:"
+          "text": "excluding-one \u0002me employee reward"
         },
         {
           "evidence_id": "bse-ar-532540-5325400316.pdf",
@@ -2558,17 +2563,7 @@
         {
           "evidence_id": "bse-ar-532540-5325400316.pdf",
           "period": "2016-03-31",
-          "text": "In the following discussions, the impact of the one-time employee reward on cash ﬂow from operating activities"
-        },
-        {
-          "evidence_id": "bse-ar-532540-5325400316.pdf",
-          "period": "2016-03-31",
-          "text": "excluding impact of one-time employee reward"
-        },
-        {
-          "evidence_id": "bse-ar-532540-5325400317.pdf",
-          "period": "2017-03-31",
-          "text": "Revenue: The revenue of the Company aggregated ` 117,966 crore in FY 2017 (` 108,646 crore in FY 2016), registering a growth of 8.6%."
+          "text": "omni-channel supply chain solutions, d) next generation"
         },
         {
           "evidence_id": "bse-ar-532540-5325400317.pdf",
@@ -2578,7 +2573,7 @@
         {
           "evidence_id": "bse-ar-532540-5325400317.pdf",
           "period": "2017-03-31",
-          "text": "Profit before tax (PBT): PBT aggregated ` 34,513 crore in FY 2017 (` 31,840 crore in FY 2016) – a growth of 8.4%."
+          "text": "Earnings per share (EPS): EPS aggregated ` 133.41 in FY 2017 (` 123.18 in FY 2016) – a growth of 8.3%."
         },
         {
           "evidence_id": "bse-ar-532540-5325400317.pdf",
@@ -2588,12 +2583,12 @@
         {
           "evidence_id": "bse-ar-532540-5325400317.pdf",
           "period": "2017-03-31",
-          "text": "Earnings per share (EPS): EPS aggregated ` 133.41 in FY 2017 (` 123.18 in FY 2016) – a growth of 8.3%."
+          "text": "Profit before tax (PBT): PBT aggregated ` 34,513 crore in FY 2017 (` 31,840 crore in FY 2016) – a growth of 8.4%."
         },
         {
           "evidence_id": "bse-ar-532540-5325400317.pdf",
           "period": "2017-03-31",
-          "text": "’Investments carried at fair value through OCI’ increased from ` 20,423 crore in FY 2016 to ` 22,140 crore in FY 2017. The increase of ` 1,717 crore is due to"
+          "text": "Revenue: The revenue of the Company aggregated ` 117,966 crore in FY 2017 (` 108,646 crore in FY 2016), registering a growth of 8.6%."
         },
         {
           "evidence_id": "bse-ar-532540-5325400317.pdf",
@@ -2616,6 +2611,11 @@
           "text": "offset by decrease in bank deposits by ` 2,453 crore, decrease in inter-corporate deposits by ` 1,618 crore and decrease in cash and bank balances by"
         },
         {
+          "evidence_id": "bse-ar-532540-5325400317.pdf",
+          "period": "2017-03-31",
+          "text": "’Investments carried at fair value through OCI’ increased from ` 20,423 crore in FY 2016 to ` 22,140 crore in FY 2017. The increase of ` 1,717 crore is due to"
+        },
+        {
           "evidence_id": "bse-ar-532540-5325400318.pdf",
           "period": "2018-03-31",
           "text": "**\t Relinquished the office of Executive Director and appointed as an Additional Director in non-executive"
@@ -2628,11 +2628,6 @@
         {
           "evidence_id": "bse-ar-532540-5325400318.pdf",
           "period": "2018-03-31",
-          "text": "The percentage increase in the median remuneration of employees in the financial year: 0.57%, reflecting an"
-        },
-        {
-          "evidence_id": "bse-ar-532540-5325400318.pdf",
-          "period": "2018-03-31",
           "text": "Chandrasekaran"
         },
         {
@@ -2644,6 +2639,16 @@
           "evidence_id": "bse-ar-532540-5325400318.pdf",
           "period": "2018-03-31",
           "text": "Chandrasekaran"
+        },
+        {
+          "evidence_id": "bse-ar-532540-5325400318.pdf",
+          "period": "2018-03-31",
+          "text": "Tata Consultancy Services Asia Pacific Pte Ltd."
+        },
+        {
+          "evidence_id": "bse-ar-532540-5325400318.pdf",
+          "period": "2018-03-31",
+          "text": "Tata Consultancy Services Malaysia Sdn Bhd"
         },
         {
           "evidence_id": "bse-ar-532540-5325400318.pdf",
@@ -2658,17 +2663,7 @@
         {
           "evidence_id": "bse-ar-532540-5325400318.pdf",
           "period": "2018-03-31",
-          "text": "Tata Consultancy Services Asia Pacific Pte Ltd."
-        },
-        {
-          "evidence_id": "bse-ar-532540-5325400318.pdf",
-          "period": "2018-03-31",
-          "text": "Tata Consultancy Services Malaysia Sdn Bhd"
-        },
-        {
-          "evidence_id": "bse-ar-532540-5325400319.pdf",
-          "period": "2019-03-31",
-          "text": "Chairman of the Committee"
+          "text": "The percentage increase in the median remuneration of employees in the financial year: 0.57%, reflecting an"
         },
         {
           "evidence_id": "bse-ar-532540-5325400319.pdf",
@@ -2683,11 +2678,6 @@
         {
           "evidence_id": "bse-ar-532540-5325400319.pdf",
           "period": "2019-03-31",
-          "text": "Tata Sons Private Limited"
-        },
-        {
-          "evidence_id": "bse-ar-532540-5325400319.pdf",
-          "period": "2019-03-31",
           "text": "APTOnline Limited"
         },
         {
@@ -2698,12 +2688,17 @@
         {
           "evidence_id": "bse-ar-532540-5325400319.pdf",
           "period": "2019-03-31",
-          "text": "TCS e-Serve International Limited"
+          "text": "Chairman of the Committee"
         },
         {
           "evidence_id": "bse-ar-532540-5325400319.pdf",
           "period": "2019-03-31",
           "text": "TCS Foundation"
+        },
+        {
+          "evidence_id": "bse-ar-532540-5325400319.pdf",
+          "period": "2019-03-31",
+          "text": "TCS e-Serve International Limited"
         },
         {
           "evidence_id": "bse-ar-532540-5325400319.pdf",
@@ -2716,14 +2711,14 @@
           "text": "Tata Consultancy Services (South Africa) (PTY) Ltd."
         },
         {
-          "evidence_id": "bse-news-3d97b6d5-e16a-43a3-853d-d3dbd3fe649a",
-          "period": "2020-03-31",
-          "text": "Excluding the impact of one-time employee reward."
+          "evidence_id": "bse-ar-532540-5325400319.pdf",
+          "period": "2019-03-31",
+          "text": "Tata Sons Private Limited"
         },
         {
-          "evidence_id": "bse-news-3d97b6d5-e16a-43a3-853d-d3dbd3fe649a",
+          "evidence_id": "bse-ar-532540-5325400320.pdf",
           "period": "2020-03-31",
-          "text": "TATA Code of Conduct (https://on.tcs.com/Tata-Code-Of-Conduct)"
+          "text": "* CSR Policy (https://on.tcs.com/Global-CSR-Policy)"
         },
         {
           "evidence_id": "bse-news-3d97b6d5-e16a-43a3-853d-d3dbd3fe649a",
@@ -2731,9 +2726,54 @@
           "text": "* CSR Policy (https://on.tcs.com/Global-CSR-Policy)"
         },
         {
+          "evidence_id": "bse-news-b5ab3591-87ea-4b1c-a20f-8a27eebddd27",
+          "period": "2020-03-31",
+          "text": "* CSR Policy (https://on.tcs.com/Global-CSR-Policy)"
+        },
+        {
+          "evidence_id": "bse-ar-532540-5325400320.pdf",
+          "period": "2020-03-31",
+          "text": "** Environment Policy (https://on.tcs.com/Environmental-Policy)"
+        },
+        {
           "evidence_id": "bse-news-3d97b6d5-e16a-43a3-853d-d3dbd3fe649a",
           "period": "2020-03-31",
           "text": "** Environment Policy (https://on.tcs.com/Environmental-Policy)"
+        },
+        {
+          "evidence_id": "bse-news-b5ab3591-87ea-4b1c-a20f-8a27eebddd27",
+          "period": "2020-03-31",
+          "text": "** Environment Policy (https://on.tcs.com/Environmental-Policy)"
+        },
+        {
+          "evidence_id": "bse-ar-532540-5325400320.pdf",
+          "period": "2020-03-31",
+          "text": "Excluding the impact of one-time employee reward."
+        },
+        {
+          "evidence_id": "bse-news-3d97b6d5-e16a-43a3-853d-d3dbd3fe649a",
+          "period": "2020-03-31",
+          "text": "Excluding the impact of one-time employee reward."
+        },
+        {
+          "evidence_id": "bse-news-b5ab3591-87ea-4b1c-a20f-8a27eebddd27",
+          "period": "2020-03-31",
+          "text": "Excluding the impact of one-time employee reward."
+        },
+        {
+          "evidence_id": "bse-ar-532540-5325400320.pdf",
+          "period": "2020-03-31",
+          "text": "TATA Code of Conduct (https://on.tcs.com/Tata-Code-Of-Conduct)"
+        },
+        {
+          "evidence_id": "bse-news-3d97b6d5-e16a-43a3-853d-d3dbd3fe649a",
+          "period": "2020-03-31",
+          "text": "TATA Code of Conduct (https://on.tcs.com/Tata-Code-Of-Conduct)"
+        },
+        {
+          "evidence_id": "bse-news-b5ab3591-87ea-4b1c-a20f-8a27eebddd27",
+          "period": "2020-03-31",
+          "text": "TATA Code of Conduct (https://on.tcs.com/Tata-Code-Of-Conduct)"
         },
         {
           "evidence_id": "bse-news-3d97b6d5-e16a-43a3-853d-d3dbd3fe649a",
@@ -2741,24 +2781,9 @@
           "text": "emissions have reduced by 6% YoY27, for the fourth"
         },
         {
-          "evidence_id": "bse-news-b5ab3591-87ea-4b1c-a20f-8a27eebddd27",
+          "evidence_id": "bse-ar-532540-5325400320.pdf",
           "period": "2020-03-31",
-          "text": "Excluding the impact of one-time employee reward."
-        },
-        {
-          "evidence_id": "bse-news-b5ab3591-87ea-4b1c-a20f-8a27eebddd27",
-          "period": "2020-03-31",
-          "text": "TATA Code of Conduct (https://on.tcs.com/Tata-Code-Of-Conduct)"
-        },
-        {
-          "evidence_id": "bse-news-b5ab3591-87ea-4b1c-a20f-8a27eebddd27",
-          "period": "2020-03-31",
-          "text": "* CSR Policy (https://on.tcs.com/Global-CSR-Policy)"
-        },
-        {
-          "evidence_id": "bse-news-b5ab3591-87ea-4b1c-a20f-8a27eebddd27",
-          "period": "2020-03-31",
-          "text": "** Environment Policy (https://on.tcs.com/Environmental-Policy)"
+          "text": "emissions have reduced by 6% YoY28, for the fourth"
         },
         {
           "evidence_id": "bse-news-b5ab3591-87ea-4b1c-a20f-8a27eebddd27",
@@ -2766,49 +2791,9 @@
           "text": "emissions have reduced by 6% YoY28, for the fourth"
         },
         {
-          "evidence_id": "bse-ar-532540-5325400320.pdf",
-          "period": "2020-03-31",
-          "text": "Excluding the impact of one-time employee reward."
-        },
-        {
-          "evidence_id": "bse-ar-532540-5325400320.pdf",
-          "period": "2020-03-31",
-          "text": "TATA Code of Conduct (https://on.tcs.com/Tata-Code-Of-Conduct)"
-        },
-        {
-          "evidence_id": "bse-ar-532540-5325400320.pdf",
-          "period": "2020-03-31",
-          "text": "* CSR Policy (https://on.tcs.com/Global-CSR-Policy)"
-        },
-        {
-          "evidence_id": "bse-ar-532540-5325400320.pdf",
-          "period": "2020-03-31",
-          "text": "** Environment Policy (https://on.tcs.com/Environmental-Policy)"
-        },
-        {
-          "evidence_id": "bse-ar-532540-5325400320.pdf",
-          "period": "2020-03-31",
-          "text": "emissions have reduced by 6% YoY28, for the fourth"
-        },
-        {
-          "evidence_id": "bse-news-5cca1cd9-e145-4f6e-90de-79196ed31586",
+          "evidence_id": "bse-ar-532540-68468532540_25_05_21.pdf",
           "period": "2021-03-31",
-          "text": "J. Towers, Dalal Street, Mumbai 400 001"
-        },
-        {
-          "evidence_id": "bse-news-5cca1cd9-e145-4f6e-90de-79196ed31586",
-          "period": "2021-03-31",
-          "text": "Shareholding is consolidated based on Permanent Account Number (PAN) of"
-        },
-        {
-          "evidence_id": "bse-news-5cca1cd9-e145-4f6e-90de-79196ed31586",
-          "period": "2021-03-31",
-          "text": "Includes final dividend of erstwhile TCS e-Serve Limited and erstwhile"
-        },
-        {
-          "evidence_id": "bse-news-5cca1cd9-e145-4f6e-90de-79196ed31586",
-          "period": "2021-03-31",
-          "text": "the date of appointment is as per the MCA Portal."
+          "text": "APAC - 8 (China - 5, Philippines -2, Singapore -1 )"
         },
         {
           "evidence_id": "bse-news-5cca1cd9-e145-4f6e-90de-79196ed31586",
@@ -2816,9 +2801,14 @@
           "text": "APAC - 8 (China - 5, Philippines -2, Singapore -1 )"
         },
         {
-          "evidence_id": "bse-news-5cca1cd9-e145-4f6e-90de-79196ed31586",
+          "evidence_id": "bse-news-68e21f0a-b5f7-4f6f-ae6a-07cca5850648",
           "period": "2021-03-31",
-          "text": "Strong growth creates more jobs, and career growth opportunities for employees"
+          "text": "APAC - 8 (China - 5, Philippines -2, Singapore -1 )"
+        },
+        {
+          "evidence_id": "bse-ar-532540-68468532540_25_05_21.pdf",
+          "period": "2021-03-31",
+          "text": "Best in class profitability and strong balance sheet provide greater ability to invest"
         },
         {
           "evidence_id": "bse-news-5cca1cd9-e145-4f6e-90de-79196ed31586",
@@ -2826,102 +2816,7 @@
           "text": "Best in class profitability and strong balance sheet provide greater ability to invest"
         },
         {
-          "evidence_id": "bse-news-5cca1cd9-e145-4f6e-90de-79196ed31586",
-          "period": "2021-03-31",
-          "text": "Consistently high shareholder returns enhances relationship capital"
-        },
-        {
-          "evidence_id": "bse-news-5cca1cd9-e145-4f6e-90de-79196ed31586",
-          "period": "2021-03-31",
-          "text": "Enabled new business models, new revenue streams"
-        },
-        {
-          "evidence_id": "bse-news-5cca1cd9-e145-4f6e-90de-79196ed31586",
-          "period": "2021-03-31",
-          "text": "Expanded the addressable market"
-        },
-        {
           "evidence_id": "bse-news-68e21f0a-b5f7-4f6f-ae6a-07cca5850648",
-          "period": "2021-03-31",
-          "text": "J. Towers, Dalal Street, Mumbai 400 001"
-        },
-        {
-          "evidence_id": "bse-news-68e21f0a-b5f7-4f6f-ae6a-07cca5850648",
-          "period": "2021-03-31",
-          "text": "Shareholding is consolidated based on Permanent Account Number (PAN) of"
-        },
-        {
-          "evidence_id": "bse-news-68e21f0a-b5f7-4f6f-ae6a-07cca5850648",
-          "period": "2021-03-31",
-          "text": "Includes final dividend of erstwhile TCS e-Serve Limited and erstwhile"
-        },
-        {
-          "evidence_id": "bse-news-68e21f0a-b5f7-4f6f-ae6a-07cca5850648",
-          "period": "2021-03-31",
-          "text": "the date of appointment is as per the MCA Portal."
-        },
-        {
-          "evidence_id": "bse-news-68e21f0a-b5f7-4f6f-ae6a-07cca5850648",
-          "period": "2021-03-31",
-          "text": "APAC - 8 (China - 5, Philippines -2, Singapore -1 )"
-        },
-        {
-          "evidence_id": "bse-news-68e21f0a-b5f7-4f6f-ae6a-07cca5850648",
-          "period": "2021-03-31",
-          "text": "Strong growth creates more jobs, and career growth opportunities for employees"
-        },
-        {
-          "evidence_id": "bse-news-68e21f0a-b5f7-4f6f-ae6a-07cca5850648",
-          "period": "2021-03-31",
-          "text": "Best in class profitability and strong balance sheet provide greater ability to invest"
-        },
-        {
-          "evidence_id": "bse-news-68e21f0a-b5f7-4f6f-ae6a-07cca5850648",
-          "period": "2021-03-31",
-          "text": "Consistently high shareholder returns enhances relationship capital"
-        },
-        {
-          "evidence_id": "bse-news-68e21f0a-b5f7-4f6f-ae6a-07cca5850648",
-          "period": "2021-03-31",
-          "text": "Enabled new business models, new revenue streams"
-        },
-        {
-          "evidence_id": "bse-news-68e21f0a-b5f7-4f6f-ae6a-07cca5850648",
-          "period": "2021-03-31",
-          "text": "Expanded the addressable market"
-        },
-        {
-          "evidence_id": "bse-ar-532540-68468532540_25_05_21.pdf",
-          "period": "2021-03-31",
-          "text": "J. Towers, Dalal Street, Mumbai 400 001"
-        },
-        {
-          "evidence_id": "bse-ar-532540-68468532540_25_05_21.pdf",
-          "period": "2021-03-31",
-          "text": "Shareholding is consolidated based on Permanent Account Number (PAN) of"
-        },
-        {
-          "evidence_id": "bse-ar-532540-68468532540_25_05_21.pdf",
-          "period": "2021-03-31",
-          "text": "Includes final dividend of erstwhile TCS e-Serve Limited and erstwhile"
-        },
-        {
-          "evidence_id": "bse-ar-532540-68468532540_25_05_21.pdf",
-          "period": "2021-03-31",
-          "text": "the date of appointment is as per the MCA Portal."
-        },
-        {
-          "evidence_id": "bse-ar-532540-68468532540_25_05_21.pdf",
-          "period": "2021-03-31",
-          "text": "APAC - 8 (China - 5, Philippines -2, Singapore -1 )"
-        },
-        {
-          "evidence_id": "bse-ar-532540-68468532540_25_05_21.pdf",
-          "period": "2021-03-31",
-          "text": "Strong growth creates more jobs, and career growth opportunities for employees"
-        },
-        {
-          "evidence_id": "bse-ar-532540-68468532540_25_05_21.pdf",
           "period": "2021-03-31",
           "text": "Best in class profitability and strong balance sheet provide greater ability to invest"
         },
@@ -2931,7 +2826,27 @@
           "text": "Consistently high shareholder returns enhances relationship capital"
         },
         {
+          "evidence_id": "bse-news-5cca1cd9-e145-4f6e-90de-79196ed31586",
+          "period": "2021-03-31",
+          "text": "Consistently high shareholder returns enhances relationship capital"
+        },
+        {
+          "evidence_id": "bse-news-68e21f0a-b5f7-4f6f-ae6a-07cca5850648",
+          "period": "2021-03-31",
+          "text": "Consistently high shareholder returns enhances relationship capital"
+        },
+        {
           "evidence_id": "bse-ar-532540-68468532540_25_05_21.pdf",
+          "period": "2021-03-31",
+          "text": "Enabled new business models, new revenue streams"
+        },
+        {
+          "evidence_id": "bse-news-5cca1cd9-e145-4f6e-90de-79196ed31586",
+          "period": "2021-03-31",
+          "text": "Enabled new business models, new revenue streams"
+        },
+        {
+          "evidence_id": "bse-news-68e21f0a-b5f7-4f6f-ae6a-07cca5850648",
           "period": "2021-03-31",
           "text": "Enabled new business models, new revenue streams"
         },
@@ -2941,39 +2856,94 @@
           "text": "Expanded the addressable market"
         },
         {
-          "evidence_id": "bse-news-53706155-95ff-4c10-8218-9a363088a8f6",
-          "period": "2022-03-31",
-          "text": "Climate change"
+          "evidence_id": "bse-news-5cca1cd9-e145-4f6e-90de-79196ed31586",
+          "period": "2021-03-31",
+          "text": "Expanded the addressable market"
         },
         {
-          "evidence_id": "bse-news-53706155-95ff-4c10-8218-9a363088a8f6",
-          "period": "2022-03-31",
-          "text": "Excluding provision towards legal claim."
+          "evidence_id": "bse-news-68e21f0a-b5f7-4f6f-ae6a-07cca5850648",
+          "period": "2021-03-31",
+          "text": "Expanded the addressable market"
         },
         {
-          "evidence_id": "bse-news-53706155-95ff-4c10-8218-9a363088a8f6",
-          "period": "2022-03-31",
-          "text": "Excluding provision towards legal claim."
+          "evidence_id": "bse-ar-532540-68468532540_25_05_21.pdf",
+          "period": "2021-03-31",
+          "text": "Includes final dividend of erstwhile TCS e-Serve Limited and erstwhile"
         },
         {
-          "evidence_id": "bse-news-53706155-95ff-4c10-8218-9a363088a8f6",
-          "period": "2022-03-31",
-          "text": "Excluding provision towards legal claim."
+          "evidence_id": "bse-news-5cca1cd9-e145-4f6e-90de-79196ed31586",
+          "period": "2021-03-31",
+          "text": "Includes final dividend of erstwhile TCS e-Serve Limited and erstwhile"
         },
         {
-          "evidence_id": "bse-news-53706155-95ff-4c10-8218-9a363088a8f6",
-          "period": "2022-03-31",
-          "text": "includes shares held jointly with relative"
+          "evidence_id": "bse-news-68e21f0a-b5f7-4f6f-ae6a-07cca5850648",
+          "period": "2021-03-31",
+          "text": "Includes final dividend of erstwhile TCS e-Serve Limited and erstwhile"
         },
         {
-          "evidence_id": "bse-news-53706155-95ff-4c10-8218-9a363088a8f6",
-          "period": "2022-03-31",
-          "text": "Ceased to be a member of the Committee"
+          "evidence_id": "bse-ar-532540-68468532540_25_05_21.pdf",
+          "period": "2021-03-31",
+          "text": "J. Towers, Dalal Street, Mumbai 400 001"
         },
         {
-          "evidence_id": "bse-news-53706155-95ff-4c10-8218-9a363088a8f6",
+          "evidence_id": "bse-news-5cca1cd9-e145-4f6e-90de-79196ed31586",
+          "period": "2021-03-31",
+          "text": "J. Towers, Dalal Street, Mumbai 400 001"
+        },
+        {
+          "evidence_id": "bse-news-68e21f0a-b5f7-4f6f-ae6a-07cca5850648",
+          "period": "2021-03-31",
+          "text": "J. Towers, Dalal Street, Mumbai 400 001"
+        },
+        {
+          "evidence_id": "bse-ar-532540-68468532540_25_05_21.pdf",
+          "period": "2021-03-31",
+          "text": "Shareholding is consolidated based on Permanent Account Number (PAN) of"
+        },
+        {
+          "evidence_id": "bse-news-5cca1cd9-e145-4f6e-90de-79196ed31586",
+          "period": "2021-03-31",
+          "text": "Shareholding is consolidated based on Permanent Account Number (PAN) of"
+        },
+        {
+          "evidence_id": "bse-news-68e21f0a-b5f7-4f6f-ae6a-07cca5850648",
+          "period": "2021-03-31",
+          "text": "Shareholding is consolidated based on Permanent Account Number (PAN) of"
+        },
+        {
+          "evidence_id": "bse-ar-532540-68468532540_25_05_21.pdf",
+          "period": "2021-03-31",
+          "text": "Strong growth creates more jobs, and career growth opportunities for employees"
+        },
+        {
+          "evidence_id": "bse-news-5cca1cd9-e145-4f6e-90de-79196ed31586",
+          "period": "2021-03-31",
+          "text": "Strong growth creates more jobs, and career growth opportunities for employees"
+        },
+        {
+          "evidence_id": "bse-news-68e21f0a-b5f7-4f6f-ae6a-07cca5850648",
+          "period": "2021-03-31",
+          "text": "Strong growth creates more jobs, and career growth opportunities for employees"
+        },
+        {
+          "evidence_id": "bse-ar-532540-68468532540_25_05_21.pdf",
+          "period": "2021-03-31",
+          "text": "the date of appointment is as per the MCA Portal."
+        },
+        {
+          "evidence_id": "bse-news-5cca1cd9-e145-4f6e-90de-79196ed31586",
+          "period": "2021-03-31",
+          "text": "the date of appointment is as per the MCA Portal."
+        },
+        {
+          "evidence_id": "bse-news-68e21f0a-b5f7-4f6f-ae6a-07cca5850648",
+          "period": "2021-03-31",
+          "text": "the date of appointment is as per the MCA Portal."
+        },
+        {
+          "evidence_id": "bse-ar-532540-72996532540_17_06_22.pdf",
           "period": "2022-03-31",
-          "text": "Ceased to be a member of the Committee consequent"
+          "text": "*Appointed as a member of this Committee"
         },
         {
           "evidence_id": "bse-news-53706155-95ff-4c10-8218-9a363088a8f6",
@@ -2981,9 +2951,14 @@
           "text": "*Appointed as a member of this Committee"
         },
         {
-          "evidence_id": "bse-news-53706155-95ff-4c10-8218-9a363088a8f6",
+          "evidence_id": "bse-news-6d9e6b13-c0d4-42d0-8f49-23fb18c85d62",
           "period": "2022-03-31",
-          "text": "Employee Stock Purchase Scheme"
+          "text": "*Appointed as a member of this Committee"
+        },
+        {
+          "evidence_id": "bse-ar-532540-72996532540_17_06_22.pdf",
+          "period": "2022-03-31",
+          "text": "Aarthi Subramanian ceased to be a member of the NRC w.e.f. October 8, 2021"
         },
         {
           "evidence_id": "bse-news-53706155-95ff-4c10-8218-9a363088a8f6",
@@ -2993,80 +2968,20 @@
         {
           "evidence_id": "bse-news-6d9e6b13-c0d4-42d0-8f49-23fb18c85d62",
           "period": "2022-03-31",
-          "text": "Climate change"
-        },
-        {
-          "evidence_id": "bse-news-6d9e6b13-c0d4-42d0-8f49-23fb18c85d62",
-          "period": "2022-03-31",
-          "text": "Excluding provision towards legal claim."
-        },
-        {
-          "evidence_id": "bse-news-6d9e6b13-c0d4-42d0-8f49-23fb18c85d62",
-          "period": "2022-03-31",
-          "text": "Excluding provision towards legal claim."
-        },
-        {
-          "evidence_id": "bse-news-6d9e6b13-c0d4-42d0-8f49-23fb18c85d62",
-          "period": "2022-03-31",
-          "text": "Excluding provision towards legal claim."
-        },
-        {
-          "evidence_id": "bse-news-6d9e6b13-c0d4-42d0-8f49-23fb18c85d62",
-          "period": "2022-03-31",
-          "text": "includes shares held jointly with relative"
-        },
-        {
-          "evidence_id": "bse-news-6d9e6b13-c0d4-42d0-8f49-23fb18c85d62",
-          "period": "2022-03-31",
-          "text": "Ceased to be a member of the Committee"
-        },
-        {
-          "evidence_id": "bse-news-6d9e6b13-c0d4-42d0-8f49-23fb18c85d62",
-          "period": "2022-03-31",
-          "text": "Ceased to be a member of the Committee consequent"
-        },
-        {
-          "evidence_id": "bse-news-6d9e6b13-c0d4-42d0-8f49-23fb18c85d62",
-          "period": "2022-03-31",
-          "text": "*Appointed as a member of this Committee"
-        },
-        {
-          "evidence_id": "bse-news-6d9e6b13-c0d4-42d0-8f49-23fb18c85d62",
-          "period": "2022-03-31",
-          "text": "Employee Stock Purchase Scheme"
-        },
-        {
-          "evidence_id": "bse-news-6d9e6b13-c0d4-42d0-8f49-23fb18c85d62",
-          "period": "2022-03-31",
           "text": "Aarthi Subramanian ceased to be a member of the NRC w.e.f. October 8, 2021"
         },
         {
           "evidence_id": "bse-ar-532540-72996532540_17_06_22.pdf",
           "period": "2022-03-31",
-          "text": "Climate change"
+          "text": "Ceased to be a member of the Committee"
         },
         {
-          "evidence_id": "bse-ar-532540-72996532540_17_06_22.pdf",
+          "evidence_id": "bse-news-53706155-95ff-4c10-8218-9a363088a8f6",
           "period": "2022-03-31",
-          "text": "Excluding provision towards legal claim."
+          "text": "Ceased to be a member of the Committee"
         },
         {
-          "evidence_id": "bse-ar-532540-72996532540_17_06_22.pdf",
-          "period": "2022-03-31",
-          "text": "Excluding provision towards legal claim."
-        },
-        {
-          "evidence_id": "bse-ar-532540-72996532540_17_06_22.pdf",
-          "period": "2022-03-31",
-          "text": "Excluding provision towards legal claim."
-        },
-        {
-          "evidence_id": "bse-ar-532540-72996532540_17_06_22.pdf",
-          "period": "2022-03-31",
-          "text": "includes shares held jointly with relative"
-        },
-        {
-          "evidence_id": "bse-ar-532540-72996532540_17_06_22.pdf",
+          "evidence_id": "bse-news-6d9e6b13-c0d4-42d0-8f49-23fb18c85d62",
           "period": "2022-03-31",
           "text": "Ceased to be a member of the Committee"
         },
@@ -3076,9 +2991,29 @@
           "text": "Ceased to be a member of the Committee consequent"
         },
         {
+          "evidence_id": "bse-news-53706155-95ff-4c10-8218-9a363088a8f6",
+          "period": "2022-03-31",
+          "text": "Ceased to be a member of the Committee consequent"
+        },
+        {
+          "evidence_id": "bse-news-6d9e6b13-c0d4-42d0-8f49-23fb18c85d62",
+          "period": "2022-03-31",
+          "text": "Ceased to be a member of the Committee consequent"
+        },
+        {
           "evidence_id": "bse-ar-532540-72996532540_17_06_22.pdf",
           "period": "2022-03-31",
-          "text": "*Appointed as a member of this Committee"
+          "text": "Climate change"
+        },
+        {
+          "evidence_id": "bse-news-53706155-95ff-4c10-8218-9a363088a8f6",
+          "period": "2022-03-31",
+          "text": "Climate change"
+        },
+        {
+          "evidence_id": "bse-news-6d9e6b13-c0d4-42d0-8f49-23fb18c85d62",
+          "period": "2022-03-31",
+          "text": "Climate change"
         },
         {
           "evidence_id": "bse-ar-532540-72996532540_17_06_22.pdf",
@@ -3086,19 +3021,89 @@
           "text": "Employee Stock Purchase Scheme"
         },
         {
+          "evidence_id": "bse-news-53706155-95ff-4c10-8218-9a363088a8f6",
+          "period": "2022-03-31",
+          "text": "Employee Stock Purchase Scheme"
+        },
+        {
+          "evidence_id": "bse-news-6d9e6b13-c0d4-42d0-8f49-23fb18c85d62",
+          "period": "2022-03-31",
+          "text": "Employee Stock Purchase Scheme"
+        },
+        {
           "evidence_id": "bse-ar-532540-72996532540_17_06_22.pdf",
           "period": "2022-03-31",
-          "text": "Aarthi Subramanian ceased to be a member of the NRC w.e.f. October 8, 2021"
+          "text": "Excluding provision towards legal claim."
         },
         {
-          "evidence_id": "bse-news-add490c8-9b8e-4a65-b87f-144e4140d9d2",
-          "period": "2023-03-31",
-          "text": "Samir Seksaria (Chief Financial Oﬃcer) is also a member of"
+          "evidence_id": "bse-ar-532540-72996532540_17_06_22.pdf",
+          "period": "2022-03-31",
+          "text": "Excluding provision towards legal claim."
         },
         {
-          "evidence_id": "bse-news-add490c8-9b8e-4a65-b87f-144e4140d9d2",
+          "evidence_id": "bse-ar-532540-72996532540_17_06_22.pdf",
+          "period": "2022-03-31",
+          "text": "Excluding provision towards legal claim."
+        },
+        {
+          "evidence_id": "bse-news-53706155-95ff-4c10-8218-9a363088a8f6",
+          "period": "2022-03-31",
+          "text": "Excluding provision towards legal claim."
+        },
+        {
+          "evidence_id": "bse-news-53706155-95ff-4c10-8218-9a363088a8f6",
+          "period": "2022-03-31",
+          "text": "Excluding provision towards legal claim."
+        },
+        {
+          "evidence_id": "bse-news-53706155-95ff-4c10-8218-9a363088a8f6",
+          "period": "2022-03-31",
+          "text": "Excluding provision towards legal claim."
+        },
+        {
+          "evidence_id": "bse-news-6d9e6b13-c0d4-42d0-8f49-23fb18c85d62",
+          "period": "2022-03-31",
+          "text": "Excluding provision towards legal claim."
+        },
+        {
+          "evidence_id": "bse-news-6d9e6b13-c0d4-42d0-8f49-23fb18c85d62",
+          "period": "2022-03-31",
+          "text": "Excluding provision towards legal claim."
+        },
+        {
+          "evidence_id": "bse-news-6d9e6b13-c0d4-42d0-8f49-23fb18c85d62",
+          "period": "2022-03-31",
+          "text": "Excluding provision towards legal claim."
+        },
+        {
+          "evidence_id": "bse-ar-532540-72996532540_17_06_22.pdf",
+          "period": "2022-03-31",
+          "text": "includes shares held jointly with relative"
+        },
+        {
+          "evidence_id": "bse-news-53706155-95ff-4c10-8218-9a363088a8f6",
+          "period": "2022-03-31",
+          "text": "includes shares held jointly with relative"
+        },
+        {
+          "evidence_id": "bse-news-6d9e6b13-c0d4-42d0-8f49-23fb18c85d62",
+          "period": "2022-03-31",
+          "text": "includes shares held jointly with relative"
+        },
+        {
+          "evidence_id": "bse-ar-532540-085896fa-2e3b-4ecc-b9f1-31a31b7204b5.pdf.pdf",
           "period": "2023-03-31",
-          "text": "He served as the CFO of TCS from February 2017 until his"
+          "text": "Excluding provision towards legal claim"
+        },
+        {
+          "evidence_id": "bse-ar-532540-3837c1b7-9308-436d-9636-1d6856edf74e.pdf.pdf",
+          "period": "2023-03-31",
+          "text": "Excluding provision towards legal claim"
+        },
+        {
+          "evidence_id": "bse-news-20f58c04-9bce-4535-94cf-e6d48d4329ce",
+          "period": "2023-03-31",
+          "text": "Excluding provision towards legal claim"
         },
         {
           "evidence_id": "bse-news-add490c8-9b8e-4a65-b87f-144e4140d9d2",
@@ -3106,24 +3111,49 @@
           "text": "Excluding provision towards legal claim"
         },
         {
+          "evidence_id": "bse-ar-532540-085896fa-2e3b-4ecc-b9f1-31a31b7204b5.pdf.pdf",
+          "period": "2023-03-31",
+          "text": "He served as the CFO of TCS from February 2017 until his"
+        },
+        {
+          "evidence_id": "bse-ar-532540-3837c1b7-9308-436d-9636-1d6856edf74e.pdf.pdf",
+          "period": "2023-03-31",
+          "text": "He served as the CFO of TCS from February 2017 until his"
+        },
+        {
+          "evidence_id": "bse-news-20f58c04-9bce-4535-94cf-e6d48d4329ce",
+          "period": "2023-03-31",
+          "text": "He served as the CFO of TCS from February 2017 until his"
+        },
+        {
           "evidence_id": "bse-news-add490c8-9b8e-4a65-b87f-144e4140d9d2",
+          "period": "2023-03-31",
+          "text": "He served as the CFO of TCS from February 2017 until his"
+        },
+        {
+          "evidence_id": "bse-ar-532540-085896fa-2e3b-4ecc-b9f1-31a31b7204b5.pdf.pdf",
+          "period": "2023-03-31",
+          "text": "Samir Seksaria (Chief Financial Oﬃcer) is also a member of"
+        },
+        {
+          "evidence_id": "bse-ar-532540-3837c1b7-9308-436d-9636-1d6856edf74e.pdf.pdf",
+          "period": "2023-03-31",
+          "text": "Samir Seksaria (Chief Financial Oﬃcer) is also a member of"
+        },
+        {
+          "evidence_id": "bse-news-20f58c04-9bce-4535-94cf-e6d48d4329ce",
+          "period": "2023-03-31",
+          "text": "Samir Seksaria (Chief Financial Oﬃcer) is also a member of"
+        },
+        {
+          "evidence_id": "bse-news-add490c8-9b8e-4a65-b87f-144e4140d9d2",
+          "period": "2023-03-31",
+          "text": "Samir Seksaria (Chief Financial Oﬃcer) is also a member of"
+        },
+        {
+          "evidence_id": "bse-ar-532540-085896fa-2e3b-4ecc-b9f1-31a31b7204b5.pdf.pdf",
           "period": "2023-03-31",
           "text": "includes multiple investors in group meetings"
-        },
-        {
-          "evidence_id": "bse-ar-532540-3837c1b7-9308-436d-9636-1d6856edf74e.pdf.pdf",
-          "period": "2023-03-31",
-          "text": "Samir Seksaria (Chief Financial Oﬃcer) is also a member of"
-        },
-        {
-          "evidence_id": "bse-ar-532540-3837c1b7-9308-436d-9636-1d6856edf74e.pdf.pdf",
-          "period": "2023-03-31",
-          "text": "He served as the CFO of TCS from February 2017 until his"
-        },
-        {
-          "evidence_id": "bse-ar-532540-3837c1b7-9308-436d-9636-1d6856edf74e.pdf.pdf",
-          "period": "2023-03-31",
-          "text": "Excluding provision towards legal claim"
         },
         {
           "evidence_id": "bse-ar-532540-3837c1b7-9308-436d-9636-1d6856edf74e.pdf.pdf",
@@ -3133,57 +3163,17 @@
         {
           "evidence_id": "bse-news-20f58c04-9bce-4535-94cf-e6d48d4329ce",
           "period": "2023-03-31",
-          "text": "Samir Seksaria (Chief Financial Oﬃcer) is also a member of"
+          "text": "includes multiple investors in group meetings"
         },
         {
-          "evidence_id": "bse-news-20f58c04-9bce-4535-94cf-e6d48d4329ce",
-          "period": "2023-03-31",
-          "text": "He served as the CFO of TCS from February 2017 until his"
-        },
-        {
-          "evidence_id": "bse-news-20f58c04-9bce-4535-94cf-e6d48d4329ce",
-          "period": "2023-03-31",
-          "text": "Excluding provision towards legal claim"
-        },
-        {
-          "evidence_id": "bse-news-20f58c04-9bce-4535-94cf-e6d48d4329ce",
+          "evidence_id": "bse-news-add490c8-9b8e-4a65-b87f-144e4140d9d2",
           "period": "2023-03-31",
           "text": "includes multiple investors in group meetings"
         },
         {
-          "evidence_id": "bse-ar-532540-085896fa-2e3b-4ecc-b9f1-31a31b7204b5.pdf.pdf",
-          "period": "2023-03-31",
-          "text": "Samir Seksaria (Chief Financial Oﬃcer) is also a member of"
-        },
-        {
-          "evidence_id": "bse-ar-532540-085896fa-2e3b-4ecc-b9f1-31a31b7204b5.pdf.pdf",
-          "period": "2023-03-31",
-          "text": "He served as the CFO of TCS from February 2017 until his"
-        },
-        {
-          "evidence_id": "bse-ar-532540-085896fa-2e3b-4ecc-b9f1-31a31b7204b5.pdf.pdf",
-          "period": "2023-03-31",
-          "text": "Excluding provision towards legal claim"
-        },
-        {
-          "evidence_id": "bse-ar-532540-085896fa-2e3b-4ecc-b9f1-31a31b7204b5.pdf.pdf",
-          "period": "2023-03-31",
-          "text": "includes multiple investors in group meetings"
-        },
-        {
-          "evidence_id": "bse-news-a8be8b1d-ebc8-4ab7-8081-668fadaf6ecb",
+          "evidence_id": "bse-ar-532540-d57e49b6-fd89-4fa8-b591-4f590100db1e.pdf.pdf",
           "period": "2024-03-31",
-          "text": "Samir Seksaria (Chief Financial Oﬃcer), is also a member of the Committee"
-        },
-        {
-          "evidence_id": "bse-news-a8be8b1d-ebc8-4ab7-8081-668fadaf6ecb",
-          "period": "2024-03-31",
-          "text": "Excludes settlement of legal claim"
-        },
-        {
-          "evidence_id": "bse-news-a8be8b1d-ebc8-4ab7-8081-668fadaf6ecb",
-          "period": "2024-03-31",
-          "text": "Excludes settlement of legal claim in FY 2024"
+          "text": "Excludes provision (in FY 2021) and settlement (in FY 2024) of legal claim"
         },
         {
           "evidence_id": "bse-news-a8be8b1d-ebc8-4ab7-8081-668fadaf6ecb",
@@ -3193,10 +3183,10 @@
         {
           "evidence_id": "bse-ar-532540-d57e49b6-fd89-4fa8-b591-4f590100db1e.pdf.pdf",
           "period": "2024-03-31",
-          "text": "Samir Seksaria (Chief Financial Oﬃcer), is also a member of the Committee"
+          "text": "Excludes settlement of legal claim"
         },
         {
-          "evidence_id": "bse-ar-532540-d57e49b6-fd89-4fa8-b591-4f590100db1e.pdf.pdf",
+          "evidence_id": "bse-news-a8be8b1d-ebc8-4ab7-8081-668fadaf6ecb",
           "period": "2024-03-31",
           "text": "Excludes settlement of legal claim"
         },
@@ -3206,39 +3196,24 @@
           "text": "Excludes settlement of legal claim in FY 2024"
         },
         {
+          "evidence_id": "bse-news-a8be8b1d-ebc8-4ab7-8081-668fadaf6ecb",
+          "period": "2024-03-31",
+          "text": "Excludes settlement of legal claim in FY 2024"
+        },
+        {
           "evidence_id": "bse-ar-532540-d57e49b6-fd89-4fa8-b591-4f590100db1e.pdf.pdf",
           "period": "2024-03-31",
-          "text": "Excludes provision (in FY 2021) and settlement (in FY 2024) of legal claim"
+          "text": "Samir Seksaria (Chief Financial Oﬃcer), is also a member of the Committee"
         },
         {
-          "evidence_id": "bse-news-5f265e1c-6312-4556-b208-749bfa2caf8f",
-          "period": "2025-03-31",
-          "text": "Excludes provision (FY 2021) and settlement (FY 2024) of legal claim."
+          "evidence_id": "bse-news-a8be8b1d-ebc8-4ab7-8081-668fadaf6ecb",
+          "period": "2024-03-31",
+          "text": "Samir Seksaria (Chief Financial Oﬃcer), is also a member of the Committee"
         },
         {
-          "evidence_id": "bse-news-5f265e1c-6312-4556-b208-749bfa2caf8f",
+          "evidence_id": "bse-ar-532540-bb9f9e0a-e4ce-4a4e-997e-0b5de8c2bec0.pdf.pdf",
           "period": "2025-03-31",
-          "text": "Excludes provision (FY 2021) and settlement (FY 2024) of legal claim."
-        },
-        {
-          "evidence_id": "bse-news-5f265e1c-6312-4556-b208-749bfa2caf8f",
-          "period": "2025-03-31",
-          "text": "Further, none of the Independent Directors serve"
-        },
-        {
-          "evidence_id": "bse-news-5f265e1c-6312-4556-b208-749bfa2caf8f",
-          "period": "2025-03-31",
-          "text": "The necessary quorum was present for all the"
-        },
-        {
-          "evidence_id": "bse-news-5f265e1c-6312-4556-b208-749bfa2caf8f",
-          "period": "2025-03-31",
-          "text": "Tata Steel Limited (C) (NED)"
-        },
-        {
-          "evidence_id": "bse-news-5f265e1c-6312-4556-b208-749bfa2caf8f",
-          "period": "2025-03-31",
-          "text": "Tata Motors Limited (C) (NED)"
+          "text": "\u0007Tata Consumer Products Limited (C) (NED)"
         },
         {
           "evidence_id": "bse-news-5f265e1c-6312-4556-b208-749bfa2caf8f",
@@ -3246,14 +3221,59 @@
           "text": "\u0007Tata Consumer Products Limited (C) (NED)"
         },
         {
+          "evidence_id": "bse-ar-532540-bb9f9e0a-e4ce-4a4e-997e-0b5de8c2bec0.pdf.pdf",
+          "period": "2025-03-31",
+          "text": "\u0007The Indian Hotels Company Limited (C) (NED)"
+        },
+        {
           "evidence_id": "bse-news-5f265e1c-6312-4556-b208-749bfa2caf8f",
+          "period": "2025-03-31",
+          "text": "\u0007The Indian Hotels Company Limited (C) (NED)"
+        },
+        {
+          "evidence_id": "bse-ar-532540-bb9f9e0a-e4ce-4a4e-997e-0b5de8c2bec0.pdf.pdf",
           "period": "2025-03-31",
           "text": "\u0007The Tata Power Company Limited (C) (NED)"
         },
         {
           "evidence_id": "bse-news-5f265e1c-6312-4556-b208-749bfa2caf8f",
           "period": "2025-03-31",
-          "text": "\u0007The Indian Hotels Company Limited (C) (NED)"
+          "text": "\u0007The Tata Power Company Limited (C) (NED)"
+        },
+        {
+          "evidence_id": "bse-ar-532540-bb9f9e0a-e4ce-4a4e-997e-0b5de8c2bec0.pdf.pdf",
+          "period": "2025-03-31",
+          "text": "Excludes provision (FY 2021) and settlement (FY 2024) of legal claim."
+        },
+        {
+          "evidence_id": "bse-ar-532540-bb9f9e0a-e4ce-4a4e-997e-0b5de8c2bec0.pdf.pdf",
+          "period": "2025-03-31",
+          "text": "Excludes provision (FY 2021) and settlement (FY 2024) of legal claim."
+        },
+        {
+          "evidence_id": "bse-news-5f265e1c-6312-4556-b208-749bfa2caf8f",
+          "period": "2025-03-31",
+          "text": "Excludes provision (FY 2021) and settlement (FY 2024) of legal claim."
+        },
+        {
+          "evidence_id": "bse-news-5f265e1c-6312-4556-b208-749bfa2caf8f",
+          "period": "2025-03-31",
+          "text": "Excludes provision (FY 2021) and settlement (FY 2024) of legal claim."
+        },
+        {
+          "evidence_id": "bse-ar-532540-bb9f9e0a-e4ce-4a4e-997e-0b5de8c2bec0.pdf.pdf",
+          "period": "2025-03-31",
+          "text": "Further, none of the Independent Directors serve"
+        },
+        {
+          "evidence_id": "bse-news-5f265e1c-6312-4556-b208-749bfa2caf8f",
+          "period": "2025-03-31",
+          "text": "Further, none of the Independent Directors serve"
+        },
+        {
+          "evidence_id": "bse-ar-532540-bb9f9e0a-e4ce-4a4e-997e-0b5de8c2bec0.pdf.pdf",
+          "period": "2025-03-31",
+          "text": "Tata Chemicals Limited (C) (NED)"
         },
         {
           "evidence_id": "bse-news-5f265e1c-6312-4556-b208-749bfa2caf8f",
@@ -3263,22 +3283,12 @@
         {
           "evidence_id": "bse-ar-532540-bb9f9e0a-e4ce-4a4e-997e-0b5de8c2bec0.pdf.pdf",
           "period": "2025-03-31",
-          "text": "Excludes provision (FY 2021) and settlement (FY 2024) of legal claim."
+          "text": "Tata Motors Limited (C) (NED)"
         },
         {
-          "evidence_id": "bse-ar-532540-bb9f9e0a-e4ce-4a4e-997e-0b5de8c2bec0.pdf.pdf",
+          "evidence_id": "bse-news-5f265e1c-6312-4556-b208-749bfa2caf8f",
           "period": "2025-03-31",
-          "text": "Excludes provision (FY 2021) and settlement (FY 2024) of legal claim."
-        },
-        {
-          "evidence_id": "bse-ar-532540-bb9f9e0a-e4ce-4a4e-997e-0b5de8c2bec0.pdf.pdf",
-          "period": "2025-03-31",
-          "text": "Further, none of the Independent Directors serve"
-        },
-        {
-          "evidence_id": "bse-ar-532540-bb9f9e0a-e4ce-4a4e-997e-0b5de8c2bec0.pdf.pdf",
-          "period": "2025-03-31",
-          "text": "The necessary quorum was present for all the"
+          "text": "Tata Motors Limited (C) (NED)"
         },
         {
           "evidence_id": "bse-ar-532540-bb9f9e0a-e4ce-4a4e-997e-0b5de8c2bec0.pdf.pdf",
@@ -3286,54 +3296,24 @@
           "text": "Tata Steel Limited (C) (NED)"
         },
         {
-          "evidence_id": "bse-ar-532540-bb9f9e0a-e4ce-4a4e-997e-0b5de8c2bec0.pdf.pdf",
+          "evidence_id": "bse-news-5f265e1c-6312-4556-b208-749bfa2caf8f",
           "period": "2025-03-31",
-          "text": "Tata Motors Limited (C) (NED)"
-        },
-        {
-          "evidence_id": "bse-ar-532540-bb9f9e0a-e4ce-4a4e-997e-0b5de8c2bec0.pdf.pdf",
-          "period": "2025-03-31",
-          "text": "\u0007Tata Consumer Products Limited (C) (NED)"
+          "text": "Tata Steel Limited (C) (NED)"
         },
         {
           "evidence_id": "bse-ar-532540-bb9f9e0a-e4ce-4a4e-997e-0b5de8c2bec0.pdf.pdf",
           "period": "2025-03-31",
-          "text": "\u0007The Tata Power Company Limited (C) (NED)"
+          "text": "The necessary quorum was present for all the"
         },
         {
-          "evidence_id": "bse-ar-532540-bb9f9e0a-e4ce-4a4e-997e-0b5de8c2bec0.pdf.pdf",
+          "evidence_id": "bse-news-5f265e1c-6312-4556-b208-749bfa2caf8f",
           "period": "2025-03-31",
-          "text": "\u0007The Indian Hotels Company Limited (C) (NED)"
+          "text": "The necessary quorum was present for all the"
         },
         {
-          "evidence_id": "bse-ar-532540-bb9f9e0a-e4ce-4a4e-997e-0b5de8c2bec0.pdf.pdf",
-          "period": "2025-03-31",
-          "text": "Tata Chemicals Limited (C) (NED)"
-        },
-        {
-          "evidence_id": "bse-news-6e49b04e-0256-4d93-b50e-a91ee2773bf2",
+          "evidence_id": "bse-ar-532540-ad42e748-d73c-4c79-8c52-bcf1b1399bc1.pdf.pdf",
           "period": "2026-03-31",
-          "text": "These will boost TCS’ Salesforce"
-        },
-        {
-          "evidence_id": "bse-news-6e49b04e-0256-4d93-b50e-a91ee2773bf2",
-          "period": "2026-03-31",
-          "text": "tcsAI: We democratised AI access"
-        },
-        {
-          "evidence_id": "bse-news-6e49b04e-0256-4d93-b50e-a91ee2773bf2",
-          "period": "2026-03-31",
-          "text": "Redefining Services: We established a"
-        },
-        {
-          "evidence_id": "bse-news-6e49b04e-0256-4d93-b50e-a91ee2773bf2",
-          "period": "2026-03-31",
-          "text": "Building a Future-Ready Talent"
-        },
-        {
-          "evidence_id": "bse-news-6e49b04e-0256-4d93-b50e-a91ee2773bf2",
-          "period": "2026-03-31",
-          "text": "Making AI Real for our clients: True"
+          "text": "AI ecosystem play: To strengthen"
         },
         {
           "evidence_id": "bse-news-6e49b04e-0256-4d93-b50e-a91ee2773bf2",
@@ -3341,14 +3321,9 @@
           "text": "AI ecosystem play: To strengthen"
         },
         {
-          "evidence_id": "bse-news-6e49b04e-0256-4d93-b50e-a91ee2773bf2",
+          "evidence_id": "bse-ar-532540-ad42e748-d73c-4c79-8c52-bcf1b1399bc1.pdf.pdf",
           "period": "2026-03-31",
-          "text": "Models: From Foundation Models to Domain Intelligence"
-        },
-        {
-          "evidence_id": "bse-news-6e49b04e-0256-4d93-b50e-a91ee2773bf2",
-          "period": "2026-03-31",
-          "text": "Data Layer: Unlocking Enterprise Intelligence"
+          "text": "AI‑driven systems that combine"
         },
         {
           "evidence_id": "bse-news-6e49b04e-0256-4d93-b50e-a91ee2773bf2",
@@ -3358,6 +3333,61 @@
         {
           "evidence_id": "bse-ar-532540-ad42e748-d73c-4c79-8c52-bcf1b1399bc1.pdf.pdf",
           "period": "2026-03-31",
+          "text": "Building a Future-Ready Talent"
+        },
+        {
+          "evidence_id": "bse-news-6e49b04e-0256-4d93-b50e-a91ee2773bf2",
+          "period": "2026-03-31",
+          "text": "Building a Future-Ready Talent"
+        },
+        {
+          "evidence_id": "bse-ar-532540-ad42e748-d73c-4c79-8c52-bcf1b1399bc1.pdf.pdf",
+          "period": "2026-03-31",
+          "text": "Data Layer: Unlocking Enterprise Intelligence"
+        },
+        {
+          "evidence_id": "bse-news-6e49b04e-0256-4d93-b50e-a91ee2773bf2",
+          "period": "2026-03-31",
+          "text": "Data Layer: Unlocking Enterprise Intelligence"
+        },
+        {
+          "evidence_id": "bse-ar-532540-ad42e748-d73c-4c79-8c52-bcf1b1399bc1.pdf.pdf",
+          "period": "2026-03-31",
+          "text": "Making AI Real for our clients: True"
+        },
+        {
+          "evidence_id": "bse-news-6e49b04e-0256-4d93-b50e-a91ee2773bf2",
+          "period": "2026-03-31",
+          "text": "Making AI Real for our clients: True"
+        },
+        {
+          "evidence_id": "bse-ar-532540-ad42e748-d73c-4c79-8c52-bcf1b1399bc1.pdf.pdf",
+          "period": "2026-03-31",
+          "text": "Models: From Foundation Models to Domain Intelligence"
+        },
+        {
+          "evidence_id": "bse-news-6e49b04e-0256-4d93-b50e-a91ee2773bf2",
+          "period": "2026-03-31",
+          "text": "Models: From Foundation Models to Domain Intelligence"
+        },
+        {
+          "evidence_id": "bse-ar-532540-ad42e748-d73c-4c79-8c52-bcf1b1399bc1.pdf.pdf",
+          "period": "2026-03-31",
+          "text": "Redefining Services: We established a"
+        },
+        {
+          "evidence_id": "bse-news-6e49b04e-0256-4d93-b50e-a91ee2773bf2",
+          "period": "2026-03-31",
+          "text": "Redefining Services: We established a"
+        },
+        {
+          "evidence_id": "bse-ar-532540-ad42e748-d73c-4c79-8c52-bcf1b1399bc1.pdf.pdf",
+          "period": "2026-03-31",
+          "text": "These will boost TCS’ Salesforce"
+        },
+        {
+          "evidence_id": "bse-news-6e49b04e-0256-4d93-b50e-a91ee2773bf2",
+          "period": "2026-03-31",
           "text": "These will boost TCS’ Salesforce"
         },
         {
@@ -3366,39 +3396,9 @@
           "text": "tcsAI: We democratised AI access"
         },
         {
-          "evidence_id": "bse-ar-532540-ad42e748-d73c-4c79-8c52-bcf1b1399bc1.pdf.pdf",
+          "evidence_id": "bse-news-6e49b04e-0256-4d93-b50e-a91ee2773bf2",
           "period": "2026-03-31",
-          "text": "Redefining Services: We established a"
-        },
-        {
-          "evidence_id": "bse-ar-532540-ad42e748-d73c-4c79-8c52-bcf1b1399bc1.pdf.pdf",
-          "period": "2026-03-31",
-          "text": "Building a Future-Ready Talent"
-        },
-        {
-          "evidence_id": "bse-ar-532540-ad42e748-d73c-4c79-8c52-bcf1b1399bc1.pdf.pdf",
-          "period": "2026-03-31",
-          "text": "Making AI Real for our clients: True"
-        },
-        {
-          "evidence_id": "bse-ar-532540-ad42e748-d73c-4c79-8c52-bcf1b1399bc1.pdf.pdf",
-          "period": "2026-03-31",
-          "text": "AI ecosystem play: To strengthen"
-        },
-        {
-          "evidence_id": "bse-ar-532540-ad42e748-d73c-4c79-8c52-bcf1b1399bc1.pdf.pdf",
-          "period": "2026-03-31",
-          "text": "Models: From Foundation Models to Domain Intelligence"
-        },
-        {
-          "evidence_id": "bse-ar-532540-ad42e748-d73c-4c79-8c52-bcf1b1399bc1.pdf.pdf",
-          "period": "2026-03-31",
-          "text": "Data Layer: Unlocking Enterprise Intelligence"
-        },
-        {
-          "evidence_id": "bse-ar-532540-ad42e748-d73c-4c79-8c52-bcf1b1399bc1.pdf.pdf",
-          "period": "2026-03-31",
-          "text": "AI‑driven systems that combine"
+          "text": "tcsAI: We democratised AI access"
         }
       ]
     },
