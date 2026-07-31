@@ -100,7 +100,13 @@ from atlas.analysis.patterns import (
 )
 from atlas.knowledge.base import KnowledgeBase
 
-ANALYZER_VERSION = "2.0"
+# 2.1 rejects a ROE/FCF heading block whose year labels repeat. Bumped rather
+# than left at 2.0 because the fingerprint's claim is that this build's code
+# would reproduce the rows stamped with it, and after this change it would not
+# reproduce three of them. affects("investor_presentation") carries this
+# constant, so the bump invalidates investor_presentation runs and nothing
+# else -- which is the whole reason the sub-digest exists.
+ANALYZER_VERSION = "2.1"
 
 # ---------------------------------------------------------------------------
 # Period detection (cover letter)
@@ -439,6 +445,10 @@ def _year_value_pairs(
     start discriminates a chart (year axis label immediately follows the
     heading) from prose (several sentences of unrelated text intervene
     before any "FYxx" token happens to appear).
+
+    Distinct years are the second such discriminator, and the reason is at
+    the bottom of this function: a chart labels each bar with its own year,
+    so repeated labels mean the scan has left the chart.
     """
     years = list(year_re.finditer(window))[:_MAX_BLOCK_YEARS]
     if not years or years[0].start() > _MAX_YEAR_TO_VALUE_GAP:
@@ -469,6 +479,28 @@ def _year_value_pairs(
         elif pending:
             year_m = pending.pop(0)
             pairs.append((year_m.group(1), m.groups()))
+
+    # A multi-year chart labels each bar with a different year. Repeated year
+    # tokens mean the "labels" are not an axis at all -- they are incidental
+    # prose that _RE_FY_YEAR happened to match, and the values FIFO paired
+    # with them belong to something else.
+    #
+    # Observed in Tata Steel's 2QFY22 deck: the "Free Cash Flow" slide's chart
+    # is an image OCR yields no numbers for, so the window ran past the page
+    # footer into the next slide's gross debt waterfall. "2QFY22" matched
+    # twice and "1HFY22" once, and the three values claimed were a debt
+    # repayment and two gross-debt balances -- recorded as three conflicting
+    # free cash flow figures for one period.
+    #
+    # The whole block is rejected rather than deduplicated to the first pair.
+    # Once the years repeat there is no evidence the scan is still inside the
+    # chart the heading names, so "keep the first" would keep an arbitrary
+    # number rather than the right one: in that deck the first pair was the
+    # debt repayment figure. "First occurrence wins" is the policy for a
+    # value legitimately disclosed more than once (see _extract_roe_fcf
+    # below), which is a different situation from this one.
+    if len({year for year, _ in pairs}) != len(pairs):
+        return []
     return pairs
 
 

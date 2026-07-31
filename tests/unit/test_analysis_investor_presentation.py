@@ -384,6 +384,51 @@ class TestROEFCF:
         facts = _facts(result, FactKind.FINANCIAL_FCF)
         assert 14026.0 not in [f.value for f in facts]
 
+    def test_fcf_heading_window_does_not_bleed_into_the_next_slide(self):
+        # Regression, from the real Tata Steel 2QFY22 results deck
+        # (bse-news-1ac7b809..., OCR-extracted, quality 0.9339). The "Free
+        # Cash Flow" slide's own chart is an image that OCR yields no numbers
+        # for, so the 300-character heading window runs past the page footer
+        # ("TATA STEEL| 23") into the NEXT slide -- a gross debt waterfall.
+        #
+        # Text below is verbatim from that document at char_offset 25112,
+        # OCR noise included. The three numbers are a debt repayment figure
+        # and two gross-debt balances; none is free cash flow. The analyzer
+        # emitted all three as FINANCIAL_FCF for 2022-03-31, because
+        # _RE_FY_YEAR matches inside "2QFY22" twice and "1HFY22" once and
+        # FIFO gave each repeated year its own value.
+        #
+        # The discriminator is that a multi-year bar chart labels each bar
+        # with a DIFFERENT year. Repeated year tokens mean the labels are
+        # incidental prose, not an axis.
+        content = (
+            "Free Cash Flow\n"
+            "2QFY22\n"
+            "movement\n"
+            "2QFY22\n"
+            "TATA STEEL| 23\n"
+            "\n"
+            "Debt repayment of Rs.11,424 crores in 1HFY22\n"
+            "88,501\n"
+            "Rs. Crores\n"
+            "106 |\n"
+            "5,894\n"
+            "84,237\n"
+        )
+        result = analyze("eid", _kb(content))
+        values = [f.value for f in _facts(result, FactKind.FINANCIAL_FCF)]
+        assert 11424 not in values, "debt repayment captured as free cash flow"
+        assert 88501 not in values, "gross debt at Mar'21 captured as free cash flow"
+        assert 84237 not in values, "gross debt at Jun'21 captured as free cash flow"
+
+    def test_repeated_year_labels_are_not_a_chart(self):
+        # The same rule stated directly, without the OCR noise: three values
+        # under one heading all claiming the same year is not a three-bar
+        # chart, and keeping the first would be keeping an arbitrary one.
+        content = "Free Cash Flow\nFY 2022\n11,424\nFY 2022\n88,501\nFY 2022\n84,237\n"
+        result = analyze("eid", _kb(content))
+        assert _facts(result, FactKind.FINANCIAL_FCF) == []
+
     def test_roe_fcf_period_ends_in_march(self):
         # _nearest_fy_period looks backward from the match, matching real
         # disclosure phrasing ("FY2025 Return on Equity at 21.78%").
