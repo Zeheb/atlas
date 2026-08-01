@@ -18,8 +18,8 @@ real job is to let the next chat resume cold. Optimize it for that.
 | | |
 |---|---|
 | Branch | `claude/atlas-implementation-continue-c2bdbd` (worktree of `main`) |
-| Last completed commit | `85bd33a` — `chore: migrate TATASTEEL to the assertion store (#59)` |
-| Next planned commit | **Refresh TCS and SBIN investor-presentation runs**, then M10 commit 5 (#78). See the outstanding item — the analyzer bump in `2bdaae0` left both stale-stamped. **Blocked on the user: a data operation on real repositories.** |
+| Last completed commit | `86cc982` — `chore: refresh TCS and SBIN investor-presentation runs after the 2.1 bump` |
+| Next planned commit | **M10 commit 5** — `refactor(company): remove analyzer profile path and flag` (#78). Unblocked: #59 is complete and all three repositories verify clean. |
 | Tests | 3523 passed, 2 skipped, 663 deselected, 0 xfailed (`pytest -m "not integration"`) |
 | Coverage | 92.51% (gate: `--cov-fail-under=80`) |
 
@@ -38,7 +38,7 @@ real job is to let the next chat resume cold. Optimize it for that.
 | M6 — Answer pinning | ✅ complete except #43b | `5bd6e4a` … `f52d3b2` |
 | M7 — Selective invalidation | ✅ complete (7 commits, not 4) | `33d61f7` … `ca9d51d` |
 | M8 — Metrics pinning | ✅ complete | `fb17fe8` … `6a00109` |
-| M10 — Backfill & operator CLI | 🔄 commit 4 done (all three migrated); commit 5 (#78) pending | `2a62903` … `85bd33a` |
+| M10 — Backfill & operator CLI | 🔄 commit 4 done (all three migrated, all verifying); commit 5 (#78) pending | `2a62903` … `86cc982` |
 
 `AssertionStore` is the default profile source as of `b82bdba` (#35 cutover).
 
@@ -93,19 +93,32 @@ real job is to let the next chat resume cold. Optimize it for that.
   948 assertions, 827,392 bytes, `85bd33a`. Both verified, both clean under
   `atlas rebuild --verify` at the time of their commit.
 
-- **TCS and SBIN carry stale investor-presentation runs, and this is the one
-  thing standing between here and a finished rollout.** `2bdaae0` bumped
-  `investor_presentation`'s `ANALYZER_VERSION` 2.0 → 2.1, which moves
-  `affects("investor_presentation")` and nothing else. Their stored runs for
-  that kind no longer match the running build, so `atlas rebuild --company TCS
-  --verify` now raises `StaleAssertionsError` rather than reporting clean.
-  This is M7 working exactly as designed — one analyzer bump, one analyzer's
-  rows invalidated — not damage.
-  Remedy: `atlas rebuild --company X --from evidence --stale-only` on both,
-  re-running 50 presentations for TCS and 264 for SBIN. **Neither profile will
-  move**: the analyzer's output was re-derived over all 440 presentations in
-  the corpus before and after the fix, and only TATASTEEL's three bogus facts
-  changed. TATASTEEL is unaffected — it was rebuilt after the bump.
+- **#59 is complete. All three repositories are migrated and verify clean** as of
+  `86cc982`. Final state:
+
+  | | TCS | SBIN | TATASTEEL |
+  |---|---|---|---|
+  | documents | 140 | 307 | 287 |
+  | runs | 190 | 571 | 287 |
+  | assertions | 788 | 421 | 948 |
+  | `assertions.db` | 589,824 B | 565,248 B | 827,392 B |
+  | `rebuild --verify` | clean | clean | clean |
+
+  TCS and SBIN hold more runs than documents because `--stale-only` appended
+  2.1 investor-presentation runs beside the 2.0 ones rather than replacing
+  them; both fingerprints are in the store and the reader serves the one
+  matching the running build (#71). TATASTEEL has one run per document because
+  its migration built the store from scratch after the bump.
+
+- **`--stale-only` after an analyzer bump is the closing step of a migration,
+  not an optional tidy-up.** `2bdaae0` bumped `investor_presentation` 2.0 → 2.1
+  after TCS and SBIN were already migrated, and `rebuild --verify` raised
+  `StaleAssertionsError` on both until they were refreshed. Any future analyzer
+  fix during a rollout leaves the same debt. Evidence that the refresh was
+  correctly scoped: across 447 `ingested_results` rows on the two repositories,
+  the only non-timestamp change was `analyzer_version` 2.0 → 2.1 on exactly the
+  50 and 264 investor-presentation rows, and both canonical profile objects were
+  byte-identical afterwards.
 - **#78** (remove the analyzer profile path and the `profile_source` flag) may only
   land after #59 confirms every repo migrated. It is therefore blocked behind the
   same decision.
