@@ -18,9 +18,9 @@ real job is to let the next chat resume cold. Optimize it for that.
 | | |
 |---|---|
 | Branch | `claude/atlas-implementation-continue-c2bdbd` (worktree of `main`) |
-| Last completed commit | `f93c3a8` — `fix(company): make entry-list sort keys total in _finalize_profile` |
-| Next planned commit | **M10 commit 4 continued** — migrate SBIN and TATASTEEL (#59). TCS is done and verified. **Blocked on the user: a data operation on real repositories.** |
-| Tests | 3521 passed, 2 skipped, 663 deselected, 0 xfailed (`pytest -m "not integration"`) |
+| Last completed commit | `85bd33a` — `chore: migrate TATASTEEL to the assertion store (#59)` |
+| Next planned commit | **Refresh TCS and SBIN investor-presentation runs**, then M10 commit 5 (#78). See the outstanding item — the analyzer bump in `2bdaae0` left both stale-stamped. **Blocked on the user: a data operation on real repositories.** |
+| Tests | 3523 passed, 2 skipped, 663 deselected, 0 xfailed (`pytest -m "not integration"`) |
 | Coverage | 92.51% (gate: `--cov-fail-under=80`) |
 
 ## Milestones
@@ -38,7 +38,7 @@ real job is to let the next chat resume cold. Optimize it for that.
 | M6 — Answer pinning | ✅ complete except #43b | `5bd6e4a` … `f52d3b2` |
 | M7 — Selective invalidation | ✅ complete (7 commits, not 4) | `33d61f7` … `ca9d51d` |
 | M8 — Metrics pinning | ✅ complete | `fb17fe8` … `6a00109` |
-| M10 — Backfill & operator CLI | 🔄 commit 4 partial (TCS migrated; SBIN, TATASTEEL pending) | `2a62903` … `f93c3a8` |
+| M10 — Backfill & operator CLI | 🔄 commit 4 done (all three migrated); commit 5 (#78) pending | `2a62903` … `85bd33a` |
 
 `AssertionStore` is the default profile source as of `b82bdba` (#35 cutover).
 
@@ -81,10 +81,31 @@ real job is to let the next chat resume cold. Optimize it for that.
   **All three repositories share this staleness** — SBIN 27 documents parsed after
   its profile was built, TATASTEEL 30 — so both will refuse the same way.
 
-  **#55 is correct and must not be weakened.** It caught a stale Tier 2 artifact
-  and then caught a genuine correctness bug (#33, below), on a repository where
-  every individual row was valid and no other layer would have complained. Both
-  times the printed differences were enough to diagnose the cause in one pass.
+  **#55 is correct and must not be weakened.** Across three repositories it
+  refused four times and was right every time: a stale Tier 2 artifact (TCS),
+  an order-dependence bug (#33, TCS), a second stale artifact (TATASTEEL), and
+  an analyzer emitting three conflicting values for one key (TATASTEEL). Every
+  individual row was valid in each case and no other layer would have
+  complained. Each refusal printed enough to find the cause in one pass.
+
+  **SBIN and TATASTEEL are migrated.** SBIN: 307 documents, 307 runs, 365
+  assertions, 409,600 bytes, `0f3d37e`. TATASTEEL: 287 documents, 287 runs,
+  948 assertions, 827,392 bytes, `85bd33a`. Both verified, both clean under
+  `atlas rebuild --verify` at the time of their commit.
+
+- **TCS and SBIN carry stale investor-presentation runs, and this is the one
+  thing standing between here and a finished rollout.** `2bdaae0` bumped
+  `investor_presentation`'s `ANALYZER_VERSION` 2.0 → 2.1, which moves
+  `affects("investor_presentation")` and nothing else. Their stored runs for
+  that kind no longer match the running build, so `atlas rebuild --company TCS
+  --verify` now raises `StaleAssertionsError` rather than reporting clean.
+  This is M7 working exactly as designed — one analyzer bump, one analyzer's
+  rows invalidated — not damage.
+  Remedy: `atlas rebuild --company X --from evidence --stale-only` on both,
+  re-running 50 presentations for TCS and 264 for SBIN. **Neither profile will
+  move**: the analyzer's output was re-derived over all 440 presentations in
+  the corpus before and after the fix, and only TATASTEEL's three bogus facts
+  changed. TATASTEEL is unaffected — it was rebuilt after the bump.
 - **#78** (remove the analyzer profile path and the `profile_source` flag) may only
   land after #59 confirms every repo migrated. It is therefore blocked behind the
   same decision.
@@ -183,7 +204,30 @@ Repository-verified. Do not regress these.
    replacement. Harmless — content addresses make the stores equivalent — but it
    means `migrate assertions` and `rebuild --from evidence` are not distinct
    operations at Tier 1. See #82.
-24. **`AssertionStore(path)` takes a repository *root*, not a database file**, and
+24. **A dict-merged fact container makes the analyzer's emission order load-bearing,
+   and one analyzer defect was hiding behind it.** The builder writes snapshot
+   facts as `snaps[key][fact.kind] = value` — last write wins over `result.facts`
+   order. Tata Steel's 2QFY22 deck emitted three `FINANCIAL_FCF` facts for one
+   period, so the analyzer path kept the last-emitted and the assertion path kept
+   whichever the content-address ordering put last. The values were a debt
+   repayment figure and two gross-debt balances, read out of the *next slide's*
+   waterfall chart because `_BLOCK_WINDOW` is 300 characters with no
+   page-boundary guard and the extractors join pages with a plain `"\n"`.
+   **The fix was the analyzer, not the merge.** Making Tier 1 reproduce emission
+   order faithfully would have made both tiers agree on a debt repayment figure
+   labelled free cash flow, with a synthesized excerpt asserting it. Corpus-wide
+   there is exactly **one** such collision in 734 documents, and duplicate
+   emission into a dict-merged container is intentional nowhere — "first
+   occurrence wins" is the documented policy at six sites across four analyzers.
+   Whether the reader should restore emission order is still open (#83) and is
+   now a robustness question, not a correctness one.
+25. **A behaviour change in an analyzer must move its `ANALYZER_VERSION`.** The
+   fingerprint's claim is that this build's code reproduces the rows stamped with
+   it. `2bdaae0` changed what `investor_presentation` emits, so leaving it at 2.0
+   would have made the fingerprint lie about precisely the rows that motivated
+   the change. The cost is bounded and visible: `affects()` carries the constant
+   per kind, so exactly one analyzer's runs went stale.
+26. **`AssertionStore(path)` takes a repository *root*, not a database file**, and
    opening one creates it. Both matter to `migrate.py`: staging is a temp *directory*
    inside the repository (`migrate.py` moves `store.path`, not the directory), and
    counting existing rows checks `(root / DB_FILENAME).exists()` first, or a dry run
