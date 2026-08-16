@@ -101,7 +101,7 @@ Atlas has completed Stages 1 and 2, a working Stage 3 (`CompanyProfile` + `Compa
 
 Cutting across all four stages, a **provenance and rebuild layer** is now in place: every derived artifact records which build produced it, and every layer above raw evidence can be rebuilt from the layer below and checked for byte-identity. That work is described in its own section below.
 
-Engineering baseline: 4,183 tests across 207 files (3,520 run in CI; the golden-corpus and integration suites are deselected there and run locally), clean under `ruff`, `black` and `mypy --strict`, enforced by pre-commit and CI. Fifteen ADRs in `docs/adr/` record the decisions behind the design.
+Engineering baseline: 4,188 tests across 203 files (3,525 run in CI; the golden-corpus and integration suites are deselected there and run locally), clean under `ruff`, `black` and `mypy --strict`, enforced by pre-commit and CI. Fourteen ADRs in `docs/adr/` record the decisions behind the design.
 
 ---
 
@@ -209,7 +209,21 @@ The question this layer answers is "which code produced this number, and can I g
 
 **Operator tooling** — `atlas migrate assertions` backfills the store for repositories that predate it, staging into a temporary database and moving it into place only if the resulting profile matches the one the repository already holds; an interrupted migration leaves the repository byte-identical. `atlas store verify` reports whether a rebuild would work right now and names the command that fixes it when it would not.
 
-Migration of the three real reference repositories has not been run yet — it is the one remaining step of this layer, and it is a data operation rather than a code change.
+**All three reference repositories are migrated, and all three verify clean:**
+
+| | TCS | SBIN | Tata Steel |
+|---|---|---|---|
+| documents | 140 | 307 | 287 |
+| runs | 190 | 571 | 287 |
+| assertions | 788 | 421 | 948 |
+| `assertions.db` | 590 KB | 565 KB | 827 KB |
+| `atlas rebuild --verify` | clean | clean | clean |
+
+TCS and SBIN hold more runs than documents because an analyzer version bump landed mid-rollout and `--stale-only` appended the new runs beside the old ones; both fingerprints sit in the store and the reader serves the one matching the running build. Tata Steel has one run per document because its migration built the store after the bump.
+
+The rollout was planned as a data operation and was not one. `atlas migrate assertions` refused four times across the three repositories and was right every time: a `profile.json` older than the evidence corpus (TCS, then again Tata Steel), a genuine order-dependence bug in the profile builder, and an analyzer emitting three conflicting values for one key. Every individual row was valid in each case and no other layer would have complained, which is the argument for the refusal being where it is. Two operating rules came out of it, neither of which the plan stated: refresh `profile.json` *before* migrating whenever the stored profile predates the corpus — a migration that refuses never writes a store to rebuild from, so "rebuild afterwards" is not available — and treat `rebuild --stale-only` as the closing step of any rollout that includes an analyzer version bump, not an optional tidy-up.
+
+The legacy analyzer profile path and the `profile_source` flag are still in the tree. Removing them is the one remaining step of this layer; the flag was deliberately kept as the way back if the migrated profiles disagreed, and they do not.
 
 ---
 
@@ -244,7 +258,7 @@ What that exercise established, in rough order of how much it costs:
 * The **binding constraint is corpus breadth, not extraction quality.** Every one of the 14 unanswerable questions failed on information Atlas never ingests — price and valuation, peer financials, broker research, forum and expert commentary, trade data, promoter background. No amount of better parsing reaches them.
 * **Single-company silos block comparative questions.** `repositories/` holds three companies with no cross-repository query path, so any "versus peers" question is structurally unattemptable even where the data exists.
 * **Corpus depth is uneven inside a single company.** TCS has 6 earnings transcripts, all Q2/Q4 — every Q1 and Q3 call is missing, so "what changed since last quarter" silently answers a six-month delta. One shareholding pattern exists, so no ownership movement can be computed.
-* **The derived fact layer under-serves the raw text it was built from.** Several questions were answerable only by falling back to raw-document search: `profile.json`'s `risk_factors` array is largely extraction noise (footnote fragments, committee-membership lines), `segments` held one quarter where the annual report carries a full multi-year vertical table, and `debt_ratings` was empty. More documents flowing into a lossy analyzer will not improve answers.
+* **The derived fact layer under-serves the raw text it was built from.** Several questions were answerable only by falling back to raw-document search: `profile.json`'s `risk_factors` array is largely extraction noise (footnote fragments, committee-membership lines), `segments` held one quarter where the annual report carries a full multi-year vertical table, and `debt_ratings` was empty. More documents flowing into a lossy analyzer will not improve answers. **Re-checked after the TCS profile was fully rebuilt over the wider 140-document corpus: all three still hold** — 207 risk-factor entries, one segment snapshot, zero debt ratings — which confirms these are analyzer defects and not corpus gaps.
 * **Table-structure fidelity is the top extraction defect.** Observed in one report: a lease-liability line internally inconsistent between balance sheet and notes, order-scrambled revenue-by-geography labels, and dropped rows in investor-meeting schedules.
 * **There is no user memory in practice.** `research/` contains only a `.gitkeep`, so "what did I conclude two years ago" — a Stage 4 goal question in this README — has no substrate yet, even though `ThesisStore` is built and ready to hold one.
 
@@ -262,7 +276,7 @@ Ranked by incremental investment insight, not engineering elegance. The top thre
 
 **Provenance — one step left**
 
-* **Migrate the three reference repositories into the assertion store.** SBIN, TATASTEEL and TCS each hold a `profile.json` and no `assertions.db`, so they are still served by the legacy analyzer path. The tooling and its safety properties are built and tested; what remains is running it against real data and recording the before/after numbers. Removing the analyzer path and the `profile_source` flag is gated behind that run, deliberately: the flag is the way back if the migrated profiles disagree.
+* **Remove the legacy analyzer profile path and the `profile_source` flag.** Unblocked as of the migration above: all three repositories now hold an `assertions.db` and verify clean, which was the gate this was held behind. Until it lands, every layer that reads a profile carries two code paths and one of them is unexercised in practice.
 
 **Extraction quality — closing the gap to the raw text**
 
