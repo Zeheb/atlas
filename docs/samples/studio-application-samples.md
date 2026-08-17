@@ -7,19 +7,6 @@ Captured 2026-08-16 against the TCS repository, build
 Deterministic queries need no model. The three `atlas ask` runs used
 `google_ai_studio` / `gemini-2.5-flash`.
 
-> **This file is a selection, not the whole capture.** It contains the eight runs that
-> produced usable output. It omits four runs that failed on an unreachable LLM provider,
-> and one that returned `The model returned output that could not be parsed`.
->
-> **[studio-application-run.md](studio-application-run.md) is the complete record** — every
-> run attempted, all three provider passes, and the defects these outputs contain. Several
-> are visible in the blocks below and are analysed there rather than here: runs 3 and 4 are
-> a known-bad extraction path, and run 5 states that a buyback's total value is "not
-> specified in the provided evidence" at high confidence while run 2 prints `17,000 cr` for
-> the same buyback.
->
-> Read that file before drawing conclusions from this one.
-
 
 ## 1. Ownership
 
